@@ -21,6 +21,9 @@ Stage 0 creates every account and collects every key and secret before anything 
 > [!NOTE]
 > **New: sign-in runs on your own machine.** Passwords and sign-in codes are kept by a Supabase Auth container beside the API, so there is no Supabase account or project any more. A person who forgets their password signs in with a 6-digit code sent by email and sets a new one under **Change password**. The steps: [Stage 0, Part B](#b-secrets-you-generate-yourself) (three more secrets), [Stage 3](#stage-3--the-env-file-filled-once-from-the-key-sheet) (where they go), [Stage 4](#stage-4--start-the-stack) (the `auth` container is healthy) and [Stage 11, part Q](#q-self-hosted-sign-in-the-release-after-v121) (bringing it to a running machine). The details are in `docs/auth/self-hosted-auth.md`.
 
+> [!NOTE]
+> **New: a demo company full of test data.** One command on the machine creates a company with something in every section (customers, jobs, stock, sales, finance, HR, the ledger and the rest) and nine people to sign in as, one per role. The steps are in [Stage 14](#stage-14--a-demo-company-full-of-test-data).
+
 > [!TIP]
 > GitHub shows the boxes below but does not let you tick them in a file. To track your progress, copy a stage into an issue (checkboxes there can be ticked), or open the interactive page described in the [last section](#about-this-page).
 
@@ -40,6 +43,7 @@ Stage 0 creates every account and collects every key and secret before anything 
 - [Stage 11 — Updating to a new version](#stage-11--updating-to-a-new-version)
 - [Stage 12 — Wipe the machine and start fresh](#stage-12--wipe-the-machine-and-start-fresh)
 - [Stage 13 — Destroy the Oracle machine, or empty it and keep it](#stage-13--destroy-the-oracle-machine-or-empty-it-and-keep-it)
+- [Stage 14 — A demo company full of test data](#stage-14--a-demo-company-full-of-test-data)
 
 ---
 
@@ -1571,6 +1575,64 @@ df -h /                                   # most of the disk is free again
 
 - [ ] **To use the machine again**, run Stage 1 from "Connect and run the setup script" (it installs Docker again and re-checks the firewall and Caddy), clone the repository, then continue with part D of this stage: the settings file back, the dump restored if you are keeping the data, the stack started.
 - [ ] **Outside the machine** nothing changed. If you start empty rather than restoring, tidy the old companies' R2 buckets and Stripe test data as Stage 12, part E describes; if you restore, leave them alone.
+
+---
+
+## Stage 14 — A demo company full of test data
+
+_about 20 minutes_
+
+One command on the machine creates a new company, **Nile Delta Facilities (Demo)**, and fills every section of it, so you can test the screens without typing anything in first. It is onboarded the way the dashboard onboards a real company (Enterprise plan, invoiced, its own storage bucket), every module is switched on, and it gets nine people: you as the owner, plus an admin, an HR manager, an inventory manager, a dispatcher, three engineers and a viewer. Then it fills the company through the API, as those people: settings, roles and certificates; customers, contacts and sites; suppliers, stock items, a warehouse and three vans; purchase orders and receipts; bills of materials and assembly orders; assets, contracts, maintenance plans and deadlines; work orders in every state with visits and parts used; forms and submissions; leads, opportunities and activities; quotes, sales orders and deliveries; employees, expense claims and pay runs; invoices, credit notes and payments; e-invoicing settings and codes; ledger journals and postings. Dates are relative to the day you run it: last month's jobs are done, next week's are booked.
+
+> [!WARNING]
+> **It writes made-up data into the database the machine serves**, and makes nine sign-in accounts (in the sign-in server, the `auth` container). No other company is touched, and it never sends anything to the Tax Authority, Stripe or a customer. It is safest on the test box (Stage 10), or on Oracle before real customers arrive. Part D removes it.
+
+### A. Put the seeder on the machine
+
+- [ ] **Get the seeder into the repository.** It is the folder `apps/api/src/demo/` (the command, `cli.ts`, and one file per section under `sections/`) plus one line in `apps/api/package.json`, `"demo-company"`. Merge it into the branch the machine runs (`main`, or `staging` on the test box). The API image builds everything under `apps/api/src`, so nothing else changes.
+- [ ] **Rebuild the API on the machine.** Pull the code and rebuild the API and worker images, the same way as a normal update (Stage 11, part D). If the machine pulls GitHub's images instead, wait for "Publish images" to go green, then `pull` and `up -d`.
+
+```bash
+# machine (SSH session)
+cd /opt/integr8
+git pull
+docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build api worker
+
+# check the seeder is in the image: it prints its help
+docker compose -f deploy/compose.yml --env-file deploy/.env \
+  run --rm api node dist/demo/cli.js --help
+```
+
+### B. Run it
+
+```bash
+# machine (SSH session), from /opt/integr8
+docker compose -f deploy/compose.yml --env-file deploy/.env \
+  run --rm api node dist/demo/cli.js \
+  --owner-email you@YOUR-EMAIL.com \
+  --owner-name "Your Name" \
+  --slug demo-nile \
+  --confirm-production
+```
+
+- [ ] **Choose the owner's address.** `--owner-email` is you, the company's owner. If that address already signs in to another company, it keeps its own password and the demo company is added to the companies you can switch between. `--confirm-production` is required whenever `APP_ENV` is `staging` or `production`, so the command cannot add test data by accident. `--slug` is the company's short name; leave it out for a random `demo-…` one.
+- [ ] **Optional settings.** `--password "…"` sets the password of every new sign-in account (otherwise one is generated and printed once); `--name "…"` renames the company; `--only crm,sales` fills only some sections (setup, customers and stock always run, because the others need them). `--help` lists everything.
+- [ ] **Save what it prints.** It takes a minute or two, printing a line per section, and ends with a table of nine sign-ins: role, email address and password. The other eight people get addresses made from yours, like `you+demo-nile-omar@YOUR-EMAIL.com`, so any mail for them reaches your own inbox (Gmail and most providers deliver `+` addresses). Put the password in your password manager.
+- [ ] **Read the end of the output.** `Done` with nothing after the sign-ins means every section went in. "Item(s) were skipped" lists small things the API refused, one per line; the rest is there. "Section(s) did not finish" names the section and the request that was refused; every other section still ran. Running it again makes a second company, so give it a new `--slug`.
+
+> [!NOTE]
+> **"A company with the slug … already exists"**: pick another `--slug`. **"Sign-in cannot be served"**: the env file is missing the sign-in secrets; add them (Stage 3, or Stage 11, part Q, on a machine that is already running). **"Refusing …" or "APP_ENV is production"**: add `--confirm-production`. A fresh database with no super admin yet works too: the company's history then names a "Demo seed" staff account that cannot sign in.
+
+### C. Look around
+
+- [ ] **Sign in as the owner** at `https://app.integr8-media.com`. The dashboard has numbers, and every group in the side menu (Work, CRM, Sales, Finance, Accounting, HR, Inventory, Operations) has records in several states: open the lists, then a few records.
+- [ ] **Sign in as the other roles**, in a private window, with the addresses and password it printed: an engineer sees the jobs they are on, the viewer cannot change anything, the HR manager sees HR and payroll. The company has no apps of its own yet; to try the phone app, build them with Stage 8 using the demo company's short name.
+- [ ] **Check the dashboard**: Companies lists the demo company on Enterprise, Invoiced, with every module on under **Features** and the seed's staff session in its history.
+
+### D. Remove it when you are done
+
+- [ ] **Close the company** from the dashboard, as for any company: its page → **Closing this company**: **Suspend**, then **Export their data** and wait for it to be ready, then **Close this company** with a reason. It is deleted for good seven days later, with its storage bucket.
+- [ ] **The eight demo sign-ins** stop working once the company is closed: nobody can sign in to a company that is gone. Their sign-in accounts are deleted when the company is purged, seven days later; your own address keeps its account if it signs in to other companies.
 
 ---
 

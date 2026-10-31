@@ -3,8 +3,11 @@ import {
   loadSigningKey,
   loadVerificationKeys,
   PlatformSessionService,
+  SessionService,
+  SupabaseIdentityProvider,
   TokenService,
   totpCode,
+  type VerifiedIdentity,
 } from '@integr8/auth';
 import {
   closeDatabase,
@@ -13,7 +16,7 @@ import {
   loadDatabaseConfig,
 } from '@integr8/db';
 import { randomBytes } from 'node:crypto';
-import { loadApiConfig } from '../config.js';
+import { loadApiConfig, supabaseAuthSettings } from '../config.js';
 
 /**
  * The first super admin, and any later one, from a terminal.
@@ -41,6 +44,16 @@ import { loadApiConfig } from '../config.js';
  *
  * Takes any account off the staff, terminal-made ones included, which the
  * dashboard cannot do. It ends every session the account has.
+ *
+ *   node dist/platform/admin-cli.js user-password <email>
+ *
+ * For company people (P36): gives the address a new generated password in the
+ * self-hosted Supabase Auth container and prints it once, then signs out every
+ * device they were signed in on. The way back in for somebody who cannot
+ * receive the emailed sign-in code. An address with no account gets one, as
+ * long as it is not already a member somewhere (a member always has one). The
+ * person still needs a membership to get into a company (an invitation, or
+ * onboarding); this only sets what they type.
  */
 
 const USAGE = `
@@ -52,6 +65,10 @@ Usage:
   admin-cli remove <email>                      Take an account off the staff and
                                                end its sessions.
   admin-cli list                                Every platform account.
+  admin-cli user-password <email>               Give a company person a new
+                                               password in the Auth container,
+                                               print it once, and sign out their
+                                               devices.
 `.trim();
 
 async function main(argv: string[]): Promise<number> {
@@ -179,6 +196,65 @@ async function main(argv: string[]): Promise<number> {
           metadata: { email: account.email, sessions: ended },
         });
         console.log(`Removed ${account.email}; ended ${ended} session(s).`);
+        return 0;
+      }
+
+      case 'user-password': {
+        const [email] = rest;
+        if (!email?.includes('@')) {
+          console.error(USAGE);
+          return 1;
+        }
+        const auth = supabaseAuthSettings(process.env);
+        if ('problems' in auth) {
+          console.error(['The Auth container is not configured:', ...auth.problems].join('\n  '));
+          return 1;
+        }
+        const identity = new SupabaseIdentityProvider(auth.settings);
+        const address = email.trim().toLowerCase();
+        const password = randomBytes(18).toString('base64url');
+
+        const existing = await identity.findByEmail(address);
+        let userId: VerifiedIdentity['userId'];
+        if (existing === undefined) {
+          // A member's id is the one their companies name; a new account would
+          // get another and open none of them. Members always have an account,
+          // so this only means the account was lost: say so rather than guess.
+          if ((await platform.tenants.memberUserIdsByEmail(address)).length > 0) {
+            console.error(
+              `${address} is a member of a company but has no sign-in account. Nothing was changed; ask a developer.`,
+            );
+            return 1;
+          }
+          userId = (await identity.createIdentity(address, password)).userId;
+        } else {
+          await identity.setPassword(existing.userId, password);
+          userId = existing.userId;
+        }
+
+        // Every device signed in with the old password, in every company.
+        const people = new SessionService({ tokens, config: authConfig });
+        let signedOut = 0;
+        for (const tenantId of await platform.tenants.withLiveSessionsFor(userId)) {
+          signedOut += await people.revokeAllForUser(tenantId, userId, 'password_changed');
+        }
+
+        console.log(
+          [
+            existing === undefined
+              ? `Created a sign-in for ${address}.`
+              : `Set a new password for ${address}; ${String(signedOut)} device(s) signed out.`,
+            '',
+            'Shown once. Send it privately; they sign in with it at',
+            `${config.WEB_APP_URL ?? '<WEB_APP_URL>'}/sign-in, then choose Change password.`,
+            '',
+            `  Password:  ${password}`,
+            '',
+            existing === undefined
+              ? 'If they are not in a company yet, invite this address from the company, or onboard a company with it as the owner.'
+              : '',
+          ].join('\n'),
+        );
         return 0;
       }
 
