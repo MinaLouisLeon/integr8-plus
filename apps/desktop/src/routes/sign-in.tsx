@@ -172,13 +172,17 @@ function ModeTab({
 // ---------------------------------------------------------------------------
 
 function CompanySignIn({ companyName }: { companyName: string }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>(undefined);
+  // The way back in for somebody who has forgotten their password (P36): a
+  // 6-digit code by email, entered on a second step.
+  const [step, setStep] = useState<'password' | 'code'>('password');
+  const [requesting, setRequesting] = useState(false);
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -201,6 +205,39 @@ function CompanySignIn({ companyName }: { companyName: string }) {
       }
     })();
   };
+
+  const requestCode = () => {
+    if (email.trim() === '') {
+      setError(t('auth.code.needEmail'));
+      return;
+    }
+    setRequesting(true);
+    setError(undefined);
+
+    void (async () => {
+      try {
+        await session().requestSignInCode(email.trim(), uiLocale(i18n.language));
+        setStep('code');
+      } catch (failure) {
+        setError(codeRequestMessage(failure, t));
+      } finally {
+        setRequesting(false);
+      }
+    })();
+  };
+
+  if (step === 'code') {
+    return (
+      <CodeSignIn
+        email={email.trim()}
+        companyName={companyName}
+        onBack={() => {
+          setStep('password');
+          setError(undefined);
+        }}
+      />
+    );
+  }
 
   return (
     <>
@@ -230,9 +267,140 @@ function CompanySignIn({ companyName }: { companyName: string }) {
         <Button type="submit" busy={busy}>
           {busy ? t('auth.signingIn') : t('auth.signIn')}
         </Button>
+        <Button type="button" variant="ghost" busy={requesting} onClick={requestCode}>
+          {t('auth.code.request')}
+        </Button>
       </form>
     </>
   );
+}
+
+/**
+ * The code step (P36). Every failure to complete gets one message, so the
+ * screen never says whether the address has an account; a lock and a
+ * company's own build refusing an outsider are the exceptions, as on the
+ * password step.
+ */
+export function CodeSignIn({
+  email,
+  companyName,
+  onBack,
+}: {
+  email: string;
+  companyName: string;
+  onBack: () => void;
+}) {
+  const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
+
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [error, setError] = useState<string | undefined>(undefined);
+  const [notice, setNotice] = useState<string>(() => t('auth.code.sent', { email }));
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    setBusy(true);
+    setError(undefined);
+
+    void (async () => {
+      try {
+        await session().signInWithCode({
+          email,
+          code: code.trim(),
+          deviceLabel: 'Desktop',
+          ...(COMPANY_SLUG === undefined ? {} : { companySlug: COMPANY_SLUG }),
+        });
+        void navigate('/dashboard', { replace: true });
+      } catch (failure) {
+        setError(codeFailureMessage(failure, t, companyName));
+      } finally {
+        setBusy(false);
+      }
+    })();
+  };
+
+  const resend = () => {
+    setResending(true);
+    setError(undefined);
+
+    void (async () => {
+      try {
+        await session().requestSignInCode(email, uiLocale(i18n.language));
+        setNotice(t('auth.code.resent'));
+      } catch (failure) {
+        setError(codeRequestMessage(failure, t));
+      } finally {
+        setResending(false);
+      }
+    })();
+  };
+
+  return (
+    <>
+      <div className="flex flex-col gap-1 text-start">
+        <h1 className="text-2xl font-semibold text-content">{t('auth.code.title')}</h1>
+        <p role="status" className="text-sm text-content-muted">
+          {notice}
+        </p>
+      </div>
+
+      <form onSubmit={submit} className="flex flex-col gap-4" noValidate>
+        <Field
+          label={t('auth.code.label')}
+          placeholder={t('auth.code.hint')}
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          maxLength={6}
+          required
+          value={code}
+          onChange={(event) => setCode(event.target.value.replace(/\D/gu, ''))}
+          {...(error === undefined ? {} : { error })}
+        />
+        <Button type="submit" busy={busy} disabled={code.length !== 6}>
+          {busy ? t('auth.signingIn') : t('auth.code.submit')}
+        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="secondary" busy={resending} onClick={resend}>
+            {t('auth.code.resend')}
+          </Button>
+          <Button type="button" variant="ghost" onClick={onBack}>
+            {t('auth.code.back')}
+          </Button>
+        </div>
+      </form>
+    </>
+  );
+}
+
+/** The language an email should be in: the one this screen is showing. */
+export function uiLocale(language: string): 'en' | 'ar' {
+  return language.startsWith('ar') ? 'ar' : 'en';
+}
+
+/** Asking for a code fails only for a limit or an outage; otherwise the answer is the same for everyone. */
+function codeRequestMessage(failure: unknown, t: TFunction): string {
+  if (failure instanceof ApiRequestError && failure.status === 429) {
+    return t('auth.code.wait');
+  }
+  return messageFor(failure, t);
+}
+
+export function codeFailureMessage(failure: unknown, t: TFunction, companyName: string): string {
+  if (failure instanceof ApiRequestError) {
+    if (failure.code === 'wrong_company' || failure.code === 'auth.wrong_company') {
+      return t('auth.wrongCompany', { company: companyName });
+    }
+    if (failure.status === 423) {
+      return t('auth.accountLocked');
+    }
+    if (failure.status === 429) {
+      return t('auth.code.wait');
+    }
+    return t('auth.code.failed');
+  }
+  return messageFor(failure, t);
 }
 
 // ---------------------------------------------------------------------------

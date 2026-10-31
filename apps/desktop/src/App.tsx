@@ -15,6 +15,7 @@ import {
 } from '~/lib/preferences';
 import { session, whenSignedOut } from '~/lib/session';
 import { FormBuilderRoute } from '~/features/forms/routes/form-builder';
+import { ChangePasswordRoute } from '~/routes/change-password';
 import { FormVersionRoute } from '~/features/forms/routes/form-version';
 import { FormsListRoute } from '~/features/forms/routes/forms-list';
 import {
@@ -243,6 +244,7 @@ const SIGNED_IN_ROUTES: readonly { path: string; element: ReactNode }[] = [
   { path: '/settings/branding', element: <BrandingRoute /> },
   { path: '/settings/e-invoicing', element: <EInvoicingSwitchRoute /> },
   { path: '/settings/assistant', element: <AssistantSettingsRoute /> },
+  { path: '/settings/password', element: <ChangePasswordRoute /> },
   { path: '/imports', element: <ImportsRoute /> },
   { path: '/timesheets', element: <TimesheetsRoute /> },
   { path: '/schedule', element: <ScheduleRoute /> },

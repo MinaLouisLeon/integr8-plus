@@ -171,6 +171,7 @@ export type ChromeIcon =
   | 'arrow-start'
   | 'sign-out'
   | 'globe'
+  | 'key'
   | 'refresh';
 
 const CHROME_GLYPHS: Record<ChromeIcon, Glyph> = {
@@ -185,6 +186,7 @@ const CHROME_GLYPHS: Record<ChromeIcon, Glyph> = {
     'M3 12h18',
     'M12 3a14 14 0 0 1 0 18A14 14 0 0 1 12 3z',
   ],
+  key: ['M15 7a4 4 0 1 1-3.9 4.9L3 20v-3l2-2h2v-2h2l2.1-2.1A4 4 0 0 1 15 7z', 'M16 10h.01'],
   refresh: [
     'M3 12a9 9 0 0 1 15.4-6.4L21 8',
     'M21 3v5h-5',
