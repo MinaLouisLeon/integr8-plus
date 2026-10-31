@@ -221,7 +221,7 @@ export const revokeSessionRoute = defineRoute({
   operationId: 'revokeSession',
   summary: 'Sign a device out',
   description:
-    'Revokes the session and any offline grant issued to it. A device with an offline grant would otherwise keep working for up to a week after being "signed out".',
+    'Revokes the session and the offline grant issued with it. A phone learns of it the next time it reaches the API, and is then signed out and wiped. Until then, with no signal, it can still open on the grant it holds, which ends at most seven days (`AUTH_OFFLINE_GRANT_TTL_SECONDS`) after the phone last reached the API.',
   tags: ['workspace'],
   security: 'authenticated',
   permission: 'session.revoke',

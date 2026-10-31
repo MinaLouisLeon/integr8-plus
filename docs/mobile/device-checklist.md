@@ -87,6 +87,22 @@ version 5, two versions later, and has no such button — its unsent work is a f
       expired (up to 15 minutes after it was issued; background and foreground the app again if
       need be) it returns to sign-in, and the checks from step 5 pass.
 
+### 7. The offline grant ends
+
+On the test box, set `AUTH_OFFLINE_GRANT_TTL_SECONDS=600` (ten minutes) in its env file and
+redeploy, so a week is ten minutes. Use a build whose EAS environment has
+`EXPO_PUBLIC_AUTH_VERIFICATION_KEYS` set to the test box's `AUTH_VERIFICATION_KEYS`.
+
+- [ ] Sign in with signal and download. Put the phone in aeroplane mode and force-quit the app.
+- [ ] Reopen within ten minutes: it opens on its jobs, offline.
+- [ ] Record a note, force-quit, wait until the ten minutes have passed, reopen: it shows
+      _Connect to carry on_ and nothing of the company's. It does not open, although the refresh
+      token has thirty days left.
+- [ ] Turn aeroplane mode off: within seconds it opens by itself, and the note is sent.
+- [ ] Sentry has no `offline-grant` warning from this phone. (`built_without_keys` means the
+      build had no keys; `unknown_key` or `bad_signature` means the wrong ones.)
+- [ ] Put `AUTH_OFFLINE_GRANT_TTL_SECONDS` back (remove the line) and redeploy.
+
 ## P12
 
 Two phones (**A** and **B**) signed in as two engineers on the same job, and the web app open as a

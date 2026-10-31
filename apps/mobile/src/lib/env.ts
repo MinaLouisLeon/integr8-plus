@@ -17,6 +17,13 @@ export interface PublicEnv {
   apiBaseUrl: string;
   appEnv: string;
   sentryDsn: string | undefined;
+  /**
+   * The deployment's public verification keys (`AUTH_VERIFICATION_KEYS`, a JSON
+   * array of JWKs), so the phone can check its offline grant with no network
+   * (docs/auth/offline-access.md). Public by nature: they can check a token,
+   * never mint one.
+   */
+  authVerificationKeys: string | undefined;
 }
 
 /** The build was made without a setting it cannot work without. */
@@ -43,7 +50,7 @@ function present(value: unknown): string | undefined {
  * in development (the unencrypted-database refusal in `local/device.ts`) stay on.
  */
 export function resolvePublicEnv(
-  raw: { apiBaseUrl: unknown; appEnv: unknown; sentryDsn: unknown },
+  raw: { apiBaseUrl: unknown; appEnv: unknown; sentryDsn: unknown; authVerificationKeys?: unknown },
   development: boolean,
 ): PublicEnv {
   const apiBaseUrl = present(raw.apiBaseUrl);
@@ -54,6 +61,7 @@ export function resolvePublicEnv(
     apiBaseUrl: apiBaseUrl ?? 'http://localhost:3000',
     appEnv: present(raw.appEnv) ?? (development ? 'development' : 'production'),
     sentryDsn: present(raw.sentryDsn),
+    authVerificationKeys: present(raw.authVerificationKeys),
   };
 }
 
@@ -66,6 +74,7 @@ const env = resolvePublicEnv(
     apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL,
     appEnv: process.env.EXPO_PUBLIC_APP_ENV,
     sentryDsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
+    authVerificationKeys: process.env.EXPO_PUBLIC_AUTH_VERIFICATION_KEYS,
   },
   development,
 );
@@ -75,3 +84,5 @@ export const API_BASE_URL: string = env.apiBaseUrl;
 export const APP_ENV: string = env.appEnv;
 
 export const SENTRY_DSN: string | undefined = env.sentryDsn;
+
+export const AUTH_VERIFICATION_KEYS: string | undefined = env.authVerificationKeys;

@@ -100,6 +100,7 @@ function RootLayout() {
     void fetchUpdate();
     const foreground = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
+        void stillMayOpen();
         void localData.sync('foreground');
         // What the person may do, and the announcements, kept current.
         refreshAccess().catch(() => undefined);
@@ -151,6 +152,19 @@ async function fetchUpdate(): Promise<void> {
     }
   } catch {
     // No signal, or the update server is unreachable: the next launch tries again.
+  }
+}
+
+/**
+ * A phone left open in the background past the end of its offline grant, with
+ * no signal, asks for a connection when it comes back (P03), as it would on
+ * launch: the grant is what says how long a phone may work unseen, and an app
+ * that was never closed must not outlast it. Anything else is left to the
+ * screens: a person halfway through signing in is not moved.
+ */
+async function stillMayOpen(): Promise<void> {
+  if ((await session().openDecision()) === 'connect') {
+    router.replace('/reconnect');
   }
 }
 

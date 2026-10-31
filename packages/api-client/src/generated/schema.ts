@@ -15,7 +15,7 @@ export interface paths {
         put?: never;
         /**
          * Sign in with an email address and password
-         * @description Returns a token pair for one company, plus every company this person belongs to. A wrong password, an unknown address and an identity with no company are all the same failure, deliberately: distinguishing them would turn this endpoint into a way of testing which addresses are customers.
+         * @description Returns a token pair for one company, plus every company this person belongs to. For `clientApp: mobile` the pair also carries the offline grant that lets the phone open with no network for seven days (`offlineGrant`, `offlineGrantExpiresAt`). A wrong password, an unknown address and an identity with no company are all the same failure, deliberately: distinguishing them would turn this endpoint into a way of testing which addresses are customers.
          */
         post: operations["signIn"];
         delete?: never;
@@ -55,7 +55,7 @@ export interface paths {
         put?: never;
         /**
          * Sign in with an emailed 6-digit code
-         * @description `token` is the 6-digit code from the email. A wrong code counts towards the account lockout exactly as a wrong password does. The session that results lets Change password go without the current password for fifteen minutes.
+         * @description `token` is the 6-digit code from the email. A wrong code counts towards the account lockout exactly as a wrong password does. The session that results lets Change password go without the current password for fifteen minutes. For `clientApp: mobile` the pair carries the offline grant, as with a password.
          */
         post: operations["completeMagicLink"];
         delete?: never;
@@ -75,7 +75,7 @@ export interface paths {
         put?: never;
         /**
          * Exchange a refresh token for a new pair
-         * @description Single-use. The token returned replaces the one sent, and presenting a spent token is treated as theft: the session is revoked and both the thief and the legitimate holder are signed out.
+         * @description Single-use. The token returned replaces the one sent, and presenting a spent token is treated as theft: the session is revoked and both the thief and the legitimate holder are signed out. A phone’s session also gets a new offline grant, replacing the last, so it runs for seven days from the phone’s last contact rather than from signing in.
          */
         post: operations["refreshSession"];
         delete?: never;
@@ -885,7 +885,7 @@ export interface paths {
         post?: never;
         /**
          * Sign a device out
-         * @description Revokes the session and any offline grant issued to it. A device with an offline grant would otherwise keep working for up to a week after being "signed out".
+         * @description Revokes the session and the offline grant issued with it. A phone learns of it the next time it reaches the API, and is then signed out and wiped. Until then, with no signal, it can still open on the grant it holds, which ends at most seven days (`AUTH_OFFLINE_GRANT_TTL_SECONDS`) after the phone last reached the API.
          */
         delete: operations["revokeSession"];
         options?: never;
@@ -8510,6 +8510,13 @@ export interface operations {
                             refreshTokenExpiresAt: string;
                             /** Format: uuid */
                             sessionId: string;
+                            /** @description Mobile only. A signed grant (EdDSA JWT, `typ: offline`) the phone keeps and checks with no network; replaces the previous one. Absent for the desktop and web apps. */
+                            offlineGrant?: string;
+                            /**
+                             * Format: date-time
+                             * @description When the offline grant ends: seven days by default, never after the session does.
+                             */
+                            offlineGrantExpiresAt?: string;
                         };
                         /** Format: uuid */
                         tenantId: string;
@@ -8694,6 +8701,13 @@ export interface operations {
                             refreshTokenExpiresAt: string;
                             /** Format: uuid */
                             sessionId: string;
+                            /** @description Mobile only. A signed grant (EdDSA JWT, `typ: offline`) the phone keeps and checks with no network; replaces the previous one. Absent for the desktop and web apps. */
+                            offlineGrant?: string;
+                            /**
+                             * Format: date-time
+                             * @description When the offline grant ends: seven days by default, never after the session does.
+                             */
+                            offlineGrantExpiresAt?: string;
                         };
                         /** Format: uuid */
                         tenantId: string;
@@ -8799,6 +8813,13 @@ export interface operations {
                         refreshTokenExpiresAt: string;
                         /** Format: uuid */
                         sessionId: string;
+                        /** @description Mobile only. A signed grant (EdDSA JWT, `typ: offline`) the phone keeps and checks with no network; replaces the previous one. Absent for the desktop and web apps. */
+                        offlineGrant?: string;
+                        /**
+                         * Format: date-time
+                         * @description When the offline grant ends: seven days by default, never after the session does.
+                         */
+                        offlineGrantExpiresAt?: string;
                     };
                 };
             };
@@ -8885,6 +8906,13 @@ export interface operations {
                             refreshTokenExpiresAt: string;
                             /** Format: uuid */
                             sessionId: string;
+                            /** @description Mobile only. A signed grant (EdDSA JWT, `typ: offline`) the phone keeps and checks with no network; replaces the previous one. Absent for the desktop and web apps. */
+                            offlineGrant?: string;
+                            /**
+                             * Format: date-time
+                             * @description When the offline grant ends: seven days by default, never after the session does.
+                             */
+                            offlineGrantExpiresAt?: string;
                         };
                         /** Format: uuid */
                         tenantId: string;

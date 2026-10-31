@@ -33,6 +33,21 @@ export const tokensSchema = z.object({
   refreshToken: z.string(),
   refreshTokenExpiresAt: timestamp,
   sessionId: z.uuid(),
+  /**
+   * The phone's offline grant (docs/auth/offline-access.md): a signed token that
+   * lets the mobile app open on what it has downloaded, with no network, until
+   * `offlineGrantExpiresAt`. Sent to `clientApp: mobile` only, with every pair,
+   * and replacing the one before. Not an API credential.
+   */
+  offlineGrant: z
+    .string()
+    .optional()
+    .describe(
+      'Mobile only. A signed grant (EdDSA JWT, `typ: offline`) the phone keeps and checks with no network; replaces the previous one. Absent for the desktop and web apps.',
+    ),
+  offlineGrantExpiresAt: timestamp
+    .optional()
+    .describe('When the offline grant ends: seven days by default, never after the session does.'),
 });
 
 export const membershipSchema = z.object({

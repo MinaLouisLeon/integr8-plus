@@ -32,6 +32,19 @@ export interface IssuedSession {
   accessTokenExpiresAt: Date;
   refreshToken: string;
   refreshTokenExpiresAt: Date;
+  /**
+   * What lets the phone open with no network (docs/auth/offline-access.md).
+   * Issued with every pair for a `mobile` session, superseding the last, so it
+   * runs for seven days from the phone's last contact; absent for the desktop
+   * and web apps, and for a session Integr8 staff hold as the company.
+   */
+  offlineGrant?: IssuedOfflineGrant | undefined;
+}
+
+export interface IssuedOfflineGrant {
+  grantId: string;
+  token: string;
+  expiresAt: Date;
 }
 
 export interface IssueSessionInput {
@@ -91,8 +104,10 @@ export class SessionService {
       expiresAt: new Date(now.getTime() + this.#config.AUTH_SESSION_MAX_TTL_SECONDS * 1000),
     });
 
-    return (await this.#issuePair(tx, session, input.role, now, input.impersonationGrantId ?? null))
-      .session;
+    const issued = (
+      await this.#issuePair(tx, session, input.role, now, input.impersonationGrantId ?? null)
+    ).session;
+    return { ...issued, offlineGrant: await this.#grantForPhone(tx, session, input.role, now) };
   }
 
   /**
@@ -185,7 +200,12 @@ export class SessionService {
 
       await tx.sessions.touch(session.id, now);
 
-      return { kind: 'issued', session: issued.session };
+      // A phone's grant is renewed with its pair, after the claim above so the
+      // loser of a refresh race issues none: seven days from the last time the
+      // phone reached us, not from when it signed in.
+      const offlineGrant = await this.#grantForPhone(tx, session, membership.role, now);
+
+      return { kind: 'issued', session: { ...issued.session, offlineGrant } };
     });
 
     switch (outcome.kind) {
@@ -260,6 +280,9 @@ export class SessionService {
    * Only ever for `mobile`. The desktop and web apps have no offline story in
    * this product and handing them a week-long credential would be a liability
    * with no benefit.
+   *
+   * Signing in and refreshing issue one by themselves (`IssuedSession.offlineGrant`);
+   * this is the same thing asked for separately.
    */
   async issueOfflineGrant(input: {
     tenantId: TenantId;
@@ -282,31 +305,18 @@ export class SessionService {
         throw new SessionRevokedError('Offline grants are issued to the mobile app only');
       }
 
-      // One live grant per device: a new one supersedes the last, so a phone
-      // that has been re-registered does not leave a second usable credential
-      // behind it.
-      await tx.offlineGrants.revokeForSession(input.sessionId, 'replaced', now);
-
-      const grant = await tx.offlineGrants.create({
-        sessionId: input.sessionId,
-        userId: input.userId,
-        deviceLabel: input.deviceLabel ?? session.deviceLabel,
-        expiresAt: new Date(now.getTime() + this.#config.AUTH_OFFLINE_GRANT_TTL_SECONDS * 1000),
-      });
-
-      const minted = await this.#tokens.mintOfflineGrant({
-        userId: input.userId,
-        tenantId: input.tenantId,
-        role: input.role,
-        sessionId: input.sessionId,
-        grantId: grant.id,
-      });
-
-      return { grant, token: minted.token, expiresAt: minted.expiresAt };
+      return this.#mintGrant(tx, session, input.role, now, input.deviceLabel);
     });
   }
 
-  /** Revokes a grant — the "I have lost my phone" path. */
+  /**
+   * Revokes a grant — the "I have lost my phone" path.
+   *
+   * On its own this lasts only until the phone next refreshes, which issues a
+   * new grant. What stops a lost phone is revoking its session
+   * (`DELETE /v1/sessions/{id}`), which revokes the grant with it and refuses
+   * every refresh after.
+   */
   async revokeOfflineGrant(tenantId: TenantId, grantId: string): Promise<boolean> {
     const now = this.#clock();
     return withTenant(tenantId, (tx) => tx.offlineGrants.revoke(grantId, 'device_lost', now));
@@ -315,6 +325,64 @@ export class SessionService {
   // -------------------------------------------------------------------------
   // Internals
   // -------------------------------------------------------------------------
+
+  /**
+   * The grant to hand a phone with a new pair, or none.
+   *
+   * None for the desktop and web apps, and none for a session Integr8 staff
+   * hold as the company: an impersonation is for an hour at a desk, and a
+   * week-long credential left on a phone would outlive the grant behind it.
+   */
+  async #grantForPhone(
+    tx: TenantTransaction,
+    session: Session,
+    role: Role,
+    now: Date,
+  ): Promise<IssuedOfflineGrant | undefined> {
+    if (session.clientApp !== 'mobile' || session.impersonationGrantId !== null) {
+      return undefined;
+    }
+    const minted = await this.#mintGrant(tx, session, role, now);
+    return { grantId: minted.grant.id, token: minted.token, expiresAt: minted.expiresAt };
+  }
+
+  async #mintGrant(
+    tx: TenantTransaction,
+    session: Session,
+    role: Role,
+    now: Date,
+    deviceLabel?: string | null,
+  ): Promise<{ grant: OfflineGrant; token: string; expiresAt: Date }> {
+    // One live grant per device: a new one supersedes the last, so a phone
+    // that has been re-registered does not leave a second usable credential
+    // behind it.
+    await tx.offlineGrants.revokeForSession(session.id, 'replaced', now);
+
+    // Never past the session's own end, as a refresh token never is: a phone
+    // must not open offline on a session that can no longer be renewed.
+    const expiresAt = earlier(
+      new Date(now.getTime() + this.#config.AUTH_OFFLINE_GRANT_TTL_SECONDS * 1000),
+      session.expiresAt,
+    );
+
+    const grant = await tx.offlineGrants.create({
+      sessionId: session.id,
+      userId: session.userId,
+      deviceLabel: deviceLabel ?? session.deviceLabel,
+      expiresAt,
+    });
+
+    const minted = await this.#tokens.mintOfflineGrant({
+      userId: session.userId,
+      tenantId: session.tenantId,
+      role,
+      sessionId: session.id,
+      grantId: grant.id,
+      ttlSeconds: Math.max(1, Math.floor((expiresAt.getTime() - now.getTime()) / 1000)),
+    });
+
+    return { grant, token: minted.token, expiresAt: minted.expiresAt };
+  }
 
   async #issuePair(
     tx: TenantTransaction,

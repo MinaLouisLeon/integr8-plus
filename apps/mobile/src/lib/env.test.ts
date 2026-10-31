@@ -42,4 +42,15 @@ describe('resolvePublicEnv', () => {
       'production',
     );
   });
+
+  it('carries the verification keys the build was given, and none when it was given none', () => {
+    const keys = '[{"kty":"OKP","crv":"Ed25519","x":"abc","kid":"k1"}]';
+    expect(
+      resolvePublicEnv(
+        { ...blank, apiBaseUrl: 'https://api.example', authVerificationKeys: keys },
+        false,
+      ).authVerificationKeys,
+    ).toBe(keys);
+    expect(resolvePublicEnv(blank, true).authVerificationKeys).toBeUndefined();
+  });
 });

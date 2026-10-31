@@ -96,7 +96,7 @@
       "post": {
         "operationId": "signIn",
         "summary": "Sign in with an email address and password",
-        "description": "Returns a token pair for one company, plus every company this person belongs to. A wrong password, an unknown address and an identity with no company are all the same failure, deliberately: distinguishing them would turn this endpoint into a way of testing which addresses are customers.",
+        "description": "Returns a token pair for one company, plus every company this person belongs to. For `clientApp: mobile` the pair also carries the offline grant that lets the phone open with no network for seven days (`offlineGrant`, `offlineGrantExpiresAt`). A wrong password, an unknown address and an identity with no company are all the same failure, deliberately: distinguishing them would turn this endpoint into a way of testing which addresses are customers.",
         "tags": [
           "authentication"
         ],
@@ -181,6 +181,16 @@
                           "type": "string",
                           "format": "uuid",
                           "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "offlineGrant": {
+                          "description": "Mobile only. A signed grant (EdDSA JWT, `typ: offline`) the phone keeps and checks with no network; replaces the previous one. Absent for the desktop and web apps.",
+                          "type": "string"
+                        },
+                        "offlineGrantExpiresAt": {
+                          "description": "When the offline grant ends: seven days by default, never after the session does.",
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
                         }
                       },
                       "required": [
@@ -390,7 +400,7 @@
       "post": {
         "operationId": "completeMagicLink",
         "summary": "Sign in with an emailed 6-digit code",
-        "description": "`token` is the 6-digit code from the email. A wrong code counts towards the account lockout exactly as a wrong password does. The session that results lets Change password go without the current password for fifteen minutes.",
+        "description": "`token` is the 6-digit code from the email. A wrong code counts towards the account lockout exactly as a wrong password does. The session that results lets Change password go without the current password for fifteen minutes. For `clientApp: mobile` the pair carries the offline grant, as with a password.",
         "tags": [
           "authentication"
         ],
@@ -475,6 +485,16 @@
                           "type": "string",
                           "format": "uuid",
                           "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "offlineGrant": {
+                          "description": "Mobile only. A signed grant (EdDSA JWT, `typ: offline`) the phone keeps and checks with no network; replaces the previous one. Absent for the desktop and web apps.",
+                          "type": "string"
+                        },
+                        "offlineGrantExpiresAt": {
+                          "description": "When the offline grant ends: seven days by default, never after the session does.",
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
                         }
                       },
                       "required": [
@@ -603,7 +623,7 @@
       "post": {
         "operationId": "refreshSession",
         "summary": "Exchange a refresh token for a new pair",
-        "description": "Single-use. The token returned replaces the one sent, and presenting a spent token is treated as theft: the session is revoked and both the thief and the legitimate holder are signed out.",
+        "description": "Single-use. The token returned replaces the one sent, and presenting a spent token is treated as theft: the session is revoked and both the thief and the legitimate holder are signed out. A phone’s session also gets a new offline grant, replacing the last, so it runs for seven days from the phone’s last contact rather than from signing in.",
         "tags": [
           "authentication"
         ],
@@ -655,6 +675,16 @@
                       "type": "string",
                       "format": "uuid",
                       "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "offlineGrant": {
+                      "description": "Mobile only. A signed grant (EdDSA JWT, `typ: offline`) the phone keeps and checks with no network; replaces the previous one. Absent for the desktop and web apps.",
+                      "type": "string"
+                    },
+                    "offlineGrantExpiresAt": {
+                      "description": "When the offline grant ends: seven days by default, never after the session does.",
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
                     }
                   },
                   "required": [
@@ -787,6 +817,16 @@
                           "type": "string",
                           "format": "uuid",
                           "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "offlineGrant": {
+                          "description": "Mobile only. A signed grant (EdDSA JWT, `typ: offline`) the phone keeps and checks with no network; replaces the previous one. Absent for the desktop and web apps.",
+                          "type": "string"
+                        },
+                        "offlineGrantExpiresAt": {
+                          "description": "When the offline grant ends: seven days by default, never after the session does.",
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
                         }
                       },
                       "required": [
@@ -8293,7 +8333,7 @@
       "delete": {
         "operationId": "revokeSession",
         "summary": "Sign a device out",
-        "description": "Revokes the session and any offline grant issued to it. A device with an offline grant would otherwise keep working for up to a week after being \"signed out\".",
+        "description": "Revokes the session and the offline grant issued with it. A phone learns of it the next time it reaches the API, and is then signed out and wiped. Until then, with no signal, it can still open on the grant it holds, which ends at most seven days (`AUTH_OFFLINE_GRANT_TTL_SECONDS`) after the phone last reached the API.",
         "tags": [
           "workspace"
         ],

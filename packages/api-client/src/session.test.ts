@@ -35,7 +35,10 @@ interface Harness {
  * out with no token, and a stub that answers 200 regardless would let a broken
  * refresh look like a working one.
  */
-function harness(handler: (request: Request, call: number) => Response): Harness {
+function harness(
+  handler: (request: Request, call: number) => Response,
+  options: { verifyOfflineGrant?: (grant: string, now: Date) => boolean } = {},
+): Harness {
   const calls: string[] = [];
   const signOuts: SignOutReason[] = [];
   const store = new InMemoryTokenStore();
@@ -54,6 +57,7 @@ function harness(handler: (request: Request, call: number) => Response): Harness
     fetch: fetchImpl,
     now: () => NOW,
     onSignedOut: (reason) => signOuts.push(reason),
+    ...options,
   });
 
   return { manager, store, calls, signOuts };
@@ -335,6 +339,126 @@ describe('the offline grant', () => {
 
     await expect(manager.isSignedIn()).resolves.toBe(false);
     await expect(manager.canWorkOffline()).resolves.toBe(false);
+  });
+});
+
+describe('a phone opening (P03)', () => {
+  const WEEK = 7 * 24 * 60 * 60_000;
+  const lapsed = {
+    offlineGrant: 'grant-old',
+    offlineGrantExpiresAt: new Date(NOW.getTime() - 1),
+  };
+  const withGrant = {
+    ...refreshedPayload,
+    offlineGrant: 'grant-new',
+    offlineGrantExpiresAt: new Date(NOW.getTime() + WEEK).toISOString(),
+  };
+
+  it('keeps the grant a sign-in brings, and replaces it with the one each refresh brings', async () => {
+    const { manager, store } = harness((request) =>
+      request.url.endsWith('/v1/auth/sign-in')
+        ? json({
+            tokens: {
+              ...refreshedPayload,
+              offlineGrant: 'grant-1',
+              offlineGrantExpiresAt: new Date(NOW.getTime() + WEEK).toISOString(),
+            },
+            tenantId: 't',
+            userId: 'u',
+            memberships: [],
+          })
+        : request.url.endsWith('/v1/auth/refresh')
+          ? json(withGrant)
+          : protectedRoute(request),
+    );
+    await manager.signInWithPassword({ email: 'ed@example.com', password: 'x' });
+    expect((await store.read())?.offlineGrant).toBe('grant-1');
+
+    const held = await store.read();
+    await store.write({ ...held!, accessTokenExpiresAt: new Date(NOW.getTime() - 1) });
+    await manager.client.GET('/v1/me');
+    await expect(store.read()).resolves.toMatchObject({
+      offlineGrant: 'grant-new',
+      offlineGrantExpiresAt: new Date(NOW.getTime() + WEEK),
+    });
+  });
+
+  it('opens on a live grant without asking the server anything', async () => {
+    const { manager, store, calls } = harness((request) => protectedRoute(request));
+    await store.write(
+      tokens({ offlineGrant: 'grant', offlineGrantExpiresAt: new Date(NOW.getTime() + WEEK) }),
+    );
+    await expect(manager.openDecision()).resolves.toBe('open');
+    expect(calls).toEqual([]);
+  });
+
+  it('does not open on the refresh token alone with no signal, however long it has left', async () => {
+    // The thirty-day hole: a lost phone whose grant has lapsed, or that never
+    // had one, must not open on a refresh token it cannot check.
+    const { manager, store, signOuts } = harness(() => {
+      throw new TypeError('Network request failed');
+    });
+    for (const grant of [lapsed, {}]) {
+      await store.write(tokens(grant));
+      await expect(manager.openDecision()).resolves.toBe('connect');
+    }
+    expect(signOuts).toEqual([]);
+    expect(await store.read()).toBeDefined();
+  });
+
+  it('opens with a lapsed grant once a refresh brings a new one', async () => {
+    const { manager, store } = harness((request) =>
+      request.url.endsWith('/v1/auth/refresh') ? json(withGrant) : protectedRoute(request),
+    );
+    await store.write(tokens(lapsed));
+    await expect(manager.openDecision()).resolves.toBe('open');
+    expect((await store.read())?.offlineGrant).toBe('grant-new');
+  });
+
+  it('asks for a connection when the server does not answer in time', async () => {
+    // A phone with one bar: the request goes out and nothing comes back.
+    const store = new InMemoryTokenStore();
+    const hanging = new SessionManager({
+      baseUrl: 'https://api.integr8.example',
+      clientApp: 'mobile',
+      clientVersion: '1.0.0',
+      store,
+      fetch: () => new Promise<Response>(() => undefined),
+      now: () => NOW,
+    });
+    await store.write(tokens(lapsed));
+    await expect(hanging.openDecision(20)).resolves.toBe('connect');
+  });
+
+  it('signs in again when the server has ended the session, or it has expired', async () => {
+    const { manager, store, signOuts } = harness((request) =>
+      request.url.endsWith('/v1/auth/refresh') ? unauthorised() : protectedRoute(request),
+    );
+    await store.write(tokens(lapsed));
+    await expect(manager.openDecision()).resolves.toBe('sign_in');
+    expect(signOuts).toEqual(['rejected']);
+
+    await store.write(tokens({ ...lapsed, refreshTokenExpiresAt: new Date(NOW.getTime() - 1) }));
+    await expect(manager.openDecision()).resolves.toBe('sign_in');
+    await store.clear();
+    await expect(manager.openDecision()).resolves.toBe('sign_in');
+  });
+
+  it('does not open on a grant the app’s own check refuses', async () => {
+    const { manager, store } = harness(
+      () => {
+        throw new TypeError('Network request failed');
+      },
+      { verifyOfflineGrant: (grant) => grant === 'signed-by-us' },
+    );
+    const live = { offlineGrantExpiresAt: new Date(NOW.getTime() + WEEK) };
+    await store.write(tokens({ ...live, offlineGrant: 'forged' }));
+    await expect(manager.canWorkOffline()).resolves.toBe(false);
+    await expect(manager.openDecision()).resolves.toBe('connect');
+
+    await store.write(tokens({ ...live, offlineGrant: 'signed-by-us' }));
+    await expect(manager.canWorkOffline()).resolves.toBe(true);
+    await expect(manager.openDecision()).resolves.toBe('open');
   });
 });
 

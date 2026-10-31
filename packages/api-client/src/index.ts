@@ -258,6 +258,7 @@ function isApiErrorBody(value: unknown): value is ApiErrorBody {
 export {
   SessionManager,
   type Membership,
+  type OpenDecision,
   type SessionManagerOptions,
   type SignInInput,
   type SignInResult,

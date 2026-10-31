@@ -6114,6 +6114,12 @@ export const en = {
       channelJobs: 'Job changes',
       channelUrgent: 'Urgent callouts',
     },
+    reconnect: {
+      title: 'Connect to carry on',
+      body: 'This phone has gone longer without reaching the office than it may work offline, usually a week. Connect to mobile data or Wi-Fi once to carry on. Your unsent work is safe on the phone and is sent as soon as you are back in.',
+      stillOffline: 'Still no connection. This screen tries again by itself when one appears.',
+      retry: 'Try again',
+    },
     announcement: {
       dismiss: 'Dismiss',
       info: 'Notice',
