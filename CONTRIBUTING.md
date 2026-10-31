@@ -101,15 +101,17 @@ everything regardless.
 
 ## CI
 
-`.github/workflows/ci.yml` runs on every pull request and on pushes to `main`:
+`.github/workflows/ci.yml` runs on every pull request. `verify.yml` runs the same
+checks on the merge result for every push to `dev`, `staging` and `main`:
 
-1. **verify** — install, `format:check`, `lint`, `typecheck`, `test`, `build`
+1. **verify** — install, `format:check`, `licences:check`, `guide:check`, `lint`, `typecheck`,
+   `test`, `build`, and the OpenAPI drift check
 2. **commit-messages** — commitlint over the PR's commit range
 3. **database** — rolls the schema down and back up, then runs the tenant-isolation
    and authentication suites against a disposable Postgres, and the identity
-   provider against a real Supabase Auth container. Skipped until the repository
-   variable `DATABASE_TESTS` is set to `enabled` (Settings → Secrets and variables
-   → Actions → Variables)
+   provider against a real Supabase Auth container. Always runs; the R2 media
+   suite inside it runs for real only when the `R2_TEST_*` repository secrets
+   exist (docs/media/README.md)
 4. **secret-scan** — gitleaks over full history
 
 All must pass before merge.

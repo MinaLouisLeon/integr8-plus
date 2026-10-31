@@ -80,6 +80,7 @@ jobs:
     needs: preflight
     if: needs.preflight.outputs.buildable == 'true'
     uses: ./.github/workflows/verify.yml
+    secrets: inherit
 
   artifacts:
     name: Build
