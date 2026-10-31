@@ -2620,6 +2620,16 @@ export const en = {
         empty: 'No maintenance plans for this asset.',
         nextDue: 'Next due',
         noneEnded: 'None: the plan has ended',
+        failure: {
+          heading: 'Plans whose jobs could not be made',
+          title: 'Its jobs could not be made ({{when}}):',
+          retrying_one: 'Failed once. It is tried again automatically every few minutes.',
+          retrying_other:
+            'Failed {{count}} times in a row. It is tried again automatically every few minutes.',
+          gaveUp_one: 'Failed once. It will not be tried again until the plan is edited.',
+          gaveUp_other:
+            'Failed {{count}} times in a row, so it is no longer retried. Edit the plan to try again.',
+        },
         waiting: 'After the open job is completed',
         upcoming: 'Then',
         last: 'Last',
@@ -8305,6 +8315,16 @@ export const en = {
         deadLettered: 'Gave up in this window',
         retrying: 'Failed and waiting to retry',
         hint: 'Which company and which job: open the company and look under errors.',
+      },
+      maintenance: {
+        title: 'Maintenance plans that cannot make their jobs',
+        empty: 'Every maintenance plan made its jobs on its last run.',
+        company: 'Company',
+        plan: 'Plan',
+        error: 'Why',
+        when: 'Last failed',
+        failures: 'In a row',
+        gaveUp: 'No longer retried until the plan is edited',
       },
     },
     releases: {

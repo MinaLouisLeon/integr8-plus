@@ -295,4 +295,49 @@ export class PlatformHealthRepository {
 
     return { deadLettered: Number(dead.n), retrying: Number(retrying.n) };
   }
+
+  /**
+   * Maintenance plans the worker could not make jobs for (0063), across every
+   * company, latest first: background work that fails quietly in one company
+   * while the rest go on.
+   */
+  async maintenanceFailures(limit = 100): Promise<MaintenanceFailure[]> {
+    const rows = await this.db
+      .selectFrom('maintenance_plans as p')
+      .innerJoin('tenants as t', 't.id', 'p.tenant_id')
+      .select([
+        'p.tenant_id',
+        't.name as tenant_name',
+        'p.id',
+        'p.title',
+        'p.last_error',
+        'p.last_error_at',
+        'p.failure_count',
+      ])
+      .where('p.last_error', 'is not', null)
+      .where('p.status', '<>', 'ended')
+      .orderBy('p.last_error_at', 'desc')
+      .limit(Math.min(Math.max(limit, 1), 500))
+      .execute();
+    return rows.map((row) => ({
+      tenantId: row.tenant_id,
+      tenantName: row.tenant_name,
+      planId: row.id,
+      title: row.title,
+      error: row.last_error ?? '',
+      failedAt: row.last_error_at ?? new Date(0),
+      failureCount: row.failure_count,
+    }));
+  }
+}
+
+export interface MaintenanceFailure {
+  tenantId: string;
+  tenantName: string;
+  planId: string;
+  title: string;
+  error: string;
+  failedAt: Date;
+  /** Failures in a row; the worker stops retrying at five, until the plan is edited. */
+  failureCount: number;
 }

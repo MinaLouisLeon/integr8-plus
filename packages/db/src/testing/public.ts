@@ -69,3 +69,49 @@ export async function expireInvitation(invitationId: string): Promise<void> {
     await client.end();
   }
 }
+
+/**
+ * Makes the database refuse any new job whose title contains `marker`, until
+ * the returned function is called.
+ *
+ * A maintenance plan failing is the case the worker must survive (0063), and
+ * the ways it fails in production — a constraint added later, a trigger that
+ * refuses — are exactly the ones no repository can be asked to produce. The
+ * marker reaches SQL only as a quoted literal (`%L`).
+ */
+export async function refuseJobsTitled(marker: string): Promise<() => Promise<void>> {
+  requireDisposableDatabase();
+  const client = await connectAsOwner();
+  try {
+    await client.query(`select set_config('integr8.test_marker', $1, false)`, [marker]);
+    await client.query(`
+      do $outer$
+      begin
+        execute format($f$
+          create or replace function test_refuse_job_title() returns trigger
+          language plpgsql as $body$
+          begin
+            if strpos(new.title, %L) > 0 then
+              raise exception 'test: this job is refused' using errcode = 'check_violation';
+            end if;
+            return new;
+          end;
+          $body$$f$, current_setting('integr8.test_marker'));
+      end;
+      $outer$`);
+    await client.query(`drop trigger if exists test_refuse_job_title on work_orders`);
+    await client.query(`create trigger test_refuse_job_title before insert on work_orders
+      for each row execute function test_refuse_job_title()`);
+  } finally {
+    await client.end();
+  }
+  return async () => {
+    const cleanup = await connectAsOwner();
+    try {
+      await cleanup.query(`drop trigger if exists test_refuse_job_title on work_orders`);
+      await cleanup.query(`drop function if exists test_refuse_job_title()`);
+    } finally {
+      await cleanup.end();
+    }
+  };
+}

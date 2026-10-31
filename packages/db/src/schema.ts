@@ -2551,6 +2551,10 @@ export interface MaintenancePlansTable {
   updated_at: UpdatedAt;
   ended_at: Date | null;
   ended_by: string | null;
+  /** The worker's last failure on this plan, cleared on success or an edit (0063). */
+  last_error: string | null;
+  last_error_at: Date | null;
+  failure_count: Generated<number>;
 }
 
 /** Each due date a plan produced (0053). Append-only. */

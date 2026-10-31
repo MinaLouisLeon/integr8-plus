@@ -555,6 +555,7 @@ export {
   DEFAULT_PLAN_LEAD_DAYS,
   DEFAULT_PLAN_WINDOW_DAYS,
   MAINTENANCE_FORECAST_DAYS,
+  MAX_PLAN_FAILURES,
   type PlanInterval,
   addInterval,
   calendarDue,

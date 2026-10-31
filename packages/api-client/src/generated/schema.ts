@@ -7129,7 +7129,7 @@ export interface paths {
         };
         /**
          * Maintenance plans
-         * @description Soonest next due date first. For one asset, customer, site or contract; ended ones only with `includeEnded`.
+         * @description Soonest next due date first. For one asset, customer, site or contract; ended ones only with `includeEnded`; `failing=true` keeps those whose jobs the worker could not make on its last try, with the reason in `failure`.
          */
         get: operations["listMaintenancePlans"];
         put?: never;
@@ -8430,7 +8430,7 @@ export interface paths {
         };
         /**
          * What is failing quietly
-         * @description Phones whose sync runs show trouble, billing deliveries that were recorded but not applied, and background work that gave up — over the last few days, across every company. The things that look fine from the office until a customer rings.
+         * @description Phones whose sync runs show trouble, billing deliveries that were recorded but not applied, background work that gave up — over the last few days, across every company — and maintenance plans the worker currently cannot make jobs for. The things that look fine from the office until a customer rings.
          */
         get: operations["getPlatformHealth"];
         put?: never;
@@ -74581,6 +74581,7 @@ export interface operations {
                 siteId?: string;
                 contractId?: string;
                 includeEnded?: "true" | "false";
+                failing?: "true" | "false";
             };
             header?: never;
             path?: never;
@@ -74655,6 +74656,12 @@ export interface operations {
                             version: number;
                             createdAt: string;
                             endedAt: string | null;
+                            failure: {
+                                message: string;
+                                at: string;
+                                count: number;
+                                gaveUp: boolean;
+                            } | null;
                         }[];
                         defaults: {
                             leadDays: number;
@@ -74823,6 +74830,12 @@ export interface operations {
                         version: number;
                         createdAt: string;
                         endedAt: string | null;
+                        failure: {
+                            message: string;
+                            at: string;
+                            count: number;
+                            gaveUp: boolean;
+                        } | null;
                     };
                 };
             };
@@ -74989,6 +75002,12 @@ export interface operations {
                         version: number;
                         createdAt: string;
                         endedAt: string | null;
+                        failure: {
+                            message: string;
+                            at: string;
+                            count: number;
+                            gaveUp: boolean;
+                        } | null;
                     };
                 };
             };
@@ -75145,6 +75164,12 @@ export interface operations {
                         version: number;
                         createdAt: string;
                         endedAt: string | null;
+                        failure: {
+                            message: string;
+                            at: string;
+                            count: number;
+                            gaveUp: boolean;
+                        } | null;
                     };
                 };
             };
@@ -84316,6 +84341,18 @@ export interface operations {
                         jobs: {
                             deadLettered: number;
                             retrying: number;
+                        };
+                        maintenance: {
+                            items: {
+                                tenantId: string;
+                                companyName: string;
+                                planId: string;
+                                title: string;
+                                error: string;
+                                failedAt: string;
+                                failureCount: number;
+                                gaveUp: boolean;
+                            }[];
                         };
                     };
                 };

@@ -173092,7 +173092,7 @@
       "get": {
         "operationId": "listMaintenancePlans",
         "summary": "Maintenance plans",
-        "description": "Soonest next due date first. For one asset, customer, site or contract; ended ones only with `includeEnded`.",
+        "description": "Soonest next due date first. For one asset, customer, site or contract; ended ones only with `includeEnded`; `failing=true` keeps those whose jobs the worker could not make on its last try, with the reason in `failure`.",
         "tags": [
           "maintenance"
         ],
@@ -173139,6 +173139,18 @@
           },
           {
             "name": "includeEnded",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "name": "failing",
             "in": "query",
             "required": false,
             "schema": {
@@ -173390,6 +173402,33 @@
                           "endedAt": {
                             "nullable": true,
                             "type": "string"
+                          },
+                          "failure": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "message": {
+                                "type": "string"
+                              },
+                              "at": {
+                                "type": "string"
+                              },
+                              "count": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "gaveUp": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "message",
+                              "at",
+                              "count",
+                              "gaveUp"
+                            ],
+                            "additionalProperties": false
                           }
                         },
                         "required": [
@@ -173416,7 +173455,8 @@
                           "last",
                           "version",
                           "createdAt",
-                          "endedAt"
+                          "endedAt",
+                          "failure"
                         ],
                         "additionalProperties": false
                       }
@@ -173870,6 +173910,33 @@
                     "endedAt": {
                       "nullable": true,
                       "type": "string"
+                    },
+                    "failure": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "message": {
+                          "type": "string"
+                        },
+                        "at": {
+                          "type": "string"
+                        },
+                        "count": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "gaveUp": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "message",
+                        "at",
+                        "count",
+                        "gaveUp"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [
@@ -173896,7 +173963,8 @@
                     "last",
                     "version",
                     "createdAt",
-                    "endedAt"
+                    "endedAt",
+                    "failure"
                   ],
                   "additionalProperties": false
                 }
@@ -174313,6 +174381,33 @@
                     "endedAt": {
                       "nullable": true,
                       "type": "string"
+                    },
+                    "failure": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "message": {
+                          "type": "string"
+                        },
+                        "at": {
+                          "type": "string"
+                        },
+                        "count": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "gaveUp": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "message",
+                        "at",
+                        "count",
+                        "gaveUp"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [
@@ -174339,7 +174434,8 @@
                     "last",
                     "version",
                     "createdAt",
-                    "endedAt"
+                    "endedAt",
+                    "failure"
                   ],
                   "additionalProperties": false
                 }
@@ -174697,6 +174793,33 @@
                     "endedAt": {
                       "nullable": true,
                       "type": "string"
+                    },
+                    "failure": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "message": {
+                          "type": "string"
+                        },
+                        "at": {
+                          "type": "string"
+                        },
+                        "count": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "gaveUp": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "message",
+                        "at",
+                        "count",
+                        "gaveUp"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [
@@ -174723,7 +174846,8 @@
                     "last",
                     "version",
                     "createdAt",
-                    "endedAt"
+                    "endedAt",
+                    "failure"
                   ],
                   "additionalProperties": false
                 }
@@ -197532,7 +197656,7 @@
       "get": {
         "operationId": "getPlatformHealth",
         "summary": "What is failing quietly",
-        "description": "Phones whose sync runs show trouble, billing deliveries that were recorded but not applied, and background work that gave up — over the last few days, across every company. The things that look fine from the office until a customer rings.",
+        "description": "Phones whose sync runs show trouble, billing deliveries that were recorded but not applied, background work that gave up — over the last few days, across every company — and maintenance plans the worker currently cannot make jobs for. The things that look fine from the office until a customer rings.",
         "tags": [
           "platform"
         ],
@@ -197766,13 +197890,68 @@
                         "retrying"
                       ],
                       "additionalProperties": false
+                    },
+                    "maintenance": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "tenantId": {
+                                "type": "string"
+                              },
+                              "companyName": {
+                                "type": "string"
+                              },
+                              "planId": {
+                                "type": "string"
+                              },
+                              "title": {
+                                "type": "string"
+                              },
+                              "error": {
+                                "type": "string"
+                              },
+                              "failedAt": {
+                                "type": "string"
+                              },
+                              "failureCount": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "gaveUp": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "tenantId",
+                              "companyName",
+                              "planId",
+                              "title",
+                              "error",
+                              "failedAt",
+                              "failureCount",
+                              "gaveUp"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [
                     "since",
                     "sync",
                     "webhooks",
-                    "jobs"
+                    "jobs",
+                    "maintenance"
                   ],
                   "additionalProperties": false
                 }

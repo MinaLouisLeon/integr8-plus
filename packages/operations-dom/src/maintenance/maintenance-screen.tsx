@@ -4,7 +4,7 @@ import { type ReactNode, useMemo, useState } from 'react';
 import { keys, type MaintenanceStanding, useOperations } from '../api.js';
 import { termReversed } from '../contracts/model.js';
 import { DashboardBackLink, Failure, Field, inputClass, Loading } from '../ui.js';
-import { MaintenanceStandingBadge } from './maintenance-parts.js';
+import { MaintenanceStandingBadge, PlanFailureNotice } from './maintenance-parts.js';
 import {
   choices,
   filterItems,
@@ -45,6 +45,13 @@ export function MaintenanceScreen() {
     queryKey: keys.maintenance(query),
     queryFn: async () => (await client.GET('/v1/maintenance', { params: { query } })).data!,
     placeholderData: (previous) => previous,
+  });
+  // Plans the worker could not make jobs for (0063), above everything else.
+  const failingQuery = { failing: 'true' as const };
+  const failing = useQuery({
+    queryKey: keys.maintenancePlans(failingQuery),
+    queryFn: async () =>
+      (await client.GET('/v1/maintenance-plans', { params: { query: failingQuery } })).data!,
   });
   const data = list.data;
   const from = draft?.from ?? data?.from ?? '';
@@ -105,6 +112,25 @@ export function MaintenanceScreen() {
         <h1 className="text-2xl font-semibold text-content">{t('operations.maintenance.title')}</h1>
         <p className="text-sm text-content-muted">{t('operations.maintenance.intro')}</p>
       </header>
+
+      {failing.data !== undefined && failing.data.items.length > 0 ? (
+        <section aria-labelledby="failing-plans" className="flex flex-col gap-2">
+          <h2 id="failing-plans" className="text-lg font-semibold text-content">
+            {t('operations.maintenance.plans.failure.heading')}
+          </h2>
+          <ul className="flex flex-col gap-2">
+            {failing.data.items.map((plan) => (
+              <li key={plan.id} className="flex flex-col gap-1">
+                <span dir="auto" className="text-sm font-medium text-content">
+                  {link(paths.asset(plan.asset.id), plan.title)}
+                  {` · ${plan.asset.reference} · ${plan.customer.name}`}
+                </span>
+                <PlanFailureNotice failure={plan.failure} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <div className="flex flex-wrap items-end gap-3">
         <Field label={t('operations.maintenance.from')}>

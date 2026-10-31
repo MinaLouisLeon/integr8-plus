@@ -185,6 +185,7 @@ export type {
 } from './repositories/tenant-lifecycle.js';
 
 export type {
+  MaintenanceFailure,
   PlatformHealthRepository,
   PlatformInsightsRepository,
   RecentFailure,

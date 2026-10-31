@@ -102,6 +102,7 @@ function plan(overrides: Partial<MaintenancePlan> = {}): MaintenancePlan {
     version: 2,
     createdAt: '2026-01-01T09:00:00.000Z',
     endedAt: null,
+    failure: null,
     ...overrides,
   };
 }
@@ -335,5 +336,42 @@ describe('maintenance', { timeout: 20_000 }, () => {
     ).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Add a plan' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Pause/u })).not.toBeInTheDocument();
+  });
+
+  it('warns of a plan whose jobs could not be made, with the reason, here and on the asset', async () => {
+    const failing = plan({
+      failure: {
+        message: 'The customer is closed.',
+        at: '2026-10-31T06:00:00.000Z',
+        count: 5,
+        gaveUp: true,
+      },
+    });
+    const { client } = fakeApi({
+      'GET /v1/maintenance': () => ({
+        body: { items: [], from: '2026-09-01', to: '2026-12-31', today: '2026-10-27' },
+      }),
+      'GET /v1/maintenance-plans': () => ({
+        body: {
+          items: [failing],
+          defaults: { leadDays: 30, windowDays: 7 },
+          can: { manage: true },
+        },
+      }),
+    });
+    const { unmount } = renderScreen(<MaintenanceScreen />, client);
+    expect(
+      await screen.findByRole('heading', { name: 'Plans whose jobs could not be made' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('The customer is closed.')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Failed 5 times in a row, so it is no longer retried. Edit the plan to try again.',
+      ),
+    ).toBeInTheDocument();
+    unmount();
+
+    renderScreen(<AssetPlansSection asset={ASSET_ON_SCREEN} />, client);
+    expect(await screen.findByText('The customer is closed.')).toBeInTheDocument();
   });
 });

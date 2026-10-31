@@ -332,6 +332,17 @@ down are made on its next run. A retired asset's dates are skipped. A plan stops
 date and at its contract's. Changing a plan only moves what has not been made yet. A paused
 plan makes nothing; resuming carries on from today.
 
+**A plan that fails** (migration 0063). Each plan's work runs in its own savepoint; plans whose
+due dates share a job are written together and, if that fails, again one by one, so a plan
+that cannot make its job is rolled back alone while the company's other plans make theirs.
+The failure is kept on the plan (`last_error`, `last_error_at`, `failure_count`), logged, sent
+to Sentry, shown as a warning with the reason on the Maintenance screen and on the asset's plan,
+and listed on the staff dashboard's Health page. The worker tries that plan again alone on its
+next cycle (`maintenance.retries`, about every fifteen minutes) instead of the next day. After
+five failures in a row it stops retrying and keeps the warning until someone edits, pauses or
+resumes the plan, which clears it. A successful run clears it too. `GET
+/v1/maintenance-plans?failing=true` lists such plans; each plan carries `failure`.
+
 **Deadlines.** The company sets, per priority, how long it has to respond (to dispatch the job)
 and to complete it (`deadline_rules`), counted around the clock or in the company's working
 hours only, with a warning a set number of minutes before. Public holidays are not known. A new

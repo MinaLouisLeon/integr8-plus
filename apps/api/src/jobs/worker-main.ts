@@ -9,7 +9,11 @@ import { runDunning } from '../billing/dunning.js';
 import { runAiReconciliation } from '../ai/reconcile.js';
 import { runSignupExpiry } from '../signup/expire.js';
 import { runQualificationExpiry } from '../qualifications/expiry.js';
-import { runDeadlineAlerts, runMaintenancePlans } from '../maintenance/tasks.js';
+import {
+  runDeadlineAlerts,
+  runMaintenancePlans,
+  runMaintenanceRetries,
+} from '../maintenance/tasks.js';
 import { purgeDueTenants } from '../platform/purge.js';
 import { runSyncMaintenance } from '../sync/maintenance.js';
 import { buildJobHandlers } from './handlers.js';
@@ -218,7 +222,10 @@ async function main(): Promise<void> {
               push: services.push,
             });
             if (
-              maintenance.occurrences + maintenance.renewalAlerts + maintenance.failures.length >
+              maintenance.occurrences +
+                maintenance.renewalAlerts +
+                maintenance.failures.length +
+                maintenance.planFailures.length >
               0
             ) {
               logger.info('Maintenance plans finished', {
@@ -228,6 +235,28 @@ async function main(): Promise<void> {
                 skipped: maintenance.skipped,
                 renewalAlerts: maintenance.renewalAlerts,
                 failures: maintenance.failures.length,
+                planFailures: maintenance.planFailures.length,
+              });
+            }
+          },
+        },
+        {
+          // A plan that failed is tried again alone on every tick, not the next
+          // day, until it succeeds or has failed five times in a row (0063).
+          name: 'Maintenance plan retries',
+          run: async () => {
+            const retried = await runMaintenanceRetries({
+              config,
+              logger,
+              workerId: worker.id,
+            });
+            if (retried.occurrences + retried.planFailures.length + retried.failures.length > 0) {
+              logger.info('Maintenance plan retries finished', {
+                companies: retried.companies,
+                jobsCreated: retried.jobsCreated,
+                occurrences: retried.occurrences,
+                planFailures: retried.planFailures.length,
+                failures: retried.failures.length,
               });
             }
           },
