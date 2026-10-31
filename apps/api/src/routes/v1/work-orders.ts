@@ -216,6 +216,7 @@ export const detailSchema = z.object({
   execution: z.object({
     beforePhotos: z.number().int(),
     afterPhotos: z.number().int(),
+    /** The job type asks for the customer's sign-off, or a form filled on the job does. */
     signatureRequired: z.boolean(),
     signoff: signoffSchema.nullable(),
     missing: completionSchema,
@@ -281,6 +282,7 @@ export async function detailBody(tx: TenantTransaction, principal: Principal, jo
     jobTermsOf(tx, [job.id]),
   ]);
   const missing = await tx.workOrders.completionMissing(job);
+  const signatureRequired = await tx.workOrders.signatureRequired(job);
   const contacts = site?.contactId == null ? [] : await tx.customers.findContacts([site.contactId]);
   const visiblePrevious = readAll
     ? previous
@@ -383,7 +385,7 @@ export async function detailBody(tx: TenantTransaction, principal: Principal, jo
     execution: {
       beforePhotos: job.beforePhotos,
       afterPhotos: job.afterPhotos,
-      signatureRequired: job.signatureRequired,
+      signatureRequired,
       signoff:
         job.signoff === null
           ? null

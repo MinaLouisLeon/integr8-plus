@@ -1028,7 +1028,7 @@ export interface paths {
         head?: never;
         /**
          * Rename a form or change its settings
-         * @description Settings take effect immediately and are not versioned: who may fill a form, whether a signature is mandatory, and which job types require it — a job of a requiring type cannot complete until the form is submitted for it. The requirement applies to jobs created afterwards.
+         * @description Settings take effect immediately and are not versioned: who may fill a form, whether a signature is mandatory (a job with any submission of the form cannot complete without the customer’s sign-off, read from the form at that moment), and which job types require it — a job of a requiring type cannot complete until the form is submitted for it. The requirement applies to jobs created afterwards.
          */
         patch: operations["updateForm"];
         trace?: never;

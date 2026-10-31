@@ -711,7 +711,11 @@ export class WorkOrdersRepository extends TenantScopedRepository {
 
   /** What stands between a job and completing it, in the terms every client uses. */
   async completionMissing(job: WorkOrder): Promise<CompletionMissing> {
-    const [forms, photos] = await Promise.all([this.listForms(job.id), this.photoCounts(job.id)]);
+    const [forms, photos, signatureRequired] = await Promise.all([
+      this.listForms(job.id),
+      this.photoCounts(job.id),
+      this.signatureRequired(job),
+    ]);
     return completionMissing({
       forms: forms.map((form) => ({
         formId: form.formId,
@@ -723,8 +727,33 @@ export class WorkOrdersRepository extends TenantScopedRepository {
         before: { needed: job.beforePhotos, taken: photos.before },
         after: { needed: job.afterPhotos, taken: photos.after },
       },
-      signoff: { required: job.signatureRequired, recorded: job.signoff !== null },
+      signoff: { required: signatureRequired, recorded: job.signoff !== null },
     });
+  }
+
+  /**
+   * Whether the job needs the customer's sign-off before it completes: its job
+   * type asks for one, or a form filled on it does (0060). The form's own
+   * setting is read, not the version filled — see the migration for why.
+   */
+  async signatureRequired(job: WorkOrder): Promise<boolean> {
+    if (job.signatureRequired) {
+      return true;
+    }
+    const row = await this.db
+      .selectFrom('submissions')
+      .innerJoin('forms', (join) =>
+        join
+          .onRef('forms.tenant_id', '=', 'submissions.tenant_id')
+          .onRef('forms.id', '=', 'submissions.form_id'),
+      )
+      .select('submissions.id')
+      .where('submissions.tenant_id', '=', this.tenantId)
+      .where('submissions.work_order_id', '=', job.id)
+      .where('forms.signature_required', '=', true)
+      .limit(1)
+      .executeTakeFirst();
+    return row !== undefined;
   }
 
   /** Before and after photos on a job, not removed. */

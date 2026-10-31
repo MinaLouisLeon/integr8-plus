@@ -120,7 +120,13 @@ against both. The database refuses, for every client and role:
 - **completing while anything the job needs is missing** (P14): a required form with no submitted
   submission for this job, fewer before or after photos than the job asks for, or no customer
   sign-off where one is required. The API answers 409 `completion_blocked`, with one detail per
-  missing thing;
+  missing thing. A sign-off is required when the job's type asks for one **or** any submission
+  on the job (draft, submitted or reopened) is of a form whose "Signature required before
+  close" setting is ticked (migration 0060). That setting is read from the form when the job
+  completes, not from the version filled: it is a form setting outside the published
+  definition, so ticking it applies to open jobs at once and unticking it relaxes them. The
+  job's `execution.signatureRequired` reports the combined answer, and every client shows the
+  same "signature missing" reason;
 - editing a completed, reviewed or cancelled job's details.
 
 A write names the revision it read; a stale one is refused `work_order_changed`.

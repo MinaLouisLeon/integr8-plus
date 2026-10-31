@@ -58,6 +58,14 @@ Form settings — who may fill a form and whether a signature is mandatory — t
 once and are not versioned: they describe how the company uses the form, not what it asks.
 Which job types require a form arrives with job types in P10.
 
+"Signature required before close" is enforced when a job completes (migration 0060): a job
+with any submission of the form — draft, submitted or reopened — cannot be completed until the
+customer's sign-off (a signature, or the reason nobody could sign) is recorded, whatever its
+job type says. The database refuses it for every client; the job screen on the web, desktop
+and phone lists it with the other missing things as "signature missing". The setting is read
+from the form at that moment, not from the version filled, so changing it applies to jobs
+still open and never to jobs already completed.
+
 ## The template library
 
 `form_templates` is a platform table: it belongs to no company, the runtime role may only

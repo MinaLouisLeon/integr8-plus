@@ -123,6 +123,45 @@ const move = (token: string, job: Detail, to: string, expected = 200) =>
       return response;
     });
 
+async function publishForm(title: string): Promise<string> {
+  const { form } = await call<{ form: { id: string } }>(
+    tokens.builder,
+    'POST',
+    '/v1/forms',
+    { title },
+    201,
+  );
+  const detail = await call<{ draft: { revision: number } }>(
+    tokens.builder,
+    'GET',
+    `/v1/forms/${form.id}`,
+  );
+  const saved = await call<{ revision: number }>(
+    tokens.builder,
+    'PUT',
+    `/v1/forms/${form.id}/draft`,
+    {
+      expectedRevision: detail.draft.revision,
+      definition: {
+        schemaVersion: 1,
+        title: { en: title },
+        pages: [
+          {
+            id: 'page_1',
+            sections: [
+              { id: 'section_1', fields: [{ id: 'note', type: 'text', label: { en: 'Note' } }] },
+            ],
+          },
+        ],
+      },
+    },
+  );
+  await call(tokens.builder, 'POST', `/v1/forms/${form.id}/draft/publish`, {
+    expectedRevision: saved.revision,
+  });
+  return form.id;
+}
+
 beforeAll(async () => {
   api = await startApi();
   people = {
@@ -274,6 +313,53 @@ describe('completing a job', () => {
       `/v1/work-orders/${job.workOrder.id}/signoff`,
       { unavailableReason: 'Too late' },
       409,
+    );
+  });
+
+  it('asks for the sign-off when a form filled on the job asks for one (0060)', async () => {
+    const formId = await publishForm('Lift inspection');
+    await call(tokens.builder, 'PATCH', `/v1/forms/${formId}`, { signatureRequired: true });
+    const plainType = await call<{ id: string }>(
+      tokens.builder,
+      'POST',
+      '/v1/job-types',
+      { name: 'Lift check', code: 'lift-check', forms: [{ formId, required: false }] },
+      201,
+    );
+    let job = await newJob([people.engineer], { jobTypeId: plainType.id });
+    expect(job.execution).toMatchObject({ signatureRequired: false, missing: { signoff: false } });
+    for (const to of ['dispatched', 'on_site', 'in_progress']) {
+      job = json<Detail>(
+        await move(to === 'dispatched' ? tokens.dispatcher : tokens.engineer, job, to),
+      );
+    }
+    const started = await call<{ submission: { id: string; revision: number } }>(
+      tokens.engineer,
+      'POST',
+      '/v1/submissions',
+      { formId, workOrderId: job.workOrder.id },
+      201,
+    );
+    await call(tokens.engineer, 'POST', `/v1/submissions/${started.submission.id}/submit`, {
+      expectedRevision: started.submission.revision,
+      answers: { note: 'Doors fine' },
+    });
+    job = await call<Detail>(tokens.engineer, 'GET', `/v1/work-orders/${job.workOrder.id}`);
+    expect(job.execution).toMatchObject({ signatureRequired: true, missing: { signoff: true } });
+
+    // The same "sign-off missing" every client already words.
+    const refused = json<ErrorBody>(await move(tokens.engineer, job, 'complete', 409));
+    expect(refused.error.code).toBe('completion_blocked');
+    expect(refused.error.details?.map((detail) => detail.code)).toEqual(['signoff_missing']);
+
+    const signed = await call<Detail>(
+      tokens.engineer,
+      'PUT',
+      `/v1/work-orders/${job.workOrder.id}/signoff`,
+      { unavailableReason: 'Building manager away' },
+    );
+    expect(json<Detail>(await move(tokens.engineer, signed, 'complete')).workOrder.state).toBe(
+      'complete',
     );
   });
 });
