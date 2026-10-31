@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest';
-import { cleanup } from '@testing-library/react';
+import { cleanup, configure } from '@testing-library/react';
 import { afterEach, vi } from 'vitest';
 
 /**
@@ -13,6 +13,13 @@ import { afterEach, vi } from 'vitest';
 afterEach(() => {
   cleanup();
 });
+
+// `findBy…` waits one second by default. Role queries over a whole screen are
+// slow in jsdom, and with the integration suites or another package's tests
+// running beside them a busy machine took longer than that, so tests failed by
+// chance (the pay-runs list did, repeatedly). Five seconds still fails quickly
+// when something is really missing.
+configure({ asyncUtilTimeout: 5000 });
 
 const context = new Proxy(
   {},
