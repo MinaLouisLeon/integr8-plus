@@ -1,10 +1,25 @@
 # Container images for the API (which is also the worker and the migrator) and
 # the web app, published to this repository's GitHub Container Registry.
 #
-# Runs after a merge into staging (tagged `staging` and by commit) and into main
-# (tagged `latest`, `main` and by commit), and on a version tag. Nothing here
-# deploys: a deployment pulls an image by tag, which is what makes a rollback
-# "pull the previous tag" rather than "rebuild and hope".
+# Two kinds of tag, for two kinds of machine:
+#
+#   release   `vX.Y.Z` and `latest`. The version release (release-main.yml)
+#             calls this workflow with the tag it has just created, after the
+#             release is published. Production pins API_IMAGE and WEB_IMAGE to
+#             one of these, so what runs is exactly a release and a rollback is
+#             "set the previous tag". `latest` moves only when the newest
+#             release is built, never on an ordinary push.
+#   moving    `main`, `staging` and the commit's short hash, on every push to
+#             those branches. Unreleased code: for the test box (`staging`) and
+#             for trying a merge before it is released, never for production.
+#
+# Why release-main.yml calls this rather than relying on the `v*` tag trigger:
+# a tag created with a workflow's own GITHUB_TOKEN does not start other
+# workflows (GitHub's guard against runaway chains), so the tag the release
+# creates never fired this and no `:vX.Y.Z` image existed. The `v*` trigger
+# stays for a tag somebody pushes by hand. Run it from the Actions tab with a
+# tag to build the images of a release that already exists (v1.2.2 was the
+# first one built that way).
 #
 # Both images are built for linux/amd64 and linux/arm64, because the first
 # deployment target is an ARM machine (Oracle Cloud's Always Free shape) and a
@@ -22,9 +37,24 @@ on:
     branches: [staging, main]
     tags: ['v*']
   workflow_dispatch:
+    inputs:
+      tag:
+        description: An existing release tag (vX.Y.Z, e.g. v1.2.2) to build images for. Empty builds the branch this runs on, as a push would.
+        type: string
+        required: false
+        default: ''
+  workflow_call:
+    inputs:
+      tag:
+        description: The release tag the images are for, vX.Y.Z. It must already exist.
+        type: string
+        required: true
 
+# Keyed on the tag when there is one: the version release calls this from a
+# push to main, and sharing the branch's group with that push's own run would
+# make one wait an hour for the other.
 concurrency:
-  group: publish-images-${{ github.ref }}
+  group: publish-images-${{ inputs.tag || github.ref }}
   cancel-in-progress: false
 
 permissions:
@@ -36,12 +66,88 @@ env:
   OWNER: ${{ github.repository_owner }}
 
 jobs:
+  # ---------------------------------------------------------------------------
+  # What is being built, and what it is called
+  # ---------------------------------------------------------------------------
+  resolve:
+    name: Work out the tags
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      ref: ${{ steps.tags.outputs.ref }}
+      sha: ${{ steps.tags.outputs.sha }}
+      version: ${{ steps.tags.outputs.version }}
+      app_env: ${{ steps.tags.outputs.app_env }}
+      tags: ${{ steps.tags.outputs.tags }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - id: tags
+        env:
+          IN_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          tag="${IN_TAG:-}"
+          # A version tag pushed by hand arrives as a push of that tag.
+          if [ -z "$tag" ] && [ "$GITHUB_REF_TYPE" = tag ]; then tag="$GITHUB_REF_NAME"; fi
+
+          if [ -n "$tag" ]; then
+            if ! [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "::error::'$tag' is not a release tag (vX.Y.Z)."; exit 1
+            fi
+            # The peeled line (^{}) is the commit of an annotated tag; a
+            # lightweight tag, which is what `gh release create` makes, has only
+            # the first. Either way the last line is the commit.
+            sha=$(git ls-remote origin "refs/tags/$tag" "refs/tags/$tag^{}" | tail -1 | cut -f1)
+            if [ -z "$sha" ]; then
+              echo "::error::There is no tag $tag in this repository. Images are built for releases that exist."; exit 1
+            fi
+            # `latest` is the newest release, so building an older one by hand
+            # never moves it backwards.
+            newest=$(git ls-remote --tags --refs origin 'refs/tags/v*' \
+              | sed 's#.*refs/tags/##' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)
+            tags="type=raw,value=${tag}"
+            if [ "$newest" = "$tag" ]; then
+              tags="${tags}"$'\n'"type=raw,value=latest"
+            fi
+            ref="$tag"
+            version="$tag"
+            app_env=production
+          else
+            branch="${GITHUB_REF_NAME//\//-}"
+            sha="$GITHUB_SHA"
+            tags="type=raw,value=${branch}"$'\n'"type=raw,value=${sha:0:7}"
+            ref="$GITHUB_SHA"
+            version="$GITHUB_SHA"
+            if [ "$GITHUB_REF" = refs/heads/staging ]; then app_env=staging; else app_env=production; fi
+          fi
+
+          {
+            echo "ref=$ref"
+            echo "sha=$sha"
+            echo "version=$version"
+            echo "app_env=$app_env"
+            echo "tags<<TAGS_END"
+            echo "$tags"
+            echo "TAGS_END"
+          } >> "$GITHUB_OUTPUT"
+          {
+            echo "### Images"
+            echo
+            echo "Built from \`$ref\` ($sha) for $app_env, tagged:"
+            echo
+            echo "$tags" | sed 's/^type=raw,value=/- `/; s/$/`/'
+          } >> "$GITHUB_STEP_SUMMARY"
+
   api:
     name: API image
+    needs: resolve
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.resolve.outputs.ref }}
 
       - uses: docker/setup-qemu-action@v4
         with:
@@ -55,15 +161,18 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # The revision and version labels name what was checked out, which for a
+      # release built by hand is the tag, not the branch the run started on.
       - id: meta
         uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/${{ env.OWNER }}/integr8-api
-          tags: |
-            type=ref,event=branch
-            type=ref,event=tag
-            type=sha,prefix=
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+          tags: ${{ needs.resolve.outputs.tags }}
+          # `latest` is decided by the resolve job, never guessed from the event.
+          flavor: latest=false
+          labels: |
+            org.opencontainers.image.revision=${{ needs.resolve.outputs.sha }}
+            org.opencontainers.image.version=${{ needs.resolve.outputs.version }}
 
       - uses: docker/build-push-action@v7
         with:
@@ -78,10 +187,13 @@ jobs:
 
   web:
     name: Web image
+    needs: resolve
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.resolve.outputs.ref }}
 
       - uses: docker/setup-qemu-action@v4
         with:
@@ -99,21 +211,23 @@ jobs:
         uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/${{ env.OWNER }}/integr8-web
-          tags: |
-            type=ref,event=branch
-            type=ref,event=tag
-            type=sha,prefix=
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+          tags: ${{ needs.resolve.outputs.tags }}
+          # `latest` is decided by the resolve job, never guessed from the event.
+          flavor: latest=false
+          labels: |
+            org.opencontainers.image.revision=${{ needs.resolve.outputs.sha }}
+            org.opencontainers.image.version=${{ needs.resolve.outputs.version }}
 
       # The browser bundle needs the API's public address at build time. The
       # staging branch gets the staging address when one is set, otherwise the
-      # production one.
+      # production one. A release is always production's.
       - name: Pick the API address this image will talk to
         env:
+          APP_ENV: ${{ needs.resolve.outputs.app_env }}
           PRODUCTION_URL: ${{ vars.PUBLIC_API_URL }}
           STAGING_URL: ${{ vars.STAGING_PUBLIC_API_URL }}
         run: |
-          if [ "${GITHUB_REF}" = 'refs/heads/staging' ] && [ -n "${STAGING_URL}" ]; then
+          if [ "${APP_ENV}" = 'staging' ] && [ -n "${STAGING_URL}" ]; then
             echo "api_url=${STAGING_URL}" >> "$GITHUB_OUTPUT"
           else
             echo "api_url=${PRODUCTION_URL:-http://localhost:3000}" >> "$GITHUB_OUTPUT"
@@ -133,8 +247,8 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             NEXT_PUBLIC_API_BASE_URL=${{ steps.api.outputs.api_url }}
-            NEXT_PUBLIC_APP_VERSION=${{ github.ref_type == 'tag' && github.ref_name || github.sha }}
-            NEXT_PUBLIC_APP_ENV=${{ github.ref == 'refs/heads/staging' && 'staging' || 'production' }}
+            NEXT_PUBLIC_APP_VERSION=${{ needs.resolve.outputs.version }}
+            NEXT_PUBLIC_APP_ENV=${{ needs.resolve.outputs.app_env }}
             NEXT_PUBLIC_SENTRY_DSN=${{ vars.WEB_PUBLIC_SENTRY_DSN }}
             NEXT_PUBLIC_SIGNUP=${{ vars.PUBLIC_SIGNUP || 'off' }}
             NEXT_PUBLIC_CONTACT_EMAIL=${{ vars.CONTACT_EMAIL }}

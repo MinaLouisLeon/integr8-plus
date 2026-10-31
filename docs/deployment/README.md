@@ -36,7 +36,7 @@ with tick boxes that remember your progress: download
 | Web image              | `apps/web/Dockerfile`                       | Next.js standalone server; `NEXT_PUBLIC_*` baked in at build time       |
 | Compose stack          | `deploy/compose.yml`, `deploy/.env.example` | Postgres + bootstrap + migrate + auth + api + worker + web, one machine |
 | Machine preparation    | `deploy/vps/setup.sh`, `Caddyfile.example`  | Firewall, Docker and Caddy on a fresh Ubuntu or Oracle Linux machine    |
-| Images in the registry | `.github/workflows/publish-images.yml`      | `ghcr.io/<owner>/integr8-api` and `integr8-web`, tagged per branch/sha  |
+| Images in the registry | `.github/workflows/publish-images.yml`      | `ghcr.io/<owner>/integr8-api` and `integr8-web`: `vX.Y.Z` per release   |
 | Database runbooks      | `docs/database/`                            | Migrations, nightly backups and restore                                 |
 | Sign-in server         | `docs/auth/self-hosted-auth.md`             | The Supabase Auth container: settings, secrets, rotation                |
 | Company apps           | `docs/deployment/company-apps.md`           | Installers and phone apps built per company, and the staff desktop      |
@@ -184,25 +184,36 @@ Container logs are capped at 50 MB per container by the `x-logging` block in
 0. **Bump the version** in the root `package.json` in the pull request that
    promotes `staging` to `main`. `release-main.yml` refuses `0.0.0` and refuses
    a version that already has a release, so a merge into `main` without a bump
-   fails its release job (the images still publish). The version also stamps
-   `APP_VERSION`/`API_RELEASE` in a deployment's env file. Until signed desktop
+   fails its release job (the `:main` images still publish; no release images
+   do). The version also stamps `APP_VERSION`/`API_RELEASE` in a deployment's
+   env file. Until signed desktop
    installers are wanted (P20), set the repository variable
    `DESKTOP_BUILDS=disabled` so the release does not spend macOS and Windows
    runner minutes on unsigned builds.
 1. Merge to `staging`. `publish-images.yml` pushes `integr8-api:staging` and
-   `integr8-web:staging`.
-2. On the machine: set `API_IMAGE`/`WEB_IMAGE` in `deploy/.env` to the tags,
-   then `docker compose pull && docker compose up -d`. `migrate` runs first; the
-   API's readiness check refuses traffic until the schema matches the build.
-3. Roll back by setting the previous tag and running the same two commands.
-   The previous image's `migrate` finds the newer release's migrations already
+   `integr8-web:staging`, which the test box runs. They, `:main` and the
+   per-commit tags move with unreleased code and are never for production.
+2. Merge to `main`. Once the release is published, `release-main.yml` calls
+   `publish-images.yml` with the release tag: `integr8-api:vX.Y.Z` and
+   `integr8-web:vX.Y.Z` for amd64 and arm64, and `latest`, which only ever
+   names the newest release. (A tag the release creates with `github.token`
+   cannot start the `v*` trigger itself, which is why it is called.) To build
+   the images of a release that already exists, run "Publish images" from the
+   Actions tab with its tag.
+3. On the machine: set `API_IMAGE`/`WEB_IMAGE` in `deploy/.env` to the new
+   release tag, then `docker compose pull && docker compose up -d`. `migrate`
+   runs first; the API's readiness check refuses traffic until the schema
+   matches the build.
+4. Roll back by setting the previous release's tag and running the same two
+   commands (release images exist from v1.2.2; an older release is gone back
+   to by checking out its tag and building). The previous image's `migrate` finds the newer release's migrations already
    applied, applies nothing, logs that the database is ahead of its build and
    exits cleanly; its readiness check passes with a note naming them. So the
    API, worker and web start on the newer schema, which expand/contract
    ([migrations.md](../database/migrations.md#rolling-back-a-release)) keeps
    safe. Releases up to v1.2.1 predate this and stop at `migrate`: the setup
    guide's Stage 11, part Q, has the way round it.
-4. Migrations are rolled back deliberately, never automatically, and only by
+5. Migrations are rolled back deliberately, never automatically, and only by
    the release that added them, because only its image has their down files:
    with the newer tag still set, after reading the migration's down file,
    `docker compose run --rm api node node_modules/@integr8/db/dist/migrator/cli.js down --steps 1`,

@@ -485,15 +485,15 @@ your branch ──▶ dev ──▶ staging ──▶ main
             test build  nightly   version release
 ```
 
-| Workflow                 | When                                    | Does                                                                                            |
-| ------------------------ | --------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `ci.yml`                 | Every pull request                      | Format, lint, typecheck, unit tests, OpenAPI drift, integration suites on Postgres, secret scan |
-| `branch-policy.yml`      | Pull requests                           | Checks which branch may merge into which                                                        |
-| `release-dev.yml`        | Merge into `dev`                        | A test build                                                                                    |
-| `release-staging.yml`    | Merge into `staging`                    | A nightly pre-release against the staging API, including a generic phone build for testers      |
-| `release-main.yml`       | Merge into `main`                       | Version release: API and web archives, the staff desktop installers, then every company's apps  |
-| `build-company-apps.yml` | By hand, or from a release              | One company's (or every company's) desktop installers and phone app, as their own release       |
-| `publish-images.yml`     | Push to `staging` or `main`, a `v*` tag | The API and web container images to GHCR (`:main`, `:staging`, per commit and tag)              |
+| Workflow                 | When                                                                 | Does                                                                                                                              |
+| ------------------------ | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `ci.yml`                 | Every pull request                                                   | Format, lint, typecheck, unit tests, OpenAPI drift, integration suites on Postgres, secret scan                                   |
+| `branch-policy.yml`      | Pull requests                                                        | Checks which branch may merge into which                                                                                          |
+| `release-dev.yml`        | Merge into `dev`                                                     | A test build                                                                                                                      |
+| `release-staging.yml`    | Merge into `staging`                                                 | A nightly pre-release against the staging API, including a generic phone build for testers                                        |
+| `release-main.yml`       | Merge into `main`                                                    | Version release: API and web archives, the staff desktop installers, then every company's apps                                    |
+| `build-company-apps.yml` | By hand, or from a release                                           | One company's (or every company's) desktop installers and phone app, as their own release                                         |
+| `publish-images.yml`     | Push to `staging` or `main`; the version release; by hand with a tag | The API and web images to GHCR: `:vX.Y.Z` and `:latest` per release (production), `:main`, `:staging` and per commit (unreleased) |
 
 The version is the root `package.json` `version` and nothing else: bump it to
 release, and a release for a version that already exists is refused. Repository

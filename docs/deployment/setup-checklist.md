@@ -209,7 +209,7 @@ GitHub builds the server images, the desktop installers and (through Expo) the p
 - [ ] **Know the version rule.** Every merge into `main` runs the release workflow, which reads the version from the root `package.json` and refuses to release a number it has released before. The merge that should produce installers (Stage 6) must bump it: one line in `package.json`, in the same pull request.
 
 > [!NOTE]
-> **GitHub also builds the server images**: every push to `main` publishes `ghcr.io/minalouisleon/integr8-api:main` and `integr8-web:main` for Intel and ARM, and every push to `staging` the `:staging` tags. The web image bakes in `PUBLIC_API_URL`, `CONTACT_EMAIL` and `PUBLIC_SIGNUP`, which is why they are set here before anything is built. The machine in Stage 4 can either build its own images or pull these.
+> **GitHub also builds the server images**, for Intel and ARM. Each release publishes its own: release `v1.2.2` makes `ghcr.io/minalouisleon/integr8-api:v1.2.2` and `integr8-web:v1.2.2` (and moves `latest` to the newest release). Those are what production pulls. Every push to `main` and `staging` also publishes `:main` and `:staging`, which carry code that is not released yet: they are for the test box only, never for production. The web image bakes in `PUBLIC_API_URL`, `CONTACT_EMAIL` and `PUBLIC_SIGNUP`, which is why they are set here before anything is built. The machine in Stage 4 can either build its own images or pull a release's.
 
 ### L. Only if you will build the test box (Stage 10)
 
@@ -626,7 +626,7 @@ The first run builds two images on the machine, ten to fifteen minutes on the AR
 > If the API refuses to start, its log says exactly which variable is wrong or missing: `docker compose -f deploy/compose.yml --env-file deploy/.env logs api`. Fix the env file and run the same `up -d` command again. Throughout this guide, "restart" means exactly that command; it recreates only the containers whose settings changed.
 
 > [!NOTE]
-> **Pulling instead of building.** GitHub publishes the same two images (Stage 0, Part K). Add `API_IMAGE=ghcr.io/minalouisleon/integr8-api:main` and `WEB_IMAGE=ghcr.io/minalouisleon/integr8-web:main` to `deploy/.env` and from then on deploy with `docker compose … pull && docker compose … up -d` instead of `--build`: no ten-minute build on the machine, and a rollback is "pull the previous tag". Either way works; this guide shows `--build`.
+> **Pulling instead of building.** GitHub publishes the same two images for every release (Stage 0, Part K). Add `API_IMAGE=ghcr.io/minalouisleon/integr8-api:v1.2.2` and `WEB_IMAGE=ghcr.io/minalouisleon/integr8-web:v1.2.2` to `deploy/.env`, with the release you are installing, and from then on deploy with `docker compose … pull && docker compose … up -d` instead of `--build`: no ten-minute build on the machine. Always a release tag, never `:main`, `:staging` or `:latest`: those move by themselves, `:main` and `:staging` with code not released yet. A pinned tag makes each update a one-line change and a rollback "set the previous tag" (Stage 11, parts D and I). If GitHub → your profile → **Packages** shows no images for that release yet, Actions → **Publish images** → **Run workflow** with its tag builds them (30 to 60 minutes). Either way works; this guide shows `--build`.
 
 ---
 
@@ -920,7 +920,7 @@ sudo /opt/integr8/deploy/vps/restore-drill.sh --remote
 ### D. GitHub, for the long run
 
 - [ ] **Protect the long-lived branches.** `dev` was deleted by GitHub's "automatically delete head branches" once already. Turn that setting off (Settings → General → Pull Requests) or add `dev` and `staging` to a ruleset that forbids deletion. The flow is feature branch → `dev` → `staging` → `main`, and the checks refuse shortcuts.
-- [ ] **Check**: Actions → "Publish images" on the latest `main` is green and the packages page lists `integr8-api` and `integr8-web` with a `main` tag for both `amd64` and `arm64`. The ARM half runs under emulation and takes 30 to 60 minutes.
+- [ ] **Check the release images**: GitHub → your profile → **Packages** lists `integr8-api` and `integr8-web` with the current release's tag (for example `v1.2.2`) for both `amd64` and `arm64`; the version release's **Release images** job makes them. A release made before releases built their own images (`v1.2.2` is one) has none until you run Actions → **Publish images** → **Run workflow** with **tag** = `v1.2.2`, once. The ARM half runs under emulation and takes 30 to 60 minutes.
 
 ### E. The first real company
 
@@ -961,7 +961,7 @@ git clone -b staging https://github.com/MinaLouisLeon/integr8-plus.git /opt/inte
 ```
 
 - [ ] **Change the GitHub variable** `STAGING_PUBLIC_API_URL` to `https://api-test.integr8-media.com` and push something to `staging` (or run "Publish images" from the Actions tab). The staging web image and the nightly desktop installer are then built for the test box.
-- [ ] **The env file**, `/opt/integr8/deploy/.env`, as Stage 3 but from Part L's values: `APP_ENV=staging`; `API_IMAGE=ghcr.io/minalouisleon/integr8-api:staging` and `WEB_IMAGE=ghcr.io/minalouisleon/integr8-web:staging`; the test names (`https://api-test.integr8-media.com` for the three API addresses, `https://test.integr8-media.com` for the two web ones, `API_CORS_ORIGINS=https://test.integr8-media.com,tauri://localhost,http://tauri.localhost`); the **second** set of passwords, signing keys and sign-in secrets; and every fake on: `MEDIA_STORAGE=local`, `GEOCODER=fake`, `PUSH_SENDER=recording`, `BILLING_PROVIDER=recording`, `EMAIL_SENDER=recording`. The box can then never email a real person or charge a card; invitation links and sign-in codes are read from the API log (`docker compose … logs api | grep -o 'https://test[^" ]*accept-invitation[^" ]*' | tail -1`, and `logs api | grep sign_in_code` for a code).
+- [ ] **The env file**, `/opt/integr8/deploy/.env`, as Stage 3 but from Part L's values: `APP_ENV=staging`; `API_IMAGE=ghcr.io/minalouisleon/integr8-api:staging` and `WEB_IMAGE=ghcr.io/minalouisleon/integr8-web:staging` (unreleased code, which is what this box is for; production only ever pins a release tag); the test names (`https://api-test.integr8-media.com` for the three API addresses, `https://test.integr8-media.com` for the two web ones, `API_CORS_ORIGINS=https://test.integr8-media.com,tauri://localhost,http://tauri.localhost`); the **second** set of passwords, signing keys and sign-in secrets; and every fake on: `MEDIA_STORAGE=local`, `GEOCODER=fake`, `PUSH_SENDER=recording`, `BILLING_PROVIDER=recording`, `EMAIL_SENDER=recording`. The box can then never email a real person or charge a card; invitation links and sign-in codes are read from the API log (`docker compose … logs api | grep -o 'https://test[^" ]*accept-invitation[^" ]*' | tail -1`, and `logs api | grep sign_in_code` for a code).
 - [ ] **Run the Cloudflare Tunnel connector** with the token from Part L. This replaces Caddy and port forwarding: your router opens nothing, and the web app's sign-in cookies are only sent over HTTPS, so a plain `http://BOX-IP:3001` could never sign in (with the ports on `127.0.0.1` it is not reachable from the network anyway). Cloudflare terminates HTTPS at its edge for the two test names. The connector runs on the host network, so it reaches the two ports on `127.0.0.1`.
 
 ```bash
@@ -1002,7 +1002,7 @@ Everything on the machine, in the order that keeps it safe: make the release, ba
 ### A. Make the release
 
 - [ ] **Bump the version and merge into `main`.** The root `package.json` version goes up (for example `1.2.2` → `1.2.3`); the change reaches `main` through `dev` and `staging` as usual. That merge is the release.
-- [ ] **Wait for it to finish green.** Repository → **Actions**: "Version release" builds the installers and every company's apps (about 30 minutes), and "Publish images" builds the server images. Do not touch the machine until both are green; a red release changes nothing anywhere.
+- [ ] **Wait for it to finish green.** Repository → **Actions**: "Version release" builds the installers and every company's apps (about 30 minutes), then its **Release images** job builds the release's server images, `integr8-api:v…` and `integr8-web:v…` (30 to 60 minutes). Do not touch the machine until all of it is green; a red release changes nothing anywhere.
 - [ ] **Read what changed.** Repository → **Releases** → the new `v…`. Look for three things: a **new setting** (part C), a **database migration** (it runs by itself, but it is why part B exists), and a change to `deploy/vps/setup.sh` or the Caddyfile (part F).
 
 ### B. Back up first
@@ -1053,14 +1053,17 @@ cd /opt/integr8
 docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build
 docker compose -f deploy/compose.yml --env-file deploy/.env logs -f migrate api
 
-# — or, if deploy/.env has API_IMAGE and WEB_IMAGE set to GitHub's images (Stage 4)
+# — or, if deploy/.env pins API_IMAGE and WEB_IMAGE to GitHub's release images (Stage 4):
+#   put the new release's tag in both lines first (use the real one)
 cd /opt/integr8
+sed -i -E 's#^((API|WEB)_IMAGE=.*):[^:/]+$#\1:v1.2.2#' deploy/.env
+grep -E '^(API|WEB)_IMAGE=' deploy/.env
 docker compose -f deploy/compose.yml --env-file deploy/.env pull
 docker compose -f deploy/compose.yml --env-file deploy/.env up -d
 docker compose -f deploy/compose.yml --env-file deploy/.env logs -f migrate api
 ```
 
-- [ ] **The migrations ran.** The `migrate` log ends with one `applied` line per new migration (or says there was nothing to apply), and exits. Building on the ARM machine takes ten to fifteen minutes; pulling takes one or two.
+- [ ] **The migrations ran.** The `migrate` log ends with one `applied` line per new migration (or says there was nothing to apply), and exits. Building on the ARM machine takes ten to fifteen minutes; pulling takes one or two. When pulling, the `grep` showed both lines with the new release's tag; `pull` saying `manifest unknown` means that release has no images yet (Stage 9, Part D).
 - [ ] **The API started** and its log shows requests being answered, with no error about a setting. Ctrl-C leaves the log; the containers keep running.
 
 ### E. Check it worked
@@ -1139,7 +1142,7 @@ docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build
 git checkout main && git pull
 ```
 
-- [ ] **With GitHub's images instead**: in `deploy/.env` set `API_IMAGE` and `WEB_IMAGE` to the previous release's tag. GitHub → your profile → **Packages** → `integr8-api` lists them (each commit is tagged with its short hash, for example `ghcr.io/minalouisleon/integr8-api:1a2b3c4`). Then `pull` and `up -d`, and set them back to `:main` to go forward again.
+- [ ] **With GitHub's images instead**: in `deploy/.env` set `API_IMAGE` and `WEB_IMAGE` back to the release you were on before the update (GitHub → your profile → **Packages** → `integr8-api` lists every release's tag, for example `ghcr.io/minalouisleon/integr8-api:v1.2.2`), and `APP_VERSION`/`API_RELEASE` to its number. Then `pull` and `up -d`; no `git checkout` is needed, the images carry the code. To go forward again, the newer tag, `pull` and `up -d`. Releases before v1.2.2 have no images: go back to one of those by building, with the commands above, after putting `#` in front of both lines.
 - [ ] **The older version is running.** The `migrate` log ends with "the database is ahead of this build" and the new migrations' names, and part E's checks pass. Going forward again later applies nothing: the migrations are already there.
 - [ ] **Undoing one migration**, only when the release notes or the error say it is the cause, after reading its `.down.sql` file in `packages/db/migrations/`. Do it **before** going back, while the new version still runs, because only its image has that file: `docker compose -f deploy/compose.yml --env-file deploy/.env run --rm api node node_modules/@integr8/db/dist/migrator/cli.js down --steps 1`. The older version refuses to undo a migration it has no file for.
 - [ ] **Restoring part B's backup** replaces the whole database with how it was before the update, losing anything done since. Stop the web app, the API, the worker and the sign-in server first (`docker compose … stop web api worker auth`), restore with the command at the top of `deploy/vps/backup-postgres.sh` (the backup replaces each table as it goes, so nothing has to be emptied first), then start the older version as above.
@@ -1240,7 +1243,7 @@ docker compose -f deploy/compose.yml --env-file deploy/.env \
 ```
 
 > [!WARNING]
-> **Rolling back with self-hosted sign-in.** A version before this one signs in through a Supabase cloud project, which does not have the accounts made since. Fix forward instead. If you must roll back (part I), put `SUPABASE_URL` and the cloud project's service role key back in `deploy/.env` first, and leave migrations 0054 to 0057 applied: the older version ignores their columns and table. v1.2.1 is older than part I's ahead-of-build check, so its `migrate` step stops at 0054 ("its file is gone") and its API and worker would never start. After part I's `git checkout v1.2.1` and `sed`, start them without that step: `docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build --no-deps api worker web` (with GitHub's images, `pull` first and leave out `--build`). Until you go forward again, its `/health/ready` says `degraded` and names 0054 to 0057, so the uptime check alerts; the API answers requests all the same.
+> **Rolling back with self-hosted sign-in.** A version before this one signs in through a Supabase cloud project, which does not have the accounts made since. Fix forward instead. If you must roll back (part I), put `SUPABASE_URL` and the cloud project's service role key back in `deploy/.env` first, and leave migrations 0054 to 0057 applied: the older version ignores their columns and table. v1.2.1 is older than part I's ahead-of-build check, so its `migrate` step stops at 0054 ("its file is gone") and its API and worker would never start. After part I's `git checkout v1.2.1` and `sed`, start them without that step: `docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build --no-deps api worker web` (v1.2.1 has no GitHub images, so it is always built: if `deploy/.env` names `API_IMAGE` and `WEB_IMAGE`, put `#` in front of both lines first). Until you go forward again, its `/health/ready` says `degraded` and names 0054 to 0057, so the uptime check alerts; the API answers requests all the same.
 
 ### R. Backups off the machine, and the restore drill (included in v1.2.2)
 
@@ -1649,7 +1652,7 @@ One command on the machine creates a new company, **Nile Delta Facilities (Demo)
 ### A. Put the seeder on the machine
 
 - [ ] **Get the seeder into the repository.** It is the folder `apps/api/src/demo/` (the command, `cli.ts`, and one file per section under `sections/`) plus one line in `apps/api/package.json`, `"demo-company"`. Merge it into the branch the machine runs (`main`, or `staging` on the test box). The API image builds everything under `apps/api/src`, so nothing else changes.
-- [ ] **Rebuild the API on the machine.** Pull the code and rebuild the API and worker images, the same way as a normal update (Stage 11, part D). If the machine pulls GitHub's images instead, wait for "Publish images" to go green, then `pull` and `up -d`.
+- [ ] **Rebuild the API on the machine.** Pull the code and rebuild the API and worker images, the same way as a normal update (Stage 11, part D). If the machine pulls GitHub's images instead: the test box waits for "Publish images" on `staging` to go green; production gets the seeder with the release that includes it, by putting that release's tag in `deploy/.env` (Stage 11, part D). Then `pull` and `up -d`.
 
 ```bash
 # machine (SSH session)

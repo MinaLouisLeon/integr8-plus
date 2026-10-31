@@ -42,3 +42,13 @@ Code signing, store submission and release channels. **Start the certificate wor
   application during v0.3, not here.
 - Over-the-air updates cover JavaScript only. A native module change still needs a store
   release — plan native changes into release trains.
+
+## Progress
+
+- **Release images (2026-10-31).** The version release calls `publish-images.yml` after the
+  release is published, so every release has `integr8-api:vX.Y.Z` and `integr8-web:vX.Y.Z`
+  (amd64 + arm64), and `latest` names the newest release only. Production pins
+  `API_IMAGE`/`WEB_IMAGE` to a release tag; `:main` and `:staging` are unreleased and for the
+  test box. A tag created with `github.token` never started the `v*` trigger, which is why no
+  release image existed before; "Publish images" can be run by hand with a tag for a release
+  that already exists (v1.2.2).

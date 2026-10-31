@@ -165,3 +165,18 @@ jobs:
             echo
             echo "[\`$TAG\`](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/tag/${TAG})"
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # The server images of this release: `integr8-api:vX.Y.Z` and
+  # `integr8-web:vX.Y.Z`, and `latest`, which production pins to. Called here
+  # rather than left to publish-images.yml's own `v*` trigger, because the tag
+  # the step above creates with github.token does not start other workflows.
+  # After the release, so an image never exists for a version that failed.
+  images:
+    name: Release images
+    needs: [preflight, publish]
+    uses: ./.github/workflows/publish-images.yml
+    permissions:
+      contents: read
+      packages: write
+    with:
+      tag: ${{ needs.preflight.outputs.tag }}
