@@ -57,13 +57,17 @@ export const DEFAULT_SETTINGS: Omit<TenantSettings, 'tenantId'> = {
   websiteUrl: null,
   appIconMediaId: null,
   appsEnabled: false,
-  timezone: 'UTC',
+  // Cairo time and a Sunday-to-Thursday week since 0057, matching the column
+  // defaults: the companies Integr8 serves are Egyptian, and a UTC Monday-to-
+  // Friday week ran their deadlines and maintenance through Fridays.
+  timezone: 'Africa/Cairo',
   // EGP since 0024 (CRM/ERP plan decision, 2026-10-11), matching the column default.
   currency: 'EGP',
   locale: 'en',
   workDayStarts: 8 * 60,
   workDayEnds: 17 * 60,
-  workingDays: [1, 2, 3, 4, 5],
+  // ISO weekday numbers: 7 is Sunday.
+  workingDays: [7, 1, 2, 3, 4],
   aiWebEnabled: false,
   aiDesktopEnabled: false,
   aiMobileEnabled: false,

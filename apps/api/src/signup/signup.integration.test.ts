@@ -142,7 +142,9 @@ describe('following the link', () => {
     // they have just created themselves would be absurd.
     expect(inside.members).toHaveLength(1);
     expect(inside.members[0]).toMatchObject({ role: 'owner', status: 'active', email: to });
-    expect(inside.settings.timezone).toBe('UTC');
+    // Cairo time and a Sunday-to-Thursday week unless somebody says otherwise (0057).
+    expect(inside.settings.timezone).toBe('Africa/Cairo');
+    expect(inside.settings.workingDays).toEqual([7, 1, 2, 3, 4]);
 
     // And they can sign in with the password they just chose.
     const signedIn = await api.app.inject({

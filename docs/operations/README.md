@@ -153,6 +153,15 @@ its own: the result lists every job it could not change and why.
 
 ## Scheduling: visits and the schedule (P25)
 
+**The company's calendar.** The schedule's shading, the visit-day certificate check,
+maintenance due dates, contract years and deadlines counted in working hours all read the
+company's timezone, working hours and working days from Settings (`PATCH /v1/settings`;
+hours are minutes from midnight, days are ISO numbers with Monday as 1). A new company starts
+on `Africa/Cairo`, 08:00 to 17:00, Sunday to Thursday (`[7, 1, 2, 3, 4]`), since migration
+0057; before that it started on UTC, Monday to Friday, which ran Egyptian companies' deadlines
+and maintenance through Fridays. Companies that existed before 0057 keep what they have: check
+their settings rather than assuming.
+
 A job can take several trips. Each is a **visit** (`work_order_visits`, migration 0051): a
 start, an end, notes, and the people from the job's crew who go
 (`work_order_visit_assignees`). The job keeps its own workflow; a visit is only `planned`,
