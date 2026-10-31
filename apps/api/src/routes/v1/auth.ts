@@ -1,7 +1,8 @@
-import { NotAMemberError } from '@integr8/auth';
+import { InvalidCredentialsError, NotAMemberError } from '@integr8/auth';
 import { toTenantId, type TenantId } from '@integr8/core';
 import { getPlatformDataSource, withTenant } from '@integr8/db';
 import { z } from 'zod';
+import { deliverPasswordChanged, deliverSignInCode } from '../../email/deliver.js';
 import { ApiError } from '../../http/errors.js';
 import { defineRoute, noSchema } from '../../http/routes.js';
 import { iso, signInResponseSchema, tokensSchema } from './schemas.js';
@@ -118,24 +119,72 @@ export const signInRoute = defineRoute({
   },
 });
 
+/**
+ * How long a sign-in code lasts, for the email to say so. Auth decides it
+ * (`GOTRUE_MAILER_OTP_EXP` in `deploy/compose.yml`, 900 seconds); keep the two
+ * together.
+ */
+const SIGN_IN_CODE_MINUTES = 15;
+
+/** The two languages an email can be in. A screen sends the one it is showing. */
+export const emailLocaleSchema = z
+  .enum(['en', 'ar'])
+  .optional()
+  .describe('The language for the email: the one the screen is showing. English when left out.');
+
 export const requestMagicLinkRoute = defineRoute({
   method: 'post',
   path: '/v1/auth/magic-link',
   operationId: 'requestMagicLink',
-  summary: 'Send a one-time sign-in link',
+  summary: 'Email a 6-digit sign-in code',
   description:
-    'Always succeeds, whether or not the address is known. An endpoint that answered differently for a known address would be a free customer-list oracle.',
+    'Emails a one-time 6-digit code that signs in through `/v1/auth/magic-link/complete`. Always answers 202 the same way, whether or not the address has an account: an endpoint that answered differently for a known address would be a free customer-list oracle. One code per address per minute and five per hour, counted the same for unknown addresses (429 `auth.rate_limited`). The path keeps its old name so nothing inside `/v1` changes; `redirectTo` is accepted and ignored, because the email carries a code and no link.',
   tags: ['authentication'],
   security: 'public',
   params: noSchema,
   query: noSchema,
   body: z.object({
     email: z.string().min(3).max(320),
-    redirectTo: z.url(),
+    redirectTo: z.url().optional().describe('Ignored. Kept so older clients still validate.'),
+    locale: emailLocaleSchema,
   }),
-  responses: { 202: { description: 'The request was accepted.' } },
+  responses: {
+    202: { description: 'The request was accepted.' },
+    429: { description: 'Too many codes asked for this address or from this network.' },
+  },
   handler: async ({ body }, context) => {
-    await context.services.signIn.sendMagicLink(body.email, body.redirectTo);
+    const request = {
+      email: body.email,
+      ipAddress: context.ipAddress,
+      userAgent: context.userAgent,
+    };
+    await context.services.signIn.checkSignInCodeLimits(request);
+
+    // The rest runs after the answer: looking the address up, asking Auth for a
+    // code and emailing it all take time an unknown address would not, and a
+    // stranger could time the difference. A failure is logged, never answered.
+    const { signIn, email } = context.services;
+    const { logger } = context;
+    void signIn
+      .issueSignInCode(request)
+      .then(async (issued) => {
+        if (issued !== undefined) {
+          await deliverSignInCode({
+            sender: email,
+            logger,
+            email: issued.email,
+            code: issued.code,
+            minutes: SIGN_IN_CODE_MINUTES,
+            locale: body.locale ?? 'en',
+          });
+        }
+      })
+      .catch((error: unknown) => {
+        logger.error('Sign-in code not sent', {
+          reason: error instanceof Error ? error.message : String(error),
+        });
+      });
+
     // 202, not 200: nothing is asserted about whether an email was sent.
     return { status: 202, body: {} };
   },
@@ -145,7 +194,9 @@ export const completeMagicLinkRoute = defineRoute({
   method: 'post',
   path: '/v1/auth/magic-link/complete',
   operationId: 'completeMagicLink',
-  summary: 'Exchange a magic-link token for a session',
+  summary: 'Sign in with an emailed 6-digit code',
+  description:
+    '`token` is the 6-digit code from the email. A wrong code counts towards the account lockout exactly as a wrong password does. The session that results lets Change password go without the current password for fifteen minutes.',
   tags: ['authentication'],
   security: 'public',
   params: noSchema,
@@ -160,20 +211,21 @@ export const completeMagicLinkRoute = defineRoute({
   }),
   responses: {
     200: { description: 'Signed in.', schema: signInResponseSchema },
-    401: { description: 'The link is invalid or has expired.' },
+    401: { description: 'The code is wrong, spent or has expired.' },
     403: {
       description:
         'The app was built for one company and this account is not in it (`wrong_company`).',
     },
+    423: { description: 'Too many failed attempts; the address is locked.' },
   },
   handler: async ({ body }, context) => {
     const company = await lockedCompany(body.companySlug);
     const chosen =
       company?.tenantId ?? (body.tenantId === undefined ? undefined : toTenantId(body.tenantId));
     const result = await signInLocked(company, () =>
-      context.services.signIn.completeMagicLink({
+      context.services.signIn.completeSignInCode({
         email: body.email,
-        token: body.token,
+        code: body.token,
         clientApp: body.clientApp,
         ...(chosen === undefined ? {} : { tenantId: chosen }),
         deviceLabel: body.deviceLabel ?? null,
@@ -298,6 +350,89 @@ export const signOutRoute = defineRoute({
   },
 });
 
+export const changePasswordRoute = defineRoute({
+  method: 'post',
+  path: '/v1/me/password',
+  operationId: 'changePassword',
+  summary: 'Change your password',
+  description:
+    'Needs `currentPassword`, unless this session began with an emailed sign-in code in the last fifteen minutes — the way back in for somebody who has forgotten it. Without either the answer is 403 `auth.current_password_required`; a wrong current password counts towards the account lockout. Every other session this person has, in every company, is signed out, offline access on phones included; this one stays. The address is emailed to say the password was changed.',
+  tags: ['authentication'],
+  security: 'authenticated',
+  // Your own password is not the company's data, and a company that owes money
+  // must not keep somebody on a password they want rid of.
+  allowedWhenReadOnly: true,
+  idempotent: true,
+  params: noSchema,
+  query: noSchema,
+  body: z.object({
+    currentPassword: z.string().min(1).max(200).optional(),
+    newPassword: z.string().min(1).max(200),
+    locale: emailLocaleSchema,
+  }),
+  responses: {
+    200: {
+      description: 'Changed.',
+      schema: z.object({
+        signedOutElsewhere: z
+          .number()
+          .int()
+          .describe('Other sessions signed out, across every company.'),
+        emailed: z.boolean().describe('Whether the "password changed" email went.'),
+      }),
+    },
+    403: {
+      description:
+        'The current password is wrong (`auth.current_password_wrong`); none was given and there was no recent code sign-in (`auth.current_password_required`); or impersonating (`auth.impersonation_denied`).',
+    },
+    422: { description: 'The new password is too weak (`auth.weak_password`).' },
+    423: { description: 'Too many failed attempts; the address is locked.' },
+  },
+  handler: async ({ body }, context) => {
+    let result;
+    try {
+      result = await context.services.passwords.changePassword({
+        principal: context.principal,
+        currentPassword: body.currentPassword,
+        newPassword: body.newPassword,
+        ipAddress: context.ipAddress,
+        userAgent: context.userAgent,
+      });
+    } catch (error) {
+      // Not 401: every client reads a 401 as "your token has expired", refreshes
+      // and sends the request again, which would count a mistyped password
+      // twice towards the lockout and say nothing useful to the person.
+      if (error instanceof InvalidCredentialsError) {
+        throw new ApiError(
+          403,
+          'auth.current_password_wrong',
+          'The current password is not right.',
+        );
+      }
+      throw error;
+    }
+
+    // After the change, and never able to undo it: a failed send is logged by
+    // `deliver` and reported back, nothing more.
+    const tenantId = context.principal.tenantId;
+    const locale =
+      body.locale ?? (await withTenant(tenantId, async (tx) => (await tx.settings.get()).locale));
+    const delivery = await deliverPasswordChanged({
+      sender: context.services.email,
+      logger: context.logger,
+      email: result.email,
+      changedAt: result.changedAt,
+      locale: locale === 'ar' ? 'ar' : 'en',
+      tenantId,
+    });
+
+    return {
+      status: 200,
+      body: { signedOutElsewhere: result.revoked, emailed: delivery.sent },
+    };
+  },
+});
+
 export const authRoutes = [
   signInRoute,
   requestMagicLinkRoute,
@@ -305,6 +440,7 @@ export const authRoutes = [
   refreshRoute,
   switchTenantRoute,
   signOutRoute,
+  changePasswordRoute,
 ];
 
 // ---------------------------------------------------------------------------

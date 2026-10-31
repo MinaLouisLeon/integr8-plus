@@ -17,8 +17,17 @@ import type { EmailMessage } from './sender.js';
  *   disclose.
  */
 
+/** The two languages a message can be written in. Most are English only, for now. */
+export type EmailLocale = 'en' | 'ar';
+
 /** Wraps the body in the least markup that renders sensibly everywhere. */
-function layout(title: string, paragraphs: readonly string[], action?: Action): string {
+function layout(
+  title: string,
+  paragraphs: readonly string[],
+  action?: Action,
+  locale: EmailLocale = 'en',
+  highlight?: string,
+): string {
   const body = paragraphs.map((text) => `<p style="${P}">${escapeHtml(text)}</p>`).join('\n      ');
 
   const button =
@@ -33,12 +42,22 @@ function layout(title: string, paragraphs: readonly string[], action?: Action): 
         <span style="word-break: break-all">${escapeHtml(action.url)}</span>
       </p>`;
 
+  // A code is shown large and on its own line, isolated left-to-right, so it
+  // reads the same way inside Arabic text and is easy to copy.
+  const code =
+    highlight === undefined
+      ? ''
+      : `<p style="${CODE}" dir="ltr">${escapeHtml(highlight)}</p>
+      `;
+
+  const direction = locale === 'ar' ? 'rtl' : 'ltr';
+
   return `<!doctype html>
-<html>
+<html lang="${locale}" dir="${direction}">
   <body style="${BODY}">
-    <div style="${CARD}">
+    <div style="${CARD}" dir="${direction}">
       <h1 style="${H1}">${escapeHtml(title)}</h1>
-      ${body}${button}
+      ${code}${body}${button}
     </div>
   </body>
 </html>`;
@@ -56,6 +75,8 @@ const CARD = 'max-width:520px;margin:0 auto;background:#fff;border-radius:8px;pa
 const H1 = 'margin:0 0 16px;font-size:20px;line-height:1.3;color:#18181b;';
 const P = 'margin:0 0 16px;font-size:15px;line-height:1.6;color:#3f3f46;';
 const SMALL = 'margin:0 0 16px;font-size:13px;line-height:1.6;color:#71717a;';
+const CODE =
+  'margin:0 0 16px;font-size:32px;line-height:1.2;letter-spacing:6px;font-weight:700;color:#18181b;font-family:ui-monospace,monospace;';
 const BUTTON =
   'display:inline-block;padding:10px 18px;border-radius:6px;background:#18181b;color:#fff;text-decoration:none;font-weight:600;';
 
@@ -84,8 +105,12 @@ function compose(input: {
   title: string;
   paragraphs: readonly string[];
   action?: Action;
+  locale?: EmailLocale;
+  /** Shown large above the paragraphs, and first in the text part: a code. */
+  highlight?: string;
 }): EmailMessage {
-  const lines = [...input.paragraphs];
+  const lines = input.highlight === undefined ? [] : [input.highlight];
+  lines.push(...input.paragraphs);
   if (input.action !== undefined) {
     lines.push(`${input.action.label}:`, input.action.url);
   }
@@ -94,8 +119,9 @@ function compose(input: {
     to: input.to,
     subject: input.subject,
     text: lines.join('\n\n'),
-    html: layout(input.title, input.paragraphs, input.action),
+    html: layout(input.title, input.paragraphs, input.action, input.locale, input.highlight),
     ...(input.action === undefined ? {} : { actionUrl: input.action.url }),
+    ...(input.highlight === undefined ? {} : { code: input.highlight }),
   };
 }
 
@@ -124,6 +150,86 @@ export function invitationEmail(input: {
     ],
     action: { label: 'Accept the invitation', url: input.acceptUrl },
   });
+}
+
+/**
+ * A one-time code to sign in with (P36).
+ *
+ * A code and no link: nothing to open, so no deep-link set-up in the desktop
+ * or phone apps, and nothing for a phishing message to imitate with a link of
+ * its own. Says how long it lasts and what to do if it was not asked for,
+ * because it arrives at an address anybody can type into a sign-in screen.
+ */
+export function signInCodeEmail(input: {
+  to: string;
+  code: string;
+  minutes: number;
+  locale: EmailLocale;
+}): EmailMessage {
+  const minutes = String(input.minutes);
+  return input.locale === 'ar'
+    ? compose({
+        to: input.to,
+        locale: 'ar',
+        highlight: input.code,
+        subject: `رمز تسجيل الدخول إلى Integr8 Plus: ${input.code}`,
+        title: 'رمز تسجيل الدخول',
+        paragraphs: [
+          'أدخل هذا الرمز في شاشة تسجيل الدخول لتسجيل الدخول إلى Integr8 Plus.',
+          `ينتهي الرمز بعد ${minutes} دقيقة، ولا يمكن استخدامه إلا مرة واحدة.`,
+          'إذا لم تطلب هذا الرمز، فتجاهل هذه الرسالة. لا يمكن لأحد تسجيل الدخول به دون الوصول إلى بريدك.',
+        ],
+      })
+    : compose({
+        to: input.to,
+        locale: 'en',
+        highlight: input.code,
+        subject: `Your Integr8 Plus sign-in code: ${input.code}`,
+        title: 'Your sign-in code',
+        paragraphs: [
+          'Enter this code on the sign-in screen to sign in to Integr8 Plus.',
+          `It lasts ${minutes} minutes and works once.`,
+          'If you did not ask for this, ignore this email. Nobody can use the code without access to your mailbox.',
+        ],
+      });
+}
+
+/**
+ * The password on an account was changed (P36).
+ *
+ * Sent whoever changed it, because the one person who most needs to hear is
+ * the one who did not. Says when, and who to ask: a company user's way back in
+ * goes through whoever runs their company, not through us.
+ */
+export function passwordChangedEmail(input: {
+  to: string;
+  changedAt: Date;
+  locale: EmailLocale;
+}): EmailMessage {
+  const when = input.changedAt.toISOString().replace('T', ' ').slice(0, 16);
+  return input.locale === 'ar'
+    ? compose({
+        to: input.to,
+        locale: 'ar',
+        subject: 'تم تغيير كلمة المرور في Integr8 Plus',
+        title: 'تم تغيير كلمة المرور',
+        paragraphs: [
+          `تم تغيير كلمة المرور لحسابك في Integr8 Plus في ${when} (بالتوقيت العالمي UTC).`,
+          'تم تسجيل الخروج من جميع أجهزتك الأخرى.',
+          'إذا لم تكن أنت من غيّرها، فاطلب المساعدة فورًا من المسؤول عن حساب شركتك.',
+        ],
+      })
+    : compose({
+        to: input.to,
+        locale: 'en',
+        subject: 'Your Integr8 Plus password was changed',
+        title: 'Your password was changed',
+        paragraphs: [
+          `The password for your Integr8 Plus account was changed at ${when} UTC.`,
+          'Every other device you were signed in on has been signed out.',
+          'If this was not you, ask whoever administers your company for help straight away.',
+        ],
+      });
 }
 
 /**

@@ -656,6 +656,43 @@ export function emailProblems(config: ApiConfig): string[] {
 }
 
 /**
+ * Where the self-hosted Supabase Auth container is, and the key for it (P36),
+ * or what is wrong.
+ *
+ * Read from the environment directly rather than through the schema, because
+ * the integration suites replace the identity provider and need neither.
+ *
+ * `SUPABASE_URL` was the Supabase cloud project's address, to which the
+ * provider added `/auth/v1`. The container serves at its root, so the variable
+ * was renamed rather than reused: an old env file that still sets it would
+ * otherwise point the API at a cloud project, or at a path that does not
+ * exist, and every sign-in would fail with nothing in the log saying why.
+ */
+export function supabaseAuthSettings(
+  env: NodeJS.ProcessEnv,
+): { settings: { url: string; serviceRoleKey: string } } | { problems: string[] } {
+  const problems: string[] = [];
+  if ((env.SUPABASE_URL ?? '').trim() !== '') {
+    problems.push(
+      'SUPABASE_URL is no longer read. Set SUPABASE_AUTH_URL to the self-hosted Auth container (http://auth:9999 in deploy/compose.yml) and remove SUPABASE_URL.',
+    );
+  }
+  const url = (env.SUPABASE_AUTH_URL ?? '').trim();
+  const serviceRoleKey = (env.SUPABASE_SERVICE_ROLE_KEY ?? '').trim();
+  if (url === '') {
+    problems.push('SUPABASE_AUTH_URL is not set.');
+  } else if (!URL.canParse(url)) {
+    problems.push(`SUPABASE_AUTH_URL is not an address: "${url}".`);
+  }
+  if (serviceRoleKey === '') {
+    problems.push(
+      'SUPABASE_SERVICE_ROLE_KEY is not set. "pnpm --filter @integr8/auth keygen" prints one.',
+    );
+  }
+  return problems.length > 0 ? { problems } : { settings: { url, serviceRoleKey } };
+}
+
+/**
  * What is missing for starting company app builds from the dashboard, if
  * anything. Checked at load, like email: a switch that quietly starts nothing
  * is the problem this setting exists to fix.

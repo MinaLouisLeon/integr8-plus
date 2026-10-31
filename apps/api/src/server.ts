@@ -580,6 +580,7 @@ function statusForAuthError(code: string): number {
       return 401;
     case 'auth.not_a_member':
     case 'auth.impersonation_denied':
+    case 'auth.current_password_required':
       return 403;
     case 'auth.invitation_invalid':
     case 'auth.weak_password':

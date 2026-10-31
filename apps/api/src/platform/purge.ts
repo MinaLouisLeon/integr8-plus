@@ -1,3 +1,4 @@
+import type { IdentityProvider } from '@integr8/auth';
 import { getPlatformDataSource } from '@integr8/db';
 import type { Logger } from '../http/logger.js';
 import type { MediaStorage } from '../media/storage.js';
@@ -27,6 +28,12 @@ import { purgeTenantStorage } from '../media/tenant-storage.js';
  * The row deletion itself is `purge_tenant()` in the database, which refuses
  * unless a deletion is scheduled and due — so an accidental call here deletes
  * nothing.
+ *
+ * Third, the people (P36): each member's sign-in account is deleted from Auth
+ * unless they still belong to another company. Their ids are read before the
+ * rows go and written to `identity_deletions`, because after the purge nothing
+ * else remembers who they were; a delete that fails stays there and is tried
+ * again on the next run.
  */
 
 export const PURGE_QUEUE = 'tenant.purge';
@@ -38,6 +45,12 @@ export interface PurgeResult {
   purged: boolean;
 }
 
+interface PurgeDeps {
+  media: MediaStorage;
+  identity: IdentityProvider;
+  logger: Logger;
+}
+
 /**
  * Purges every company whose cooling-off has passed.
  *
@@ -45,11 +58,7 @@ export interface PurgeResult {
  * be reliable is that a due deletion eventually runs — including one whose job
  * row was lost with the process that held it.
  */
-export async function purgeDueTenants(input: {
-  media: MediaStorage;
-  logger: Logger;
-  now?: Date;
-}): Promise<PurgeResult[]> {
+export async function purgeDueTenants(input: PurgeDeps & { now?: Date }): Promise<PurgeResult[]> {
   const platform = getPlatformDataSource();
   const due = await platform.lifecycle.due(input.now ?? new Date());
   const results: PurgeResult[] = [];
@@ -58,14 +67,18 @@ export async function purgeDueTenants(input: {
     results.push(await purgeOne(deletion.tenantId, input));
   }
 
+  // Every run, not only one that purged something: this is the retry for a
+  // delete that failed last time.
+  await deleteOrphanedIdentities(input);
+
   return results;
 }
 
-export async function purgeOne(
-  tenantId: string,
-  input: { media: MediaStorage; logger: Logger },
-): Promise<PurgeResult> {
+export async function purgeOne(tenantId: string, input: PurgeDeps): Promise<PurgeResult> {
   const platform = getPlatformDataSource();
+
+  // Before anything is removed: afterwards there is nothing left to read it from.
+  const people = await platform.identityDeletions.membersOf(tenantId);
 
   const storage = await purgeTenantStorage(input.media, tenantId);
   input.logger.info('Company bucket emptied and removed', {
@@ -77,6 +90,9 @@ export async function purgeOne(
   await platform.lifecycle.purge(tenantId);
   input.logger.info('Company rows removed', { tenantId });
 
+  await platform.identityDeletions.queue(people);
+  const accounts = await deleteOrphanedIdentities(input);
+
   // After the company is gone, not before: an entry naming a company that still
   // exists would be a lie for however long the purge took. The platform audit
   // log has no foreign key to `tenants` precisely so this can be written.
@@ -87,8 +103,64 @@ export async function purgeOne(
     tenantId,
     targetKind: 'tenant',
     targetId: tenantId,
-    metadata: { bucket: storage.bucket, files: storage.files },
+    metadata: {
+      bucket: storage.bucket,
+      files: storage.files,
+      people: people.length,
+      signInAccountsDeleted: accounts.deleted,
+      signInAccountsKept: accounts.kept,
+      signInAccountsPending: accounts.failed,
+    },
   });
 
   return { tenantId, bucket: storage.bucket, files: storage.files, purged: true };
+}
+
+export interface IdentityCleanup {
+  /** Accounts deleted from Auth. */
+  deleted: number;
+  /** Queued, but the person belongs to a company again, so the account stays. */
+  kept: number;
+  /** Still pending: Auth refused or could not be reached. */
+  failed: number;
+}
+
+/**
+ * Works through `identity_deletions`: deletes each queued account that no
+ * longer belongs to any company, and keeps the rest.
+ *
+ * Membership is checked at the moment of each delete, not when the id was
+ * queued, so somebody invited to another company while a delete kept failing
+ * keeps their account. A `404` from Auth counts as done.
+ */
+export async function deleteOrphanedIdentities(input: {
+  identity: IdentityProvider;
+  logger: Logger;
+}): Promise<IdentityCleanup> {
+  const deletions = getPlatformDataSource().identityDeletions;
+  const outcome: IdentityCleanup = { deleted: 0, kept: 0, failed: 0 };
+
+  for (const pending of await deletions.pending()) {
+    if (await deletions.hasMembership(pending.userId)) {
+      await deletions.markDone(pending.userId);
+      outcome.kept += 1;
+      continue;
+    }
+    try {
+      await input.identity.deleteIdentity(pending.userId);
+      await deletions.markDone(pending.userId);
+      outcome.deleted += 1;
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      await deletions.markFailed(pending.userId, reason);
+      outcome.failed += 1;
+      // The id is not logged: on its own it says nothing, and the row says it.
+      input.logger.error('Sign-in account not deleted; will retry on the next purge run', {
+        reason,
+        attempts: pending.attempts + 1,
+      });
+    }
+  }
+
+  return outcome;
 }

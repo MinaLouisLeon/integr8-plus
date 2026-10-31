@@ -308,8 +308,8 @@
     "/v1/auth/magic-link": {
       "post": {
         "operationId": "requestMagicLink",
-        "summary": "Send a one-time sign-in link",
-        "description": "Always succeeds, whether or not the address is known. An endpoint that answered differently for a known address would be a free customer-list oracle.",
+        "summary": "Email a 6-digit sign-in code",
+        "description": "Emails a one-time 6-digit code that signs in through `/v1/auth/magic-link/complete`. Always answers 202 the same way, whether or not the address has an account: an endpoint that answered differently for a known address would be a free customer-list oracle. One code per address per minute and five per hour, counted the same for unknown addresses (429 `auth.rate_limited`). The path keeps its old name so nothing inside `/v1` changes; `redirectTo` is accepted and ignored, because the email carries a code and no link.",
         "tags": [
           "authentication"
         ],
@@ -326,13 +326,21 @@
                     "maxLength": 320
                   },
                   "redirectTo": {
+                    "description": "Ignored. Kept so older clients still validate.",
                     "type": "string",
                     "format": "uri"
+                  },
+                  "locale": {
+                    "description": "The language for the email: the one the screen is showing. English when left out.",
+                    "type": "string",
+                    "enum": [
+                      "en",
+                      "ar"
+                    ]
                   }
                 },
                 "required": [
-                  "email",
-                  "redirectTo"
+                  "email"
                 ]
               }
             }
@@ -353,14 +361,7 @@
             }
           },
           "429": {
-            "description": "Rate limit exceeded.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "description": "Too many codes asked for this address or from this network."
           },
           "500": {
             "description": "Something went wrong on our side.",
@@ -388,7 +389,8 @@
     "/v1/auth/magic-link/complete": {
       "post": {
         "operationId": "completeMagicLink",
-        "summary": "Exchange a magic-link token for a session",
+        "summary": "Sign in with an emailed 6-digit code",
+        "description": "`token` is the 6-digit code from the email. A wrong code counts towards the account lockout exactly as a wrong password does. The session that results lets Change password go without the current password for fifteen minutes.",
         "tags": [
           "authentication"
         ],
@@ -546,7 +548,7 @@
             }
           },
           "401": {
-            "description": "The link is invalid or has expired."
+            "description": "The code is wrong, spent or has expired."
           },
           "403": {
             "description": "The app was built for one company and this account is not in it (`wrong_company`)."
@@ -560,6 +562,9 @@
                 }
               }
             }
+          },
+          "423": {
+            "description": "Too many failed attempts; the address is locked."
           },
           "429": {
             "description": "Rate limit exceeded.",
@@ -988,6 +993,154 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/me/password": {
+      "post": {
+        "operationId": "changePassword",
+        "summary": "Change your password",
+        "description": "Needs `currentPassword`, unless this session began with an emailed sign-in code in the last fifteen minutes — the way back in for somebody who has forgotten it. Without either the answer is 403 `auth.current_password_required`; a wrong current password counts towards the account lockout. Every other session this person has, in every company, is signed out, offline access on phones included; this one stays. The address is emailed to say the password was changed.",
+        "tags": [
+          "authentication"
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 255
+            },
+            "description": "A client-generated key. Replaying a request with the same key returns the original response and repeats no effect."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "currentPassword": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "newPassword": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "locale": {
+                    "description": "The language for the email: the one the screen is showing. English when left out.",
+                    "type": "string",
+                    "enum": [
+                      "en",
+                      "ar"
+                    ]
+                  }
+                },
+                "required": [
+                  "newPassword"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Changed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "signedOutElsewhere": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991,
+                      "description": "Other sessions signed out, across every company."
+                    },
+                    "emailed": {
+                      "type": "boolean",
+                      "description": "Whether the \"password changed\" email went."
+                    }
+                  },
+                  "required": [
+                    "signedOutElsewhere",
+                    "emailed"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The current password is wrong (`auth.current_password_wrong`); none was given and there was no recent code sign-in (`auth.current_password_required`); or impersonating (`auth.impersonation_denied`)."
+          },
+          "409": {
+            "description": "The idempotency key is in use by a request still running, or was reused with a different body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The new password is too weak (`auth.weak_password`)."
+          },
+          "423": {
+            "description": "Too many failed attempts; the address is locked."
           },
           "429": {
             "description": "Rate limit exceeded.",

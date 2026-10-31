@@ -29,7 +29,7 @@ import type { JobHandlers } from './worker.js';
  * this process a handler it does not have.
  */
 export const buildJobHandlers = (
-  services: Pick<Services, 'media' | 'geocoder' | 'push' | 'pdf' | 'eta'>,
+  services: Pick<Services, 'media' | 'geocoder' | 'push' | 'pdf' | 'eta' | 'identity'>,
   config: ApiConfig,
 ): JobHandlers => ({
   [WORK_ORDER_PUSH_QUEUE]: async (payload, context) => {
@@ -206,6 +206,7 @@ export const buildJobHandlers = (
     // payload would make a purge something a malformed row could aim.
     const outcome = await purgeOne(context.tenantId, {
       media: services.media,
+      identity: services.identity,
       logger: context.logger,
     });
     context.logger.info('Purge job finished', { jobId: context.jobId, ...outcome });

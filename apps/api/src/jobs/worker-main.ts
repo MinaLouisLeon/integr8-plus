@@ -77,7 +77,11 @@ async function main(): Promise<void> {
       // on a queued job, because what has to be reliable is that a due deletion
       // eventually runs — including one whose job row went down with the
       // process that held it.
-      const purged = await purgeDueTenants({ media: services.media, logger });
+      const purged = await purgeDueTenants({
+        media: services.media,
+        identity: services.identity,
+        logger,
+      });
       if (purged.length > 0) {
         logger.info('Scheduled deletions completed', { companies: purged.length });
       }

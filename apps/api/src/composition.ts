@@ -6,14 +6,21 @@ import {
   loadSigningKey,
   loadVerificationKeys,
   type PasswordPolicy,
+  PasswordService,
   PlatformSessionService,
   SessionService,
   SignInService,
   SupabaseIdentityProvider,
   TokenService,
 } from '@integr8/auth';
-import { configureDatabase, loadDatabaseConfig } from '@integr8/db';
-import { type ApiConfig, corsOrigins, publicUrl, r2Settings } from './config.js';
+import { configureDatabase, getPlatformDataSource, loadDatabaseConfig } from '@integr8/db';
+import {
+  type ApiConfig,
+  corsOrigins,
+  publicUrl,
+  r2Settings,
+  supabaseAuthSettings,
+} from './config.js';
 import { LocalDiskStorage } from './media/local-disk.js';
 import { FakeGeocoder, type Geocoder, MapboxGeocoder } from './geo/geocoder.js';
 import {
@@ -57,6 +64,8 @@ export interface Services {
   tokens: TokenService;
   sessions: SessionService;
   signIn: SignInService;
+  /** Change password (P36): proof, the policy, and signing out every other device. */
+  passwords: PasswordService;
   invitations: InvitationService;
   impersonation: ImpersonationService;
   /** Super admins signed in to the dashboard (P15). No company; see the platform routes. */
@@ -115,7 +124,7 @@ export interface BuildServicesOptions {
   /**
    * Replaces the identity provider.
    *
-   * Used by the integration suite, which has no Supabase project and does not
+   * Used by the integration suite, which runs no Auth container and does not
    * need one: everything worth testing in this service happens after a
    * credential has been accepted.
    */
@@ -142,6 +151,14 @@ export async function buildServices(options: BuildServicesOptions): Promise<Serv
     sessions,
     identity,
     signIn: new SignInService({ identity, sessions, config: authConfig }),
+    passwords: new PasswordService({
+      identity,
+      sessions,
+      config: authConfig,
+      // Across companies, which only the platform connection can see.
+      companiesWithSessions: (userId) =>
+        getPlatformDataSource().tenants.withLiveSessionsFor(userId),
+    }),
     invitations: new InvitationService({
       identity,
       sessions,
@@ -260,26 +277,26 @@ export function buildMediaStorage(config: ApiConfig): MediaStorage {
 }
 
 /**
- * Builds the Supabase identity provider, or refuses to.
+ * Builds the identity provider for the self-hosted Supabase Auth container, or
+ * refuses to.
  *
  * There is no silent fallback to a fake. A service that quietly accepts any
  * password when a variable is missing is a service that will do so in
  * production on the day somebody mistypes a secret name.
  */
 function buildIdentityProvider(config: ApiConfig, env: NodeJS.ProcessEnv): IdentityProvider {
-  const url = env.SUPABASE_URL;
-  const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (url === undefined || url === '' || serviceRoleKey === undefined || serviceRoleKey === '') {
+  const auth = supabaseAuthSettings(env);
+  if ('problems' in auth) {
     throw new Error(
       [
-        'SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required to serve sign-in.',
+        'Sign-in cannot be served:',
+        ...auth.problems.map((problem) => `  ${problem}`),
         '',
         `APP_ENV is "${config.APP_ENV}".`,
-        'See docs/auth/README.md and docs/database/runbook-supabase-setup.md.',
+        'See docs/auth/self-hosted-auth.md.',
       ].join('\n'),
     );
   }
 
-  return new SupabaseIdentityProvider({ url, serviceRoleKey });
+  return new SupabaseIdentityProvider(auth.settings);
 }

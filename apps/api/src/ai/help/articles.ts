@@ -1631,8 +1631,12 @@ Modules such as CRM, inventory or finance, and the AI assistant, are enabled by 
     en: {
       title: 'Signing in, locked accounts, invitations and devices',
       summary:
-        'What to do when you cannot sign in, a forgotten password, a locked account, an invitation link that no longer works, an expired session and signed-in devices.',
-      body: `Sign in with the email address your company invited and your password. The same message, that the address and password did not match, is shown for a wrong password, an unknown address and an account with no company, on purpose. Check the address and try again. If you have forgotten your password, choose Email me a sign-in link: if the address has an account, a link arrives by email and signs you in without a password. If nothing arrives, check the spam folder, make sure you are using the address you were invited with, and ask whoever administers your company to confirm it.
+        'What to do when you cannot sign in, a forgotten password (an emailed sign-in code), changing your password, a locked account, an invitation link that no longer works, an expired session and signed-in devices.',
+      body: `Sign in with the email address your company invited and your password. The same message, that the address and password did not match, is shown for a wrong password, an unknown address and an account with no company, on purpose. Check the address and try again.
+
+If you have forgotten your password, type your email address and choose Email me a sign-in code. If the address has an account, an email arrives with a 6-digit code; enter it on the next screen to sign in. The code lasts 15 minutes and works once, and Send a new code replaces it. If nothing arrives, check the spam folder, make sure you are using the address you were invited with, and ask whoever administers your company to confirm it. You can ask for one code a minute and five an hour.
+
+To set a new password, open the account menu and choose Change password. You need your current password, except in the 15 minutes after signing in with an emailed code, when the screen does not ask for it. Changing your password signs out every other device you are signed in on, in every company, including a phone working offline, and emails your address to say the password was changed. If you get that email and did not change it, ask whoever administers your company for help at once.
 
 After too many failed attempts the account is locked for a few minutes; wait and try again. Too many requests in a short time are also slowed down.
 
@@ -1649,6 +1653,9 @@ If the company’s account is read-only because of an outstanding payment, signi
         'cannot sign in',
         'forgot password',
         'reset password',
+        'change password',
+        'sign-in code',
+        'email code',
         'locked',
         'too many attempts',
         'invitation',
@@ -1663,7 +1670,11 @@ If the company’s account is read-only because of an outstanding payment, signi
       title: 'تسجيل الدخول والحسابات المقفلة والدعوات والأجهزة',
       summary:
         'ما تفعله عندما يتعذر تسجيل الدخول، أو تنسى كلمة المرور، أو يُقفل الحساب، أو يتوقف رابط الدعوة، أو تنتهي الجلسة، وعرض الأجهزة المسجلة الدخول.',
-      body: `سجّل الدخول بعنوان البريد الإلكتروني الذي دعتك إليه شركتك وكلمة مرورك. تظهر الرسالة نفسها، وهي أن العنوان وكلمة المرور غير متطابقين، لكلمة مرور خاطئة أو عنوان غير معروف أو حساب بلا شركة، وذلك عن قصد. تحقق من العنوان وحاول مجددًا. وإذا نسيت كلمة المرور فاختر «إرسال رابط تسجيل الدخول إلى بريدي الإلكتروني»: إذا كان للعنوان حساب، يصلك رابط بالبريد ويسجّل دخولك دون كلمة مرور. وإن لم يصل شيء، فراجع مجلد الرسائل غير المرغوبة، وتأكد من استخدام العنوان الذي دُعيت به، واطلب من مسؤول شركتك التأكد منه.
+      body: `سجّل الدخول بعنوان البريد الإلكتروني الذي دعتك إليه شركتك وكلمة مرورك. تظهر الرسالة نفسها، وهي أن العنوان وكلمة المرور غير متطابقين، لكلمة مرور خاطئة أو عنوان غير معروف أو حساب بلا شركة، وذلك عن قصد. تحقق من العنوان وحاول مجددًا.
+
+إذا نسيت كلمة المرور، فاكتب عنوان بريدك الإلكتروني واختر «أرسل لي رمز تسجيل الدخول بالبريد الإلكتروني». إذا كان للعنوان حساب، تصلك رسالة فيها رمز من 6 أرقام؛ أدخله في الشاشة التالية لتسجيل الدخول. صلاحية الرمز 15 دقيقة ويعمل مرة واحدة، و«أرسل رمزًا جديدًا» يستبدله. وإن لم يصل شيء، فراجع مجلد الرسائل غير المرغوبة، وتأكد من استخدام العنوان الذي دُعيت به، واطلب من مسؤول شركتك التأكد منه. يمكنك طلب رمز واحد كل دقيقة وخمسة في الساعة.
+
+لتعيين كلمة مرور جديدة، افتح قائمة الحساب واختر «تغيير كلمة المرور». تحتاج إلى كلمة المرور الحالية، إلا خلال الدقائق الخمس عشرة التي تلي تسجيل الدخول برمز البريد الإلكتروني، إذ لا تطلبها الشاشة. ويؤدي تغيير كلمة المرور إلى تسجيل خروجك من جميع أجهزتك الأخرى في كل الشركات، بما فيها هاتف يعمل دون اتصال، وتصل إلى بريدك رسالة تخبرك بتغيير كلمة المرور. وإذا وصلتك هذه الرسالة ولم تغيّرها أنت، فاطلب المساعدة فورًا من مسؤول شركتك.
 
 بعد محاولات فاشلة كثيرة يُقفل الحساب بضع دقائق؛ فانتظر وحاول مجددًا. وتُبطَّأ أيضًا الطلبات الكثيرة في وقت قصير.
 
@@ -1680,6 +1691,8 @@ If the company’s account is read-only because of an outstanding payment, signi
         'لا أستطيع الدخول',
         'نسيت كلمة المرور',
         'كلمة السر',
+        'تغيير كلمة المرور',
+        'رمز تسجيل الدخول',
         'حساب مقفل',
         'محاولات كثيرة',
         'دعوة',

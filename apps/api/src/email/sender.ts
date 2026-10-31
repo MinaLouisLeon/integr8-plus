@@ -40,6 +40,11 @@ export interface EmailMessage {
    * link that reaches nowhere makes signing up impossible to test.
    */
   actionUrl?: string;
+  /**
+   * A one-time code the message carries (P36), logged under the same rule as
+   * `actionUrl`: for the recording sender only.
+   */
+  code?: string;
 }
 
 export type EmailResult =

@@ -34,8 +34,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Send a one-time sign-in link
-         * @description Always succeeds, whether or not the address is known. An endpoint that answered differently for a known address would be a free customer-list oracle.
+         * Email a 6-digit sign-in code
+         * @description Emails a one-time 6-digit code that signs in through `/v1/auth/magic-link/complete`. Always answers 202 the same way, whether or not the address has an account: an endpoint that answered differently for a known address would be a free customer-list oracle. One code per address per minute and five per hour, counted the same for unknown addresses (429 `auth.rate_limited`). The path keeps its old name so nothing inside `/v1` changes; `redirectTo` is accepted and ignored, because the email carries a code and no link.
          */
         post: operations["requestMagicLink"];
         delete?: never;
@@ -53,7 +53,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Exchange a magic-link token for a session */
+        /**
+         * Sign in with an emailed 6-digit code
+         * @description `token` is the 6-digit code from the email. A wrong code counts towards the account lockout exactly as a wrong password does. The session that results lets Change password go without the current password for fifteen minutes.
+         */
         post: operations["completeMagicLink"];
         delete?: never;
         options?: never;
@@ -112,6 +115,26 @@ export interface paths {
         put?: never;
         /** End this session, or every session */
         post: operations["signOut"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Change your password
+         * @description Needs `currentPassword`, unless this session began with an emailed sign-in code in the last fifteen minutes — the way back in for somebody who has forgotten it. Without either the answer is 403 `auth.current_password_required`; a wrong current password counts towards the account lockout. Every other session this person has, in every company, is signed out, offline access on phones included; this one stays. The address is emailed to say the password was changed.
+         */
+        post: operations["changePassword"];
         delete?: never;
         options?: never;
         head?: never;
@@ -8573,8 +8596,16 @@ export interface operations {
             content: {
                 "application/json": {
                     email: string;
-                    /** Format: uri */
-                    redirectTo: string;
+                    /**
+                     * Format: uri
+                     * @description Ignored. Kept so older clients still validate.
+                     */
+                    redirectTo?: string;
+                    /**
+                     * @description The language for the email: the one the screen is showing. English when left out.
+                     * @enum {string}
+                     */
+                    locale?: "en" | "ar";
                 };
             };
         };
@@ -8595,14 +8626,12 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description Rate limit exceeded. */
+            /** @description Too many codes asked for this address or from this network. */
             429: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
+                content?: never;
             };
             /** @description Something went wrong on our side. */
             500: {
@@ -8681,7 +8710,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The link is invalid or has expired. */
+            /** @description The code is wrong, spent or has expired. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -8703,6 +8732,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Error"];
                 };
+            };
+            /** @description Too many failed attempts; the address is locked. */
+            423: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Rate limit exceeded. */
             429: {
@@ -8975,6 +9011,112 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Error"];
                 };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    changePassword: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    currentPassword?: string;
+                    newPassword: string;
+                    /**
+                     * @description The language for the email: the one the screen is showing. English when left out.
+                     * @enum {string}
+                     */
+                    locale?: "en" | "ar";
+                };
+            };
+        };
+        responses: {
+            /** @description Changed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Other sessions signed out, across every company. */
+                        signedOutElsewhere: number;
+                        /** @description Whether the "password changed" email went. */
+                        emailed: boolean;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The current password is wrong (`auth.current_password_wrong`); none was given and there was no recent code sign-in (`auth.current_password_required`); or impersonating (`auth.impersonation_denied`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The idempotency key is in use by a request still running, or was reused with a different body. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The new password is too weak (`auth.weak_password`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Too many failed attempts; the address is locked. */
+            423: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Rate limit exceeded. */
             429: {
