@@ -1,12 +1,14 @@
 # Authentication
 
-Supabase Auth holds credentials and sends magic links. Everything after a
-credential is accepted belongs to this service.
+A self-hosted Supabase Auth container holds passwords and makes one-time
+sign-in codes. Everything after a credential is accepted belongs to this
+service.
 
-| Document                                  | When you need it                               |
-| ----------------------------------------- | ---------------------------------------------- |
-| [offline-access.md](./offline-access.md)  | The seven-day window and what it costs         |
-| [`docs/database/`](../database/README.md) | How tenant isolation works underneath all this |
+| Document                                     | When you need it                                                |
+| -------------------------------------------- | --------------------------------------------------------------- |
+| [self-hosted-auth.md](./self-hosted-auth.md) | The Auth container, its secrets, sign-in codes, Change password |
+| [offline-access.md](./offline-access.md)     | The seven-day window and what it costs                          |
+| [`docs/database/`](../database/README.md)    | How tenant isolation works underneath all this                  |
 
 ---
 
@@ -21,8 +23,9 @@ for five things Supabase's own sessions cannot provide:
 - a multi-day offline grant a phone can verify with no network,
 - lockout with an admin unlock.
 
-So the division is: **Supabase authenticates, we authorise.** A client signs in
-with Supabase, hands us the result, and we issue our own tokens carrying
+So the division is: **Supabase Auth authenticates, we authorise.** A client
+never talks to Auth: it sends its password or emailed code to the API, the API
+checks it with the Auth container, and we issue our own tokens carrying
 `tenant_id` and `role`. Sessions, rotation, revocation and impersonation are
 rows in our schema, where they can be queried, audited and revoked.
 
@@ -125,13 +128,15 @@ privilege. The schema-invariant suite fails the build if it gains one.
 
 ```bash
 cp packages/auth/.env.example packages/auth/.env
-pnpm --filter @integr8/auth keygen        # prints the three key variables
+pnpm --filter @integr8/auth keygen        # the key variables, and the Auth container's secrets
+pnpm --filter @integr8/db db bootstrap    # creates integr8_app and integr8_auth
 ```
 
-Then follow [the database runbook](../database/runbook-supabase-setup.md),
-which creates both `integr8_app` and `integr8_auth`.
+[The database README](../database/README.md) explains the roles;
+[self-hosted-auth.md](./self-hosted-auth.md) the Auth container.
 
 ```bash
 pnpm test                  # unit: keys, tokens, secrets, password policy, matrix
 pnpm test:integration      # needs a disposable Postgres
+pnpm test:auth-server      # the provider against a real Auth container (CI starts one)
 ```

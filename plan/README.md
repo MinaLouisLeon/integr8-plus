@@ -95,7 +95,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` completed · `[!]` block
 - [~] **P19** — Production hardening
 - [ ] **P20** — Packaging, signing and release
 - [ ] **P21** — First customer onboarding
-- [ ] **P36** — Self-hosted sign-in (planned 2026-10-30, not yet approved)
+- [~] **P36** — Self-hosted sign-in (approved and in progress, 2026-10-31)
 
 ### v1.1 — Inventory and Assets
 
@@ -130,15 +130,15 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` completed · `[!]` block
 These were decided before planning and are assumed throughout. Changing one invalidates
 several phases, so change them deliberately.
 
-| Decision       | Choice                                                                                             |
-| -------------- | -------------------------------------------------------------------------------------------------- |
-| Database       | One shared Supabase Postgres; every company isolated by `tenant_id` + RLS                          |
-| Authentication | Supabase Auth, tenant claims in the JWT; super admin identity kept outside tenant auth             |
-| File storage   | Cloudflare R2, **one bucket per company**, so usage is measurable per company                      |
-| API            | Own service in front of Postgres; REST + OpenAPI, versioned; clients never query Supabase directly |
-| Desktop        | React SPA wrapped by Tauri v2; the same bundle also deploys as a browser app                       |
-| Mobile         | Expo, offline-first; fills forms, never builds them                                                |
-| Website        | Next.js — marketing, self-serve signup, billing portal, super admin dashboard                      |
+| Decision       | Choice                                                                                                                       |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Database       | Self-hosted Postgres, one shared database; every company isolated by `tenant_id` + RLS (P36)                                 |
+| Authentication | Self-hosted Supabase Auth (identity only), tenant claims in our own JWT; super admin identity kept outside tenant auth (P36) |
+| File storage   | Cloudflare R2, **one bucket per company**, so usage is measurable per company                                                |
+| API            | Own service in front of Postgres; REST + OpenAPI, versioned; clients never query Postgres or Auth directly                   |
+| Desktop        | React SPA wrapped by Tauri v2; the same bundle also deploys as a browser app                                                 |
+| Mobile         | Expo, offline-first; fills forms, never builds them                                                                          |
+| Website        | Next.js — marketing, self-serve signup, billing portal, super admin dashboard                                                |
 
 ## Explicit non-goals
 

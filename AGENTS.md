@@ -96,6 +96,11 @@ refuses pushes to `main`/`staging`/`dev`, then runs `pnpm typecheck` and `pnpm t
   `EMAIL_SENDER=recording`, `APP_BUILDS=off`). New integrations follow the same pattern:
   an interface, a `Recording…` stand-in, the real adapter, and a config check that
   refuses to start production on a half-configured switch (`apps/api/src/config.ts`).
+- Everything is self-hosted (P36): Postgres and a Supabase Auth container in
+  `deploy/compose.yml`, no Supabase cloud project. Auth only holds passwords and
+  makes sign-in codes; it is reached through `IdentityProvider`
+  (`packages/auth/src/identity-provider.ts`), whose `FakeIdentityProvider` is the
+  stand-in for tests only. See `docs/auth/self-hosted-auth.md`.
 - Config vars are documented where they are read (zod schema comments) and in the
   matching `.env.example`; `deploy/.env.example` covers a whole deployment.
 - Code comments explain _why_, in plain prose — match the existing style.

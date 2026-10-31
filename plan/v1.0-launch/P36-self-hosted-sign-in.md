@@ -1,7 +1,8 @@
 # P36 — Self-hosted sign-in
 
 **Version:** v1.0 Launch
-**Status:** `NOT STARTED` — plan written 2026-10-30, waiting for approval to implement
+**Status:** `IN PROGRESS` — approved and started 2026-10-31; code, tests and docs are in the
+working tree, the database and Auth suites have not yet run (CI), nor the test-box run
 **Depends on:** P03 (authentication), P15 (platform purge)
 
 ## Goal
@@ -301,27 +302,58 @@ Read from the source of `supabase/auth` at tag `v2.197.0`, the newest stable rel
 
 ## Tasks
 
-- [ ] Compose: `auth` container, start order, health check, private ports, memory caps
-- [ ] Migrator `bootstrap`: optional `supabase_auth_admin` role and `auth` schema
-- [ ] Migration 0054: `sessions.signed_in_with` and `authenticated_at`; switch-company copies them
-- [ ] Provider: base URL without `/auth/v1`; `createSignInCode`, `verifySignInCode`,
+- [x] Compose: `auth` container, start order, health check, private ports, memory caps
+- [x] Migrator `bootstrap`: optional `supabase_auth_admin` role and `auth` schema
+- [x] Migration 0054: `sessions.signed_in_with` and `authenticated_at`; switch-company copies them
+- [x] Provider: base URL without `/auth/v1`; `createSignInCode`, `verifySignInCode`,
       `setPassword`, `deleteIdentity`; the fake to match
-- [ ] Config: `SUPABASE_AUTH_URL`, error for the old name; `keygen` prints the three secrets
-- [ ] Sign-in code: request and complete, limits, lockout, English and Arabic email
-- [ ] Change password: route, both proofs, password rules, revoke other sessions and offline
+- [x] Config: `SUPABASE_AUTH_URL`, error for the old name; `keygen` prints the three secrets
+- [x] Sign-in code: request and complete, limits, lockout, English and Arabic email
+- [x] Change password: route, both proofs, password rules, revoke other sessions and offline
       grants, audit, password-changed email in English and Arabic
-- [ ] Purge: delete accounts with no company left, with retry
-- [ ] Web, desktop and phone: code sign-in and Change password screens; strings in English and
+- [x] Purge: delete accounts with no company left, with retry
+- [x] Web, desktop and phone: code sign-in and Change password screens; strings in English and
       Arabic
-- [ ] Help article rewritten
-- [ ] OpenAPI and client regenerated
-- [ ] CI: Auth service container and the provider suite against it
-- [ ] Setup guide (Markdown and HTML): stages 0, 3, 4, 9; Stage 10 deleted and renumbered; test
+- [x] Help article rewritten
+- [x] OpenAPI and client regenerated
+- [x] CI: Auth container and the provider suite against it (started with `docker run`, see notes)
+- [x] Setup guide (Markdown and HTML): stages 0, 3, 4, 9; Stage 10 deleted and renumbered; test
       box on Ubuntu with Arcane; release part
-- [ ] Railway removed; `docs/auth/`, `docs/deployment/`, `plan/README.md`, README, `AGENTS.md`,
+- [x] Railway removed; `docs/auth/`, `docs/deployment/`, `plan/README.md`, README, `AGENTS.md`,
       `MEMORY.md`, env templates
-- [ ] Supabase setup runbook deleted and its links fixed; backup and restore runbook rewritten for
+- [x] Supabase setup runbook deleted and its links fixed; backup and restore runbook rewritten for
       the self-hosted database
+- [ ] The database, auth and API integration suites and the real-Auth suite green in CI
+- [ ] The full run on the test box (part 10)
+
+## Implementation notes (2026-10-31)
+
+Where the build differs from, or adds to, the design above:
+
+- **The email's language comes from the screen.** There is no per-person language in the
+  database, so `POST /v1/auth/magic-link` and `POST /v1/me/password` take an optional
+  `locale` (`en` or `ar`), which every screen sends. Without it, the code email is in English
+  and the password-changed email in the company's language. Additive, so nothing inside `/v1`
+  breaks.
+- **The code request answers before it looks anything up.** The limits are counted and the
+  `202` sent first; looking the address up, asking Auth for a code and emailing it happen
+  after, so how long the answer takes says nothing about whether the account exists.
+- **A wrong current password is `403 auth.current_password_wrong`, not `401`.** Every client
+  reads a `401` as an expired token, refreshes and resends, which would count one mistyped
+  password twice towards the lockout. A missing proof is `403 auth.current_password_required`.
+- **Purge retries are durable.** Migration 0054 also adds `identity_deletions`, a platform
+  table: the ids are written there before the company's rows go, so a failed delete survives
+  the purge and is retried on every run.
+- **Other sessions are found from the sessions themselves**, across companies, not from
+  memberships, so a suspended company's sessions are signed out too.
+- **CI starts Auth with `docker run`, not as a service container.** A service starts before any
+  step, and Auth needs the role that `bootstrap` creates.
+- **The recording email sender logs the code**, as it logs invitation links, so staging can
+  sign in by code without a mailbox. A real sender never logs it.
+- **New settings:** `AUTH_SIGN_IN_CODE_INTERVAL_SECONDS` (60), `AUTH_SIGN_IN_CODE_HOURLY_LIMIT`
+  (5), `AUTH_FRESH_SIGN_IN_SECONDS` (900).
+- Old migrations 0002 and 0003 still name the deleted Supabase runbook in an error message.
+  Migrations are immutable once applied, so those two lines stay.
 
 ## Exit criteria
 

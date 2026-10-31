@@ -106,9 +106,10 @@ everything regardless.
 1. **verify** — install, `format:check`, `lint`, `typecheck`, `test`, `build`
 2. **commit-messages** — commitlint over the PR's commit range
 3. **database** — rolls the schema down and back up, then runs the tenant-isolation
-   and authentication suites against a disposable Postgres. Skipped until the
-   repository variable `DATABASE_TESTS` is set to `enabled`; step 8 of
-   [the setup runbook](./docs/database/runbook-supabase-setup.md) turns it on
+   and authentication suites against a disposable Postgres, and the identity
+   provider against a real Supabase Auth container. Skipped until the repository
+   variable `DATABASE_TESTS` is set to `enabled` (Settings → Secrets and variables
+   → Actions → Variables)
 4. **secret-scan** — gitleaks over full history
 
 All must pass before merge.

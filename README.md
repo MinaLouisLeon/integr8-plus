@@ -230,7 +230,7 @@ and [`docs/mobile/company-builds.md`](./docs/mobile/company-builds.md).
                                      worker (same image)    │
                                                    ▼        ▼
                          Postgres (RLS, per-tenant)     Cloudflare R2 (a bucket per company)
-                         Supabase Auth · Stripe · Resend · Mapbox · Expo push · Sentry
+                         Supabase Auth (self-hosted) · Stripe · Resend · Mapbox · Expo push · Sentry
 ```
 
 pnpm workspaces and Turborepo; Node 22; TypeScript everywhere; Vitest; ESLint
@@ -274,8 +274,10 @@ with the same Tailwind classes.
   connection; Postgres row-level security is the backstop underneath. Every
   tenant-scoped table carries `tenant_id` and every key between two tenant tables
   carries it too, checked by a schema-invariants suite. See [`docs/database/`](./docs/database/README.md).
-- **Authentication.** Supabase holds passwords and sends magic links; this service
-  issues its own tokens (EdDSA over Ed25519): 15-minute access tokens, rotating
+- **Authentication.** A self-hosted Supabase Auth container beside the API holds
+  passwords and makes one-time 6-digit sign-in codes, which the API emails (the way
+  back in after a forgotten password); Change password signs out every other
+  device. This service issues its own tokens (EdDSA over Ed25519): 15-minute access tokens, rotating
   refresh tokens with reuse detection, a seven-day offline grant the phone verifies
   itself, and impersonation tokens tied to an audited grant. Lockout, per-IP
   limits and remote device revocation. Super admins sign in with a password and a
@@ -295,12 +297,12 @@ with the same Tailwind classes.
 
 ### Requirements
 
-| Tool     | Version | Notes                                                         |
-| -------- | ------- | ------------------------------------------------------------- |
-| Node     | 22.x    | Pinned in `.nvmrc`; run `nvm use`                             |
-| pnpm     | 10.x    | `corepack enable` picks up the version in `package.json`      |
-| Postgres | 16      | Only for the API and the integration tests; Supabase or local |
-| Rust     | stable  | Only to run the desktop app as a native window (`tauri:dev`)  |
+| Tool     | Version | Notes                                                        |
+| -------- | ------- | ------------------------------------------------------------ |
+| Node     | 22.x    | Pinned in `.nvmrc`; run `nvm use`                            |
+| pnpm     | 10.x    | `corepack enable` picks up the version in `package.json`     |
+| Postgres | 16      | Only for the API and the integration tests; local or Docker  |
+| Rust     | stable  | Only to run the desktop app as a native window (`tauri:dev`) |
 
 ### Install and build
 
@@ -332,9 +334,9 @@ start on any of the stand-ins.
 
 ### A database
 
-[`docs/database/runbook-supabase-setup.md`](./docs/database/runbook-supabase-setup.md)
-creates one on Supabase in about fifteen minutes. For a local Postgres, point the
-three `DATABASE_URL*` variables at it, then:
+Any Postgres 16: one installed locally, or `docker run -p 5432:5432 -e
+POSTGRES_PASSWORD=postgres postgres:16`. Point the three `DATABASE_URL*` variables
+at it, then:
 
 ```bash
 pnpm --filter @integr8/db db bootstrap   # creates the two application roles
@@ -367,7 +369,7 @@ Every variable is documented where it is read; the templates are the reference.
 | ---------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | A deployment (compose) | `deploy/.env.example`        | Everything below for the API, worker and web image, in one file                                                  |
 | API and worker         | `apps/api/.env.example`      | Mode, ports, CORS, rate limits, media/R2, geocoder, push, billing, email, sign-up, `BUILD_TOKEN`, Sentry, worker |
-| Authentication         | `packages/auth/.env.example` | Issuer, signing keys, token lifetimes, lockout, platform sessions, Supabase                                      |
+| Authentication         | `packages/auth/.env.example` | Issuer, signing keys, token lifetimes, lockout, sign-in codes, platform sessions, Supabase Auth                  |
 | Database               | `packages/db/.env.example`   | The three connection strings (app, admin, auth), pool sizes, timeouts                                            |
 | Web                    | `apps/web/.env.example`      | `API_BASE_URL`, `NEXT_PUBLIC_*` (API, environment, Sentry, sign-up mode, contact email, map tiles)               |
 | Desktop                | `apps/desktop/.env.example`  | `VITE_API_BASE_URL`, `VITE_APP_FLAVOR` (`staff` / `company`), `VITE_COMPANY_SLUG`, Sentry, updater keys          |
@@ -424,8 +426,8 @@ device. See [`docs/ui/`](./docs/ui/README.md).
 
 ## The API
 
-One HTTP service in front of Postgres; clients never query the database or
-Supabase directly. About 150 operations under `/v1`, each declared once with its
+One HTTP service in front of Postgres; clients never query the database or the
+Auth container directly. About 150 operations under `/v1`, each declared once with its
 zod schemas, security (public, authenticated or platform), permission,
 idempotency and responses; the OpenAPI document and the typed client are
 generated from those declarations. Requests pass through, in order: request id,
@@ -467,6 +469,7 @@ each with a down file, applied by `pnpm --filter @integr8/db db up` (or
 | 0051      | Work order visits and the schedule                                                                    |
 | 0052      | Skills and certificates (qualifications) and expiry warnings                                          |
 | 0053      | Service contracts, maintenance plans and response deadlines                                           |
+| 0054      | Self-hosted sign-in: how each session began, and sign-in accounts to delete after a purge             |
 
 See [`docs/database/migrations.md`](./docs/database/migrations.md) and the
 [backup and restore runbook](./docs/database/runbook-backup-and-restore.md).
@@ -498,13 +501,14 @@ listed in [`docs/contributing/branching.md`](./docs/contributing/branching.md).
 ## Deploying
 
 What ships is two container images (API, which is also the worker and the
-migrator; and web) and a Postgres database; everything else is configuration.
+migrator; and web), a Postgres database and a Supabase Auth container, all in one
+compose stack; everything else is configuration.
 
 - [`docs/deployment/README.md`](./docs/deployment/README.md) — a first stack with
-  `deploy/compose.yml` (Postgres, bootstrap, migrate, API, worker, web) behind
-  Caddy on one machine, including Oracle Cloud's Always Free ARM instance; the
-  Railway alternative (`deploy/railway/`); moving the database to Supabase;
-  backups (`deploy/vps/backup-postgres.sh`); releasing a new version.
+  `deploy/compose.yml` (Postgres, bootstrap, migrate, Auth, API, worker, web)
+  behind Caddy on one machine, including Oracle Cloud's Always Free ARM instance;
+  sharing the machine with another product; nightly backups
+  (`deploy/vps/backup-postgres.sh`); releasing a new version.
 - [`docs/deployment/company-apps.md`](./docs/deployment/company-apps.md) — the
   staff desktop app and each company's own apps.
 - `deploy/vps/setup.sh` prepares a fresh Ubuntu or Oracle Linux machine (firewall,

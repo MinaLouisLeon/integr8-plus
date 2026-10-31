@@ -178,7 +178,7 @@ integr8-plus/
 │   ├── tokens/            design tokens and company brand colours, emitted as CSS
 │   ├── eslint-config/     shared lint rules
 │   └── typescript-config/ shared tsconfig presets
-├── deploy/        compose.yml, VPS setup script, Caddyfile, backups, Railway configs
+├── deploy/        compose.yml (with the self-hosted Auth), VPS setup script, Caddyfile, backups
 ├── docs/          operator and developer documentation, by area
 ├── plan/          the phased roadmap (P01–P35)
 ├── scripts/       repository scripts
@@ -834,19 +834,19 @@ The worker also runs scheduled maintenance, recorded in `scheduled_task_runs`:
 
 ## 13. External services
 
-| Service                       | Used for                                                            | How it is called                                  | Switch                                      |
-| ----------------------------- | ------------------------------------------------------------------- | ------------------------------------------------- | ------------------------------------------- |
-| **Supabase Auth** (GoTrue)    | Company users' passwords and magic links                            | HTTP, no SDK                                      | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` |
-| **Cloudflare R2**             | File storage                                                        | AWS SDK v3 S3 client, presigned multipart uploads | `MEDIA_STORAGE=r2` or `local`               |
-| **Cloudflare GraphQL API**    | Checking storage use against Cloudflare's numbers                   | `api.cloudflare.com/client/v4/graphql`            | `CLOUDFLARE_API_TOKEN`                      |
-| **Stripe**                    | Checkout, customer portal, invoices, webhooks                       | REST (`api.stripe.com/v1`), no SDK                | `BILLING_PROVIDER`                          |
-| **Resend**                    | Email: invitations, verification, dunning                           | REST (`api.resend.com/emails`)                    | `EMAIL_SENDER`                              |
-| **Mapbox**                    | Geocoding addresses; map tiles                                      | Geocoding v6 REST                                 | `GEOCODER`, `MAPBOX_ACCESS_TOKEN`           |
-| **OpenStreetMap**             | Map tiles in Leaflet                                                | Tile server                                       | —                                           |
-| **Expo Push**                 | Phone notifications                                                 | `exp.host/--/api/v2/push`                         | `PUSH_SENDER`, `EXPO_ACCESS_TOKEN`          |
-| **Expo Application Services** | Building and updating the phone apps                                | EAS Build and EAS Update                          | GitHub secrets                              |
-| **Sentry**                    | Errors and traces from every app, with release tags and source maps | Official SDKs                                     | `SENTRY_DSN`, `WEB_SENTRY_DSN`              |
-| **GitHub**                    | Code, CI/CD, container registry, release downloads                  | GitHub Actions, GHCR                              | —                                           |
+| Service                                 | Used for                                                            | How it is called                                  | Switch                                           |
+| --------------------------------------- | ------------------------------------------------------------------- | ------------------------------------------------- | ------------------------------------------------ |
+| **Supabase Auth** (GoTrue), self-hosted | Company users' passwords and 6-digit sign-in codes (P36)            | HTTP, no SDK                                      | `SUPABASE_AUTH_URL`, `SUPABASE_SERVICE_ROLE_KEY` |
+| **Cloudflare R2**                       | File storage                                                        | AWS SDK v3 S3 client, presigned multipart uploads | `MEDIA_STORAGE=r2` or `local`                    |
+| **Cloudflare GraphQL API**              | Checking storage use against Cloudflare's numbers                   | `api.cloudflare.com/client/v4/graphql`            | `CLOUDFLARE_API_TOKEN`                           |
+| **Stripe**                              | Checkout, customer portal, invoices, webhooks                       | REST (`api.stripe.com/v1`), no SDK                | `BILLING_PROVIDER`                               |
+| **Resend**                              | Email: invitations, verification, dunning                           | REST (`api.resend.com/emails`)                    | `EMAIL_SENDER`                                   |
+| **Mapbox**                              | Geocoding addresses; map tiles                                      | Geocoding v6 REST                                 | `GEOCODER`, `MAPBOX_ACCESS_TOKEN`                |
+| **OpenStreetMap**                       | Map tiles in Leaflet                                                | Tile server                                       | —                                                |
+| **Expo Push**                           | Phone notifications                                                 | `exp.host/--/api/v2/push`                         | `PUSH_SENDER`, `EXPO_ACCESS_TOKEN`               |
+| **Expo Application Services**           | Building and updating the phone apps                                | EAS Build and EAS Update                          | GitHub secrets                                   |
+| **Sentry**                              | Errors and traces from every app, with release tags and source maps | Official SDKs                                     | `SENTRY_DSN`, `WEB_SENTRY_DSN`                   |
+| **GitHub**                              | Code, CI/CD, container registry, release downloads                  | GitHub Actions, GHCR                              | —                                                |
 
 Every external service has a **recording** or **local** stand-in for development and tests: a recording email sender, a recording billing provider, local-disk media, and a recording push sender. The whole system therefore runs and is tested with no accounts at all. In `production` mode the API refuses to start unless every real service is configured.
 
@@ -924,8 +924,7 @@ A full review of the codebase was done in October 2026 and its fixes were applie
   - installs Caddy, which obtains and renews TLS certificates by itself;
   - turns on automatic security updates.
   - It is safe to run twice. `Caddyfile.example` serves the API and web on two names. `backup-postgres.sh` takes database backups.
-- **Railway**, with configuration for the API, web and worker in `deploy/railway/`.
-- **Supabase** as the database, with a documented move from the bundled Postgres.
+- **Everything self-hosted** (P36): the bundled Postgres is the database, and sign-in is a Supabase Auth container in the same stack. Railway and the move to a Supabase cloud database were dropped.
 - **ZimaOS** at home, as a test box (covered in the deployment guide).
 
 **Staff accounts on a server** are created with:
@@ -965,26 +964,26 @@ All configuration is through environment variables, each validated with zod at s
 
 ## 19. Documentation in the repository
 
-| File                                                                                                     | Covers                                                                                                                                                                           |
-| -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `README.md`                                                                                              | The whole product, every app, how to run it                                                                                                                                      |
-| `CONTRIBUTING.md`, `docs/contributing/branching.md`                                                      | How to contribute; the branch flow                                                                                                                                               |
-| `AGENTS.md`                                                                                              | Written by Turborepo 2.11 for AI coding agents: read the installed Turborepo's own docs before changing its configuration. `"agentGuidance": false` in `turbo.json` turns it off |
-| `docs/api/README.md`, `docs/api/versioning.md`                                                           | API conventions and versioning rules                                                                                                                                             |
-| `docs/auth/README.md`, `docs/auth/offline-access.md`                                                     | Sessions, tokens, and offline grants                                                                                                                                             |
-| `docs/database/README.md`, `migrations.md`, `runbook-backup-and-restore.md`, `runbook-supabase-setup.md` | Schema, migration rules, backups, Supabase                                                                                                                                       |
-| `docs/form-engine/README.md`, `builder.md`, `repeating-groups.md`, `submissions.md`                      | The form engine                                                                                                                                                                  |
-| `docs/media/README.md`                                                                                   | Uploads, storage, quotas                                                                                                                                                         |
-| `docs/sync/README.md`                                                                                    | Offline sync                                                                                                                                                                     |
-| `docs/mobile/README.md`, `company-builds.md`, `device-checklist.md`, `forms.md`, `job-execution.md`      | The phone app                                                                                                                                                                    |
-| `docs/operations/README.md`                                                                              | Customers, sites, work orders                                                                                                                                                    |
-| `docs/billing/README.md`                                                                                 | Plans, Stripe, invoiced companies                                                                                                                                                |
-| `docs/onboarding/README.md`                                                                              | Signup and onboarding                                                                                                                                                            |
-| `docs/platform/README.md`                                                                                | The platform dashboard, including Staff                                                                                                                                          |
-| `docs/deployment/README.md`, `company-apps.md`                                                           | Deploying, and per-company apps                                                                                                                                                  |
-| `docs/ui/README.md`                                                                                      | Design tokens, shell, right-to-left rules                                                                                                                                        |
-| `docs/review-2026-10.md`                                                                                 | The October 2026 code review and its fixes                                                                                                                                       |
-| `plan/README.md`, `plan/ROADMAP.md`, `plan/*/P*.md`                                                      | The phased plan                                                                                                                                                                  |
+| File                                                                                                | Covers                                                                                                                                                                           |
+| --------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `README.md`                                                                                         | The whole product, every app, how to run it                                                                                                                                      |
+| `CONTRIBUTING.md`, `docs/contributing/branching.md`                                                 | How to contribute; the branch flow                                                                                                                                               |
+| `AGENTS.md`                                                                                         | Written by Turborepo 2.11 for AI coding agents: read the installed Turborepo's own docs before changing its configuration. `"agentGuidance": false` in `turbo.json` turns it off |
+| `docs/api/README.md`, `docs/api/versioning.md`                                                      | API conventions and versioning rules                                                                                                                                             |
+| `docs/auth/README.md`, `self-hosted-auth.md`, `offline-access.md`                                   | Sessions, tokens, offline grants, and the self-hosted Auth                                                                                                                       |
+| `docs/database/README.md`, `migrations.md`, `runbook-backup-and-restore.md`                         | Schema, migration rules, backups                                                                                                                                                 |
+| `docs/form-engine/README.md`, `builder.md`, `repeating-groups.md`, `submissions.md`                 | The form engine                                                                                                                                                                  |
+| `docs/media/README.md`                                                                              | Uploads, storage, quotas                                                                                                                                                         |
+| `docs/sync/README.md`                                                                               | Offline sync                                                                                                                                                                     |
+| `docs/mobile/README.md`, `company-builds.md`, `device-checklist.md`, `forms.md`, `job-execution.md` | The phone app                                                                                                                                                                    |
+| `docs/operations/README.md`                                                                         | Customers, sites, work orders                                                                                                                                                    |
+| `docs/billing/README.md`                                                                            | Plans, Stripe, invoiced companies                                                                                                                                                |
+| `docs/onboarding/README.md`                                                                         | Signup and onboarding                                                                                                                                                            |
+| `docs/platform/README.md`                                                                           | The platform dashboard, including Staff                                                                                                                                          |
+| `docs/deployment/README.md`, `company-apps.md`                                                      | Deploying, and per-company apps                                                                                                                                                  |
+| `docs/ui/README.md`                                                                                 | Design tokens, shell, right-to-left rules                                                                                                                                        |
+| `docs/review-2026-10.md`                                                                            | The October 2026 code review and its fixes                                                                                                                                       |
+| `plan/README.md`, `plan/ROADMAP.md`, `plan/*/P*.md`                                                 | The phased plan                                                                                                                                                                  |
 
 ---
 

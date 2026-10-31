@@ -3,11 +3,12 @@
 Facts that are not obvious from the code and go stale. Update this file when they
 change; date each section. Rules and commands are in `AGENTS.md`.
 
-## Snapshot (2026-10-30)
+## Snapshot (2026-10-31)
 
 - **Version:** root `package.json` is **1.2.1** (the only source of the version).
-- **Migrations:** `packages/db/migrations` reaches **0053**
-  (`0052_qualifications`, `0053_maintenance_contracts_deadlines`). The next one is 0054.
+- **Migrations:** `packages/db/migrations` reaches **0054**
+  (`0053_maintenance_contracts_deadlines`, `0054_self_hosted_sign_in` — uncommitted, on
+  `feat/self-hosted-auth`). The next one is 0055.
 - **Plan:** v1.2 "scheduling" phases are `IN PROGRESS` — P25 calendar & dispatch board,
   P26 skills & certificates, P27 maintenance plans, contracts & response deadlines.
   v1.3 (P28–P31) and v2.0 (P32–P35) are `NOT STARTED`. Many v1.0 phases (P16–P19) are
@@ -21,12 +22,15 @@ change; date each section. Rules and commands are in `AGENTS.md`.
   `APP_BUILDS` (`off` | `github`), `GITHUB_BUILD_TOKEN`, `GITHUB_BUILD_REPOSITORY`,
   `GITHUB_BUILD_REF` (default `main`), validated by `appBuildProblems()` in `config.ts`.
   Still to check: OpenAPI/client regeneration, `.env.example`, setup checklist, docs.
-- **Planned, not yet approved (branch `feat/self-hosted-auth`):** P36 self-hosted sign-in,
-  `plan/v1.0-launch/P36-self-hosted-sign-in.md`. Decided 2026-10-30: self-host everything
-  (no Supabase cloud), only the Supabase Auth container, emailed 6-digit sign-in codes,
-  Change password (with a password-changed email), purge deletes orphaned accounts, Stage 10
-  and Railway removed, Supabase setup runbook deleted, backup runbook rewritten for the
-  self-hosted database. No code until the user approves the plan.
+- **In progress, uncommitted (branch `feat/self-hosted-auth`):** P36 self-hosted sign-in,
+  `plan/v1.0-launch/P36-self-hosted-sign-in.md`, approved 2026-10-31. Done in the working
+  tree: Auth container in `deploy/compose.yml` (`supabase/auth:v2.197.0`, private ports,
+  memory caps), bootstrap's `supabase_auth_admin` role, migration 0054, emailed 6-digit
+  sign-in codes and Change password (API + web/desktop/phone), purge deleting orphaned
+  accounts, CI real-Auth suite, docs (setup guide renumbered, Railway and the Supabase runbook
+  deleted). `SUPABASE_URL` is replaced by `SUPABASE_AUTH_URL`; the API refuses to start with
+  the old name. Still to do: CI's database job and the test-box run. The plan file's
+  "Implementation notes" lists where the build differs from the design.
 - **Hosting:** Integr8 Plus will share one Oracle VPS (Ampere A1, 4 cores, 24 GB) with the
   MyRooms project, which runs its own full self-hosted Supabase, PowerSync and GlitchTip.
   The home test box is Ubuntu 24.04 with Docker, Arcane, Webmin and Samba (no longer ZimaOS).
@@ -40,7 +44,7 @@ or new migration:
 - `PROJECT_INDEX.md` ("Read carefully" line) and `PROJECT_INDEX.json` (`version`).
 - `docs/deployment/setup-checklist.md` **and** `.html`: header line, Stage 0 "Nothing to
   merge", Stage 3 `APP_VERSION`/`API_RELEASE`, Stage 6 latest release, Stage 7 company
-  release name, Stage 12 example bump and feature parts, Stage 14, footer. References
+  release name, Stage 11 example bump and feature parts, Stage 13, footer. References
   like "included in v1.1.2" are history and stay as they are.
 - Released versions: `gh release list`. v1.2.1 (2026-10-27) carries migrations 0051–0053.
 
@@ -56,6 +60,10 @@ or new migration:
 - Integration tests refuse to run without `APP_ENV=test` and
   `INTEGR8_TEST_DATABASE=i-know-this-database-is-disposable`.
 - TypeScript stays on 6.0.3: TypeScript 7 would silently switch off type-aware linting.
+- This Windows checkout has `core.autocrlf=true`, so files are CRLF on disk while
+  `.prettierrc` says `endOfLine: lf`. `prettier --write` on a directory rewrites hundreds of
+  files to LF (no content change, but `git status` fills up). Format only the files you
+  changed, with `--end-of-line auto`.
 - `APP_ENV=production` refuses to start on any stand-in service.
 - `PUBLIC_SIGNUP=off` by default: companies are created only by Integr8 staff.
 - ETA e-invoicing is not production-validated (live PreProd submission and hardware-token

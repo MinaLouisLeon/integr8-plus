@@ -7,16 +7,19 @@ _Integr8 Plus 1.2.1 · everything you do, in order · Oracle Cloud edition_
 Stage 0 creates every account and collects every key and secret before anything is installed. Stages 1 to 5 put the stack on Oracle Cloud's Always Free ARM machine with your domain. Stage 6 has GitHub build the staff desktop app. Stage 7 walks a customer's day through all of it, and Stage 8 is how every company gets desktop installers and a phone app of its own. Stage 9 is the production switch. Nothing in any stage needs something from a later stage, and nothing is ever built on your laptop.
 
 > [!WARNING]
-> **Destroying the Oracle machine and building a new one?** Start at [Stage 14](#stage-14--destroy-the-oracle-machine-or-empty-it-and-keep-it): it says what to save before the machine goes, which stages to redo on the new one, and which of Stage 0's accounts and keys carry over unchanged.
+> **Destroying the Oracle machine and building a new one?** Start at [Stage 13](#stage-13--destroy-the-oracle-machine-or-empty-it-and-keep-it): it says what to save before the machine goes, which stages to redo on the new one, and which of Stage 0's accounts and keys carry over unchanged.
 
 > [!NOTE]
-> **New: the AI assistant, with or without AI.** It is off until you turn it on. Each company answers either with an **AI model** from the one provider the server uses (OpenAI, Groq, Google Gemini or Anthropic) or from the **help library**, with no AI, no key and no cost; you choose per plan or per company. The steps are spread through the stages where they belong: [Stage 0, Part M](#m-the-ai-assistant-a-provider-or-none) (choosing a provider, or none, and its key), [Stage 3](#stage-3--the-env-file-filled-once-from-the-key-sheet) (the server's settings), [Stage 5](#the-ai-assistant-is-the-server-ready-and-what-does-each-plan-allow) (what each plan allows, and where answers come from), [Stage 7](#the-ai-assistant-for-this-company) (a company's apps, and each person's percentage share) and [Stage 12](#j-this-update-bringing-the-ai-assistant-to-a-machine-that-runs-110) (getting it onto a running machine and into the apps). AI answers need a **share** per person; help-library answers do not. **Voice** needs nothing on the server: members can speak a question (AI-model companies) and have answers read aloud (every company), with the device's own speech tools; the steps are in Stage 7 (try it) and Stage 8 (the phone apps need a rebuild).
+> **New: the AI assistant, with or without AI.** It is off until you turn it on. Each company answers either with an **AI model** from the one provider the server uses (OpenAI, Groq, Google Gemini or Anthropic) or from the **help library**, with no AI, no key and no cost; you choose per plan or per company. The steps are spread through the stages where they belong: [Stage 0, Part M](#m-the-ai-assistant-a-provider-or-none) (choosing a provider, or none, and its key), [Stage 3](#stage-3--the-env-file-filled-once-from-the-key-sheet) (the server's settings), [Stage 5](#the-ai-assistant-is-the-server-ready-and-what-does-each-plan-allow) (what each plan allows, and where answers come from), [Stage 7](#the-ai-assistant-for-this-company) (a company's apps, and each person's percentage share) and [Stage 11](#j-this-update-bringing-the-ai-assistant-to-a-machine-that-runs-110) (getting it onto a running machine and into the apps). AI answers need a **share** per person; help-library answers do not. **Voice** needs nothing on the server: members can speak a question (AI-model companies) and have answers read aloud (every company), with the device's own speech tools; the steps are in Stage 7 (try it) and Stage 8 (the phone apps need a rebuild).
 
 > [!NOTE]
-> **New: PDF documents.** Integr8 staff design PDF templates for a company's forms in the staff desktop app. The company turns a submission into a PDF with a QR code, keeps it in its own storage, and finds it again in a **Documents** register; its own website can look documents up with a **website key**. Nothing to set up on the server: the image brings what it needs. The steps: [Stage 3](#stage-3--the-env-file-filled-once-from-the-key-sheet) (one line to check), [Stage 7](#pdf-documents-for-this-company) (switching it on, a template, a first PDF, a website key) and [Stage 12](#k-this-update-pdf-documents) (bringing it to a running machine). The operator's details are in `docs/documents/RUNBOOK.md`.
+> **New: PDF documents.** Integr8 staff design PDF templates for a company's forms in the staff desktop app. The company turns a submission into a PDF with a QR code, keeps it in its own storage, and finds it again in a **Documents** register; its own website can look documents up with a **website key**. Nothing to set up on the server: the image brings what it needs. The steps: [Stage 3](#stage-3--the-env-file-filled-once-from-the-key-sheet) (one line to check), [Stage 7](#pdf-documents-for-this-company) (switching it on, a template, a first PDF, a website key) and [Stage 11](#k-this-update-pdf-documents) (bringing it to a running machine). The operator's details are in `docs/documents/RUNBOOK.md`.
 
 > [!NOTE]
-> **New in `main`: e-invoicing for the Egyptian Tax Authority (ETA).** A company prepares an ETA document from an issued invoice, signs it with its own token on the accountant's computer, and sends it; Integr8 follows its status until the ETA says it is valid. Each company enters its own ETA credentials, which are locked on the server. It is **not ready for real tax documents**: nothing has been sent to the ETA yet, and the desktop app cannot sign until a driver for the company's token is added. It reached `main` in pull request 109; its desktop installers come from builds after pull request 110. The steps: [Stage 0, Part B](#b-secrets-you-generate-yourself) (one more key), [Stage 3](#stage-3--the-env-file-filled-once-from-the-key-sheet) (where it goes), [Stage 7](#e-invoicing-eta-for-this-company) (setting a company up on the ETA's test system) and [Stage 12](#l-this-update-e-invoicing) (bringing it to a running machine). The operator's details are in `docs/e-invoicing/RUNBOOK.md`.
+> **New in `main`: e-invoicing for the Egyptian Tax Authority (ETA).** A company prepares an ETA document from an issued invoice, signs it with its own token on the accountant's computer, and sends it; Integr8 follows its status until the ETA says it is valid. Each company enters its own ETA credentials, which are locked on the server. It is **not ready for real tax documents**: nothing has been sent to the ETA yet, and the desktop app cannot sign until a driver for the company's token is added. It reached `main` in pull request 109; its desktop installers come from builds after pull request 110. The steps: [Stage 0, Part B](#b-secrets-you-generate-yourself) (one more key), [Stage 3](#stage-3--the-env-file-filled-once-from-the-key-sheet) (where it goes), [Stage 7](#e-invoicing-eta-for-this-company) (setting a company up on the ETA's test system) and [Stage 11](#l-this-update-e-invoicing) (bringing it to a running machine). The operator's details are in `docs/e-invoicing/RUNBOOK.md`.
+
+> [!NOTE]
+> **New: sign-in runs on your own machine.** Passwords and sign-in codes are kept by a Supabase Auth container beside the API, so there is no Supabase account or project any more. A person who forgets their password signs in with a 6-digit code sent by email and sets a new one under **Change password**. The steps: [Stage 0, Part B](#b-secrets-you-generate-yourself) (three more secrets), [Stage 3](#stage-3--the-env-file-filled-once-from-the-key-sheet) (where they go), [Stage 4](#stage-4--start-the-stack) (the `auth` container is healthy) and [Stage 11, part Q](#q-self-hosted-sign-in-the-release-after-v121) (bringing it to a running machine). The details are in `docs/auth/self-hosted-auth.md`.
 
 > [!TIP]
 > GitHub shows the boxes below but does not let you tick them in a file. To track your progress, copy a stage into an issue (checkboxes there can be ticked), or open the interactive page described in the [last section](#about-this-page).
@@ -33,11 +36,10 @@ Stage 0 creates every account and collects every key and secret before anything 
 - [Stage 7 — A customer's day, end to end](#stage-7--a-customers-day-end-to-end)
 - [Stage 8 — Apps built for each company](#stage-8--apps-built-for-each-company)
 - [Stage 9 — Go live: the production switch](#stage-9--go-live-the-production-switch)
-- [Stage 10 — Moving the database to Supabase](#stage-10--moving-the-database-to-supabase)
-- [Stage 11 — A test box at home on ZimaOS](#stage-11--a-test-box-at-home-on-zimaos)
-- [Stage 12 — Updating to a new version](#stage-12--updating-to-a-new-version)
-- [Stage 13 — Wipe the machine and start fresh](#stage-13--wipe-the-machine-and-start-fresh)
-- [Stage 14 — Destroy the Oracle machine, or empty it and keep it](#stage-14--destroy-the-oracle-machine-or-empty-it-and-keep-it)
+- [Stage 10 — A test box at home on Ubuntu with Arcane](#stage-10--a-test-box-at-home-on-ubuntu-with-arcane)
+- [Stage 11 — Updating to a new version](#stage-11--updating-to-a-new-version)
+- [Stage 12 — Wipe the machine and start fresh](#stage-12--wipe-the-machine-and-start-fresh)
+- [Stage 13 — Destroy the Oracle machine, or empty it and keep it](#stage-13--destroy-the-oracle-machine-or-empty-it-and-keep-it)
 
 ---
 
@@ -94,14 +96,14 @@ pnpm install
 $b = New-Object byte[] 24; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); -join ($b | ForEach-Object { $_.ToString('x2') })
 ```
 
-- [ ] **The four signing keys.** The generator writes four lines to `keys.txt` and opens it in Notepad, because the lines are long and copying them from a wrapped terminal breaks them. Put the four into the key sheet and your password manager (`AUTH_SIGNING_KEY_ID`, `AUTH_SIGNING_KEY`, `AUTH_VERIFICATION_KEYS`, `PLATFORM_SECRET_KEY`), then delete the file.
+- [ ] **The signing keys and the sign-in secrets.** The generator writes seven lines to `keys.txt` and opens it in Notepad, because the lines are long and copying them from a wrapped terminal breaks them. Put all seven into the key sheet and your password manager, then delete the file: the four signing keys (`AUTH_SIGNING_KEY_ID`, `AUTH_SIGNING_KEY`, `AUTH_VERIFICATION_KEYS`, `PLATFORM_SECRET_KEY`) and the three the sign-in server needs (`SUPABASE_AUTH_JWT_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_AUTH_DB_PASSWORD`). The last three belong together: the service role key is signed with the JWT secret, so if one is ever made again, all three are.
 
 ```powershell
 # laptop (PowerShell), in the repository folder
 cd ~\Documents\integr8-plus
 pnpm --silent --filter @integr8/auth keygen | Select-String '^[A-Z_]+=' | ForEach-Object Line | Set-Content -Encoding ascii keys.txt
 notepad keys.txt
-# after copying the four lines into your password manager:
+# after copying the seven lines into your password manager:
 Remove-Item keys.txt
 ```
 
@@ -138,19 +140,15 @@ $k = New-Object byte[] 32; [Security.Cryptography.RandomNumberGenerator]::Create
 - [ ] **Copy your Account ID** from the R2 overview page (right-hand side; also in the dashboard URL after `dash.cloudflare.com/`). Key sheet: `CLOUDFLARE_ACCOUNT_ID`.
 - [ ] **Create an R2 API token**: R2 → **Manage R2 API Tokens** → Create API token, name `integr8`, permission **Admin Read & Write** (it creates and deletes buckets), all buckets, no TTL. Copy the **Access Key ID** (`R2_ACCESS_KEY_ID`) and the **Secret Access Key** (`R2_SECRET_ACCESS_KEY`); the secret is shown once. Do not create buckets by hand: the worker creates `integr8-production-<company id>` for each company with the right rules.
 
-### E. Supabase, for sign-in
+### E. Sign-in, on your own machine
 
-The product uses Supabase only for identity: passwords and magic links. Companies, roles and sessions live in the product's own database, which runs on your machine until Stage 10.
+Passwords and the 6-digit sign-in codes are kept by a Supabase Auth container that runs beside the API on your own machine (Stage 4). There is no Supabase account or project to create, and it sends no email itself: the API sends each code through Resend (Part F), in the person's language.
 
-- [ ] **Create an account** at `supabase.com` (GitHub sign-in is fine), then **New project** named `integr8-production` in the region nearest your customers (cannot be changed). Save the **database password** it shows once; Stage 10 needs it.
-- [ ] **Copy the Project URL**: Project Settings → **API** → "Project URL", like `https://abcdefghij.supabase.co`. Key sheet: `SUPABASE_URL`.
-- [ ] **Copy the service role key**: same page, reveal **service_role** (on newer dashboards under "Legacy API keys", or the **secret** key, `sb_secret_…`). Key sheet: `SUPABASE_SERVICE_ROLE_KEY`. It can do anything to your users and only ever goes in the machine's env file.
-- [ ] **Auth settings**: Authentication → Sign In / Providers → **Email** enabled, "Confirm email" on, **"Allow new users to sign up" off** (the API creates users with the service role key). Authentication → **URL Configuration**: Site URL `https://app.integr8-media.com`, Redirect URLs add `https://app.integr8-media.com/**`.
-- [ ] **Pro plan, before a customer depends on it.** Free projects pause after a week without traffic, and a paused project means nobody can sign in. Organisation → Billing → upgrade (about $25 a month). For your own testing the free plan is fine; do not forget this before Stage 9.
+- [ ] **Nothing to sign up for.** The three secrets it needs came from the key generator in Part B. Check that `SUPABASE_AUTH_JWT_SECRET`, `SUPABASE_SERVICE_ROLE_KEY` and `SUPABASE_AUTH_DB_PASSWORD` are in the key sheet.
 
 ### F. Resend, for email
 
-Invitations and payment reminders are sent by the product through Resend. This part needs D's nameserver change to have finished, because Resend verifies the domain through DNS records you add in Cloudflare.
+Invitations, sign-in codes and payment reminders are sent by the product through Resend. This part needs D's nameserver change to have finished, because Resend verifies the domain through DNS records you add in Cloudflare.
 
 - [ ] **Create an account** at `resend.com`. Domains → Add Domain → `integr8-media.com`. Resend shows DNS records (an MX, a TXT for SPF, a DKIM record). Add each in Cloudflare → DNS → Records exactly as shown, then click Verify in Resend; minutes to an hour.
 - [ ] **Create an API key**: API Keys → Create → name `integr8-production`, permission **Sending access**, restricted to your domain. Copy it (`re_…`, shown once). Key sheet: `RESEND_API_KEY`, and `EMAIL_FROM` = `Integr8 Plus <info@integr8-media.com>`.
@@ -184,7 +182,7 @@ The phone app is built by Expo's build service, told to start by GitHub. Nothing
 
 GitHub builds the server images, the desktop installers and (through Expo) the phone app. Three things to do, all on the website. The repository is public, so the build minutes are free, including macOS.
 
-- [ ] **Nothing to merge.** All changes this guide previously asked for are in `main`, now at version **1.2.1**. Its release builds include the CRM/ERP suite, AI assistant, PDF documents, ETA e-invoicing, the company website data API, the schedule, skills and certificates, and contracts, maintenance and deadlines, plus the API image/config fixes from v1.1.1 and the staff-app refresh button from v1.1.2. These updates need no extra server setting or deployment step beyond the feature setup below. Use `main` as it is; a new install continues at Stage 3, and an older server is updated through Stage 12.
+- [ ] **Nothing to merge.** All changes this guide previously asked for are in `main`, now at version **1.2.1**. Its release builds include the CRM/ERP suite, AI assistant, PDF documents, ETA e-invoicing, the company website data API, the schedule, skills and certificates, and contracts, maintenance and deadlines, plus the API image/config fixes from v1.1.1 and the staff-app refresh button from v1.1.2. These updates need no extra server setting or deployment step beyond the feature setup below. Use `main` as it is; a new install continues at Stage 3, and an older server is updated through Stage 11.
 - [ ] **Put the Expo Project ID into the repository.** Open `apps/mobile/app.config.ts` on GitHub, click the pencil, replace the placeholder id in **both** places shown below (the file is TypeScript now, the two values look the same), choose "Create a new branch and start a pull request", and merge it to `main`.
 
 ```text
@@ -199,16 +197,15 @@ GitHub builds the server images, the desktop installers and (through Expo) the p
   ...
 ```
 
-- [ ] **Actions variables and secrets**: repository → Settings → Secrets and variables → Actions. Under **Variables**: `PUBLIC_API_URL` = `https://api.integr8-media.com`; `STAGING_PUBLIC_API_URL` = `https://api.integr8-media.com` for now (Stage 11 changes it to the test box's address); `CONTACT_EMAIL` = `info@integr8-media.com`; `PUBLIC_SIGNUP` = `off`; `WEB_PUBLIC_SENTRY_DSN` and `DESKTOP_PUBLIC_SENTRY_DSN` from I; `EAS_BUILDS` = `enabled`. Do **not** set `EAS_PLATFORMS`: without it phone builds are Android only, which is right until an Apple developer account is connected to Expo (then set it to `all`). Do not set `STORE_SUBMIT` or `COMPANY_APPS` either: unset, company phone builds are not sent to the stores, and the version release builds every company's apps (Stage 8). Under **Secrets**: `EXPO_TOKEN` from J and `BUILD_TOKEN` from B. Make sure no variable named `DESKTOP_BUILDS` is set to `disabled`.
+- [ ] **Actions variables and secrets**: repository → Settings → Secrets and variables → Actions. Under **Variables**: `PUBLIC_API_URL` = `https://api.integr8-media.com`; `STAGING_PUBLIC_API_URL` = `https://api.integr8-media.com` for now (Stage 10 changes it to the test box's address); `CONTACT_EMAIL` = `info@integr8-media.com`; `PUBLIC_SIGNUP` = `off`; `WEB_PUBLIC_SENTRY_DSN` and `DESKTOP_PUBLIC_SENTRY_DSN` from I; `EAS_BUILDS` = `enabled`. Do **not** set `EAS_PLATFORMS`: without it phone builds are Android only, which is right until an Apple developer account is connected to Expo (then set it to `all`). Do not set `STORE_SUBMIT` or `COMPANY_APPS` either: unset, company phone builds are not sent to the stores, and the version release builds every company's apps (Stage 8). Under **Secrets**: `EXPO_TOKEN` from J and `BUILD_TOKEN` from B. Make sure no variable named `DESKTOP_BUILDS` is set to `disabled`.
 - [ ] **Know the version rule.** Every merge into `main` runs the release workflow, which reads the version from the root `package.json` and refuses to release a number it has released before. The merge that should produce installers (Stage 6) must bump it: one line in `package.json`, in the same pull request.
 
 > [!NOTE]
 > **GitHub also builds the server images**: every push to `main` publishes `ghcr.io/minalouisleon/integr8-api:main` and `integr8-web:main` for Intel and ARM, and every push to `staging` the `:staging` tags. The web image bakes in `PUBLIC_API_URL`, `CONTACT_EMAIL` and `PUBLIC_SIGNUP`, which is why they are set here before anything is built. The machine in Stage 4 can either build its own images or pull these.
 
-### L. Only if you will build the test box (Stage 11)
+### L. Only if you will build the test box (Stage 10)
 
-- [ ] **A second Supabase project**, `integr8-test`, made as in E with Site URL `https://test.integr8-media.com`; its own URL and service role key. Test accounts then never appear among production's users.
-- [ ] **A second set of generated secrets** (Part B again): three passwords and four keys. A token minted by the test box must not be valid on production, which is what sharing the signing keys would allow.
+- [ ] **A second set of generated secrets** (Part B again): three passwords, four signing keys and three sign-in secrets. A token minted by the test box must not be valid on production, which is what sharing the signing keys would allow, and the box's sign-in server keeps its own test accounts.
 - [ ] **A Cloudflare Tunnel**: Cloudflare → **Zero Trust** (free) → Networks → **Tunnels** → Create a tunnel → Cloudflared → name `integr8-test` → on the install step choose **Docker** and copy the token from the command shown. Add two public hostnames: `test.integr8-media.com` → HTTP `localhost:3001`, `api-test.integr8-media.com` → HTTP `localhost:3000`. Cloudflare creates the DNS records. Key sheet: tunnel token.
 
 ### M. The AI assistant: a provider, or none
@@ -272,13 +269,12 @@ Every value, where it came from, and where it goes. `deploy/.env` is the one fil
 | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | `POSTGRES_PASSWORD`, `INTEGR8_APP_PASSWORD`, `INTEGR8_AUTH_PASSWORD`                                                                           | Part B, generated                     | `deploy/.env`, each twice (Stage 3)                                                                   |
 | `AUTH_SIGNING_KEY_ID`, `AUTH_SIGNING_KEY`, `AUTH_VERIFICATION_KEYS`, `PLATFORM_SECRET_KEY`                                                     | Part B, generated                     | `deploy/.env`                                                                                         |
+| `SUPABASE_AUTH_JWT_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_AUTH_DB_PASSWORD`                                                           | Part B, generated                     | `deploy/.env`, the three together                                                                     |
 | `HR_DATA_KEY`                                                                                                                                  | Part B; optional for HR secrets       | `deploy/.env` when used; back up with the database; never regenerate                                  |
 | `ETA_CREDENTIALS_KEY`                                                                                                                          | Part B, generated                     | `deploy/.env`; also with the database backups. Never regenerated for an existing database             |
 | `BUILD_TOKEN`                                                                                                                                  | Part B; optional until company builds | `deploy/.env` and GitHub secret (Part K), the same value when used                                    |
 | SSH public key                                                                                                                                 | Part A                                | Oracle's instance form (Stage 1)                                                                      |
 | `CLOUDFLARE_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`                                                                            | Part D                                | `deploy/.env`                                                                                         |
-| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`                                                                                                    | Part E                                | `deploy/.env`                                                                                         |
-| Supabase database password                                                                                                                     | Part E                                | Stage 10 only                                                                                         |
 | `RESEND_API_KEY`, `EMAIL_FROM`                                                                                                                 | Part F                                | `deploy/.env`                                                                                         |
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`                                                                                                   | Part G (test mode; live in Stage 9)   | `deploy/.env`                                                                                         |
 | Stripe price IDs                                                                                                                               | Part G                                | Dashboard → Plans (Stage 5)                                                                           |
@@ -289,13 +285,13 @@ Every value, where it came from, and where it goes. `deploy/.env` is the one fil
 | `EXPO_TOKEN`                                                                                                                                   | Part J                                | GitHub secret                                                                                         |
 | `PUBLIC_API_URL`, `STAGING_PUBLIC_API_URL`, `CONTACT_EMAIL`, `PUBLIC_SIGNUP`, `EAS_BUILDS`                                                     | Part K, chosen                        | GitHub variables                                                                                      |
 | Play Console and Apple developer accounts, their keys                                                                                          | Stage 8, later                        | GitHub (`STORE_SUBMIT` and the store secrets), only when the apps go to the stores                    |
-| Second Supabase project, second secrets, tunnel token                                                                                          | Part L, optional                      | The test box's env file and its `cloudflared` container (Stage 11)                                    |
+| Second secrets, tunnel token                                                                                                                   | Part L, optional                      | The test box's env file and its `cloudflared` container (Stage 10)                                    |
 | The chosen provider's key: `AI_OPENAI_API_KEY`, `AI_GROQ_API_KEY`, `AI_GEMINI_API_KEY` or `AI_ANTHROPIC_API_KEY` (none for `AI_PROVIDER=none`) | Part M                                | `deploy/.env` only. Never a GitHub variable, never anything starting `NEXT_PUBLIC_` or `EXPO_PUBLIC_` |
 | Model ids and their prices; `AI_GLOBAL_MONTHLY_BUDGET_MICROUSD`                                                                                | Part M, chosen                        | `deploy/.env` (`AI_MODEL_*`, `AI_MODEL_PRICES`, the ceiling)                                          |
 | Plan AI limits and where answers come from, company AI settings, each person's share and dollar cap                                            | Chosen                                | Dashboard (Stage 5 and 7); shares also by the company's owner                                         |
 
 > [!WARNING]
-> Four of these can read or change every customer's data or spend real money: the Supabase service role key, the R2 secret access key, the Stripe secret key and the AI provider's API key. They exist only in `deploy/.env` on the machine and in your password manager. If one is ever pasted anywhere else, rotate it the same day.
+> Four of these can read or change every customer's data or spend real money: the sign-in server's service role key, the R2 secret access key, the Stripe secret key and the AI provider's API key. They exist only in `deploy/.env` on the machine and in your password manager. If one is ever pasted anywhere else, rotate it the same day.
 
 ---
 
@@ -423,7 +419,7 @@ DATABASE_URL_AUTH=postgres://integr8_auth:cccc…@postgres:5432/integr8     ┘
 ```
 
 - [ ] **Signing keys.** Below the database lines is a block headed `# Tokens and secrets`. It has four variables with nothing after the `=`: `AUTH_SIGNING_KEY_ID=`, `AUTH_SIGNING_KEY=`, `AUTH_VERIFICATION_KEYS=`, `PLATFORM_SECRET_KEY=`. The key generator in Stage 0, Part B produced exactly these four lines, each already in the form `NAME=value`. For each one, delete the empty line in the file and paste the whole line from your password manager in its place; the names must match and nothing else on the line changes. The values are long (the second is a few hundred characters) and must stay on one line each. The `AUTH_ISSUER` line just above them was already set in step 2.
-- [ ] **Supabase.** The next block, headed `# Identity (Supabase Auth)`, has two lines. Replace `https://PROJECT_REF.supabase.co` on the `SUPABASE_URL=` line with your Project URL from Stage 0, Part E, and paste the service role key after `SUPABASE_SERVICE_ROLE_KEY=`. Afterwards the block reads like this, with your own values:
+- [ ] **Sign-in secrets.** The next block, headed `# Sign-in: the self-hosted Supabase Auth container`, has three variables with nothing after the `=`: `SUPABASE_AUTH_JWT_SECRET=`, `SUPABASE_SERVICE_ROLE_KEY=`, `SUPABASE_AUTH_DB_PASSWORD=`. Paste the last three lines from `keys.txt` in their place, the same way. Leave the commented `# SUPABASE_AUTH_URL=` line as it is: the compose file already points the API at the Auth container. There is no `SUPABASE_URL` line any more, and the API refuses to start if one is added. Afterwards the two blocks read like this, with your own values:
 
 ```text
 AUTH_ISSUER=https://api.integr8-media.com
@@ -432,11 +428,12 @@ AUTH_SIGNING_KEY={"crv":"Ed25519",…}                    ← line 2, one long l
 AUTH_VERIFICATION_KEYS=[{"crv":"Ed25519",…}]            ← line 3, one long line
 PLATFORM_SECRET_KEY=6h6lZzXnyuuOeG…                     ← line 4
 
-SUPABASE_URL=https://abcdefghij.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=eyJ…   (or sb_secret_…)
+SUPABASE_AUTH_JWT_SECRET=Rk9P3m…                     ← line 5
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIs…       ← line 6, one long line
+SUPABASE_AUTH_DB_PASSWORD=x7Kp2Q…                    ← line 7
 ```
 
-- [ ] **Errors and version.** The block headed `# Release identity and error reporting` comes next. `APP_VERSION` and `API_RELEASE` already say `1.2.1`, matching the root `package.json`; at every release they change to the new number (Stage 12). The three Sentry lines are empty: paste the Node.js project's DSN after `SENTRY_DSN=` and the Next.js project's DSN after **both** `WEB_SENTRY_DSN=` and `WEB_PUBLIC_SENTRY_DSN=`. Afterwards:
+- [ ] **Errors and version.** The block headed `# Release identity and error reporting` comes next. `APP_VERSION` and `API_RELEASE` already say `1.2.1`, matching the root `package.json`; at every release they change to the new number (Stage 11). The three Sentry lines are empty: paste the Node.js project's DSN after `SENTRY_DSN=` and the Next.js project's DSN after **both** `WEB_SENTRY_DSN=` and `WEB_PUBLIC_SENTRY_DSN=`. Afterwards:
 
 ```text
 APP_VERSION=1.2.1
@@ -474,7 +471,7 @@ MAPBOX_ACCESS_TOKEN=pk.eyJ1IjoiaW50ZWdyOCIsImEiOiJjbG…
 ```
 
 - [ ] **Push.** `PUSH_SENDER=recording` becomes `expo`. Leave `# EXPO_ACCESS_TOKEN=` commented out: it is only needed if you turn on Expo's "enhanced push security", and you have not. (This is a different token from the `EXPO_TOKEN` GitHub uses.)
-- [ ] **HR data key.** If you use sensitive HR fields, find `HR_DATA_KEY=` (after the Supabase block) and paste the key-sheet value; otherwise it may stay blank. On a rebuilt machine it must be the **same** value the old machine had, or restored employee numbers cannot be read.
+- [ ] **HR data key.** If you use sensitive HR fields, find `HR_DATA_KEY=` (below the signing keys) and paste the key-sheet value; otherwise it may stay blank. On a rebuilt machine it must be the **same** value the old machine had, or restored employee numbers cannot be read.
 - [ ] **E-invoicing key.** Find `ETA_CREDENTIALS_KEY=` (just after `HR_DATA_KEY`) and paste the value from the key sheet after the `=`, or leave it blank if you have not made one yet: a blank line is the same as no key, and the server starts. Leave `ETA_ALLOW_PRODUCTION=false` as it is. On a rebuilt machine it must be the **same** value the old machine had.
 - [ ] **Build token.** Find `BUILD_TOKEN=` (near `CONTACT_EMAIL`). If you build company apps, paste the key-sheet value here and into the GitHub secret of the same name. Otherwise leave it blank; the API starts without it, but GitHub cannot ask the API for a company list.
 
@@ -579,13 +576,13 @@ AI_MODEL_PRICES=[{"provider":"anthropic","model":"claude-haiku-4-5","inputPerMil
 - [ ] **PDF documents.** Nothing to add: the template's `PDF_RENDERER=chromium` line stays as it is, and the API image brings Chromium and the fonts. Check that `WEB_APP_URL` is the web app's address, `https://app.integr8-media.com`: every document's QR code points there, and without it the API refuses to make documents. Never set `PDF_RENDERER=recording` here: it prints placeholder pages, and production refuses to start with it.
 
 - [ ] **The two lines at the very end.** `API_MIN_SUPPORTED_CLIENT=0.1.0` stays. `API_UPDATE_URL` was already changed in step 2 to `https://app.integr8-media.com/download`; check it no longer says `your-domain.example`.
-- [ ] **Check before saving.** Each database password appears on exactly two lines, no `change-me` or `example` remains, and the only key line still commented out is `EXPO_ACCESS_TOKEN` (plus the commented `AI_` lines you did not need):
+- [ ] **Check before saving.** Each database password appears on exactly two lines, no `change-me` or `example` remains, and the only key lines still commented out are `EXPO_ACCESS_TOKEN` and `SUPABASE_AUTH_URL` (plus the commented `AI_` lines you did not need):
 
 ```bash
 # machine (SSH session)
 grep -n 'PASSWORD=\|DATABASE_URL' deploy/.env
 grep -n 'change-me\|example' deploy/.env      # should print nothing
-grep -n '^# [A-Z_]*=' deploy/.env               # should print only EXPO_ACCESS_TOKEN (and AI_ lines if the assistant stays off)
+grep -n '^# [A-Z_]*=' deploy/.env               # should print only EXPO_ACCESS_TOKEN and SUPABASE_AUTH_URL (and AI_ lines if the assistant stays off)
 grep -n '^AI_' deploy/.env                      # the assistant's lines, as you set them
 ```
 
@@ -602,16 +599,18 @@ _about 15 minutes, mostly building_
 # machine (SSH session)
 cd /opt/integr8
 docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build
-docker compose -f deploy/compose.yml --env-file deploy/.env logs -f bootstrap migrate api
+docker compose -f deploy/compose.yml --env-file deploy/.env logs -f bootstrap migrate auth api
 ```
 
-The first run builds two images on the machine, ten to fifteen minutes on the ARM cores. Then in order: Postgres starts, `bootstrap` creates the two database roles, `migrate` applies all 48 migrations and exits, the API starts, then the worker and the web app. Ctrl-C leaves the logs; the containers keep running and restart themselves after a reboot.
+The first run builds two images on the machine, ten to fifteen minutes on the ARM cores. Then in order: Postgres starts, `bootstrap` creates the two database roles and the sign-in server's own role and schema, `migrate` applies all 54 migrations and exits while `auth` (the Supabase Auth container) sets up its own tables, the API starts once both are done, then the worker and the web app. Ctrl-C leaves the logs; the containers keep running and restart themselves after a reboot.
 
 - [ ] **The API is ready**: `curl -s https://api.integr8-media.com/health/ready` answers `"status":"ready"`. If `degraded`, the body names the failing check.
 - [ ] **The web app answers**: `https://app.integr8-media.com` shows the landing page with a padlock. Its buttons say "Talk to us" and lead to `/contact` with `info@integr8-media.com`; `/sign-up` shows a notice rather than a form.
 - [ ] **Storage buckets exist**: new companies get theirs automatically; this makes sure the worker can reach R2 at all. It should print nothing alarming and finish: `docker compose -f deploy/compose.yml --env-file deploy/.env run --rm api node dist/media/storage-cli.js provision --all`
 - [ ] **The assistant's settings were read**, if you turned it on in Stage 3: `docker compose -f deploy/compose.yml --env-file deploy/.env logs api | grep Assistant:` prints nothing when the AI settings are complete (and always nothing with `AI_PROVIDER=none`). Each line it prints is one thing to fix (for example `Assistant: AI_PROVIDER is openai but AI_MODEL_HELP is not set.`); the rest of the stack runs either way. Stage 5 shows the same list on the dashboard.
 - [ ] **PDF documents can be printed**: `docker compose -f deploy/compose.yml --env-file deploy/.env logs worker | grep "PDF documents"` prints `PDF documents can be printed`. If it says `cannot be printed`, the line names the reason; every other job still runs, and documents asked for are marked failed until it is fixed.
+- [ ] **The sign-in server is healthy**: `docker compose -f deploy/compose.yml --env-file deploy/.env ps` lists `auth` as _Up (healthy)_. It publishes no port: only the API reaches it, over Docker's own network. If it keeps restarting, `docker compose -f deploy/compose.yml --env-file deploy/.env logs auth` names the cause; the usual one is a `SUPABASE_AUTH_DB_PASSWORD` line that was changed or cut short. Fix the line and run the same `up -d` again: `bootstrap` sets the role's password from the file each time.
+- [ ] **Only Caddy faces the internet**: `sudo ss -tlnp | grep -E ':(3000|3001)\b'` shows both ports on `127.0.0.1` and nowhere else. Docker-published ports go round the machine's firewall, so the compose file binds them to the machine itself; Caddy reaches them there.
 
 > [!NOTE]
 > If the API refuses to start, its log says exactly which variable is wrong or missing: `docker compose -f deploy/compose.yml --env-file deploy/.env logs api`. Fix the env file and run the same `up -d` command again. Throughout this guide, "restart" means exactly that command; it recreates only the containers whose settings changed.
@@ -698,7 +697,7 @@ Nothing is built on your laptop or on the server. Every merge into `main` runs t
 - [ ] **Phone: nothing to install yet.** There is no generic phone app any more and no staff login on the phone: a phone app is built for one company, carries its name, icon and colours, opens on its website, and signs in only its people. The first one is built in Stage 8, for the test company Stage 7 creates.
 
 > [!NOTE]
-> **Each new version from now on**: merge into `main` with the version bumped, wait for the release, install the new staff installer, and hand each company the new files from its own release (the version release builds them all, Stage 8); and on the machine, Stage 12. The desktop app's self-updater, which would remove the installer step, waits for the packaging phase (an updater signing key in the `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` secrets, and a real address in `tauri.conf.json`, still a placeholder). The macOS installer opens with a warning until an Apple developer certificate signs it.
+> **Each new version from now on**: merge into `main` with the version bumped, wait for the release, install the new staff installer, and hand each company the new files from its own release (the version release builds them all, Stage 8); and on the machine, Stage 11. The desktop app's self-updater, which would remove the installer step, waits for the packaging phase (an updater signing key in the `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` secrets, and a real address in `tauri.conf.json`, still a placeholder). The macOS installer opens with a warning until an Apple developer certificate signs it.
 
 ---
 
@@ -729,7 +728,7 @@ Only once Stage 3 and the plan's AI policy (Stage 5) are done. For a company ans
 - [ ] **Check the company's AI settings.** Dashboard → the company → **AI assistant**: **Policy comes from** The plan (leave it), the **Effective level**, **Answers come from now** (an AI model, or the help library and why: the configuration says so, the server has no AI provider, or its AI settings are incomplete), and today's and this month's use. To give this one company AI answers or the help library regardless of its plan, use **Custom configuration** → **Answers come from**. For a company that needs different limits, **Custom configuration** takes the same fields as a plan and stays when its plan changes; **Reset to plan** goes back. For Insights or Agent to read the company's records, tick **Company data may be sent to the AI provider** (it goes into the audit log) and make sure Stage 3's `AI_PROVIDER_APPROVED_DATA_CLASSES` line is there; otherwise the company gets Help answers.
 - [ ] **Hand out the shares, as the owner.** Web app → Settings → **People**: each person has an **Assistant share**; type a percentage and press **Save share**. The heading shows how much is handed out and how much is left; a share that would pass 100% is refused and says how much remains. In the company's desktop app the same list is under **Assistant settings**. Owners and admins can set shares, for people they outrank and for themselves; engineers and viewers cannot. For this test: the owner 50%, the engineer 50%. A company answered from the help library needs none: the People page says so, and shares already set are kept for when it moves to AI answers.
 - [ ] **Or set them for the company**, from the dashboard → the company → **AI assistant: members**. It lists every person with their share, their messages and tokens today and this month, their spend, and a **Monthly dollar cap** that only Integr8 can set and the company never sees (empty for no cap). A person who reaches their cap is told their allowance is used up and when it resets, never the amount.
-- [ ] **Try it**, as the engineer in the web app (side menu → **Assistant**). A Help question: _How do I create a work order?_ From the help library the answer is the best-matching help article's own words, with links to it and up to two more, and the screen's header says answers come from the help guide. On Insights or Agent, with company data allowed: _How many open jobs?_ On Agent: _Add a customer called Test Ltd_; the assistant prepares it and shows **A change the assistant prepared**, and nothing happens until you press confirm. Then open the company's phone app (once it is built with the assistant, Stage 12, part J): online only, one line with the percentage left.
+- [ ] **Try it**, as the engineer in the web app (side menu → **Assistant**). A Help question: _How do I create a work order?_ From the help library the answer is the best-matching help article's own words, with links to it and up to two more, and the screen's header says answers come from the help guide. On Insights or Agent, with company data allowed: _How many open jobs?_ On Agent: _Add a customer called Test Ltd_; the assistant prepares it and shows **A change the assistant prepared**, and nothing happens until you press confirm. Then open the company's phone app (once it is built with the assistant, Stage 11, part J): online only, one line with the percentage left.
 - [ ] **Try voice** (nothing to set up on the server; it works for every company). **Reading answers aloud** is in every company's assistant, off until a person turns it on: the first visit shows a banner with a **Turn on** button, a switch in the header mutes it again, and each answer has its own **Read this answer aloud** button. **Speaking a question** is only for companies answered by an AI model; a help-library company has no microphone button. Try it as the engineer: web app in Chrome or Edge → **Assistant** → **Speak your question** (allow the microphone when the browser asks), say a question, and the words appear in the box; nothing is sent until you press Send. Firefox has no recogniser, so it shows no button. In the company's desktop app the same button puts the cursor in the box and shows which key to press: **Win+H** on Windows, the microphone key (or fn twice) on a Mac; Linux has none and shows no microphone. On the phone the first tap asks for the microphone and, on iOS, speech recognition; that needs the rebuilt phone app (Stage 8, step 7). Arabic works in each, if the device has Arabic voices and dictation installed.
 - [ ] **Know where the audio goes**, in case a company asks. Only text reaches Integr8 Plus. The spoken audio is handled by the device's own recogniser: Google for Chrome and Android, Microsoft for Edge and Windows dictation, Apple for iPhone, Safari and Mac dictation, and never by the company's AI provider. Chrome 139 and later keeps recognition on the device for the languages it has a model for. A spoken question costs the same as a typed one.
 - [ ] **See the result on the dashboard**: the company's **AI assistant** panel shows the messages, tokens and spend; **AI assistant: members** shows them per person. The owner, in the web app, sees only a bar with the percentage of the company's allowance left; the engineer sees their own.
@@ -848,7 +847,6 @@ Everything above works with Stripe in test mode and the API in staging mode. Thi
 
 ### A. The services, for real
 
-- [ ] **Supabase Pro**, if not done in Stage 0 (a paused free project means nobody can sign in). Also Authentication → **SMTP Settings**: custom SMTP with Resend (host `smtp.resend.com`, port 465, user `resend`, password your Resend API key, sender `info@integr8-media.com`) so magic links are not limited to Supabase's few-per-hour mailer.
 - [ ] **Stripe live mode**, only if any company will pay in the app. Activate the account (business details, bank account), switch the toggle to live, repeat Stage 0 Part G there: the live secret key (`sk_live_`), the three products with prices, a **new webhook endpoint** for the same URL with the same events and its live signing secret. Live and test share nothing. Paste the live price IDs into dashboard → Plans. If every company is invoiced, skip this and keep the test keys; production mode only requires that a provider is configured.
 - [ ] **Edit the env file**: the live Stripe keys if any, and `APP_ENV=production`. Then:
 
@@ -864,8 +862,8 @@ curl -s https://api.integr8-media.com/health/ready
 
 ### B. The database and backups
 
-- [ ] **Decide where the database lives.** Recommended: Supabase (Stage 10), because backups and point-in-time recovery come with it. Acceptable for a pilot: the machine's Postgres with the next two steps done.
-- [ ] **If it stays on the machine, schedule the backup**: `sudo crontab -e` and add the line below. It writes a compressed dump to `/var/backups/integr8` nightly and keeps fourteen. Then add a boot-volume backup policy in Oracle (Block Storage → Boot Volumes → the volume → Backup policy → Bronze), which copies the whole disk off the machine weekly; Always Free includes five backups.
+- [ ] **The database stays on the machine**, and the sign-in server's tables live in it too: one nightly dump holds both. The next steps are what make that safe; `docs/database/runbook-backup-and-restore.md` is the full version.
+- [ ] **Schedule the backup**: `sudo crontab -e` and add the line below. It writes a compressed dump to `/var/backups/integr8` nightly and keeps fourteen. Then add a boot-volume backup policy in Oracle (Block Storage → Boot Volumes → the volume → Backup policy → Bronze), which copies the whole disk off the machine weekly; Always Free includes five backups.
 
 ```bash
 # machine (SSH session), one line inside the crontab editor
@@ -901,71 +899,61 @@ curl -s https://api.integr8-media.com/health/ready
 - [ ] **Each paying company's plan level** and answer source are what they bought, and each company on AI answers has had its shares set (Stage 7) before you tell them the assistant is there.
 
 > [!WARNING]
-> Four secrets are now live and can move real money or read every customer's data: the Stripe live key, the Supabase service role key, the R2 secret and the AI provider's API key. They exist only in `deploy/.env` on the machine and in your password manager. If one is ever pasted anywhere else, rotate it the same day: Stripe → roll the key; Supabase → new service role key; Cloudflare → delete and recreate the R2 token; the AI provider → its API keys page → revoke and create a new one. Then edit the env file and `up -d`.
+> Four secrets are now live and can move real money or read every customer's data: the Stripe live key, the sign-in server's service role key, the R2 secret and the AI provider's API key. They exist only in `deploy/.env` on the machine and in your password manager. If one is ever pasted anywhere else, rotate it the same day: Stripe → roll the key; the sign-in server → run the key generator again and replace the three sign-in lines together; Cloudflare → delete and recreate the R2 token; the AI provider → its API keys page → revoke and create a new one. Then edit the env file and `up -d`.
 
 ---
 
-## Stage 10 — Moving the database to Supabase
-
-_about 30 minutes · optional_
-
-The compose Postgres is the only copy of your data and lives on one machine's disk. Supabase gives managed backups, point-in-time recovery and a dashboard. The repository's runbook (`docs/database/runbook-supabase-setup.md`) is the full version; this is the shape.
-
-- [ ] **Collect the connection strings** in the Supabase project: the **Connect** button → **Direct connection** (port 5432, user `postgres`, the database password from Stage 0 Part E) is `DATABASE_URL_ADMIN`; the **Transaction pooler** string (port 6543, host `aws-0-REGION.pooler.supabase.com`) is the shape of the other two.
-- [ ] **Change the three strings** in `deploy/.env`: `DATABASE_URL_ADMIN` = the direct string; `DATABASE_URL=postgres://integr8_app.PROJECT_REF:APP_PASSWORD@aws-0-REGION.pooler.supabase.com:6543/postgres`; `DATABASE_URL_AUTH` the same with `integr8_auth.PROJECT_REF` and the auth password. The username really is `role.projectref`. Keep the two `INTEGR8_*_PASSWORD` lines as they are.
-- [ ] **Create the roles and schema in Supabase**: `docker compose … run --rm api node node_modules/@integr8/db/dist/migrator/cli.js deploy`. It prints the two roles and the forty-six migrations.
-- [ ] **Move the data**, if there is any to keep: `pg_dump` from the container and `psql` into Supabase as the owner, per the runbook. Then in `deploy/compose.yml` remove the `postgres` service and the `depends_on: postgres` under `bootstrap`, and `up -d`.
-- [ ] **Turn on backups** in Supabase (Database → Backups) and rehearse a restore once.
-
----
-
-## Stage 11 — A test box at home on ZimaOS
+## Stage 10 — A test box at home on Ubuntu with Arcane
 
 _about 2 hours · optional_
 
-The Oracle machine is production. This is a second machine that is allowed to break: a PC at home running ZimaOS, with the same five containers, pulling the `staging` images instead of `main`. Every change is merged to `staging`, tried here, then promoted to `main`. The box can carry your photo server and file sharing beside it. Stage 0, Part L collected what it needs.
+The Oracle machine is production. This is a second machine that is allowed to break: a PC at home running Ubuntu 24.04 LTS, with the same containers, pulling the `staging` images instead of `main`. Every change is merged to `staging`, tried here, then promoted to `main`. The box already runs Arcane, which looks after Docker stacks, and Webmin and Samba for other things; they stay as they are. Stage 0, Part L collected what it needs.
 
 > [!NOTE]
-> **Hardware**: an i5-7500 or similar with **16 GB** and an SSD. The stack needs about 2 GB; 16 GB leaves room for a photo server. The box never builds images.
+> **Hardware**: an i5-7500 or similar with **16 GB** and an SSD. With its memory caps the stack needs about 3 GB at most; the rest is left for whatever else the box does. The box never builds images.
 
-- [ ] **Install ZimaOS** from `zimaspace.com/zimaos`: write the installer to a USB stick, boot from it, let it take the system disk, create the admin account. Your data lives under `/DATA`; the system partition is replaced by ZimaOS updates.
-- [ ] **Turn on SSH** in ZimaOS Settings and connect from the laptop: `ssh YOUR-ZIMA-USER@BOX-IP`. Docker and Compose are already there (`docker compose version`). ZimaOS has a read-only system and no package manager, so the Stage 1 setup script is **not** used; nothing it installs is needed here.
-- [ ] **Get the deployment files** (only `deploy/` is needed, since the box pulls images):
+- [ ] **Ubuntu 24.04 LTS, SSH, Docker and Compose.** Connect from the laptop with `ssh YOUR-USER@BOX-IP` and check `docker compose version`. Stage 1's setup script is **not** used here: Docker is already installed, and the box needs no Caddy and no open port.
+- [ ] **Arcane is running** and its page opens in the laptop's browser at the address you gave it when it was set up. It is how the stack is created and updated below; it runs the same `docker compose` underneath, so the SSH commands shown beside it do the same thing.
+- [ ] **Webmin and Samba stay as they are.** They keep their own ports, and the stack publishes only 3000 and 3001, on `127.0.0.1`, so nothing clashes. If Webmin manages the firewall, it needs no new rule: the tunnel below connects outward.
+- [ ] **Get the deployment files** (only `deploy/` is used, since the box pulls images):
 
 ```bash
-# box (SSH session) — with git
-mkdir -p /DATA/integr8 && git clone -b staging https://github.com/MinaLouisLeon/integr8-plus.git /DATA/integr8
-
-# box (SSH session) — without git
-mkdir -p /DATA/integr8 && cd /DATA/integr8
-curl -fsSL https://github.com/MinaLouisLeon/integr8-plus/archive/refs/heads/staging.tar.gz | tar xz --strip-components=1
+# box (SSH session)
+sudo mkdir -p /opt/integr8 && sudo chown "$USER" /opt/integr8
+git clone -b staging https://github.com/MinaLouisLeon/integr8-plus.git /opt/integr8
 ```
 
 - [ ] **Change the GitHub variable** `STAGING_PUBLIC_API_URL` to `https://api-test.integr8-media.com` and push something to `staging` (or run "Publish images" from the Actions tab). The staging web image and the nightly desktop installer are then built for the test box.
-- [ ] **The env file**, as Stage 3 but from Part L's values: `APP_ENV=staging`; `API_IMAGE=ghcr.io/minalouisleon/integr8-api:staging` and `WEB_IMAGE=ghcr.io/minalouisleon/integr8-web:staging`; the test names (`https://api-test.integr8-media.com` for the three API addresses, `https://test.integr8-media.com` for the two web ones, `API_CORS_ORIGINS=https://test.integr8-media.com,tauri://localhost,http://tauri.localhost`); the **second** set of passwords and signing keys; the **second** Supabase project; and every fake on: `MEDIA_STORAGE=local`, `GEOCODER=fake`, `PUSH_SENDER=recording`, `BILLING_PROVIDER=recording`, `EMAIL_SENDER=recording`. The box can then never email a real person or charge a card; invitation links are read from the API log (`docker compose … logs api | grep -o 'https://test[^" ]*accept-invitation[^" ]*' | tail -1`).
-- [ ] **Run the Cloudflare Tunnel connector** with the token from Part L. This replaces Caddy and port forwarding: ZimaOS's own interface uses port 80, your router opens nothing, and the web app's sign-in cookies are only sent over HTTPS, so a plain `http://BOX-IP:3001` could never sign in. Cloudflare terminates HTTPS at its edge for the two test names.
+- [ ] **The env file**, `/opt/integr8/deploy/.env`, as Stage 3 but from Part L's values: `APP_ENV=staging`; `API_IMAGE=ghcr.io/minalouisleon/integr8-api:staging` and `WEB_IMAGE=ghcr.io/minalouisleon/integr8-web:staging`; the test names (`https://api-test.integr8-media.com` for the three API addresses, `https://test.integr8-media.com` for the two web ones, `API_CORS_ORIGINS=https://test.integr8-media.com,tauri://localhost,http://tauri.localhost`); the **second** set of passwords, signing keys and sign-in secrets; and every fake on: `MEDIA_STORAGE=local`, `GEOCODER=fake`, `PUSH_SENDER=recording`, `BILLING_PROVIDER=recording`, `EMAIL_SENDER=recording`. The box can then never email a real person or charge a card; invitation links and sign-in codes are read from the API log (`docker compose … logs api | grep -o 'https://test[^" ]*accept-invitation[^" ]*' | tail -1`, and `logs api | grep sign_in_code` for a code).
+- [ ] **Run the Cloudflare Tunnel connector** with the token from Part L. This replaces Caddy and port forwarding: your router opens nothing, and the web app's sign-in cookies are only sent over HTTPS, so a plain `http://BOX-IP:3001` could never sign in (with the ports on `127.0.0.1` it is not reachable from the network anyway). Cloudflare terminates HTTPS at its edge for the two test names. The connector runs on the host network, so it reaches the two ports on `127.0.0.1`.
 
 ```bash
 # box (SSH session). Paste the token in place of TUNNEL-TOKEN.
 docker run -d --name cloudflared --restart unless-stopped --network host \
   cloudflare/cloudflared:latest tunnel --no-autoupdate run --token TUNNEL-TOKEN
+```
 
-cd /DATA/integr8
+- [ ] **The stack, in Arcane.** Arcane → **Stacks** (called **Projects** in newer versions) → add the existing compose file `/opt/integr8/deploy/compose.yml`, with `/opt/integr8/deploy/.env` as its env file. The stack's name comes from the file: `integr8`. Then **Pull** and **Deploy**. From SSH the same is:
+
+```bash
+# box (SSH session) — the same as Arcane's Pull and Deploy
+cd /opt/integr8
 docker compose -f deploy/compose.yml --env-file deploy/.env pull
 docker compose -f deploy/compose.yml --env-file deploy/.env up -d
+docker compose -f deploy/compose.yml --env-file deploy/.env ps     # auth: Up (healthy)
 curl -s https://api-test.integr8-media.com/health/ready
 ```
 
-- [ ] **Its own super admin** (Stage 5 command, from `/DATA/integr8`), then Stage 7 on it with a test company.
+- [ ] **Its own super admin** (Stage 5 command, from `/opt/integr8`), then Stage 7 on it with a test company. Sign in once with **Email me a sign-in code**, reading the code from the API log, and change the password under **Change password**.
 - [ ] **The nightly apps**: the pre-release on the Releases page (the staff desktop app) and the `preview` phone build on the Expo dashboard talk to the test box. The preview phone build is the one generic phone app left: no company baked in, so it signs in anybody, for your own testing only. Install the nightly desktop app beside the release one; Windows keeps both.
-- [ ] **The loop**: merge to `staging` → wait for green → on the box `pull && up -d` → test → promote `staging` to `main` with the version bumped → Stage 12 on Oracle. The box's data is disposable: `down -v` and `up -d` gives a clean database. To rehearse a migration on real data, restore a production dump into it first.
+- [ ] **The loop**: merge to `staging` → wait for green → in Arcane, **Pull** and **Redeploy** the stack (or `pull && up -d` over SSH) → test → promote `staging` to `main` with the version bumped → Stage 11 on Oracle. The box's data is disposable: `down -v` and `up -d` gives a clean database, sign-in accounts included. To rehearse a migration on real data, restore a production dump into it first.
 
 > [!WARNING]
 > **What the box cannot catch.** Oracle is ARM and the box is Intel. And every fake stays a fake here: a Stripe webhook or a Resend bounce gets its first real test on Oracle, which is why Stage 9 keeps the real-card step.
 
 ---
 
-## Stage 12 — Updating to a new version
+## Stage 11 — Updating to a new version
 
 _about 30 minutes, once per release_
 
@@ -993,7 +981,7 @@ df -h /                                    # keep at least 5 GB free
 docker system df                           # how much old images are taking
 ```
 
-- [ ] **A fresh backup exists** with today's date and a size similar to the last one. On Supabase (Stage 10) skip the script: Supabase's own daily backup covers it.
+- [ ] **A fresh backup exists** with today's date and a size similar to the last one. It holds the sign-in server's accounts too: they live in the same database.
 - [ ] **There is room on the disk.** Under 5 GB free: run part H's clean-up first, then come back.
 
 ### C. Bring the new code over, and check for new settings
@@ -1047,7 +1035,7 @@ docker compose -f deploy/compose.yml --env-file deploy/.env ps
 curl -s https://api.integr8-media.com/health/ready; echo
 ```
 
-- [ ] **Every service is up.** `postgres`, `api`, `worker` and `web` say _Up_ (the API and Postgres also _healthy_); `bootstrap` and `migrate` say _Exited (0)_, which is correct for one-off jobs. Anything _Restarting_: `docker compose … logs <name>` says why.
+- [ ] **Every service is up.** `postgres`, `auth`, `api`, `worker` and `web` say _Up_ (the API, `auth` and Postgres also _healthy_); `bootstrap` and `migrate` say _Exited (0)_, which is correct for one-off jobs. Anything _Restarting_: `docker compose … logs <name>` says why.
 - [ ] **The API is ready**: the `curl` answers `"status":"ready"`.
 - [ ] **Sign in to the dashboard** at `https://app.integr8-media.com/platform/sign-in` and open **Health**: nothing new failing. Open one company and one of its work orders in the web app; then on a phone, pull down on today's jobs to sync.
 - [ ] **Sentry is quiet** for the next half hour, under the new release number.
@@ -1118,9 +1106,9 @@ git checkout main && git pull
 
 ### J. AI assistant (included in v1.1.2)
 
-The AI assistant, help-library answers, provider integrations and voice are included in the v1.1.2 release. If your server or installed apps predate these features, use the normal Stage 12 release process to update them; do not make a separate 1.2.0 release just for the assistant. Keep provider settings optional until you choose to enable AI, then follow Stages 3, 5 and 7.
+The AI assistant, help-library answers, provider integrations and voice are included in the v1.1.2 release. If your server or installed apps predate these features, use the normal Stage 11 release process to update them; do not make a separate 1.2.0 release just for the assistant. Keep provider settings optional until you choose to enable AI, then follow Stages 3, 5 and 7.
 
-- [ ] **Machine configuration:** on upgrade, use the Stage 12 env-template comparison to add any missing `AI_` settings. They are optional; leave AI disabled until configured. Migrations run as part of the standard update and preserve existing data.
+- [ ] **Machine configuration:** on upgrade, use the Stage 11 env-template comparison to add any missing `AI_` settings. They are optional; leave AI disabled until configured. Migrations run as part of the standard update and preserve existing data.
 - [ ] **Nothing changes for any company yet**: every plan's AI level is Off, every company's app switches are off, and nobody has a share. Switching it on is Stage 5 (the AI provider panel and each plan) and then Stage 7's AI part for each company. For AI answers, tell each company's owner before you switch their plan on that they will be asked to hand out shares under Settings → People, or set the shares for them from the dashboard; for help-library answers there is nothing for them to do.
 - [ ] **Update the apps** (part G): install the current staff release (v1.1.2 or later) and distribute each company's current desktop and phone builds. Older phone builds may need reinstalling to include native voice support (Stage 8, step 7).
 
@@ -1129,9 +1117,9 @@ The AI assistant, help-library answers, provider integrations and voice are incl
 
 ### K. PDF documents (included in v1.1.2)
 
-PDF document generation and templates are included in v1.1.2. Older installations receive them through the standard Stage 12 update; no separate 1.3.0 release is needed.
+PDF document generation and templates are included in v1.1.2. Older installations receive them through the standard Stage 11 update; no separate 1.3.0 release is needed.
 
-- [ ] **Machine configuration:** use Stage 12's template comparison to add `PDF_RENDERER=chromium` if missing. The API image includes Chromium and fonts, and the migration runs during the standard update. Afterward check Stage 4's worker line: `PDF documents can be printed`.
+- [ ] **Machine configuration:** use Stage 11's template comparison to add `PDF_RENDERER=chromium` if missing. The API image includes Chromium and fonts, and the migration runs during the standard update. Afterward check Stage 4's worker line: `PDF documents can be printed`.
 - [ ] **Nothing changes for any company yet**: `documents` is off for every company until you switch it on under **Features** and design its templates (Stage 7).
 - [ ] **Update the apps** (part G): install the current staff app to design templates, and distribute current company desktop and phone builds to users who need Documents.
 
@@ -1140,10 +1128,10 @@ PDF document generation and templates are included in v1.1.2. Older installation
 
 ### L. E-invoicing (included in v1.1.2)
 
-ETA e-invoicing is included in v1.1.2. Older installations receive it through the standard Stage 12 update. Keep it disabled until the ETA test-system workflow has been validated; production remains disabled.
+ETA e-invoicing is included in v1.1.2. Older installations receive it through the standard Stage 11 update. Keep it disabled until the ETA test-system workflow has been validated; production remains disabled.
 
 - [ ] **The e-invoicing key, when you are ready for it**: make it with Stage 0, Part B, and add it to the key sheet as `ETA_CREDENTIALS_KEY`. Until e-invoicing is switched on for a company it can stay blank.
-- [ ] **Machine configuration:** use Stage 12's template comparison to add `ETA_CREDENTIALS_KEY=` if you will use e-invoicing. It may stay blank until then; keep `ETA_ALLOW_PRODUCTION=false`. The migration runs during the standard update.
+- [ ] **Machine configuration:** use Stage 11's template comparison to add `ETA_CREDENTIALS_KEY=` if you will use e-invoicing. It may stay blank until then; keep `ETA_ALLOW_PRODUCTION=false`. The migration runs during the standard update.
 - [ ] **Nothing changes for any company yet**: `e_invoicing` is off for every company until you switch it on, in the staff desktop app's **E-invoicing switch** or under **Features** (Stage 7). Leave it off until e-invoicing has been tested, and leave production off.
 - [ ] **Update the apps** (part G): distribute the current staff desktop app, which contains the signing queue, to staff who will test e-invoicing.
 
@@ -1163,7 +1151,7 @@ The website data API is included in v1.2.0 and adds migration 0050. It needs no 
 
 The schedule adds migration 0051 and needs no new server setting. It ships in v1.2.1.
 
-- [ ] **Migration 0051 applied** during the normal update. It adds the job visits tables and installs the `btree_gist` Postgres extension, which is what stops anyone being booked on two jobs at once. The migration installs it by itself on the Oracle machine's Postgres and on Supabase; if the update stops with a permission error naming `btree_gist`, enable it under Supabase → Database → Extensions and run the update again. Do not run its down migration on a production database: it deletes every visit.
+- [ ] **Migration 0051 applied** during the normal update. It adds the job visits tables and installs the `btree_gist` Postgres extension, which is what stops anyone being booked on two jobs at once. The migration installs it by itself on the machine's Postgres. Do not run its down migration on a production database: it deletes every visit.
 - [ ] **Existing jobs are unchanged.** They have no visits yet, so they wait under **Needs a visit** until someone plans one, and the phones show them as before.
 - [ ] **Update the apps** (part G): the schedule is in the new desktop apps and the visit timeline in the new phone builds. An older phone keeps working; it just does not show visits.
 
@@ -1193,16 +1181,30 @@ Contracts, maintenance plans and deadlines add migration 0053 and need no new se
 > [!WARNING]
 > **Rolling back with contracts, plans and deadlines.** Fix forward once a plan has made a job or a deadline has been missed: an older version does not know those history entries, so the job would not open in it. If you must roll back (part I), leave migration 0053 applied; its `.down.sql` deletes every contract, plan and deadline and is for development databases only.
 
+### Q. Self-hosted sign-in (the release after v1.2.1)
+
+Sign-in moves from Supabase's cloud to a Supabase Auth container on this machine, beside the API. The update adds migration 0054, the `auth` container and three settings, and new screens in every app: **Email me a sign-in code** for a forgotten password, and **Change password**. The Supabase cloud project is no longer used. Nobody has an account yet, so nothing is moved: sign-in simply starts on the new server.
+
+- [ ] **The three sign-in secrets.** On the laptop, run Stage 0, Part B's key generator again and keep only its last three lines (`SUPABASE_AUTH_JWT_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_AUTH_DB_PASSWORD`) in the key sheet and the password manager. Its first four lines are new signing keys you do **not** want: the machine keeps its own.
+- [ ] **The env file**, during part C with `nano deploy/.env`: delete the `SUPABASE_URL=` line (the API refuses to start while it is there), put the new `SUPABASE_SERVICE_ROLE_KEY=` line in place of the old one, and add the other two lines beside it. Part C's `comm` check then prints none of the three.
+- [ ] **Migration 0054 applied** during part D. It records how each session was signed in, which Change password needs, and adds the list of sign-in accounts still to delete after a company is purged. Do not run its down migration on a production database.
+- [ ] **The `auth` container comes up** in part D: `bootstrap` creates its database role and schema, `auth` sets up its own tables and turns healthy, and only then do the API and worker start. In part E, `auth` is _Up (healthy)_, and `sudo ss -tlnp | grep -E ':(3000|3001)\b'` shows the API and web ports on `127.0.0.1` only; Caddy still reaches them.
+- [ ] **Try it.** In the web app, sign out, type an invited address and choose **Email me a sign-in code**; the code arrives by email within a minute. Sign in with it, open **Change password** from the menu (it asks for no current password for fifteen minutes after a code), and set a new one. Another browser or phone signed in as the same person is signed out, and the address gets "Your password was changed".
+- [ ] **Update the apps** (part G): the two new screens are in the new staff app and in each company's new desktop installer and phone build. An older app keeps signing in with a password; it just has neither screen.
+
+> [!WARNING]
+> **Rolling back with self-hosted sign-in.** A version before this one signs in through a Supabase cloud project, which does not have the accounts made since. Fix forward instead. If you must roll back (part I), put `SUPABASE_URL` and the cloud project's service role key back in `deploy/.env` first, and leave migration 0054 applied: the older version ignores its columns and table.
+
 > [!NOTE]
-> **The test box (Stage 11)** updates the same way, from `staging` instead of `main`: `git pull` on its `staging` checkout and `pull` its `:staging` images. Updating it first, the day before, is the cheapest rehearsal there is.
+> **The test box (Stage 10)** updates the same way, from `staging` instead of `main`: `git pull` on its `staging` checkout, then **Pull** and **Redeploy** the stack in Arcane. Updating it first, the day before, is the cheapest rehearsal there is.
 
 ---
 
-## Stage 13 — Wipe the machine and start fresh
+## Stage 12 — Wipe the machine and start fresh
 
 _about 15 minutes, then Stages 4 to 8 again · optional_
 
-This removes everything Integr8 put on the Oracle machine: the containers, the images, the database and its data, the uploaded files kept on disk, and the repository folder. Then it clones the latest version and starts again from Stage 4. Use it when the machine is in a state you no longer trust, or to test a release from nothing. It is **not** how you update: Stage 12 updates and keeps every company and its data.
+This removes everything Integr8 put on the Oracle machine: the containers, the images, the database and its data, the uploaded files kept on disk, and the repository folder. Then it clones the latest version and starts again from Stage 4. Use it when the machine is in a state you no longer trust, or to test a release from nothing. It is **not** how you update: Stage 11 updates and keeps every company and its data.
 
 > [!WARNING]
 > **Everything in the database is deleted and cannot be brought back**: every company, person, job, form and submission, and the super admin. Only a backup you copy off the machine first (step A2) survives. The machine itself, Caddy, the firewall, your domain and every account and key from Stage 0 stay as they are, so none of Stages 0 to 3 needs doing again.
@@ -1303,7 +1305,7 @@ exit            # log in again so docker works without sudo
 
 Some of what the old installation created lives in other services, not on the machine. None of it stops the fresh start; tidy it so names and addresses can be used again.
 
-- [ ] **Supabase: delete the old people.** Sign-in identities live in Supabase, not in the database you just deleted, so the owners and engineers you invited are still there. Supabase → your project → **Authentication** → **Users**: select the test addresses → **Delete users**. Otherwise inviting the same address into a new company can fail. Your super admin is not in this list (it lived in the database), so there is nothing to delete for it.
+- [ ] **Sign-in accounts went with the database.** They live in the `auth` schema of the same database, so step B deleted them with everything else. Nothing to tidy.
 - [ ] **Your authenticator app.** Delete the old **Integr8 Plus** entry; Stage 5 gives you a new one for the new super admin.
 - [ ] **Cloudflare R2: the old companies' buckets.** Each company had a bucket named `integr8-staging-…` or `integr8-production-…` followed by its id. Nothing points at them any more and they keep their files (and a little cost). Cloudflare → **R2** → each old bucket → **Settings** → **Delete bucket** (Cloudflare asks you to empty it first: open it, select all objects, delete). New companies get new buckets automatically.
 - [ ] **Stripe test data, if you tried in-app payment.** Test-mode customers and subscriptions from the old companies are harmless. To clear them: Stripe (test mode) → **Developers** → **Overview** → **Delete all test data**. Your products, prices and webhook are kept only if you do **not** do this; if you do, re-create them as in Stage 0, Part G, and put the new price IDs into Stage 5.
@@ -1331,17 +1333,17 @@ comm -23 <(grep -oE '^#? ?[A-Z][A-Z0-9_]+=' deploy/.env.example | tr -d '# ' | s
          <(grep -oE '^#? ?[A-Z][A-Z0-9_]+=' deploy/.env | tr -d '# ' | sort -u)
 ```
 
-- [ ] **Start the stack: Stage 4**, exactly as written. Postgres starts empty, `bootstrap` creates the two database roles with the passwords from your env file, and every migration is applied from the first. Then the same checks as Stage 4.
+- [ ] **Start the stack: Stage 4**, exactly as written. Postgres starts empty, `bootstrap` creates the database roles, the sign-in server's included, with the passwords from your env file, and every migration is applied from the first. Then the same checks as Stage 4.
 - [ ] **Then Stages 5, 7 and 8**: a new super admin and the plans' Stripe prices, then each company onboarded again with its forms, job types and look, then its apps built. Stage 6 needs nothing: the staff desktop app on your laptop still works and simply signs in to the fresh installation. Already-installed company apps keep working too once their company is onboarded again with the **same short name**; with a different short name, build and install them again (Stage 8).
 - [ ] **Delete the kept copy** once the stack is up and you have signed in: `rm ~/integr8.env.keep`. It holds every secret the stack has; the password manager is where it belongs.
 
 ---
 
-## Stage 14 — Destroy the Oracle machine, or empty it and keep it
+## Stage 13 — Destroy the Oracle machine, or empty it and keep it
 
 _about 3 hours, mostly Stages 1 to 4_
 
-Stage 13 empties the machine and keeps it. This stage deletes the machine itself, its disk included, and makes a new one: a new operating system, a new shape, or simply a clean start on the current release (v1.2.1). Everything from Stage 0 lives outside the machine and carries over unchanged: the domain and Cloudflare, Supabase, R2, Resend, Stripe, Mapbox, Sentry, Expo and every GitHub variable and secret. What dies with the machine is what was only on its disk: `deploy/.env`, the database, the backups in `/var/backups/integr8`, and the Caddy file. Part A saves the first two if you want them.
+Stage 12 empties the machine and keeps it. This stage deletes the machine itself, its disk included, and makes a new one: a new operating system, a new shape, or simply a clean start on the current release (v1.2.1). Everything from Stage 0 lives outside the machine and carries over unchanged: the domain and Cloudflare, R2, Resend, Stripe, Mapbox, Sentry, Expo and every GitHub variable and secret. What dies with the machine is what was only on its disk: `deploy/.env`, the database, the backups in `/var/backups/integr8`, and the Caddy file. Part A saves the first two if you want them.
 
 > [!NOTE]
 > **Two ways to start over.** Parts B to E delete the Oracle machine itself and make a new one. [Part F](#f-keep-the-machine-but-remove-everything-on-it-data-docker-and-the-repository) keeps the machine, its address, its firewall and your login, and removes only what Integr8 put on it: the data, Docker and the repository. Do part A first either way; then choose.
@@ -1382,7 +1384,7 @@ scp "LOGIN-USER@SERVER-IP:/var/backups/integr8/*.sql.gz" $env:USERPROFILE\Downlo
 
 - [ ] **Terminate the instance.** Oracle → Compute → Instances → `integr8` → **More actions** → **Terminate**, tick **Permanently delete the attached boot volume**, confirm. In a few minutes it is gone. The reserved address returns to the list, unassigned. Leave the virtual cloud network, its subnet and its security list (with the 80 and 443 rules) where they are: the new machine reuses them.
 - [ ] **Old boot-volume backups** (Block Storage → Boot volume backups) from Stage 9 belong to the deleted disk. Delete them once the new machine runs, so they stop counting against the five free backups.
-- [ ] **Only if you start empty**, tidy what lives outside the machine: Stage 13, part E (old people in Supabase, old companies' R2 buckets, Stripe test data). If you keep the data, touch nothing outside the machine: the restored database still points at every one of them.
+- [ ] **Only if you start empty**, tidy what lives outside the machine: Stage 12, part E (old companies' R2 buckets, Stripe test data). If you keep the data, touch nothing outside the machine: the restored database still points at every one of them.
 
 ### C. The new machine: Stages 1 and 2 again
 
@@ -1559,21 +1561,21 @@ df -h /                                   # most of the disk is free again
 
 #### F6. What was kept, and how to use the machine again
 
-| Kept                                                                          | Removed                                                           |
-| ----------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| The Oracle instance, its boot volume and its reserved address                 | The database and every company's data on it                       |
-| Your SSH key and login; the operating system and its security updates         | All containers, images and volumes, and the Docker engine         |
-| The firewall rules for 80 and 443, and Oracle's security list                 | `/opt/integr8`, `deploy/.env` and every copy of it on the machine |
-| Caddy and its certificates (unless you removed it in F4)                      | The backups, the nightly backup job and its log                   |
-| The DNS records, Supabase, R2, Stripe, Resend, GitHub and every other account | Files kept on disk (uploads when R2 is off)                       |
+| Kept                                                                  | Removed                                                           |
+| --------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| The Oracle instance, its boot volume and its reserved address         | The database and every company's data on it                       |
+| Your SSH key and login; the operating system and its security updates | All containers, images and volumes, and the Docker engine         |
+| The firewall rules for 80 and 443, and Oracle's security list         | `/opt/integr8`, `deploy/.env` and every copy of it on the machine |
+| Caddy and its certificates (unless you removed it in F4)              | The backups, the nightly backup job and its log                   |
+| The DNS records, R2, Stripe, Resend, GitHub and every other account   | Files kept on disk (uploads when R2 is off)                       |
 
 - [ ] **To use the machine again**, run Stage 1 from "Connect and run the setup script" (it installs Docker again and re-checks the firewall and Caddy), clone the repository, then continue with part D of this stage: the settings file back, the dump restored if you are keeping the data, the stack started.
-- [ ] **Outside the machine** nothing changed. If you start empty rather than restoring, tidy the old people in Supabase, the old companies' R2 buckets and Stripe test data as Stage 13, part E describes; if you restore, leave them alone.
+- [ ] **Outside the machine** nothing changed. If you start empty rather than restoring, tidy the old companies' R2 buckets and Stripe test data as Stage 12, part E describes; if you restore, leave them alone.
 
 ---
 
 ## About this page
 
-Prepared for release v1.2.1 (27 October 2026) from the repository's `main` branch: `deploy/compose.yml`, `deploy/.env.example`, `deploy/vps/`, `.github/workflows/`, `docs/deployment/README.md`, `docs/database/runbook-supabase-setup.md`, `docs/ai/RUNBOOK.md`, `docs/documents/RUNBOOK.md` and `docs/e-invoicing/RUNBOOK.md`. Since the previous edition, v1.2.0 added the company website data API and v1.2.1 adds the schedule, skills and certificates, and contracts, maintenance and deadlines (Stage 12, parts M to P); v1.1.2 included the AI assistant, PDF documents and ETA e-invoicing, the v1.1.1 API image/config fixes, and the staff app refresh button from pull request 115. The e-invoicing feature remains test-only until validated. Example model ids and prices come from the providers' pages and third-party price lists in October 2026 and were not checked on every provider's own site: confirm them there. Service dashboards move things around; when a menu is not where this says, search the service's own docs for the setting name.
+Prepared for release v1.2.1 (27 October 2026) from the repository's `main` branch: `deploy/compose.yml`, `deploy/.env.example`, `deploy/vps/`, `.github/workflows/`, `docs/deployment/README.md`, `docs/auth/self-hosted-auth.md`, `docs/database/runbook-backup-and-restore.md`, `docs/ai/RUNBOOK.md`, `docs/documents/RUNBOOK.md` and `docs/e-invoicing/RUNBOOK.md`. Since the previous edition, v1.2.0 added the company website data API and v1.2.1 adds the schedule, skills and certificates, and contracts, maintenance and deadlines (Stage 11, parts M to P); v1.1.2 included the AI assistant, PDF documents and ETA e-invoicing, the v1.1.1 API image/config fixes, and the staff app refresh button from pull request 115. This edition also prepares the self-hosted sign-in of the next release (Stage 11, part Q): Supabase's cloud is no longer used, the stage that moved the database there is gone, and the test box runs Ubuntu with Arcane. The e-invoicing feature remains test-only until validated. Example model ids and prices come from the providers' pages and third-party price lists in October 2026 and were not checked on every provider's own site: confirm them there. Service dashboards move things around; when a menu is not where this says, search the service's own docs for the setting name.
 
 This Markdown checklist is maintained alongside the interactive HTML version in `setup-checklist.html`. To use the HTML version, download it with `setup-checklist.css` and `setup-checklist.js` into one folder and open the `.html` in a browser; progress ticks are saved in that browser. Keep the Markdown and HTML content in sync; `pnpm guide:check` verifies their stages, parts, tick boxes and wording.
