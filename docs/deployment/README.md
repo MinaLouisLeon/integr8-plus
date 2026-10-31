@@ -158,10 +158,23 @@ company data and, in its `auth` schema, every sign-in account.
 cron and keeps the last fourteen files under `/var/backups/integr8`;
 [the backup and restore runbook](../database/runbook-backup-and-restore.md)
 has the schedule, the checks and the restore. That covers a bad migration or a
-deleted company. Losing the machine needs a copy elsewhere, and this is the
-next step before a paying customer's data exists: a boot-volume backup policy
-in the cloud console (Oracle's Always Free tier includes five), or `rclone`
-from the backup directory to an R2 bucket.
+deleted company. Losing the machine needs a copy elsewhere, set up before a
+paying customer's data exists: with `BACKUP_REMOTE` in `deploy/.env` (an rclone
+remote, recommended an R2 bucket of its own behind rclone's encrypting `crypt`
+layer), the script copies each dump there and keeps the newest
+`BACKUP_REMOTE_KEEP` (30). A copy that fails makes the run fail with an `ERROR`
+line, and `BACKUP_PING_URL` tells a heartbeat monitor about every night, good
+or bad. Without `BACKUP_REMOTE` each run says the dump is on this machine only.
+A boot-volume backup policy in the Oracle console is a useful second layer
+(check the schedule the console shows for it), but it stays in the same
+account as the machine.
+
+`deploy/vps/restore-drill.sh` proves a dump restores without going near the
+live database: it loads the newest dump, or with `--remote` the newest
+off-machine copy, into a throwaway Postgres container with no network, checks
+the migrations, row counts, policies and grants that came back, times it,
+removes the container and prints a row for the runbook's rehearsal log. Run it
+monthly; the runbook also has the six-monthly full rehearsal on the test box.
 
 Container logs are capped at 50 MB per container by the `x-logging` block in
 `deploy/compose.yml`, so a chatty week cannot fill the disk.
@@ -182,14 +195,24 @@ Container logs are capped at 50 MB per container by the `x-logging` block in
    then `docker compose pull && docker compose up -d`. `migrate` runs first; the
    API's readiness check refuses traffic until the schema matches the build.
 3. Roll back by setting the previous tag and running the same two commands.
-   Migrations are rolled back deliberately, never automatically:
-   `node node_modules/@integr8/db/dist/migrator/cli.js down --steps 1` from an
-   `api` container, after reading the migration's down file.
+   The previous image's `migrate` finds the newer release's migrations already
+   applied, applies nothing, logs that the database is ahead of its build and
+   exits cleanly; its readiness check passes with a note naming them. So the
+   API, worker and web start on the newer schema, which expand/contract
+   ([migrations.md](../database/migrations.md#rolling-back-a-release)) keeps
+   safe. Releases up to v1.2.1 predate this and stop at `migrate`: the setup
+   guide's Stage 11, part Q, has the way round it.
+4. Migrations are rolled back deliberately, never automatically, and only by
+   the release that added them, because only its image has their down files:
+   with the newer tag still set, after reading the migration's down file,
+   `docker compose run --rm api node node_modules/@integr8/db/dist/migrator/cli.js down --steps 1`,
+   then set the previous tag. The previous image refuses to roll back a
+   migration it has no file for.
 
 ## What is not here yet
 
-Copies of the nightly dumps off the machine, a rehearsed restore
-(`docs/database/runbook-backup-and-restore.md`), uptime monitoring and
-alerting, signed desktop and mobile builds (P20), and the
-rest of P19. The compose stack is a first production for testing, not the
+A restore rehearsed on the real machine (the drill script and the steps are in
+`docs/database/runbook-backup-and-restore.md`; nobody has run them there yet),
+uptime monitoring and alerting, signed desktop and mobile builds (P20), and
+the rest of P19. The compose stack is a first production for testing, not the
 final shape.

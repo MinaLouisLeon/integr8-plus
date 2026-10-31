@@ -17,7 +17,7 @@ Everything invisible to customers that determines whether the product survives i
 
 - [~] Tenant isolation suite expanded to cover every endpoint added since P02, running on every pull request
 - [~] Staging environment mirroring production, with a seeded demo tenant that also serves App Store review
-- [ ] Backups verified by an actual restore drill, timed and documented
+- [~] Backups verified by an actual restore drill, timed and documented
 - [ ] Point-in-time recovery configured and tested
 - [ ] Rate limiting tuned per endpoint against real traffic shapes
 - [~] Uptime and health monitoring with alerting to a channel you actually read
@@ -27,10 +27,10 @@ Everything invisible to customers that determines whether the product survives i
 - [ ] End-to-end tests on the critical paths: signup, build a form, complete a job offline, sync
 - [ ] Immutable per-tenant audit log covering every meaningful action
 - [ ] Dependency and secret scanning enforced in CI
-- [ ] Incident runbook: who is called, how to roll back, how to communicate
+- [~] Incident runbook: who is called, how to roll back, how to communicate
 - [ ] Terms of service, privacy policy and a DPA published
 
-Three marks need explaining:
+Five marks need explaining:
 
 - **The isolation suite is `[~]`: it runs on every pull request now, but has not been
   expanded.** The `database` job in `ci.yml` and `verify.yml` runs the db, auth and API
@@ -47,6 +47,26 @@ Three marks need explaining:
   are in trouble, billing deliveries recorded but not applied, and background work that gave
   up — the three things the October review found failing quietly. It is a screen somebody
   has to open, not an alert in a channel.
+- **The restore drill is `[~]`: the tools exist, the drill has not been run** (2026-10-31).
+  `deploy/vps/backup-postgres.sh` copies each nightly dump off the machine when
+  `BACKUP_REMOTE` names an rclone remote (an encrypted R2 bucket in the setup guide), fails
+  loudly when the copy fails, and can ping a heartbeat monitor. `deploy/vps/restore-drill.sh`
+  restores the newest dump, or with `--remote` the newest off-machine copy, into a
+  throwaway Postgres container with no network, checks migrations, row counts, policies and
+  grants, times it, removes the container and prints a row for the rehearsal log in
+  `docs/database/runbook-backup-and-restore.md`. Both were tested against a local Postgres
+  with stand-ins for Docker and rclone; neither has run on the Oracle machine or the test
+  box, and the rehearsal log is still empty. The bucket, the rclone remotes and the
+  heartbeat are the owner's to create (setup guide, Stage 9 part B).
+- **The incident runbook is `[~]`: how to roll back is written and works; who is called
+  and how to communicate are not** (2026-10-31). Rolling back to the previous image no
+  longer stops at `migrate`: the migrator treats applied migrations newer than every file
+  in the build as `ahead-of-build`, so `up` applies nothing with a warning, `status` and the
+  readiness check pass, and `down` refuses a migration it has no file for (unit and
+  integration tests in `packages/db`). Setup guide Stage 11 part I and
+  `docs/database/migrations.md` ("Rolling back a release") describe it. Releases up to
+  v1.2.1 predate it; part Q has the workaround for going back to v1.2.1. Nobody other than
+  the author has followed the procedure yet, so the exit criterion stays open.
 
 ## Exit criteria
 

@@ -4,10 +4,10 @@ One Postgres, one schema, every company separated by `tenant_id`. This folder
 explains how that separation is enforced, how to change the schema safely, and
 what to do when the database needs restoring.
 
-| Document                                                         | When you need it                                  |
-| ---------------------------------------------------------------- | ------------------------------------------------- |
-| [migrations.md](./migrations.md)                                 | Changing the schema — read before every migration |
-| [runbook-backup-and-restore.md](./runbook-backup-and-restore.md) | Nightly dumps, and rehearsing or doing a restore  |
+| Document                                                         | When you need it                                |
+| ---------------------------------------------------------------- | ----------------------------------------------- |
+| [migrations.md](./migrations.md)                                 | Read before every migration, and to roll back   |
+| [runbook-backup-and-restore.md](./runbook-backup-and-restore.md) | Nightly dumps, copies off the machine, restores |
 
 The database is a plain Postgres 16: the `postgres` container in
 `deploy/compose.yml` on a server, or one on your machine for development.

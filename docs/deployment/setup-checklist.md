@@ -24,6 +24,9 @@ Stage 0 creates every account and collects every key and secret before anything 
 > [!NOTE]
 > **New: a demo company full of test data.** One command on the machine creates a company with something in every section (customers, jobs, stock, sales, finance, HR, the ledger and the rest) and nine people to sign in as, one per role. The steps are in [Stage 14](#stage-14--a-demo-company-full-of-test-data).
 
+> [!NOTE]
+> **New: backups that leave the machine, and a restore drill.** The nightly backup can copy each dump to an encrypted R2 bucket and tell a heartbeat monitor how every night went, and one command rehearses a restore in a throwaway container without touching the live database. The steps are in [Stage 9, part B](#b-the-database-and-backups), and in [Stage 11, part R](#r-backups-off-the-machine-and-the-restore-drill-the-release-after-v121) for a machine that is already running. Rolling back to an earlier release now starts it on the newer database instead of stopping at its migration step ([Stage 11, part I](#i-if-something-goes-wrong-rolling-back)).
+
 > [!TIP]
 > GitHub shows the boxes below but does not let you tick them in a file. To track your progress, copy a stage into an issue (checkboxes there can be ticked), or open the interactive page described in the [last section](#about-this-page).
 
@@ -867,14 +870,38 @@ curl -s https://api.integr8-media.com/health/ready
 ### B. The database and backups
 
 - [ ] **The database stays on the machine**, and the sign-in server's tables live in it too: one nightly dump holds both. The next steps are what make that safe; `docs/database/runbook-backup-and-restore.md` is the full version.
-- [ ] **Schedule the backup**: `sudo crontab -e` and add the line below. It writes a compressed dump to `/var/backups/integr8` nightly and keeps fourteen. Then add a boot-volume backup policy in Oracle (Block Storage → Boot Volumes → the volume → Backup policy → Bronze), which copies the whole disk off the machine weekly; Always Free includes five backups.
+- [ ] **Schedule the backup**: `sudo crontab -e` and add the line below. It writes a compressed dump to `/var/backups/integr8` nightly and keeps fourteen. Those files share a disk with the database, so until the next four steps are done each night's log ends with "backups are on this machine only".
 
 ```bash
 # machine (SSH session), one line inside the crontab editor
 0 3 * * * /opt/integr8/deploy/vps/backup-postgres.sh >> /var/log/integr8-backup.log 2>&1
 ```
 
-- [ ] **Rehearse a restore once**, before there is anything to lose: run the script by hand, restore the file with the command in the script's header, sign in afterwards. A backup that has never been restored is a hope.
+- [ ] **A bucket for the copies.** Cloudflare → **R2 Object Storage** → **Create bucket**, named `integr8-backups`. Then **Manage API tokens** → **Create API token**: name `integr8-backups`, permission **Object Read & Write**, applied to the `integr8-backups` bucket only, no expiry. Copy its Access Key ID and Secret Access Key (the secret is shown once) into the password manager. Not the media token from Stage 0: that one can delete every company's bucket.
+- [ ] **A backup passphrase**: run `openssl rand -base64 32` on the machine and put the result in the password manager beside `HR_DATA_KEY` before going on. The copies are encrypted with it; without it nobody can read them, you included.
+- [ ] **rclone and its two remotes**: the commands below, with the token's two values, your `CLOUDFLARE_ACCOUNT_ID` and the passphrase in place of the capitals. `r2` is the bucket; `r2crypt` encrypts everything written through it, so Cloudflare only ever holds ciphertext. The last line shows no error and lists nothing yet.
+
+```bash
+# machine (SSH session)
+sudo apt-get install -y rclone
+sudo rclone config create r2 s3 provider=Cloudflare \
+  access_key_id=ACCESS-KEY-ID secret_access_key=SECRET-ACCESS-KEY \
+  endpoint=https://ACCOUNT-ID.r2.cloudflarestorage.com no_check_bucket=true
+sudo rclone config create r2crypt crypt remote=r2:integr8-backups \
+  filename_encryption=off password=PASSPHRASE --obscure
+sudo rclone lsf r2crypt:
+```
+
+- [ ] **Copy every dump there**: `nano deploy/.env`, add the line `BACKUP_REMOTE=r2crypt:`, then run the backup by hand with `sudo /opt/integr8/deploy/vps/backup-postgres.sh`. Its last lines say `copied integr8-….sql.gz to r2crypt:` and `keeping 30 on r2crypt:`. From now on a night whose copy fails ends with an `ERROR:` line and a failed exit, never quietly.
+- [ ] **A heartbeat for the backup**: in Better Stack or healthchecks.io (both have free plans), a new heartbeat expected every day with a few hours' grace. Put its URL in `deploy/.env` as `BACKUP_PING_URL=`. The script calls it after each good night and with `/fail` added after a bad one, so a failed or missing backup reaches you the same day.
+- [ ] **A boot-volume backup policy as well**: Oracle → Block Storage → Boot Volumes → the volume → **Backup policy** → Bronze. Check the schedule the console shows for it; it is not nightly. It copies the whole disk, which helps most after a broken operating system, but it stays in the same Oracle account, so it does not replace the R2 copy. Always Free includes five backups.
+- [ ] **Rehearse a restore**, before there is anything to lose: the command below restores the newest copy from R2 into a throwaway database container, checks and times it, removes it, and never touches the live database. It needs free disk for one more copy of the database. It ends with a row: add it to the rehearsal log at the bottom of `docs/database/runbook-backup-and-restore.md`. Run it monthly. Before the first customer, also do that runbook's full rehearsal on the test box (Stage 10) and sign in to the restored copy. A backup that has never been restored is a hope.
+
+```bash
+# machine (SSH session)
+sudo /opt/integr8/deploy/vps/restore-drill.sh --remote
+```
+
 - [ ] **Keep `HR_DATA_KEY` with the backups**, in the password manager beside them. The dumps hold employees' identity and bank numbers encrypted with it; without the same key a restored database cannot show them.
 - [ ] **Keep `ETA_CREDENTIALS_KEY` with the backups** too. The dumps hold each company's ETA credentials locked with it; without the same key every company enters them again.
 
@@ -893,7 +920,7 @@ curl -s https://api.integr8-media.com/health/ready
 
 - [ ] **Walk Stage 7 again** with the real company and the billing mode you agreed with them, their real owner and engineer, their real forms, their real logo and icon; then Stage 8 to build and hand over their apps. Watch Health while you do it.
 - [ ] **If any company pays in the app, pay with a real card once** on a test company in live mode, confirm the invoice in Billing and the webhook in Health, then refund it in Stripe. It is the only way to know live billing works end to end.
-- [ ] **Weekly, five minutes**: dashboard → Health, a glance at Sentry, last night's backup file exists, `df -h` on the machine; with the assistant on, the **AI provider** panel (Ready, no credit pause) and OpenAI's own usage page.
+- [ ] **Weekly, five minutes**: dashboard → Health, a glance at Sentry, last night's backup file exists and its log says `copied`, `df -h` on the machine; with the assistant on, the **AI provider** panel (Ready, no credit pause) and OpenAI's own usage page.
 
 ### F. The AI assistant, for real
 
@@ -1092,6 +1119,8 @@ ls -lh /var/backups/integr8      # the backup script keeps the newest ones and d
 > [!WARNING]
 > **Roll back the code, not the database, unless the database is what broke.** The previous version runs against the new schema in almost every release, because migrations only add. Rolling a migration back can delete data; it is a deliberate last step, not a reflex.
 
+The new version's migrations stay applied when you go back. The previous version's `migrate` step finds them, applies nothing, says in its log that the database is ahead of its build, and exits; then the API, worker and web app start on the newer database, and `/health/ready` says `ready` with a note naming those migrations. Releases up to v1.2.1 are older than that and stop at `migrate` instead: going back to v1.2.1 has its own steps, at the end of part Q.
+
 ```bash
 # machine (SSH session) — back to the previous release (use its real tag)
 cd /opt/integr8
@@ -1105,8 +1134,9 @@ git checkout main && git pull
 ```
 
 - [ ] **With GitHub's images instead**: in `deploy/.env` set `API_IMAGE` and `WEB_IMAGE` to the previous release's tag. GitHub → your profile → **Packages** → `integr8-api` lists them (each commit is tagged with its short hash, for example `ghcr.io/minalouisleon/integr8-api:1a2b3c4`). Then `pull` and `up -d`, and set them back to `:main` to go forward again.
-- [ ] **Undoing one migration**, only when the release notes or the error say it is the cause, after reading its `.down.sql` file in `packages/db/migrations/`: `docker compose -f deploy/compose.yml --env-file deploy/.env run --rm api node node_modules/@integr8/db/dist/migrator/cli.js down --steps 1`.
-- [ ] **Restoring part B's backup** replaces the whole database with how it was before the update, losing anything done since. Stop the API and worker first (`docker compose … stop api worker`), restore with the command at the top of `deploy/vps/backup-postgres.sh` (the backup replaces each table as it goes, so nothing has to be emptied first), then start the older version as above.
+- [ ] **The older version is running.** The `migrate` log ends with "the database is ahead of this build" and the new migrations' names, and part E's checks pass. Going forward again later applies nothing: the migrations are already there.
+- [ ] **Undoing one migration**, only when the release notes or the error say it is the cause, after reading its `.down.sql` file in `packages/db/migrations/`. Do it **before** going back, while the new version still runs, because only its image has that file: `docker compose -f deploy/compose.yml --env-file deploy/.env run --rm api node node_modules/@integr8/db/dist/migrator/cli.js down --steps 1`. The older version refuses to undo a migration it has no file for.
+- [ ] **Restoring part B's backup** replaces the whole database with how it was before the update, losing anything done since. Stop the web app, the API, the worker and the sign-in server first (`docker compose … stop web api worker auth`), restore with the command at the top of `deploy/vps/backup-postgres.sh` (the backup replaces each table as it goes, so nothing has to be emptied first), then start the older version as above.
 
 ### J. AI assistant (included in v1.1.2)
 
@@ -1204,7 +1234,14 @@ docker compose -f deploy/compose.yml --env-file deploy/.env \
 ```
 
 > [!WARNING]
-> **Rolling back with self-hosted sign-in.** A version before this one signs in through a Supabase cloud project, which does not have the accounts made since. Fix forward instead. If you must roll back (part I), put `SUPABASE_URL` and the cloud project's service role key back in `deploy/.env` first, and leave migrations 0054 to 0056 applied: the older version ignores their columns and table.
+> **Rolling back with self-hosted sign-in.** A version before this one signs in through a Supabase cloud project, which does not have the accounts made since. Fix forward instead. If you must roll back (part I), put `SUPABASE_URL` and the cloud project's service role key back in `deploy/.env` first, and leave migrations 0054 to 0056 applied: the older version ignores their columns and table. v1.2.1 is older than part I's ahead-of-build check, so its `migrate` step stops at 0054 ("its file is gone") and its API and worker would never start. After part I's `git checkout v1.2.1` and `sed`, start them without that step: `docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build --no-deps api worker web` (with GitHub's images, `pull` first and leave out `--build`). Until you go forward again, its `/health/ready` says `degraded` and names 0054 to 0056, so the uptime check alerts; the API answers requests all the same.
+
+### R. Backups off the machine, and the restore drill (included in v1.2.2)
+
+The backup script can now copy each night's dump off the machine to an encrypted R2 bucket, and a new script rehearses a restore without touching the live database. Nothing changes until you set them up: the three new settings (`BACKUP_REMOTE`, `BACKUP_REMOTE_KEEP`, `BACKUP_PING_URL`) are optional and commented out in `deploy/.env.example`, so part C's check does not list them.
+
+- [ ] **Set up the copy** on a machine that went live before it existed: Stage 9, part B, from "A bucket for the copies" to "A boot-volume backup policy as well". Until then every night's log ends with "backups are on this machine only".
+- [ ] **Run the restore drill** (Stage 9, part B, "Rehearse a restore") and add its row to the rehearsal log in `docs/database/runbook-backup-and-restore.md`.
 
 > [!NOTE]
 > **The test box (Stage 10)** updates the same way, from `staging` instead of `main`: `git pull` on its `staging` checkout, then **Pull** and **Redeploy** the stack in Arcane. Updating it first, the day before, is the cheapest rehearsal there is.
@@ -1457,7 +1494,7 @@ rm ~/integr8-20261013-0300.sql.gz
 - [ ] **With the data kept**: sign in to the dashboard with your usual super admin and authenticator (they came back with the database, and `PLATFORM_SECRET_KEY` is unchanged); Health is empty; open a company, one of its jobs and, in HR, one employee's profile (the national ID shows, so `HR_DATA_KEY` is right). Every installed app, staff and company, keeps working: the address they call has not changed. On a phone, pull to sync; anything queued while the machine was down arrives now.
 - [ ] **Starting empty**: Stage 5 (a new super admin, the plans' Stripe prices, your colleagues), then Stage 7 for each company (onboard, switch on its modules, forms, look, invite), then Stage 8 for its apps. The staff desktop app already installed simply signs in to the new installation. A company onboarded again with the **same short name** keeps its installed apps; with a new short name, build and install them again.
 - [ ] **Install the current staff app** if your laptop still has an older one: Stage 6, second step.
-- [ ] **The safety net again**, because it was on the old disk: the nightly backup line in `sudo crontab -e` and a boot-volume backup policy on the new boot volume (Stage 9, part B); a reboot test (Stage 9, part C). The uptime monitor needs nothing: it watches the same address.
+- [ ] **The safety net again**, because it was on the old disk: the nightly backup line in `sudo crontab -e`, rclone and its two remotes with the same backup passphrase, and a boot-volume backup policy on the new boot volume (Stage 9, part B); a reboot test (Stage 9, part C). The uptime monitor needs nothing: it watches the same address.
 - [ ] **Clean up the copies** once everything is checked: delete `integr8.env` from Documents (the password manager has it) and keep the dump only as long as your backup policy says.
 
 ### F. Keep the machine, but remove everything on it: data, Docker and the repository
@@ -1492,7 +1529,7 @@ docker ps -a ; docker volume ls ; docker images ; docker system df
 #### F2. Delete the repository, the settings, the backups and the jobs that used them
 
 - [ ] **The repository and the settings file.** `/opt/integr8` holds the code, `deploy/.env` (every secret) and nothing else you need once part A's copy is on your laptop. Also delete any copy of the settings or a dump left in your home folder.
-- [ ] **The nightly backup and the backups themselves.** The first line takes the backup job out of the crontab (it prints nothing if it was never added); the rest delete the dump files and their log. Do these only after part A's dump is safe on your laptop.
+- [ ] **The nightly backup and the backups themselves.** The first line takes the backup job out of the crontab (it prints nothing if it was never added); the rest delete the dump files, their log and rclone's settings, which hold the R2 backup token and the backup passphrase. The copies already in the `integr8-backups` bucket stay until you delete them in Cloudflare. Do these only after part A's dump is safe on your laptop.
 
 ```bash
 # machine (SSH session)
@@ -1503,6 +1540,7 @@ crontab -l 2>/dev/null | grep -v backup-postgres.sh | crontab -
 sudo crontab -l 2>/dev/null | grep -v backup-postgres.sh | sudo crontab -
 sudo rm -rf /var/backups/integr8
 sudo rm -f /var/log/integr8-backup.log
+sudo rm -rf /root/.config/rclone
 ls /opt ; ls /var/backups
 ```
 
@@ -1645,6 +1683,6 @@ docker compose -f deploy/compose.yml --env-file deploy/.env \
 
 ## About this page
 
-Prepared for release v1.2.2 (31 October 2026) from the repository's `main` branch: `deploy/compose.yml`, `deploy/.env.example`, `deploy/vps/`, `.github/workflows/`, `docs/deployment/README.md`, `docs/auth/self-hosted-auth.md`, `docs/database/runbook-backup-and-restore.md`, `docs/ai/RUNBOOK.md`, `docs/documents/RUNBOOK.md` and `docs/e-invoicing/RUNBOOK.md`. Since the previous edition, v1.2.0 added the company website data API and v1.2.1 adds the schedule, skills and certificates, and contracts, maintenance and deadlines (Stage 11, parts M to P); v1.1.2 included the AI assistant, PDF documents and ETA e-invoicing, the v1.1.1 API image/config fixes, and the staff app refresh button from pull request 115. v1.2.2 adds self-hosted sign-in and the fixes from the October 2026 pre-production review (Stage 11, part Q): Supabase's cloud is no longer used, the stage that moved the database there is gone, and the test box runs Ubuntu with Arcane. The e-invoicing feature remains test-only until validated. Example model ids and prices come from the providers' pages and third-party price lists in October 2026 and were not checked on every provider's own site: confirm them there. Service dashboards move things around; when a menu is not where this says, search the service's own docs for the setting name.
+Prepared for release v1.2.2 (31 October 2026) from the repository's `main` branch: `deploy/compose.yml`, `deploy/.env.example`, `deploy/vps/`, `.github/workflows/`, `docs/deployment/README.md`, `docs/auth/self-hosted-auth.md`, `docs/database/runbook-backup-and-restore.md`, `docs/ai/RUNBOOK.md`, `docs/documents/RUNBOOK.md` and `docs/e-invoicing/RUNBOOK.md`. Since the previous edition, v1.2.0 added the company website data API and v1.2.1 adds the schedule, skills and certificates, and contracts, maintenance and deadlines (Stage 11, parts M to P); v1.1.2 included the AI assistant, PDF documents and ETA e-invoicing, the v1.1.1 API image/config fixes, and the staff app refresh button from pull request 115. v1.2.2 adds self-hosted sign-in and the fixes from the October 2026 pre-production review (Stage 11, part Q): Supabase's cloud is no longer used, the stage that moved the database there is gone, and the test box runs Ubuntu with Arcane. It also adds the off-machine backup copy and the restore drill (Stage 9, part B, and Stage 11, part R), and rollbacks that start on a newer database (Stage 11, part I). The e-invoicing feature remains test-only until validated. Example model ids and prices come from the providers' pages and third-party price lists in October 2026 and were not checked on every provider's own site: confirm them there. Service dashboards move things around; when a menu is not where this says, search the service's own docs for the setting name.
 
 This Markdown checklist is maintained alongside the interactive HTML version in `setup-checklist.html`. To use the HTML version, download it with `setup-checklist.css` and `setup-checklist.js` into one folder and open the `.html` in a browser; progress ticks are saved in that browser. Keep the Markdown and HTML content in sync; `pnpm guide:check` verifies their stages, parts, tick boxes and wording.
