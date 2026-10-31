@@ -423,6 +423,8 @@ export const apiErrorsEn = {
   role_beyond_own: 'This role can do things you cannot, so only the owner gives it.',
   role_holds_grant: 'Their role already includes this.',
   role_in_use: 'Somebody holds this role. Give them another role first.',
+  rules_from_another_year:
+    'The rule set in force for this month is from an earlier year. Add one from this year, even with the same figures, and have the owner confirm it.',
   rules_not_confirmed:
     'The rule set for this month is waiting for the owner to confirm it. Payroll uses it once they do.',
   run_approved: 'An approved pay run does not change. Correct it next month.',

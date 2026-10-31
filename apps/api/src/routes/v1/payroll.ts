@@ -432,6 +432,52 @@ async function readRun(tx: TenantTransaction, runId: string, lock = false): Prom
   return run;
 }
 
+/**
+ * The rule set a month's run uses: the latest set in force for the month,
+ * which must be confirmed and from the same calendar year.
+ *
+ * Runs used to fall back to the latest *confirmed* set whenever a newer one
+ * was still waiting for the owner, and nothing compared years. Social
+ * insurance limits and tax bands change every January, so January's run
+ * quietly used last year's figures, and a correction somebody had entered but
+ * the owner had not yet confirmed was quietly skipped. Both are refused now,
+ * with a code the screens turn into a link to the rules.
+ *
+ * Refusing, rather than taking an acknowledgement on the run, because the
+ * acknowledgement already exists: a new year's set, even one with the same
+ * figures, is confirmed by the owner with a note saying who checked it and
+ * against what. That record is the one an accountant looks for, and a
+ * checkbox on the run would be a way round it.
+ */
+async function ruleSetInForce(
+  tx: TenantTransaction,
+  periodStart: string,
+  field: string,
+): Promise<PayrollRuleSet> {
+  const { latest } = await tx.hrPayroll.ruleSetFor(periodStart);
+  if (latest === undefined) {
+    throw unprocessable(
+      'no_confirmed_rules',
+      'Add a payroll rule set in force for this month, and have the owner confirm it.',
+    );
+  }
+  const params = { ruleSetId: latest.id, effectiveFrom: latest.effectiveFrom };
+  if (latest.confirmedAt === null) {
+    const message = 'The owner confirms the rule set before payroll can use it.';
+    throw unprocessable('rules_not_confirmed', message, [
+      { field, code: 'rules_not_confirmed', message, params },
+    ]);
+  }
+  const year = periodStart.slice(0, 4);
+  if (latest.effectiveFrom.slice(0, 4) !== year) {
+    const message = `The rule set in force is from ${latest.effectiveFrom.slice(0, 4)}. Add one from ${year}, even with the same figures, and have the owner confirm it.`;
+    throw unprocessable('rules_from_another_year', message, [
+      { field, code: 'rules_from_another_year', message, params: { ...params, year } },
+    ]);
+  }
+  return latest;
+}
+
 async function ruleSetOf(tx: TenantTransaction, run: PayRun): Promise<PayrollRuleSet> {
   const set = await tx.hrPayroll.ruleSet(run.ruleSetId);
   if (set === undefined) {
@@ -938,7 +984,7 @@ export const createPayRunRoute = defineRoute({
   operationId: 'createPayRun',
   summary: 'Prepare a month’s pay run',
   description:
-    'Proposes a line for everyone employed in the month who has pay terms. Needs a confirmed rule set in force (422 `no_confirmed_rules`, or `rules_not_confirmed` when the latest set waits for the owner). No later than next month (422 `month_in_future`); one run a month (409 `month_taken`).',
+    'Proposes a line for everyone employed in the month who has pay terms. The latest rule set in force for the month is used, and must be confirmed and from the same year: 422 `no_confirmed_rules` when there is none, `rules_not_confirmed` when it waits for the owner (an older confirmed set is not used instead), `rules_from_another_year` when it starts in an earlier year. No later than next month (422 `month_in_future`); one run a month (409 `month_taken`).',
   tags: TAGS,
   security: 'authenticated',
   permission: 'payroll.run',
@@ -952,7 +998,10 @@ export const createPayRunRoute = defineRoute({
   responses: {
     201: { description: 'The draft.', schema: runDetailSchema },
     409: { description: 'The month has a run.' },
-    422: { description: 'No confirmed rule set in force, or too far ahead.' },
+    422: {
+      description:
+        'No rule set in force (`no_confirmed_rules`), the latest waits for the owner (`rules_not_confirmed`) or is from an earlier year (`rules_from_another_year`), or too far ahead (`month_in_future`).',
+    },
   },
   handler: async ({ body }, context) => {
     const { principal } = context;
@@ -964,15 +1013,7 @@ export const createPayRunRoute = defineRoute({
           'A run is prepared no earlier than the month before.',
         );
       }
-      const { confirmed, latest } = await tx.hrPayroll.ruleSetFor(start);
-      if (confirmed === undefined) {
-        throw unprocessable(
-          latest === undefined ? 'no_confirmed_rules' : 'rules_not_confirmed',
-          latest === undefined
-            ? 'Add a payroll rule set in force for this month, and have the owner confirm it.'
-            : 'The owner confirms the rule set before payroll can use it.',
-        );
-      }
+      const confirmed = await ruleSetInForce(tx, start, 'body.month');
       const currency = (await tx.settings.get()).currency;
       const run = await tx.hrPayroll.createRun(
         { periodStart: start, periodEnd: end, ruleSetId: confirmed.id, currency },
@@ -1089,7 +1130,7 @@ export const recalculatePayRunRoute = defineRoute({
   operationId: 'recalculatePayRun',
   summary: 'Recalculate a draft from today’s terms, hours and claims',
   description:
-    'Keeps what was typed for the run (overtime hours, bonus, deduction, unpaid days, note) for anyone already in it, and uses the confirmed rule set now in force for the month.',
+    'Keeps what was typed for the run (overtime hours, bonus, deduction, unpaid days, note) for anyone already in it, and uses the rule set now in force for the month, under the same rules as preparing a run (422 `rules_not_confirmed`, `rules_from_another_year`).',
   tags: TAGS,
   security: 'authenticated',
   permission: 'payroll.run',
@@ -1101,13 +1142,18 @@ export const recalculatePayRunRoute = defineRoute({
     200: { description: 'The run.', schema: runDetailSchema },
     404: { description: 'No such run.' },
     409: { description: 'Approved, or changed elsewhere.' },
+    422: {
+      description:
+        'The latest rule set in force waits for the owner (`rules_not_confirmed`) or is from an earlier year (`rules_from_another_year`).',
+    },
   },
   handler: async ({ params, body }, context) => {
     const { principal } = context;
     const detail = await withTenant(principal.tenantId, async (tx) => {
       const current = await draftOrRefuse(tx, params.runId);
-      const { confirmed } = await tx.hrPayroll.ruleSetFor(current.periodStart);
-      const set = confirmed ?? (await ruleSetOf(tx, current));
+      // The same choice as preparing the run: recalculating with an older set
+      // than the one now in force would be the quiet fallback this refuses.
+      const set = await ruleSetInForce(tx, current.periodStart, 'params.runId');
       const run = await tx.hrPayroll.touchRun(
         params.runId,
         body.expectedVersion,

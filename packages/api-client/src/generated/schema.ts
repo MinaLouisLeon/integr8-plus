@@ -6010,7 +6010,7 @@ export interface paths {
         put?: never;
         /**
          * Prepare a month’s pay run
-         * @description Proposes a line for everyone employed in the month who has pay terms. Needs a confirmed rule set in force (422 `no_confirmed_rules`, or `rules_not_confirmed` when the latest set waits for the owner). No later than next month (422 `month_in_future`); one run a month (409 `month_taken`).
+         * @description Proposes a line for everyone employed in the month who has pay terms. The latest rule set in force for the month is used, and must be confirmed and from the same year: 422 `no_confirmed_rules` when there is none, `rules_not_confirmed` when it waits for the owner (an older confirmed set is not used instead), `rules_from_another_year` when it starts in an earlier year. No later than next month (422 `month_in_future`); one run a month (409 `month_taken`).
          */
         post: operations["createPayRun"];
         delete?: never;
@@ -6049,7 +6049,7 @@ export interface paths {
         put?: never;
         /**
          * Recalculate a draft from today’s terms, hours and claims
-         * @description Keeps what was typed for the run (overtime hours, bonus, deduction, unpaid days, note) for anyone already in it, and uses the confirmed rule set now in force for the month.
+         * @description Keeps what was typed for the run (overtime hours, bonus, deduction, unpaid days, note) for anyone already in it, and uses the rule set now in force for the month, under the same rules as preparing a run (422 `rules_not_confirmed`, `rules_from_another_year`).
          */
         post: operations["recalculatePayRun"];
         delete?: never;
@@ -59801,7 +59801,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description No confirmed rule set in force, or too far ahead. */
+            /** @description No rule set in force (`no_confirmed_rules`), the latest waits for the owner (`rules_not_confirmed`) or is from an earlier year (`rules_from_another_year`), or too far ahead (`month_in_future`). */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -60453,14 +60453,12 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description The request failed validation. */
+            /** @description The latest rule set in force waits for the owner (`rules_not_confirmed`) or is from an earlier year (`rules_from_another_year`). */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
+                content?: never;
             };
             /** @description Rate limit exceeded. */
             429: {

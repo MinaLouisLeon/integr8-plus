@@ -350,6 +350,7 @@ export const API_ERROR_CODES = [
   'role_beyond_own',
   'role_holds_grant',
   'role_in_use',
+  'rules_from_another_year',
   'rules_not_confirmed',
   'run_approved',
   'run_not_approved',

@@ -137,6 +137,10 @@ or a decision before the pilot (phase L).
       live. It is now fixed once the company holds a money record (409 `currency_in_use`; the
       list is in `07-finance-and-inventory-invariants.md`). A company that must move currency
       needs a deliberate conversion, which does not exist yet.
+- [x] A pay run used the latest confirmed rule set in force, skipping a newer one still waiting
+      for the owner and taking last year's figures in January. It now uses the latest set in
+      force or nothing: 422 `rules_not_confirmed` while it waits, `rules_from_another_year`
+      when it starts in an earlier year (ADR-0010, 2026-10-31 addendum).
 
 ## Decisions taken with the product owner (2026-10-11)
 

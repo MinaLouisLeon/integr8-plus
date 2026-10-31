@@ -259,7 +259,9 @@ function PrepareRun({ runs }: { runs: readonly PayRunSummary[] }) {
       </div>
       {prepare.isError ? (
         <PayrollFailure error={prepare.error}>
-          {code === 'no_confirmed_rules' || code === 'rules_not_confirmed' ? (
+          {code === 'no_confirmed_rules' ||
+          code === 'rules_not_confirmed' ||
+          code === 'rules_from_another_year' ? (
             <AppLink to={paths.payrollRules} className="text-sm">
               {t('payroll.prepare.toRules')}
             </AppLink>
