@@ -18,6 +18,7 @@ apps/api/src/routes/v1/platform
         │
 apps/api/src/platform
   onboarding.ts     company + job types + owner invitation + bucket, in one action
+  app-builds.ts     asks GitHub to build one company's own apps (APP_BUILDS)
   export.ts         everything a company has, as one gzipped JSON file
   purge.ts          bucket first, then rows — see below
         │
@@ -131,6 +132,26 @@ actions, both through `POST /v1/platform/companies/:tenantId/invitations/:invita
 
 Both withdraw the previous invitation, so an old link that went astray stops working, and both
 work on an invitation that already expired while the company was being set up.
+
+### Building the company's own apps
+
+The company's page → **Website and apps** → **Build apps for this company** puts the company in
+the list every version release builds (`GET /v1/build/companies`). Saving with the box newly
+ticked also asks for the company's first build at once, and **Rebuild apps**
+(`POST /v1/platform/companies/:tenantId/app-builds`, refused with `apps_not_enabled` while the
+box is off) asks again later: after its look changed, or for a version released before it was
+switched on. Both write `tenant.app_build_requested` to the audit log with what GitHub said.
+
+Whether the server can ask is `APP_BUILDS`:
+
+| `APP_BUILDS`    | What a request does                                                                                                                                                                                                                                                                                                                                    |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `off` (default) | Nothing is started; the dashboard says to run **Build company apps** from GitHub Actions with the company's short name. The recording stand-in keeps the requests for tests                                                                                                                                                                            |
+| `github`        | Dispatches `build-company-apps.yml` for that company on `GITHUB_BUILD_REF` (default `main`) with `GITHUB_BUILD_TOKEN`, a fine-grained token with **Actions: read and write** on `GITHUB_BUILD_REPOSITORY` only. The dashboard links the run when GitHub names it, otherwise the workflow's runs. Missing token or repository: the API refuses to start |
+
+GitHub answers as soon as the run is queued, so the request never waits for a build; whether it
+finished is on GitHub (the run, then the release `company-<slug>-v<version>`). See
+`docs/deployment/company-apps.md`.
 
 ---
 

@@ -8001,6 +8001,18 @@ export const en = {
       buildApps: 'Build apps for this company',
       buildAppsHint:
         'When on, every release also builds this company’s installers and phone apps, and the “Build company apps” workflow accepts its short name.',
+      // Starting a build from here (APP_BUILDS=github): when apps are switched
+      // on, and by hand with "Rebuild apps" for a later version or a new look.
+      rebuild: 'Rebuild apps',
+      rebuilding: 'Starting…',
+      rebuildHint:
+        'Builds this company’s installers and phone apps again, at the current version, as a new release. Takes 20 to 40 minutes on GitHub.',
+      buildStarted: 'Build started on GitHub.',
+      buildWatch: 'Watch the build',
+      buildWatchAll: 'See the builds',
+      buildNotConfigured:
+        'This server does not start builds itself (APP_BUILDS is off). Run “Build company apps” from GitHub Actions with the short name {{slug}}.',
+      buildFailed: 'The build could not be started: {{message}}',
       save: 'Save',
       saving: 'Saving...',
       saved: 'Saved.',

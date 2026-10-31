@@ -43,6 +43,7 @@ export const API_ERROR_CODES = [
   'already_submitted',
   'answers_changed',
   'app_icon_not_found',
+  'apps_not_enabled',
   'asset_not_at_site',
   'asset_not_on_work_order',
   'asset_retired',

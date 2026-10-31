@@ -7630,9 +7630,29 @@ export interface paths {
         head?: never;
         /**
          * Change a company’s website, or whether its own apps are built
-         * @description The two branding facts the dashboard owns. The rest of the look — logo, icon, colours, theme — is set from the desktop app while acting as the company, where it can be previewed. Switching `appsEnabled` on puts the company in the list the release pipeline builds for.
+         * @description The two branding facts the dashboard owns. The rest of the look — logo, icon, colours, theme — is set from the desktop app while acting as the company, where it can be previewed. Switching `appsEnabled` on puts the company in the list the release pipeline builds for and, when the deployment can start builds (`APP_BUILDS=github`), starts its first build at once; `appBuild` says how that went, and is null when this change did not switch apps on.
          */
         patch: operations["updateCompanySettings"];
+        trace?: never;
+    };
+    "/v1/platform/companies/{tenantId}/app-builds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Build a company’s own apps again
+         * @description Starts the `build-company-apps.yml` workflow for this one company, at the version on the deployment’s build branch: its desktop installers and phone apps, as a new release. For a later version, or after its look changed. `not_configured` when this deployment cannot start builds (`APP_BUILDS=off`): run the workflow from GitHub Actions instead. Refused while the company’s apps are switched off.
+         */
+        post: operations["startCompanyAppBuild"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/v1/platform/companies/{tenantId}/impersonate": {
@@ -79455,6 +79475,13 @@ export interface operations {
                         aiWebEnabled: boolean;
                         aiDesktopEnabled: boolean;
                         aiMobileEnabled: boolean;
+                        appBuild: {
+                            /** @enum {string} */
+                            status: "started" | "not_configured" | "failed";
+                            runsUrl: string | null;
+                            runUrl: string | null;
+                            message: string | null;
+                        } | null;
                     };
                 };
             };
@@ -79469,6 +79496,93 @@ export interface operations {
             };
             /** @description No such company. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    startCompanyAppBuild: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description What came of asking GitHub. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        status: "started" | "not_configured" | "failed";
+                        runsUrl: string | null;
+                        runUrl: string | null;
+                        message: string | null;
+                    };
+                };
+            };
+            /** @description A platform session is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such company. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `apps_not_enabled`: switch "Build apps" on first. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

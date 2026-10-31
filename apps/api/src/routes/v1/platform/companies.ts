@@ -2,7 +2,7 @@ import { toPlatformUserId, toTenantId } from '@integr8/core';
 import { getPlatformDataSource, TENANT_PLANS, type TenantSummary, withTenant } from '@integr8/db';
 import { z } from 'zod';
 import { conflict, notFound } from '../../../http/errors.js';
-import { defineRoute, noSchema } from '../../../http/routes.js';
+import { defineRoute, noSchema, type PlatformRequestContext } from '../../../http/routes.js';
 import { forgetTenantStatus } from '../../../http/suspension.js';
 import { onboardCompany } from '../../../platform/onboarding.js';
 import { iso, isoOrNull } from '../schemas.js';
@@ -11,7 +11,9 @@ import { acceptInvitationUrl } from '../../../email/links.js';
 import { INTEGR8_INVITER } from './support.js';
 import { recordPlatformAction } from './audit.js';
 import {
-  companySettingsSchema,
+  appBuildSchema,
+  companySettingsChangeSchema,
+  type companySettingsSchema,
   billingModeSchema,
   companyDetailSchema,
   companySummarySchema,
@@ -484,7 +486,7 @@ export const updateCompanySettingsRoute = defineRoute({
   operationId: 'updateCompanySettings',
   summary: 'Change a company’s website, or whether its own apps are built',
   description:
-    'The two branding facts the dashboard owns. The rest of the look — logo, icon, colours, theme — is set from the desktop app while acting as the company, where it can be previewed. Switching `appsEnabled` on puts the company in the list the release pipeline builds for.',
+    'The two branding facts the dashboard owns. The rest of the look — logo, icon, colours, theme — is set from the desktop app while acting as the company, where it can be previewed. Switching `appsEnabled` on puts the company in the list the release pipeline builds for and, when the deployment can start builds (`APP_BUILDS=github`), starts its first build at once; `appBuild` says how that went, and is null when this change did not switch apps on.',
   tags: ['platform'],
   security: 'platform',
   params: z.object({ tenantId: z.uuid() }),
@@ -497,7 +499,7 @@ export const updateCompanySettingsRoute = defineRoute({
     aiMobileEnabled: z.boolean().optional(),
   }),
   responses: {
-    200: { description: 'Changed.', schema: companySettingsSchema },
+    200: { description: 'Changed.', schema: companySettingsChangeSchema },
     404: { description: 'No such company.' },
   },
   handler: async ({ params, body }, context) => {
@@ -507,7 +509,10 @@ export const updateCompanySettingsRoute = defineRoute({
       throw notFound(`No company with id ${params.tenantId}`);
     }
 
-    const settings = await withTenant(toTenantId(tenant.id), (tx) => tx.settings.update(body));
+    const { before, settings } = await withTenant(toTenantId(tenant.id), async (tx) => ({
+      before: (await tx.settings.get()).appsEnabled,
+      settings: await tx.settings.update(body),
+    }));
 
     await recordPlatformAction(context, {
       action: 'tenant.settings_changed',
@@ -518,13 +523,85 @@ export const updateCompanySettingsRoute = defineRoute({
       metadata: { fields: Object.keys(body), appsEnabled: settings.appsEnabled },
     });
 
-    return { status: 200, body: toCompanySettings(settings) };
+    // Newly switched on: a company waiting for its apps should not wait for
+    // the next version release. Switching off, or saving with apps already
+    // on, starts nothing; "Rebuild apps" is the way to ask again.
+    const appBuild =
+      !before && settings.appsEnabled ? await startAppBuild(context, tenant, 'apps_enabled') : null;
+
+    return { status: 200, body: { ...toCompanySettings(settings), appBuild } };
+  },
+});
+
+export const startCompanyAppBuildRoute = defineRoute({
+  method: 'post',
+  path: '/v1/platform/companies/:tenantId/app-builds',
+  operationId: 'startCompanyAppBuild',
+  summary: 'Build a company’s own apps again',
+  description:
+    'Starts the `build-company-apps.yml` workflow for this one company, at the version on the deployment’s build branch: its desktop installers and phone apps, as a new release. For a later version, or after its look changed. `not_configured` when this deployment cannot start builds (`APP_BUILDS=off`): run the workflow from GitHub Actions instead. Refused while the company’s apps are switched off.',
+  tags: ['platform'],
+  security: 'platform',
+  params: z.object({ tenantId: z.uuid() }),
+  query: noSchema,
+  body: noSchema,
+  responses: {
+    200: { description: 'What came of asking GitHub.', schema: appBuildSchema },
+    404: { description: 'No such company.' },
+    409: { description: '`apps_not_enabled`: switch "Build apps" on first.' },
+  },
+  handler: async ({ params }, context) => {
+    const tenant = await getPlatformDataSource().tenants.findById(params.tenantId);
+    if (tenant?.deletedAt !== null) {
+      throw notFound(`No company with id ${params.tenantId}`);
+    }
+    const settings = await withTenant(toTenantId(tenant.id), (tx) => tx.settings.get());
+    if (!settings.appsEnabled) {
+      throw conflict(
+        'apps_not_enabled',
+        'This company’s apps are switched off. Switch "Build apps" on first.',
+      );
+    }
+    return { status: 200, body: await startAppBuild(context, tenant, 'rebuild') };
   },
 });
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Asks GitHub to build one company's apps, and writes what came of it to the
+ * audit log, so "who started this build, and did it start" has an answer.
+ */
+async function startAppBuild(
+  context: PlatformRequestContext,
+  tenant: { id: string; slug: string },
+  reason: 'apps_enabled' | 'rebuild',
+): Promise<z.infer<typeof appBuildSchema>> {
+  const result = await context.services.appBuilds.start(tenant.slug);
+  const appBuild: z.infer<typeof appBuildSchema> = {
+    status: result.status,
+    runsUrl: result.status === 'started' ? result.runsUrl : null,
+    runUrl: result.status === 'started' ? result.runUrl : null,
+    message: result.status === 'failed' ? result.message : null,
+  };
+  await recordPlatformAction(context, {
+    action: 'tenant.app_build_requested',
+    tenantId: tenant.id,
+    tenantSlug: tenant.slug,
+    targetKind: 'tenant',
+    targetId: tenant.id,
+    metadata: {
+      reason,
+      status: appBuild.status,
+      provider: context.services.appBuilds.provider,
+      ...(appBuild.runUrl === null ? {} : { runUrl: appBuild.runUrl }),
+      ...(appBuild.message === null ? {} : { message: appBuild.message }),
+    },
+  });
+  return appBuild;
+}
 
 function toCompanySettings(settings: {
   logoMediaId: string | null;
@@ -630,4 +707,5 @@ export const platformCompanyRoutes = [
   reactivateCompanyRoute,
   setCompanyPlanRoute,
   updateCompanySettingsRoute,
+  startCompanyAppBuildRoute,
 ];

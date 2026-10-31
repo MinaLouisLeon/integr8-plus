@@ -68,6 +68,8 @@ export const apiErrorsEn = {
   answers_changed:
     'These answers were changed on another device while you were offline. Choose which to keep.',
   app_icon_not_found: 'The app icon must be an image uploaded by this company. Upload it again.',
+  apps_not_enabled:
+    'This company’s apps are switched off. Tick “Build apps for this company” and save first.',
   asset_not_at_site: 'This asset is not at the job’s site. Choose one of that site’s assets.',
   asset_not_on_work_order: 'This asset is not one of the job’s assets. Link it to the job first.',
   asset_retired: 'This asset is retired. It takes no new work, condition or form.',

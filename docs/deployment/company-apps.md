@@ -47,7 +47,10 @@ another's data even if somebody signs in with the wrong address.
    use the product's own icon when the company has none.
 3. On the company's page in the platform dashboard, tick **Build apps for
    this company** and save. The company now appears in
-   `GET /v1/build/companies`.
+   `GET /v1/build/companies`, and with `APP_BUILDS=github` its first build
+   starts at once: the panel says "Build started on GitHub" with a link to
+   the run. With `APP_BUILDS=off` (the default) it says to start the build by
+   hand, below.
 4. When its forms, job types, look and apps are ready, invite the owner: the
    company's page → **Invitations** → **Send invitation** (or **Copy a new
    link** to send it yourself). Onboarding does not email the owner unless you
@@ -55,7 +58,15 @@ another's data even if somebody signs in with the wrong address.
 
 ## Building
 
-- **One company, now**: Actions → _Build company apps_ → _Run workflow_. Enter
+- **From the dashboard**: with `APP_BUILDS=github`, ticking **Build apps**
+  starts the company's first build, and **Rebuild apps** on its page starts
+  another (after its look changed, or for a version released before it was
+  switched on). The API needs `GITHUB_BUILD_TOKEN`, a fine-grained GitHub
+  token for this repository only with **Actions: read and write** (it can run
+  any workflow there, so it is a secret), and `GITHUB_BUILD_REPOSITORY`; it
+  refuses to start with `github` and either missing. `GITHUB_BUILD_REF`
+  (default `main`) is the branch whose workflow and version are built.
+- **One company, by hand**: Actions → _Build company apps_ → _Run workflow_. Enter
   the short name and leave the rest empty (version from `package.json`, API
   from `PUBLIC_API_URL`, platforms from the release variables). Type `all` to
   rebuild every company.
