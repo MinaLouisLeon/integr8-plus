@@ -1,9 +1,10 @@
 # Roadmap — the version ladder
 
 This is the original sequencing plan, written before the CRM/ERP expansion and
-the current 1.1.2 release. For shipped modules and current readiness status, see
-[`version2.md`](../version2.md); do not read this version ladder as a live
-release-status report. The AI assistant has shipped; P30 below is the separate
+the 1.2.2 release. For what is built, see the progress table in
+[`README.md`](./README.md) and its "Module plans outside the phase list"; do not
+read this version ladder as a live release-status report (`version2.md` is a
+1.1.2-era snapshot). The AI assistant has shipped; P30 below is the separate
 planned feature for AI-assisted form authoring.
 
 Each version answers one question. Do not start the next until the current one's
@@ -89,7 +90,8 @@ A version is done when all its phases are complete **and** its exit criteria hol
 
 ### v1.0 Launch
 
-- A company signs up unaided, pays, and onboards without you touching a terminal.
+- A company signs up unaided, pays, and onboards without you touching a terminal. (Built, but
+  public sign-up is off by default: Integr8 staff onboard each company.)
 - You can see that company's exact storage usage in your dashboard.
 - A restore from backup has been rehearsed, not merely configured.
 - Desktop and mobile builds are signed, notarised and distributable.
