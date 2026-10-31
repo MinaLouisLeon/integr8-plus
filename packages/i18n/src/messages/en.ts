@@ -642,6 +642,16 @@ export const en = {
     },
 
     impersonationBanner: 'You are viewing this account as {{name}}. Everything you do is recorded.',
+
+    // Banners Integr8 posts from the platform dashboard, payment reminders
+    // included (P15). The severity is a word as well as a colour.
+    announcement: {
+      region: 'Announcements from Integr8',
+      info: 'Notice',
+      warning: 'Warning',
+      critical: 'Important',
+      dismiss: 'Dismiss',
+    },
   },
 
   // The company's own roles (ninth round; ADR-0013): built on a built-in

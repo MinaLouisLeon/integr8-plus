@@ -614,6 +614,14 @@ export const ar: Catalogue<Messages> = {
     },
 
     impersonationBanner: 'أنت تعرض هذا الحساب بصفة {{name}}. كل ما تفعله يُسجَّل.',
+
+    announcement: {
+      region: 'إعلانات من Integr8',
+      info: 'إشعار',
+      warning: 'تحذير',
+      critical: 'هام',
+      dismiss: 'إخفاء',
+    },
   },
 
   roles: {

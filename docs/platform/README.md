@@ -247,6 +247,28 @@ a log that is being written to cannot repeat or skip an entry.
 - `announcements` — banners, by language tag, with `dismissible`;
 - and a suspension is not a field here at all: a suspended company's `/v1/me` is a 423.
 
+**Where the banners show.** The web app's company workspace and the desktop app draw them with
+one component, `AnnouncementBanners` in `@integr8/operations-dom`, from the `/v1/me` answer each
+shell already holds: in the web shell under the impersonation banner on every signed-in page, and
+in the desktop frame under the top bar, outside the scrolling screen. Dunning's payment reminders
+arrive the same way, since they are announcements too. The phone shows them separately.
+
+- **Severity** is a word as well as a colour (Notice, Warning, Important). A `critical` banner is
+  an `alert`, so a screen reader interrupts with it; the others are polite `status` messages. The
+  most severe come first.
+- **Language:** the reader's own tag, then its base language, then English, then whatever there
+  is. Staff write English today, so an Arabic screen usually shows English: the text carries its
+  own `lang` and that language's direction, so it is laid out left to right inside the mirrored
+  page (and an Arabic message that opens with "Integr8" still reads right to left).
+- **Dismissing** is per browser or per desktop install: the ids of the most recent dismissals,
+  up to two hundred, are kept in `localStorage` under `integr8.announcements.dismissed`, and
+  nothing else is. A banner posted as not dismissible has no button and ignores any remembered
+  id. Closing one moves focus to the next banner, or to the page's `main` when none is left.
+- **Ending:** a banner whose `endsAt` passes is taken down then, without another `/v1/me`,
+  because the desktop app stays open for days. Ending one early from the dashboard reaches a
+  screen the next time that app fetches `/v1/me`: at sign-in, on a reload, and when a screen
+  that reads it opens after the 30 seconds the answer is cached.
+
 ---
 
 ## What is deliberately not here

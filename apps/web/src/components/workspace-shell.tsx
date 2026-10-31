@@ -2,6 +2,7 @@
 
 import { visibleNavigation } from '@integr8/core';
 import { useTranslation } from '@integr8/i18n';
+import { AnnouncementBanners } from '@integr8/operations-dom';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -151,8 +152,14 @@ export function WorkspaceShell({
           </>
         )}
         // Above everything, on every signed-in page: a support engineer who
-        // forgets they are impersonating causes the worst incidents.
-        banner={<ImpersonationBanner />}
+        // forgets they are impersonating causes the worst incidents. Integr8's
+        // announcements and payment reminders follow, from the same `/v1/me`.
+        banner={
+          <>
+            <ImpersonationBanner />
+            <AnnouncementBanners announcements={me.data?.announcements} />
+          </>
+        }
       >
         {children}
       </DashboardShell>

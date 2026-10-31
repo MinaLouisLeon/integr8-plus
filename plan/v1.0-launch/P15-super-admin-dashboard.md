@@ -22,7 +22,7 @@ Your dashboard, inside the Next.js app on a separately authorised route.
 - [x] Platform audit log, searchable, immutable, showing every super admin action
 - [x] Per-company activity: active users, jobs per month, submissions, ~~API calls~~ recorded actions
 - [x] Feature flags per company
-- [x] Global announcement banner pushed to desktop, mobile and web
+- [~] Global announcement banner pushed to desktop, mobile and web — web and desktop; the phone separately, see below
 - [x] Global form template library management
 - [x] Support toolkit: recent errors for a company, resend invite, reset MFA, unlock account, clear a stuck sync queue
 - [~] Release view: which desktop and mobile versions are live in the field — mobile only; see below
@@ -42,6 +42,15 @@ the real account, like the media suite.
 
 Suspension is stricter than "read-only": every request is refused, reads included. The decision
 and its cost are written up in [docs/platform](../../docs/platform/README.md).
+
+**The announcement banner was ticked before any screen showed it.** The API delivered
+announcements in `/v1/me` and dunning posted payment reminders as announcements, but no web or
+desktop screen drew them (pre-production audit, 31 October 2026, High 12). The web company
+workspace and the desktop app frame now show them through one shared component,
+`AnnouncementBanners` in `@integr8/operations-dom`: severity in words and colour, the reader's
+language with a fallback, dismissal remembered per device, focus kept, gone when they end (see
+[docs/platform](../../docs/platform/README.md#what-the-apps-are-told)). The phone's banner is
+being done separately; the box is ticked again when it lands.
 
 ## Notes
 
