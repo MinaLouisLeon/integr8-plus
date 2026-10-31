@@ -123,6 +123,16 @@ export function SignOutIcon(props: GlyphProps) {
   return <Glyph d="M10 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4M15 8l5 4-5 4M20 12H9" {...props} />;
 }
 
+/** A key, for Change password. */
+export function KeyIcon(props: GlyphProps) {
+  return (
+    <Glyph
+      d="M15 7a3 3 0 1 1-3 3M14.1 12.1 21 19v2h-2v-2h-2v-2h-2l-1.4-1.4M12 10a3 3 0 1 0 3-3"
+      {...props}
+    />
+  );
+}
+
 export function GlobeIcon(props: GlyphProps) {
   return (
     <Glyph

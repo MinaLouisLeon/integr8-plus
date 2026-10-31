@@ -16,6 +16,10 @@ import {
  * the refresh token can be put straight into an httpOnly cookie and never
  * reach JavaScript. The access token goes back in the body and lives in memory
  * for the life of the tab.
+ *
+ * Either a password or an emailed 6-digit code (P36): `{ email, password }`
+ * goes to `/v1/auth/sign-in`, `{ email, code }` to
+ * `/v1/auth/magic-link/complete`. Both end in the same cookie.
  */
 export async function POST(request: Request): Promise<Response> {
   // A sign-in posted from another site would set this cookie for a session
@@ -24,23 +28,34 @@ export async function POST(request: Request): Promise<Response> {
     return crossSiteRefusal();
   }
 
-  const credentials = (await readJson(request)) as { email: string; password: string } | undefined;
-  if (credentials === undefined) {
+  const credentials = (await readJson(request)) as
+    { email?: unknown; password?: unknown; code?: unknown } | undefined;
+  if (credentials === undefined || typeof credentials.email !== 'string') {
     return NextResponse.json(
       { error: { code: 'invalid_body', message: 'The request body could not be read as JSON.' } },
       { status: 400 },
     );
   }
 
-  const upstream = await fetch(`${apiBaseUrl()}/v1/auth/sign-in`, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'x-client-app': 'web',
-      'x-client-version': process.env.NEXT_PUBLIC_APP_VERSION ?? '1.1.0',
+  // Only the fields each endpoint takes are passed on, so nothing else in the
+  // browser's body reaches the API.
+  const withCode = typeof credentials.code === 'string';
+  const upstream = await fetch(
+    `${apiBaseUrl()}${withCode ? '/v1/auth/magic-link/complete' : '/v1/auth/sign-in'}`,
+    {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-client-app': 'web',
+        'x-client-version': process.env.NEXT_PUBLIC_APP_VERSION ?? '1.1.0',
+      },
+      body: JSON.stringify(
+        withCode
+          ? { email: credentials.email, token: credentials.code, clientApp: 'web' }
+          : { email: credentials.email, password: credentials.password, clientApp: 'web' },
+      ),
     },
-    body: JSON.stringify({ ...credentials, clientApp: 'web' }),
-  });
+  );
 
   const body: unknown = await upstream.json();
 

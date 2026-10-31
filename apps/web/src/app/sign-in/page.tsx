@@ -1,5 +1,6 @@
 'use client';
 
+import { ApiRequestError } from '@integr8/api-client';
 import { useTranslation } from '@integr8/i18n';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState, useSyncExternalStore, type FormEvent } from 'react';
@@ -12,7 +13,7 @@ import {
 } from '~/lib/brand-memory';
 import { messageForError } from '~/lib/errors';
 import { safeReturnPath } from '~/lib/return-path';
-import { signIn } from '~/lib/session';
+import { requestSignInCode, signIn, signInWithCode } from '~/lib/session';
 
 /**
  * Sign in.
@@ -27,15 +28,76 @@ import { signIn } from '~/lib/session';
  * remembered — name, public logo, colours, theme — which is what the company's
  * website shows anybody. Read as an external store whose server snapshot is
  * empty, so the server and the hydrating render agree.
+ *
+ * Somebody who has forgotten their password signs in with an emailed 6-digit
+ * code instead (P36). Every way that can fail gets the same words, so the page
+ * never says whether an address has an account.
  */
 export default function SignInPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const router = useRouter();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [mode, setMode] = useState<'password' | 'code'>('password');
+  const [code, setCode] = useState('');
+  const [notice, setNotice] = useState<string | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>(undefined);
+
+  const language = i18n.resolvedLanguage ?? i18n.language;
+  const locale = language === 'ar' ? 'ar' : 'en';
+
+  const goOn = () => {
+    const next = safeReturnPath(new URLSearchParams(window.location.search).get('next'));
+    router.push(next ?? '/dashboard');
+  };
+
+  const askForCode = (again: boolean) => {
+    if (email.trim() === '') {
+      setError(t('auth.code.needEmail'));
+      return;
+    }
+    setBusy(true);
+    setError(undefined);
+    void (async () => {
+      try {
+        await requestSignInCode(email.trim(), locale);
+        setMode('code');
+        setCode('');
+        setNotice(again ? t('auth.code.resent') : t('auth.code.sent', { email: email.trim() }));
+      } catch (failure) {
+        setError(
+          failure instanceof ApiRequestError && failure.status === 429
+            ? t('auth.code.wait')
+            : messageForError(failure, t),
+        );
+      } finally {
+        setBusy(false);
+      }
+    })();
+  };
+
+  const submitCode = (event: FormEvent) => {
+    event.preventDefault();
+    setBusy(true);
+    setError(undefined);
+    void (async () => {
+      try {
+        await signInWithCode(email.trim(), code.trim());
+        goOn();
+      } catch (failure) {
+        // One message for a wrong, spent or expired code; a lock says so.
+        setError(
+          failure instanceof ApiRequestError && failure.status === 423
+            ? t('auth.accountLocked')
+            : t('auth.code.failed'),
+        );
+      } finally {
+        setBusy(false);
+      }
+    })();
+  };
   const [logoBroken, setLogoBroken] = useState(false);
 
   const rememberedText = useSyncExternalStore(
@@ -55,8 +117,7 @@ export default function SignInPage() {
     void (async () => {
       try {
         await signIn(email, password);
-        const next = safeReturnPath(new URLSearchParams(window.location.search).get('next'));
-        router.push(next ?? '/dashboard');
+        goOn();
       } catch (failure) {
         setError(messageForError(failure, t));
       } finally {
@@ -91,28 +152,80 @@ export default function SignInPage() {
         <p className="text-sm text-content-muted">{t('auth.signInSubtitle')}</p>
       </div>
 
-      <form onSubmit={submit} className="flex flex-col gap-4" noValidate>
-        <Field
-          label={t('auth.email')}
-          type="email"
-          autoComplete="email"
-          required
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-        />
-        <Field
-          label={t('auth.password')}
-          type="password"
-          autoComplete="current-password"
-          required
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          {...(error === undefined ? {} : { error })}
-        />
-        <Button type="submit" busy={busy}>
-          {busy ? t('auth.signingIn') : t('auth.signIn')}
-        </Button>
-      </form>
+      {mode === 'password' ? (
+        <>
+          <form onSubmit={submit} className="flex flex-col gap-4" noValidate>
+            <Field
+              label={t('auth.email')}
+              type="email"
+              autoComplete="email"
+              required
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+            />
+            <Field
+              label={t('auth.password')}
+              type="password"
+              autoComplete="current-password"
+              required
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              {...(error === undefined ? {} : { error })}
+            />
+            <Button type="submit" busy={busy}>
+              {busy ? t('auth.signingIn') : t('auth.signIn')}
+            </Button>
+          </form>
+          <Button variant="ghost" disabled={busy} onClick={() => askForCode(false)}>
+            {t('auth.code.request')}
+          </Button>
+        </>
+      ) : (
+        <>
+          <div className="flex flex-col gap-1">
+            <h2 className="text-lg font-semibold text-content">{t('auth.code.title')}</h2>
+            {notice === undefined ? null : (
+              <p role="status" className="text-sm text-content-muted">
+                {notice}
+              </p>
+            )}
+          </div>
+          <form onSubmit={submitCode} className="flex flex-col gap-4" noValidate>
+            <Field
+              label={t('auth.code.label')}
+              hint={t('auth.code.hint')}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              pattern="[0-9]*"
+              maxLength={6}
+              required
+              dir="ltr"
+              value={code}
+              onChange={(event) => setCode(event.target.value.replace(/\D/gu, ''))}
+              {...(error === undefined ? {} : { error })}
+            />
+            <Button type="submit" busy={busy} disabled={code.trim().length !== 6}>
+              {busy ? t('auth.signingIn') : t('auth.code.submit')}
+            </Button>
+          </form>
+          <div className="flex flex-col gap-2">
+            <Button variant="secondary" disabled={busy} onClick={() => askForCode(true)}>
+              {t('auth.code.resend')}
+            </Button>
+            <Button
+              variant="ghost"
+              disabled={busy}
+              onClick={() => {
+                setMode('password');
+                setError(undefined);
+                setNotice(undefined);
+              }}
+            >
+              {t('auth.code.back')}
+            </Button>
+          </div>
+        </>
+      )}
     </main>
   );
 }
