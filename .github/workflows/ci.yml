@@ -280,7 +280,16 @@ jobs:
       # Real HTTP through the assembled server: idempotent replay, the
       # outdated-client response, the request id on every log line, and the
       # phone's own sync engine against the real server.
+      #
+      # The R2 media suite (media-r2.integration.test.ts) runs against real
+      # Cloudflare R2 only when these repository secrets exist, and skips itself
+      # otherwise. Use a separate Cloudflare account for them: the suite needs
+      # an account-level R2 token, which can delete any bucket in its account.
       - name: API contract, request pipeline and sync
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.R2_TEST_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_TEST_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_TEST_SECRET_ACCESS_KEY }}
         run: pnpm --filter @integr8/api test:integration
 
   secret-scan:
