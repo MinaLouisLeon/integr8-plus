@@ -13,6 +13,7 @@ function jsonResponse(body: unknown, status = 200): Response {
 
 interface RecordedCall {
   url: string;
+  method: string;
   headers: Record<string, string>;
   body: Record<string, unknown>;
 }
@@ -34,6 +35,7 @@ function supabase(handler: (url: string) => Response) {
 
     calls.push({
       url,
+      method: options.method ?? 'GET',
       headers: (options.headers ?? {}) as Record<string, string>,
       body: JSON.parse(rawBody) as Record<string, unknown>,
     });
@@ -44,7 +46,7 @@ function supabase(handler: (url: string) => Response) {
   return {
     calls,
     provider: new SupabaseIdentityProvider({
-      url: 'https://project.supabase.co/',
+      url: 'http://auth:9999/',
       serviceRoleKey: 'service-role-key',
       fetch: fetchImpl,
     }),
@@ -67,7 +69,7 @@ describe('SupabaseIdentityProvider — password sign-in', () => {
       emailVerified: true,
     });
 
-    expect(calls[0]?.url).toBe('https://project.supabase.co/auth/v1/token?grant_type=password');
+    expect(calls[0]?.url).toBe('http://auth:9999/token?grant_type=password');
     expect(calls[0]?.headers).toMatchObject({
       apikey: 'service-role-key',
       authorization: 'Bearer service-role-key',
@@ -104,7 +106,7 @@ describe('SupabaseIdentityProvider — password sign-in', () => {
 
   it('reports a network failure as an outage', async () => {
     const provider = new SupabaseIdentityProvider({
-      url: 'https://project.supabase.co',
+      url: 'http://auth:9999',
       serviceRoleKey: 'k',
       fetch: () => Promise.reject(new Error('ECONNREFUSED')),
     });
@@ -125,33 +127,87 @@ describe('SupabaseIdentityProvider — password sign-in', () => {
   });
 });
 
-describe('SupabaseIdentityProvider — magic links', () => {
-  it('succeeds for an address that does not exist', async () => {
-    // An endpoint that answered differently for a known address would be a
-    // free membership oracle: paste in a list, learn who is a customer.
-    const { provider } = supabase(() => new Response(null, { status: 200 }));
+describe('SupabaseIdentityProvider — the base address', () => {
+  it('joins paths to the container address as given, with no /auth/v1', async () => {
+    const { provider, calls } = supabase(() =>
+      jsonResponse({ user: { id: USER_ID, email: 'dana@x.example' } }),
+    );
+    await provider.signInWithPassword('dana@x.example', 'password');
+    expect(calls[0]?.url.startsWith('http://auth:9999/token')).toBe(true);
+    expect(calls[0]?.url).not.toContain('/auth/v1');
+  });
+});
 
-    await expect(
-      provider.sendMagicLink('nobody@nowhere.example', 'https://app.integr8.example/callback'),
-    ).resolves.toBeUndefined();
+describe('SupabaseIdentityProvider — sign-in codes', () => {
+  it('makes a code through the admin API without sending anything', async () => {
+    const { provider, calls } = supabase(() =>
+      jsonResponse({
+        id: USER_ID,
+        email: 'dana@x.example',
+        action_link: 'http://auth:9999/verify?token=abc',
+        email_otp: '123456',
+        hashed_token: 'abc',
+        verification_type: 'magiclink',
+      }),
+    );
+
+    await expect(provider.createSignInCode(' Dana@X.example ')).resolves.toBe('123456');
+    expect(calls[0]?.url).toBe('http://auth:9999/admin/generate_link');
+    expect(calls[0]?.method).toBe('POST');
+    expect(calls[0]?.body).toEqual({ type: 'magiclink', email: 'dana@x.example' });
   });
 
-  it('passes the redirect through', async () => {
-    const { provider, calls } = supabase(() => new Response(null, { status: 200 }));
+  it('verifies a code for an identity', async () => {
+    const { provider, calls } = supabase(() =>
+      jsonResponse({ user: { id: USER_ID, email: 'dana@x.example', email_confirmed_at: 'x' } }),
+    );
 
-    await provider.sendMagicLink('dana@x.example', 'https://app.integr8.example/callback');
-
-    expect(calls[0]?.body).toMatchObject({
-      options: { email_redirect_to: 'https://app.integr8.example/callback' },
+    await expect(provider.verifySignInCode('dana@x.example', ' 123456 ')).resolves.toMatchObject({
+      userId: USER_ID,
+    });
+    expect(calls[0]?.url).toBe('http://auth:9999/verify');
+    expect(calls[0]?.body).toEqual({
+      type: 'magiclink',
+      token: '123456',
+      email: 'dana@x.example',
     });
   });
 
-  it('rejects a spent or forged link as a credential failure', async () => {
-    const { provider } = supabase(() => jsonResponse({ error: 'expired' }, 403));
+  it('rejects a wrong, spent or expired code as a credential failure', async () => {
+    for (const status of [400, 401, 403]) {
+      const { provider } = supabase(() => jsonResponse({ error: 'expired' }, status));
+      await expect(provider.verifySignInCode('dana@x.example', '000000')).rejects.toThrow(
+        InvalidCredentialsError,
+      );
+    }
+  });
+});
 
-    await expect(provider.verifyMagicLink('stale', 'dana@x.example')).rejects.toThrow(
-      InvalidCredentialsError,
-    );
+describe('SupabaseIdentityProvider — passwords and deletion', () => {
+  it('sets a password with PUT on the admin user', async () => {
+    const { provider, calls } = supabase(() => jsonResponse({ id: USER_ID }));
+    await provider.setPassword(USER_ID, 'a new good password');
+    expect(calls[0]?.method).toBe('PUT');
+    expect(calls[0]?.url).toBe(`http://auth:9999/admin/users/${USER_ID}`);
+    expect(calls[0]?.body).toEqual({ password: 'a new good password' });
+  });
+
+  it('reports a failed password change as an outage', async () => {
+    const { provider } = supabase(() => jsonResponse({}, 500));
+    await expect(provider.setPassword(USER_ID, 'x')).rejects.toThrow(IdentityProviderError);
+  });
+
+  it('deletes with DELETE, and treats an identity already gone as done', async () => {
+    const ok = supabase(() => jsonResponse({}));
+    await ok.provider.deleteIdentity(USER_ID);
+    expect(ok.calls[0]?.method).toBe('DELETE');
+    expect(ok.calls[0]?.url).toBe(`http://auth:9999/admin/users/${USER_ID}`);
+
+    const gone = supabase(() => jsonResponse({ msg: 'User not found' }, 404));
+    await expect(gone.provider.deleteIdentity(USER_ID)).resolves.toBeUndefined();
+
+    const down = supabase(() => jsonResponse({}, 503));
+    await expect(down.provider.deleteIdentity(USER_ID)).rejects.toThrow(IdentityProviderError);
   });
 });
 
@@ -163,7 +219,7 @@ describe('SupabaseIdentityProvider — creating an identity', () => {
 
     await provider.createIdentity('new@northwind.example', 'a good password');
 
-    expect(calls[0]?.url).toBe('https://project.supabase.co/auth/v1/admin/users');
+    expect(calls[0]?.url).toBe('http://auth:9999/admin/users');
     expect(calls[0]?.body).toMatchObject({
       email: 'new@northwind.example',
       email_confirm: true,
@@ -204,7 +260,7 @@ describe('SupabaseIdentityProvider — finding an identity', () => {
     const found = await provider.findByEmail(' A@Northwind.example ');
 
     expect(calls[0]?.url).toBe(
-      'https://project.supabase.co/auth/v1/admin/users?filter=a%40northwind.example&page=1&per_page=100',
+      'http://auth:9999/admin/users?filter=a%40northwind.example&page=1&per_page=100',
     );
     expect(calls[0]?.headers.authorization).toBe('Bearer service-role-key');
     expect(found).toEqual({ userId: USER_ID, email: 'a@northwind.example', emailVerified: true });
@@ -256,24 +312,39 @@ describe('FakeIdentityProvider', () => {
     );
   });
 
-  it('records magic links so a test can follow one', async () => {
+  it('makes a code a test can follow, usable once, replaced by the next', async () => {
     const provider = new FakeIdentityProvider(identities);
-    await provider.sendMagicLink('dana@northwind.example', 'https://app/callback');
+    const first = await provider.createSignInCode('dana@northwind.example');
+    const second = await provider.createSignInCode('dana@northwind.example');
+    expect(second).toMatch(/^\d{6}$/u);
+    expect(provider.latestCode('dana@northwind.example')).toBe(second);
 
-    const link = provider.magicLinks[0];
-    expect(link?.email).toBe('dana@northwind.example');
-
-    await expect(
-      provider.verifyMagicLink(link?.token ?? '', 'dana@northwind.example'),
-    ).resolves.toMatchObject({ userId: USER_ID });
-  });
-
-  it('refuses a magic-link token it never issued', async () => {
-    const provider = new FakeIdentityProvider(identities);
-
-    await expect(provider.verifyMagicLink('invented', 'dana@northwind.example')).rejects.toThrow(
+    await expect(provider.verifySignInCode('dana@northwind.example', first)).rejects.toThrow(
       InvalidCredentialsError,
     );
+    await expect(
+      provider.verifySignInCode('dana@northwind.example', second),
+    ).resolves.toMatchObject({ userId: USER_ID });
+    await expect(provider.verifySignInCode('dana@northwind.example', second)).rejects.toThrow(
+      InvalidCredentialsError,
+    );
+  });
+
+  it('refuses a code for an address with no identity, as GoTrue does', async () => {
+    const provider = new FakeIdentityProvider(identities);
+    await expect(provider.createSignInCode('nobody@northwind.example')).rejects.toThrow(
+      IdentityProviderError,
+    );
+  });
+
+  it('sets a password and deletes an identity', async () => {
+    const provider = new FakeIdentityProvider([...identities]);
+    await provider.setPassword(USER_ID, 'another good password');
+    expect(provider.passwordOf('dana@northwind.example')).toBe('another good password');
+
+    await provider.deleteIdentity(USER_ID);
+    expect(provider.deleted).toEqual([USER_ID]);
+    await expect(provider.findByEmail('dana@northwind.example')).resolves.toBeUndefined();
   });
 
   it('creates an identity, and refuses a duplicate the way GoTrue does', async () => {

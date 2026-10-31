@@ -271,6 +271,7 @@ export class InvitationService {
         deviceLabel: input.deviceLabel ?? null,
         userAgent: input.userAgent ?? null,
         ipAddress: input.ipAddress ?? null,
+        signedInWith: 'invitation',
       });
 
       await tx.auditLog.append({

@@ -115,6 +115,18 @@ export class WeakPasswordError extends AuthError {
   }
 }
 
+/**
+ * Change password was asked for without the current password, and the session
+ * did not begin with an emailed code recently enough to stand in for it (P36).
+ */
+export class CurrentPasswordRequiredError extends AuthError {
+  readonly code = 'auth.current_password_required';
+
+  constructor(message = 'Enter your current password, or sign in with an emailed code first') {
+    super(message);
+  }
+}
+
 /** The identity provider itself failed — network, outage, misconfiguration. */
 export class IdentityProviderError extends AuthError {
   readonly code = 'auth.identity_provider_unavailable';

@@ -152,6 +152,7 @@ export class ImpersonationService {
         userAgent: input.userAgent ?? null,
         ipAddress: input.ipAddress ?? null,
         impersonationGrantId: grant.id,
+        signedInWith: 'impersonation',
       });
 
       return { tokens: issued, grantId: grant.id };

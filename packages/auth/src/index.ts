@@ -1,8 +1,9 @@
 /**
  * `@integr8/auth` — the session authority.
  *
- * Supabase Auth holds credentials and sends magic links. From the moment a
- * credential is accepted, this package decides everything: which company a
+ * A self-hosted Supabase Auth container holds credentials and makes one-time
+ * sign-in codes (P36). From the moment a credential is accepted, this package
+ * decides everything: which company a
  * token acts for, how long it lasts, when it stops, and who was really behind
  * it. That division is what makes tenant switching, per-device revocation,
  * time-limited impersonation and a week-long offline grant possible at all —
@@ -84,6 +85,7 @@ export {
 export {
   AccountLockedError,
   AuthError,
+  CurrentPasswordRequiredError,
   IdentityProviderError,
   ImpersonationDeniedError,
   InvalidCredentialsError,
@@ -105,10 +107,25 @@ export {
 
 export {
   SignInService,
+  type IssuedSignInCode,
+  type SignInCodeRequest,
   type SignInInput,
   type SignInResult,
   type SignInServiceDeps,
 } from './services/sign-in-service.js';
+
+export {
+  PasswordService,
+  type ChangePasswordInput,
+  type ChangePasswordResult,
+  type PasswordServiceDeps,
+} from './services/password-service.js';
+
+export {
+  generateAuthDbPassword,
+  generateAuthJwtSecret,
+  mintServiceRoleKey,
+} from './supabase-auth-keys.js';
 
 export {
   InvitationService,
