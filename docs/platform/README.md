@@ -188,6 +188,18 @@ export  ──▶  schedule  ──▶  (7 days)  ──▶  purge
   null, so a schedule without a finished export cannot be written. It is the same export a
   customer asking for their data would be given — there is no "deletion export" that quietly
   holds less.
+- **What the export holds is a decision per table.** `EXPORTED_TABLES` in
+  `packages/db/src/repositories/tenant-data-export.ts` lists what goes in: the company's
+  records in every module, its settings, documents, and its e-invoicing with the full Tax
+  Authority submission history, which is a tax record. `NOT_EXPORTED_TABLES` names everything
+  else with the reason: credentials (sessions, invitations, push tokens), this system's working
+  state (jobs, counters, sync bookkeeping), figures derived from exported rows (stock balances),
+  and Integr8's own records about the company (its plan, feature switches, storage metering, the
+  model provider's cost). `WITHHELD_COLUMNS` leaves sealed values and link or signing secrets
+  out of the query itself: the Tax Authority login, HR's sealed national id, insurance and bank
+  numbers (their last four stay), signing nonces and the quote link hash. A new company table in
+  neither list fails to compile, and `tenant-data-export.integration.test.ts` checks both lists
+  against the database.
 - **The archive lives in a platform bucket, not the company's.** The purge destroys the
   company's bucket, so an export kept there would be deleted by the act it exists to justify —
   while `tenant_exports`, which has no foreign key to `tenants` precisely so it outlives the

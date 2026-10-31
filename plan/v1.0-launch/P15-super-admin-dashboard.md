@@ -158,6 +158,15 @@ fixed, and the first two have regression tests.
   and foreign-key checks suspended (all 101 now purge, with nothing left and no other company
   touched), `tenant-purge.integration.test.ts` pins why that is safe, and each worker step and
   each due company now fails on its own.
+- **The export had fallen eight migrations behind, found in the same audit.** Its hand-written
+  table list had no documents (0048), no e-invoicing (0049, including the Tax Authority
+  submission history, which is a tax record), no visits (0051) and not the company's own
+  settings. They are exported now, without the sealed values (the Tax Authority login, HR's
+  sealed numbers, signing nonces, the quote link hash), which are left out of the query itself.
+  Every company table that stays out is named with its reason in `NOT_EXPORTED_TABLES`, a
+  record typed so a missing table is a compile error, and
+  `tenant-data-export.integration.test.ts` compares both lists with every table whose
+  `tenant_id` references `tenants`.
 
 ## Worth fixing next, found here but not P15's
 
