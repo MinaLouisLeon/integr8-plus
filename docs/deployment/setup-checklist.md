@@ -103,15 +103,25 @@ pnpm install
 $b = New-Object byte[] 24; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); -join ($b | ForEach-Object { $_.ToString('x2') })
 ```
 
-- [ ] **The signing keys and the sign-in secrets.** The generator writes seven lines to `keys.txt` and opens it in Notepad, because the lines are long and copying them from a wrapped terminal breaks them. Put all seven into the key sheet and your password manager, then delete the file: the four signing keys (`AUTH_SIGNING_KEY_ID`, `AUTH_SIGNING_KEY`, `AUTH_VERIFICATION_KEYS`, `PLATFORM_SECRET_KEY`) and the three the sign-in server needs (`SUPABASE_AUTH_JWT_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_AUTH_DB_PASSWORD`). The last three belong together: the service role key is signed with the JWT secret, so if one is ever made again, all three are.
+- [ ] **The signing keys and the sign-in secrets.** The generator writes seven lines to `integr8-keys.txt` in your Windows temporary folder, outside the repository, and opens it in Notepad, because the lines are long and copying them from a wrapped terminal breaks them. Put all seven into the key sheet and your password manager, then delete the file: the four signing keys (`AUTH_SIGNING_KEY_ID`, `AUTH_SIGNING_KEY`, `AUTH_VERIFICATION_KEYS`, `PLATFORM_SECRET_KEY`) and the three the sign-in server needs (`SUPABASE_AUTH_JWT_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_AUTH_DB_PASSWORD`). The last three belong together: the service role key is signed with the JWT secret, so if one is ever made again, all three are.
 
 ```powershell
-# laptop (PowerShell), in the repository folder
+# laptop (PowerShell), in the repository folder; the file goes to the temporary folder
 cd ~\Documents\integr8-plus
-pnpm --silent --filter @integr8/auth keygen | Select-String '^[A-Z_]+=' | ForEach-Object Line | Set-Content -Encoding ascii keys.txt
-notepad keys.txt
+pnpm --silent --filter @integr8/auth keygen | Select-String '^[A-Z_]+=' | ForEach-Object Line | Set-Content -Encoding ascii $env:TEMP\integr8-keys.txt
+notepad $env:TEMP\integr8-keys.txt
 # after copying the seven lines into your password manager:
-Remove-Item keys.txt
+Remove-Item $env:TEMP\integr8-keys.txt
+```
+
+- [ ] **No old key file in the repository folder.** Earlier versions of this guide wrote the generator's output to `keys.txt` inside the repository folder; a copy left there holds every secret above in plain text. The first command below lists any such file and the second deletes them; the third prints nothing when none was ever committed. The repository now ignores `keys.txt`, `*-keys.txt` and `*.keys`. If the third prints a commit, the file reached GitHub: make every secret in it again, in this part, and use only the new ones from here on.
+
+```powershell
+# laptop (PowerShell)
+cd ~\Documents\integr8-plus
+Get-ChildItem -Force -Path keys.txt,*-keys.txt,*.keys -ErrorAction SilentlyContinue
+Get-ChildItem -Force -Path keys.txt,*-keys.txt,*.keys -ErrorAction SilentlyContinue | Remove-Item
+git log --all --oneline -- keys.txt '*-keys.txt' '*.keys'
 ```
 
 > [!WARNING]
@@ -439,11 +449,11 @@ DATABASE_URL_PLATFORM=postgres://integr8_platform:dddd…@postgres:5432/integr8 
 ```
 
 - [ ] **Signing keys.** Below the database lines is a block headed `# Tokens and secrets`. It has four variables with nothing after the `=`: `AUTH_SIGNING_KEY_ID=`, `AUTH_SIGNING_KEY=`, `AUTH_VERIFICATION_KEYS=`, `PLATFORM_SECRET_KEY=`. The key generator in Stage 0, Part B produced exactly these four lines, each already in the form `NAME=value`. For each one, delete the empty line in the file and paste the whole line from your password manager in its place; the names must match and nothing else on the line changes. The values are long (the second is a few hundred characters) and must stay on one line each. The `AUTH_ISSUER` line just above them was already set in step 2.
-- [ ] **Sign-in secrets.** The next block, headed `# Sign-in: the self-hosted Supabase Auth container`, has three variables with nothing after the `=`: `SUPABASE_AUTH_JWT_SECRET=`, `SUPABASE_SERVICE_ROLE_KEY=`, `SUPABASE_AUTH_DB_PASSWORD=`. Paste the last three lines from `keys.txt` in their place, the same way. Leave the commented `# SUPABASE_AUTH_URL=` line as it is: the compose file already points the API at the Auth container. There is no `SUPABASE_URL` line any more, and the API refuses to start if one is added. Afterwards the two blocks read like this, with your own values:
+- [ ] **Sign-in secrets.** The next block, headed `# Sign-in: the self-hosted Supabase Auth container`, has three variables with nothing after the `=`: `SUPABASE_AUTH_JWT_SECRET=`, `SUPABASE_SERVICE_ROLE_KEY=`, `SUPABASE_AUTH_DB_PASSWORD=`. Paste the last three lines from `integr8-keys.txt` (now in your password manager) in their place, the same way. Leave the commented `# SUPABASE_AUTH_URL=` line as it is: the compose file already points the API at the Auth container. There is no `SUPABASE_URL` line any more, and the API refuses to start if one is added. Afterwards the two blocks read like this, with your own values:
 
 ```text
 AUTH_ISSUER=https://api.integr8-media.com
-AUTH_SIGNING_KEY_ID=integr8-2026-10-09-4bv1e4          ← from keys.txt, line 1
+AUTH_SIGNING_KEY_ID=integr8-2026-10-09-4bv1e4          ← from integr8-keys.txt, line 1
 AUTH_SIGNING_KEY={"crv":"Ed25519",…}                    ← line 2, one long line
 AUTH_VERIFICATION_KEYS=[{"crv":"Ed25519",…}]            ← line 3, one long line
 PLATFORM_SECRET_KEY=6h6lZzXnyuuOeG…                     ← line 4

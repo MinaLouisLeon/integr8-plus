@@ -87,14 +87,22 @@ pnpm install</code></pre>
         <pre><button class="copy" type="button">Copy</button><code># laptop (PowerShell)
 $b = New-Object byte[] 24; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); -join ($b | ForEach-Object { $_.ToString('x2') })</code></pre>
         <ul class="check" data-stage="a1b">
-          <li><input type="checkbox" id="a1-2"><label for="a1-2"><b>The signing keys and the sign-in secrets.</b> The generator writes seven lines to <code>keys.txt</code> and opens it in Notepad, because the lines are long and copying them from a wrapped terminal breaks them. Put all seven into the key sheet and your password manager, then delete the file: the four signing keys (<code>AUTH_SIGNING_KEY_ID</code>, <code>AUTH_SIGNING_KEY</code>, <code>AUTH_VERIFICATION_KEYS</code>, <code>PLATFORM_SECRET_KEY</code>) and the three the sign-in server needs (<code>SUPABASE_AUTH_JWT_SECRET</code>, <code>SUPABASE_SERVICE_ROLE_KEY</code>, <code>SUPABASE_AUTH_DB_PASSWORD</code>). The last three belong together: the service role key is signed with the JWT secret, so if one is ever made again, all three are.</label></li>
+          <li><input type="checkbox" id="a1-2"><label for="a1-2"><b>The signing keys and the sign-in secrets.</b> The generator writes seven lines to <code>integr8-keys.txt</code> in your Windows temporary folder, outside the repository, and opens it in Notepad, because the lines are long and copying them from a wrapped terminal breaks them. Put all seven into the key sheet and your password manager, then delete the file: the four signing keys (<code>AUTH_SIGNING_KEY_ID</code>, <code>AUTH_SIGNING_KEY</code>, <code>AUTH_VERIFICATION_KEYS</code>, <code>PLATFORM_SECRET_KEY</code>) and the three the sign-in server needs (<code>SUPABASE_AUTH_JWT_SECRET</code>, <code>SUPABASE_SERVICE_ROLE_KEY</code>, <code>SUPABASE_AUTH_DB_PASSWORD</code>). The last three belong together: the service role key is signed with the JWT secret, so if one is ever made again, all three are.</label></li>
         </ul>
-        <pre><button class="copy" type="button">Copy</button><code># laptop (PowerShell), in the repository folder
+        <pre><button class="copy" type="button">Copy</button><code># laptop (PowerShell), in the repository folder; the file goes to the temporary folder
 cd ~\Documents\integr8-plus
-pnpm --silent --filter @integr8/auth keygen | Select-String '^[A-Z_]+=' | ForEach-Object Line | Set-Content -Encoding ascii keys.txt
-notepad keys.txt
+pnpm --silent --filter @integr8/auth keygen | Select-String '^[A-Z_]+=' | ForEach-Object Line | Set-Content -Encoding ascii $env:TEMP\integr8-keys.txt
+notepad $env:TEMP\integr8-keys.txt
 # after copying the seven lines into your password manager:
-Remove-Item keys.txt</code></pre>
+Remove-Item $env:TEMP\integr8-keys.txt</code></pre>
+        <ul class="check" data-stage="a1k">
+          <li><input type="checkbox" id="a1-keys"><label for="a1-keys"><b>No old key file in the repository folder.</b> Earlier versions of this guide wrote the generator's output to <code>keys.txt</code> inside the repository folder; a copy left there holds every secret above in plain text. The first command below lists any such file and the second deletes them; the third prints nothing when none was ever committed. The repository now ignores <code>keys.txt</code>, <code>*-keys.txt</code> and <code>*.keys</code>. If the third prints a commit, the file reached GitHub: make every secret in it again, in this part, and use only the new ones from here on.</label></li>
+        </ul>
+        <pre><button class="copy" type="button">Copy</button><code># laptop (PowerShell)
+cd ~\Documents\integr8-plus
+Get-ChildItem -Force -Path keys.txt,*-keys.txt,*.keys -ErrorAction SilentlyContinue
+Get-ChildItem -Force -Path keys.txt,*-keys.txt,*.keys -ErrorAction SilentlyContinue | Remove-Item
+git log --all --oneline -- keys.txt '*-keys.txt' '*.keys'</code></pre>
         <div class="note warn"><p><code>PLATFORM_SECRET_KEY</code> encrypts every super admin's authenticator secret. If it is ever changed, every super admin sets up their authenticator again. Keep it.</p></div>
         <ul class="check" data-stage="a1c">
           <li><input type="checkbox" id="a1-3"><label for="a1-3"><b>The HR data key (optional until you use sensitive HR fields).</b> The HR module encrypts employees' national ID, social insurance and bank account numbers with this key: 32 random bytes written as base64 (44 characters ending in <code>=</code>). Key sheet: <code>HR_DATA_KEY</code>. Without it the API starts normally, but those three values cannot be stored, shown or exported ("HR key missing").</label></li>
@@ -385,10 +393,10 @@ INTEGR8_PLATFORM_PASSWORD=dddd…         ┐ same value
 DATABASE_URL_PLATFORM=postgres://integr8_platform:dddd…@postgres:5432/integr8  ┘</code></pre>
         <ul class="check" data-stage="s3b">
           <li><input type="checkbox" id="s3-4"><label for="s3-4"><b>Signing keys.</b> Below the database lines is a block headed <code># Tokens and secrets</code>. It has four variables with nothing after the <code>=</code>: <code>AUTH_SIGNING_KEY_ID=</code>, <code>AUTH_SIGNING_KEY=</code>, <code>AUTH_VERIFICATION_KEYS=</code>, <code>PLATFORM_SECRET_KEY=</code>. The key generator in Stage 0, Part B produced exactly these four lines, each already in the form <code>NAME=value</code>. For each one, delete the empty line in the file and paste the whole line from your password manager in its place; the names must match and nothing else on the line changes. The values are long (the second is a few hundred characters) and must stay on one line each. The <code>AUTH_ISSUER</code> line just above them was already set in step 2.</label></li>
-          <li><input type="checkbox" id="s3-4b"><label for="s3-4b"><b>Sign-in secrets.</b> The next block, headed <code># Sign-in: the self-hosted Supabase Auth container</code>, has three variables with nothing after the <code>=</code>: <code>SUPABASE_AUTH_JWT_SECRET=</code>, <code>SUPABASE_SERVICE_ROLE_KEY=</code>, <code>SUPABASE_AUTH_DB_PASSWORD=</code>. Paste the last three lines from <code>keys.txt</code> in their place, the same way. Leave the commented <code># SUPABASE_AUTH_URL=</code> line as it is: the compose file already points the API at the Auth container. There is no <code>SUPABASE_URL</code> line any more, and the API refuses to start if one is added. Afterwards the two blocks read like this, with your own values:</label></li>
+          <li><input type="checkbox" id="s3-4b"><label for="s3-4b"><b>Sign-in secrets.</b> The next block, headed <code># Sign-in: the self-hosted Supabase Auth container</code>, has three variables with nothing after the <code>=</code>: <code>SUPABASE_AUTH_JWT_SECRET=</code>, <code>SUPABASE_SERVICE_ROLE_KEY=</code>, <code>SUPABASE_AUTH_DB_PASSWORD=</code>. Paste the last three lines from <code>integr8-keys.txt</code> (now in your password manager) in their place, the same way. Leave the commented <code># SUPABASE_AUTH_URL=</code> line as it is: the compose file already points the API at the Auth container. There is no <code>SUPABASE_URL</code> line any more, and the API refuses to start if one is added. Afterwards the two blocks read like this, with your own values:</label></li>
         </ul>
         <pre><code>AUTH_ISSUER=https://api.integr8-media.com
-AUTH_SIGNING_KEY_ID=integr8-2026-10-09-4bv1e4          ← from keys.txt, line 1
+AUTH_SIGNING_KEY_ID=integr8-2026-10-09-4bv1e4          ← from integr8-keys.txt, line 1
 AUTH_SIGNING_KEY={"crv":"Ed25519",…}                    ← line 2, one long line
 AUTH_VERIFICATION_KEYS=[{"crv":"Ed25519",…}]            ← line 3, one long line
 PLATFORM_SECRET_KEY=6h6lZzXnyuuOeG…                     ← line 4
