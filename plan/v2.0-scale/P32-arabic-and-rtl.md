@@ -1,7 +1,7 @@
 # P32 — Arabic and full RTL
 
 **Version:** v2.0 Scale and Enterprise
-**Status:** `NOT STARTED`
+**Status:** `IN PROGRESS` — most of the translation and the RTL plumbing shipped with the modules (October 2026 review); the QA pass, typography decisions and the native-speaker sign-off remain
 **Depends on:** P05
 
 ## Goal
@@ -15,16 +15,16 @@ done properly this phase is translation and polish, not rework.
 
 ## Tasks
 
-- [ ] Full Arabic translation of every user-facing string
+- [ ] Full Arabic translation of every user-facing string (every catalogue key has Arabic; server-sent push titles and alert emails are still English)
 - [ ] Arabic typography: font selection, line height, and numeral form (Arabic-Indic or Western) decided per locale
 - [ ] RTL QA pass across every screen on web, desktop and mobile
 - [ ] Mirrored icons, gestures, transitions and directional affordances
 - [ ] Locale-aware date, number and currency formatting verified
-- [ ] Multi-language form labels, rendered by the filler's locale
+- [x] Multi-language form labels, rendered by the filler's locale
 - [ ] Per-user language preference, independent of company default
 - [ ] Mixed-direction content handled correctly — an English part number inside an Arabic sentence
 - [ ] PDF reports generated correctly in Arabic
-- [ ] Translation workflow so new strings do not ship untranslated
+- [x] Translation workflow so new strings do not ship untranslated (the i18n parity test fails a build with a key missing in either language)
 
 ## Exit criteria
 

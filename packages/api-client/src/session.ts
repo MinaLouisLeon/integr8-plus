@@ -44,9 +44,28 @@ export interface SessionManagerOptions {
   /** Called when the session ends and the person has to sign in again. */
   onSignedOut?: (reason: SignOutReason) => void;
   onClientTooOld?: (info: { minimum: string; message: string }) => void;
+  /**
+   * Checks an offline grant on the device (P03): its signature against the
+   * keys built into the app, its type and its own expiry. False means it
+   * cannot be trusted, and the app does not open on it. Without one, only the
+   * expiry the server sent with the grant is checked.
+   */
+  verifyOfflineGrant?: (grant: string, now: Date) => boolean;
   fetch?: typeof globalThis.fetch;
   now?: () => Date;
 }
+
+/**
+ * Whether a phone may open now (P03).
+ *
+ * - `open`: on a live offline grant, or, with that lapsed, on a refresh made
+ *   just now, which brings a new grant.
+ * - `connect`: the grant has lapsed and the API cannot be reached. The refresh
+ *   token may have weeks left, but it proves nothing without the server, and
+ *   opening on it would make the seven-day window thirty.
+ * - `sign_in`: no session, one the server has ended, or one that has expired.
+ */
+export type OpenDecision = 'open' | 'connect' | 'sign_in';
 
 export type SignOutReason =
   /** They asked. */
@@ -86,6 +105,9 @@ export interface TokenPayload {
   accessTokenExpiresAt: string;
   refreshToken: string;
   refreshTokenExpiresAt: string;
+  /** The phone's offline grant, sent with every pair for `clientApp: mobile` (P03). */
+  offlineGrant?: string | undefined;
+  offlineGrantExpiresAt?: string | undefined;
 }
 
 export class SessionManager {
@@ -296,8 +318,40 @@ export class SessionManager {
 
     // A device with a live offline grant counts as signed in even when its
     // refresh token has lapsed — that is the whole point of the grant, and the
-    // app has to open in a basement.
-    return !requiresSignIn(tokens, this.#now()) || canOpenOffline(tokens, this.#now());
+    // app has to open in a basement. Whether a phone may open with no network
+    // is a different question, which `openDecision` answers.
+    return !requiresSignIn(tokens, this.#now()) || this.#grantHolds(tokens, this.#now());
+  }
+
+  /**
+   * Whether a phone may open now: on its offline grant, or on a refresh made
+   * now. See {@link OpenDecision}.
+   *
+   * A phone never opens on its refresh token alone. That lasts thirty days and
+   * the phone cannot tell, with no signal, whether the office revoked it this
+   * morning; the grant is the credential that says how long a phone may work
+   * unseen, and it says seven days.
+   */
+  async openDecision(timeoutMs = 10_000): Promise<OpenDecision> {
+    const tokens = await this.#options.store.read();
+    if (tokens === undefined) {
+      return 'sign_in';
+    }
+    const now = this.#now();
+    if (this.#grantHolds(tokens, now)) {
+      return 'open';
+    }
+    if (requiresSignIn(tokens, now)) {
+      return 'sign_in';
+    }
+    try {
+      // Null means the server refused the refresh, and the session has ended.
+      return (await withTimeout(this.#refreshOnce(), timeoutMs)) === null ? 'sign_in' : 'open';
+    } catch {
+      // No connection, a server that did not answer in time, or one that is
+      // failing: the session is kept, and the phone asks for a connection.
+      return 'connect';
+    }
   }
 
   /**
@@ -317,12 +371,20 @@ export class SessionManager {
   /** True when the app may open on cached work with no network at all. */
   async canWorkOffline(): Promise<boolean> {
     const tokens = await this.#options.store.read();
-    return tokens !== undefined && canOpenOffline(tokens, this.#now());
+    return tokens !== undefined && this.#grantHolds(tokens, this.#now());
   }
 
   // -------------------------------------------------------------------------
   // Internals
   // -------------------------------------------------------------------------
+
+  /** A grant is held, unexpired by the server's date, and passes the app's own check. */
+  #grantHolds(tokens: StoredTokens, now: Date): boolean {
+    if (!canOpenOffline(tokens, now) || tokens.offlineGrant === undefined) {
+      return false;
+    }
+    return this.#options.verifyOfflineGrant?.(tokens.offlineGrant, now) ?? true;
+  }
 
   /**
    * The token to send, refreshing first if it is about to expire.
@@ -449,24 +511,49 @@ export class SessionManager {
 }
 
 /**
- * Keeps the offline grant across a refresh.
+ * The tokens to keep, with the offline grant that goes with them.
  *
- * The refresh endpoint returns an access and a refresh token; it says nothing
- * about the grant, which was issued separately and outlives both. Dropping it
- * here would silently disable offline working on the next refresh — a bug that
- * would only appear to somebody who then lost signal.
+ * A phone's sign-in and every refresh bring a new grant (P03), which replaces
+ * the last. A refresh that brings none — an API from before grants were sent —
+ * keeps the one already held: it belongs to the same session and still ends
+ * when it said it would. Dropping it would silently disable offline working
+ * on the next refresh, a bug only somebody who then lost signal would see.
  */
 function toStoredTokens(payload: TokenPayload, previous?: StoredTokens): StoredTokens {
+  const grant =
+    payload.offlineGrant !== undefined && payload.offlineGrantExpiresAt !== undefined
+      ? {
+          offlineGrant: payload.offlineGrant,
+          offlineGrantExpiresAt: new Date(payload.offlineGrantExpiresAt),
+        }
+      : previous?.offlineGrant === undefined
+        ? {}
+        : {
+            offlineGrant: previous.offlineGrant,
+            offlineGrantExpiresAt: previous.offlineGrantExpiresAt,
+          };
   return {
     accessToken: payload.accessToken,
     accessTokenExpiresAt: new Date(payload.accessTokenExpiresAt),
     refreshToken: payload.refreshToken,
     refreshTokenExpiresAt: new Date(payload.refreshTokenExpiresAt),
-    ...(previous?.offlineGrant === undefined
-      ? {}
-      : {
-          offlineGrant: previous.offlineGrant,
-          offlineGrantExpiresAt: previous.offlineGrantExpiresAt,
-        }),
+    ...grant,
   };
+}
+
+/** Rejects if `promise` has not settled within `ms`; the work itself carries on. */
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`No answer within ${String(ms)} ms`)), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error: unknown) => {
+        clearTimeout(timer);
+        reject(error instanceof Error ? error : new Error(String(error)));
+      },
+    );
+  });
 }

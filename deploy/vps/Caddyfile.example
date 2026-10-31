@@ -6,6 +6,12 @@
 #   sudo systemctl reload caddy
 #
 # The ports are the host ports from deploy/.env (WEB_PORT and API_PORT).
+#
+# Caddy replaces any X-Forwarded-For a visitor sends with the visitor's real
+# address. The API's per-address sign-in limit relies on that, for requests that
+# come straight in and for the web app's sign-in, which passes the header on. If
+# a CDN is ever put in front (Cloudflare's orange cloud), add its address ranges
+# with `trusted_proxies`, or every visitor will share the CDN's addresses.
 
 app.YOUR-DOMAIN.com {
     reverse_proxy localhost:3001

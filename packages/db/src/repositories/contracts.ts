@@ -12,6 +12,7 @@ import {
 } from '@integr8/core';
 import { sql } from 'kysely';
 import { TenantScopedRepository, type TenantScope } from './tenant-scope.js';
+import { DEFAULT_SETTINGS } from './tenant-settings.js';
 
 /** A customer's service agreement (P27, migration 0053). Dates are `YYYY-MM-DD`. */
 export interface ServiceContract {
@@ -616,7 +617,8 @@ export class ContractsRepository extends TenantScopedRepository {
           )
           .where(
             sql<boolean>`(v.created_at at time zone coalesce(
-            (select s.timezone from tenant_settings s where s.tenant_id = v.tenant_id), 'UTC'))::date
+            (select s.timezone from tenant_settings s where s.tenant_id = v.tenant_id),
+            ${DEFAULT_SETTINGS.timezone}))::date
             between ${year.from}::date and ${year.to}::date`,
           )
           .executeTakeFirst();
@@ -692,7 +694,7 @@ export class ContractsRepository extends TenantScopedRepository {
         .where('tenant_id', '=', this.tenantId)
         .executeTakeFirst(),
     ]);
-    const day = calendarDay(job.created_at, settings?.timezone ?? 'UTC');
+    const day = calendarDay(job.created_at, settings?.timezone ?? DEFAULT_SETTINGS.timezone);
     const coverage = coverageFor({
       day,
       siteId: job.site_id,

@@ -15,7 +15,7 @@ export interface paths {
         put?: never;
         /**
          * Sign in with an email address and password
-         * @description Returns a token pair for one company, plus every company this person belongs to. A wrong password, an unknown address and an identity with no company are all the same failure, deliberately: distinguishing them would turn this endpoint into a way of testing which addresses are customers.
+         * @description Returns a token pair for one company, plus every company this person belongs to. For `clientApp: mobile` the pair also carries the offline grant that lets the phone open with no network for seven days (`offlineGrant`, `offlineGrantExpiresAt`). A wrong password, an unknown address and an identity with no company are all the same failure, deliberately: distinguishing them would turn this endpoint into a way of testing which addresses are customers.
          */
         post: operations["signIn"];
         delete?: never;
@@ -55,7 +55,7 @@ export interface paths {
         put?: never;
         /**
          * Sign in with an emailed 6-digit code
-         * @description `token` is the 6-digit code from the email. A wrong code counts towards the account lockout exactly as a wrong password does. The session that results lets Change password go without the current password for fifteen minutes.
+         * @description `token` is the 6-digit code from the email. A wrong code counts towards the account lockout exactly as a wrong password does. The session that results lets Change password go without the current password for fifteen minutes. For `clientApp: mobile` the pair carries the offline grant, as with a password.
          */
         post: operations["completeMagicLink"];
         delete?: never;
@@ -75,7 +75,7 @@ export interface paths {
         put?: never;
         /**
          * Exchange a refresh token for a new pair
-         * @description Single-use. The token returned replaces the one sent, and presenting a spent token is treated as theft: the session is revoked and both the thief and the legitimate holder are signed out.
+         * @description Single-use. The token returned replaces the one sent, and presenting a spent token is treated as theft: the session is revoked and both the thief and the legitimate holder are signed out. A phone’s session also gets a new offline grant, replacing the last, so it runs for seven days from the phone’s last contact rather than from signing in.
          */
         post: operations["refreshSession"];
         delete?: never;
@@ -663,7 +663,7 @@ export interface paths {
         head?: never;
         /**
          * Change how this company works
-         * @description Only what is sent is changed, so a screen that edits branding cannot blank working hours it never showed. The branding fields — logo, app icon, colours, default theme, website and whether the company’s own apps are built — are Integr8’s to set (`branding.manage`), and a company owner sending one of them is refused with 403; timezone, currency, locale and working hours stay the owner’s.
+         * @description Only what is sent is changed, so a screen that edits branding cannot blank working hours it never showed. The branding fields — logo, app icon, colours, default theme, website and whether the company’s own apps are built — are Integr8’s to set (`branding.manage`), and a company owner sending one of them is refused with 403; timezone, currency, locale and working hours stay the owner’s. The currency changes only while the company has no money records yet (409 `currency_in_use`): sending the current one is always fine.
          */
         patch: operations["updateSettings"];
         trace?: never;
@@ -885,7 +885,7 @@ export interface paths {
         post?: never;
         /**
          * Sign a device out
-         * @description Revokes the session and any offline grant issued to it. A device with an offline grant would otherwise keep working for up to a week after being "signed out".
+         * @description Revokes the session and the offline grant issued with it. A phone learns of it the next time it reaches the API, and is then signed out and wiped. Until then, with no signal, it can still open on the grant it holds, which ends at most seven days (`AUTH_OFFLINE_GRANT_TTL_SECONDS`) after the phone last reached the API.
          */
         delete: operations["revokeSession"];
         options?: never;
@@ -2496,7 +2496,7 @@ export interface paths {
         get?: never;
         /**
          * Correct a site’s access notes
-         * @description For the engineer who finds the gate code has changed: anyone working a job at the site may correct its access notes, as well as the office. Every change records who made it and when.
+         * @description For the engineer who finds the gate code has changed: anyone on the crew of an open job at the site (not complete, reviewed or cancelled) may correct its access notes, as well as the office. Every change records who made it and when.
          */
         put: operations["updateSiteAccess"];
         post?: never;
@@ -3986,7 +3986,7 @@ export interface paths {
         put?: never;
         /**
          * Draft a purchase order
-         * @description A draft in the company currency, numbered `PO-000001` onwards. Lines name catalogue items; a line without a `description` takes the item name. Honours `Idempotency-Key`.
+         * @description A draft in the company currency, numbered `PO-000001` onwards. `currencyCode`, when sent, must be the company currency. Lines name catalogue items; a line without a `description` takes the item name. Honours `Idempotency-Key`.
          */
         post: operations["createPurchaseOrder"];
         delete?: never;
@@ -6010,7 +6010,7 @@ export interface paths {
         put?: never;
         /**
          * Prepare a month’s pay run
-         * @description Proposes a line for everyone employed in the month who has pay terms. Needs a confirmed rule set in force (422 `no_confirmed_rules`, or `rules_not_confirmed` when the latest set waits for the owner). No later than next month (422 `month_in_future`); one run a month (409 `month_taken`).
+         * @description Proposes a line for everyone employed in the month who has pay terms. The latest rule set in force for the month is used, and must be confirmed and from the same year: 422 `no_confirmed_rules` when there is none, `rules_not_confirmed` when it waits for the owner (an older confirmed set is not used instead), `rules_from_another_year` when it starts in an earlier year. No later than next month (422 `month_in_future`); one run a month (409 `month_taken`).
          */
         post: operations["createPayRun"];
         delete?: never;
@@ -6049,7 +6049,7 @@ export interface paths {
         put?: never;
         /**
          * Recalculate a draft from today’s terms, hours and claims
-         * @description Keeps what was typed for the run (overtime hours, bonus, deduction, unpaid days, note) for anyone already in it, and uses the confirmed rule set now in force for the month.
+         * @description Keeps what was typed for the run (overtime hours, bonus, deduction, unpaid days, note) for anyone already in it, and uses the rule set now in force for the month, under the same rules as preparing a run (422 `rules_not_confirmed`, `rules_from_another_year`).
          */
         post: operations["recalculatePayRun"];
         delete?: never;
@@ -8510,6 +8510,13 @@ export interface operations {
                             refreshTokenExpiresAt: string;
                             /** Format: uuid */
                             sessionId: string;
+                            /** @description Mobile only. A signed grant (EdDSA JWT, `typ: offline`) the phone keeps and checks with no network; replaces the previous one. Absent for the desktop and web apps. */
+                            offlineGrant?: string;
+                            /**
+                             * Format: date-time
+                             * @description When the offline grant ends: seven days by default, never after the session does.
+                             */
+                            offlineGrantExpiresAt?: string;
                         };
                         /** Format: uuid */
                         tenantId: string;
@@ -8694,6 +8701,13 @@ export interface operations {
                             refreshTokenExpiresAt: string;
                             /** Format: uuid */
                             sessionId: string;
+                            /** @description Mobile only. A signed grant (EdDSA JWT, `typ: offline`) the phone keeps and checks with no network; replaces the previous one. Absent for the desktop and web apps. */
+                            offlineGrant?: string;
+                            /**
+                             * Format: date-time
+                             * @description When the offline grant ends: seven days by default, never after the session does.
+                             */
+                            offlineGrantExpiresAt?: string;
                         };
                         /** Format: uuid */
                         tenantId: string;
@@ -8799,6 +8813,13 @@ export interface operations {
                         refreshTokenExpiresAt: string;
                         /** Format: uuid */
                         sessionId: string;
+                        /** @description Mobile only. A signed grant (EdDSA JWT, `typ: offline`) the phone keeps and checks with no network; replaces the previous one. Absent for the desktop and web apps. */
+                        offlineGrant?: string;
+                        /**
+                         * Format: date-time
+                         * @description When the offline grant ends: seven days by default, never after the session does.
+                         */
+                        offlineGrantExpiresAt?: string;
                     };
                 };
             };
@@ -8885,6 +8906,13 @@ export interface operations {
                             refreshTokenExpiresAt: string;
                             /** Format: uuid */
                             sessionId: string;
+                            /** @description Mobile only. A signed grant (EdDSA JWT, `typ: offline`) the phone keeps and checks with no network; replaces the previous one. Absent for the desktop and web apps. */
+                            offlineGrant?: string;
+                            /**
+                             * Format: date-time
+                             * @description When the offline grant ends: seven days by default, never after the session does.
+                             */
+                            offlineGrantExpiresAt?: string;
                         };
                         /** Format: uuid */
                         tenantId: string;
@@ -12092,6 +12120,13 @@ export interface operations {
             };
             /** @description A branding field was sent by somebody other than Integr8 staff. */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A different `currency` while the company already holds money records (`currency_in_use`). */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -24945,7 +24980,7 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description This person is not working a job at the site. */
+            /** @description This person is not working an open job at the site. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -37324,7 +37359,7 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description Invalid, or the supplier is inactive (`supplier_inactive`). */
+            /** @description Invalid, the supplier is inactive (`supplier_inactive`), or `currencyCode` is not the company currency (`purchase_currency_not_company`). */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -38319,7 +38354,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description More than is left to receive (`over_received`), no location (`location_required`), or a line named twice (`line_repeated`). */
+            /** @description More than is left to receive (`over_received`), no location (`location_required`), a line named twice (`line_repeated`), or an order in another currency than the company’s (`purchase_currency_not_company`). */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -59794,7 +59829,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description No confirmed rule set in force, or too far ahead. */
+            /** @description No rule set in force (`no_confirmed_rules`), the latest waits for the owner (`rules_not_confirmed`) or is from an earlier year (`rules_from_another_year`), or too far ahead (`month_in_future`). */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -60446,14 +60481,12 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description The request failed validation. */
+            /** @description The latest rule set in force waits for the owner (`rules_not_confirmed`) or is from an earlier year (`rules_from_another_year`). */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
+                content?: never;
             };
             /** @description Rate limit exceeded. */
             429: {

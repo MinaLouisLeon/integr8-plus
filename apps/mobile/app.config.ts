@@ -7,6 +7,7 @@ import {
   companyIdentifiers,
   parseCompanyBuild,
 } from './src/lib/company-config.ts';
+import { googleServicesDecision } from './src/lib/google-services.ts';
 
 /**
  * The app's config, resolved when Expo reads it.
@@ -24,6 +25,22 @@ import {
  */
 
 const here = dirname(fileURLToPath(import.meta.url));
+
+/**
+ * The product's version, from the root package.json: the one number a release
+ * bumps. The phone sends it as `x-client-version` and Sentry files crashes
+ * under it, so a copy kept here went stale (1.1.0 while the product was 1.2.1).
+ * EAS uploads the whole workspace, so the file is there on the build server.
+ */
+function productVersion(): string {
+  const root = JSON.parse(readFileSync(join(here, '../../package.json'), 'utf8')) as {
+    version?: unknown;
+  };
+  if (typeof root.version !== 'string' || root.version === '') {
+    throw new Error('The root package.json has no version.');
+  }
+  return root.version;
+}
 const EAS_PROJECT_ID = 'b950cc9e-9e26-477a-905f-4c216767fde4';
 
 /** Why the phone may use the microphone: the assistant's spoken questions, and nothing else. */
@@ -42,6 +59,28 @@ function readCompany(): CompanyBuild | undefined {
   return company;
 }
 
+/**
+ * The Firebase file for Android push (P14), from the EAS file environment
+ * variable `GOOGLE_SERVICES_JSON` (a path on the build machine), when it has an
+ * app for this package. Without it a release build cannot register for push
+ * on Android; see `src/lib/google-services.ts` for why a missing package is
+ * left out rather than allowed to fail the build.
+ */
+function googleServicesFile(androidPackage: string): string | undefined {
+  const path = process.env.GOOGLE_SERVICES_JSON;
+  let contents: string | undefined;
+  try {
+    contents = path === undefined || path === '' ? undefined : readFileSync(path, 'utf8');
+  } catch {
+    contents = undefined;
+  }
+  const decision = googleServicesDecision(path, contents, androidPackage);
+  if (!decision.use && decision.message !== undefined) {
+    console.warn(`app.config.ts: ${decision.message}`);
+  }
+  return decision.use ? path : undefined;
+}
+
 export default ({ config }: ConfigContext): ExpoConfig => {
   const company = readCompany();
   const identifiers = company === undefined ? undefined : companyIdentifiers(company.slug);
@@ -49,12 +88,14 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   const icon = join(here, 'company', 'icon.png');
   const hasIcon = company !== undefined && existsSync(icon);
   const background = company?.shellColour ?? company?.brandColour ?? '#ffffff';
+  const androidPackage = identifiers?.androidPackage ?? 'com.integr8.plus';
+  const googleServices = googleServicesFile(androidPackage);
 
   return {
     ...config,
     name: company?.name ?? 'Integr8 Plus',
     slug: identifiers?.slug ?? 'integr8-plus',
-    version: '1.1.0',
+    version: productVersion(),
     orientation: 'portrait',
     scheme: identifiers?.scheme ?? 'integr8',
     userInterfaceStyle: 'automatic',
@@ -69,7 +110,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       },
     },
     android: {
-      package: identifiers?.androidPackage ?? 'com.integr8.plus',
+      package: androidPackage,
+      ...(googleServices === undefined ? {} : { googleServicesFile: googleServices }),
       // Edge to edge is always on from SDK 58 (Android 16 requires it), so there is no switch.
       ...(hasIcon
         ? { adaptiveIcon: { foregroundImage: './company/icon.png', backgroundColor: background } }

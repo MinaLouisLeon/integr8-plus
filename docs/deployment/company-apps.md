@@ -73,6 +73,17 @@ What a company run needs on GitHub (see `docs/contributing/branching.md`):
 `PUBLIC_API_URL`, `EXPO_TOKEN`, `EAS_BUILDS=enabled`, and for `all` the
 `BUILD_TOKEN` secret, the same value the API has in its environment.
 
+What a phone build needs on Expo, set once per EAS environment (`production`,
+and `preview` for the test box), which each profile in `apps/mobile/eas.json`
+names: `EXPO_PUBLIC_SENTRY_DSN` (crash reports), `EXPO_PUBLIC_AUTH_VERIFICATION_KEYS`
+(the deployment's `AUTH_VERIFICATION_KEYS`, for the offline grant) and the file
+`GOOGLE_SERVICES_JSON` (Android notifications), plus, per company, its Android
+app in the Firebase project and the FCM key under Credentials. GitHub passes
+none of them: EAS applies them on its own build machines. A company missing
+from `google-services.json` is built without notifications rather than not at
+all (`docs/mobile/job-execution.md`, push notifications). The setup guide has
+the steps (Stage 0, parts I and J; Stage 8, part A).
+
 ## Store submission
 
 Off until the `STORE_SUBMIT` variable is `enabled`. Then each company's phone

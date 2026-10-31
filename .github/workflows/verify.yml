@@ -6,6 +6,12 @@
 #
 # Nothing here publishes anything. What each branch does with a green run is the
 # calling workflow's business.
+#
+# It runs everything ci.yml runs on a pull request, on the merge result: the
+# licence and setup-guide checks, the real Supabase Auth suite and the secret
+# scan included. It once skipped those three, so a release could pass checks a
+# pull request would have failed. Callers pass `secrets: inherit` so the
+# optional R2 test secrets reach the API suite.
 name: Verify
 
 on:
@@ -45,6 +51,16 @@ jobs:
 
       - name: Check formatting
         run: pnpm format:check
+
+      # Permissive licences only; anything else is named, with its reason, in
+      # scripts/licences/exceptions.json (ADR-0012).
+      - name: Dependency licences
+        run: pnpm licences:check
+
+      # The setup guide is kept as Markdown and as HTML, CSS and JavaScript;
+      # they must say the same thing (AGENTS.md, "The setup guide").
+      - name: Setup guide copies agree
+        run: pnpm guide:check
 
       - name: Lint
         run: pnpm lint
@@ -96,6 +112,8 @@ jobs:
       INTEGR8_TEST_DATABASE: i-know-this-database-is-disposable
       INTEGR8_APP_PASSWORD: ci-app-password
       INTEGR8_AUTH_PASSWORD: ci-auth-password
+      # Supabase Auth's own role and schema, created by bootstrap (P36).
+      SUPABASE_AUTH_DB_PASSWORD: ci-supabase-auth-password
       DATABASE_URL_ADMIN: postgres://postgres:postgres@localhost:5432/integr8_test
       DATABASE_URL: postgres://integr8_app:ci-app-password@localhost:5432/integr8_test
       DATABASE_URL_AUTH: postgres://integr8_auth:ci-auth-password@localhost:5432/integr8_test
@@ -120,7 +138,7 @@ jobs:
       - name: Build workspace packages
         run: pnpm build
 
-      - name: Create the runtime and auth roles
+      - name: Create the runtime, auth and Supabase Auth roles
         run: pnpm --filter @integr8/db db bootstrap
 
       - name: Migrate, isolate, verify
@@ -129,10 +147,74 @@ jobs:
       - name: Generate signing keys for this run
         # Only the KEY=VALUE lines: pnpm's own banner and keygen's explanatory
         # comments are not environment variables, and GITHUB_ENV refuses them.
-        run: pnpm --silent --filter @integr8/auth keygen | grep -E '^[A-Z_]+=' >> "$GITHUB_ENV"
+        # The Auth database password is left out: bootstrap has already set the
+        # role's password from the job's own value.
+        run: >-
+          pnpm --silent --filter @integr8/auth keygen | grep -E '^[A-Z_]+=' |
+          grep -v '^SUPABASE_AUTH_DB_PASSWORD=' >> "$GITHUB_ENV"
 
-      - name: Sessions, invitations and impersonation
+      - name: Sessions, invitations, impersonation, sign-in codes and passwords
         run: pnpm --filter @integr8/auth test:integration
 
+      # The real Auth container, configured as deploy/compose.yml configures
+      # it, exactly as ci.yml starts it.
+      - name: Start Supabase Auth
+        run: |
+          docker run -d --name supabase-auth --network host \
+            -e GOTRUE_API_HOST=127.0.0.1 -e GOTRUE_API_PORT=9999 -e PORT=9999 \
+            -e API_EXTERNAL_URL=http://localhost:9999 \
+            -e GOTRUE_DB_DRIVER=postgres \
+            -e GOTRUE_DB_DATABASE_URL="postgres://supabase_auth_admin:${SUPABASE_AUTH_DB_PASSWORD}@localhost:5432/integr8_test" \
+            -e DB_NAMESPACE=auth \
+            -e GOTRUE_SITE_URL=http://localhost:3001 \
+            -e GOTRUE_JWT_SECRET="${SUPABASE_AUTH_JWT_SECRET}" \
+            -e GOTRUE_JWT_ADMIN_ROLES=service_role \
+            -e GOTRUE_DISABLE_SIGNUP=true \
+            -e GOTRUE_EXTERNAL_EMAIL_ENABLED=true \
+            -e GOTRUE_EXTERNAL_PHONE_ENABLED=false \
+            -e GOTRUE_MAILER_OTP_EXP=900 \
+            -e GOTRUE_MAILER_OTP_LENGTH=6 \
+            supabase/auth:v2.197.0
+          for attempt in $(seq 1 60); do
+            if curl -fsS http://localhost:9999/health > /dev/null; then exit 0; fi
+            sleep 2
+          done
+          docker logs supabase-auth
+          exit 1
+
+      - name: The identity provider against the real Auth
+        env:
+          SUPABASE_AUTH_URL: http://localhost:9999
+        run: pnpm --filter @integr8/auth test:auth-server
+
+      - name: Auth container log
+        if: failure()
+        run: docker logs supabase-auth || true
+
+      # The R2 media suite (media-r2.integration.test.ts) runs against real
+      # Cloudflare R2 only when these repository secrets exist, and skips itself
+      # otherwise. Use a separate Cloudflare account for them: the suite needs
+      # an account-level R2 token, which can delete any bucket in its account.
       - name: API contract, request pipeline and sync
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.R2_TEST_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_TEST_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_TEST_SECRET_ACCESS_KEY }}
         run: pnpm --filter @integr8/api test:integration
+
+  secret-scan:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          fetch-depth: 0
+
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -278,6 +278,64 @@ describe('purchase orders', () => {
     expect(found.items.map((row) => row.id)).toEqual([first.order.id]);
   });
 
+  it('take the company currency by name, and refuse any other', async () => {
+    const item = await newItem();
+    const named = await newOrder({
+      currencyCode: 'EGP',
+      lines: [{ itemId: item.id, quantityOrdered: '1', unitPrice: '10' }],
+    });
+    expect(named.order.currencyCode).toBe('EGP');
+
+    // A receipt folds the price into the item's average cost, which is in the
+    // company currency and converts nothing: 10 dollars would become 10 pounds.
+    const supplier = await newSupplier();
+    const dollars = await call(dispatcher, 'POST', '/v1/purchasing/orders', {
+      supplierId: supplier.id,
+      currencyCode: 'USD',
+      lines: [{ itemId: item.id, quantityOrdered: '1', unitPrice: '10' }],
+    });
+    expect(dollars.statusCode, dollars.body).toBe(422);
+    expect(code(dollars)).toBe('purchase_currency_not_company');
+    expect(json<{ error: { details: { field: string }[] } }>(dollars).error.details[0]?.field).toBe(
+      'body.currencyCode',
+    );
+  });
+
+  it('drafted in another currency before that was refused are not received', async () => {
+    const item = await newItem();
+    const store = await newLocation();
+    const supplier = await newSupplier();
+    // Written the way the API used to accept it, straight through the repository.
+    const order = await withTenant(api.tenantId, (tx) =>
+      tx.inventoryPurchasing.createOrder(
+        {
+          supplierId: supplier.id,
+          supplierName: supplier.name,
+          currencyCode: 'USD',
+          deliveryLocationId: store.id,
+        },
+        [{ itemId: item.id, description: 'Item', quantityOrdered: '2', unitPrice: '10' }],
+        dispatcher.userId,
+      ),
+    );
+    const approved = await approve(
+      json<OrderDetail>(await call(dispatcher, 'GET', `/v1/purchasing/orders/${order.id}`)),
+    );
+    const refused = await call(
+      dispatcher,
+      'POST',
+      `/v1/purchasing/orders/${order.id}/receipts`,
+      {
+        expectedVersion: approved.order.version,
+        lines: [{ orderLineId: approved.lines[0]!.id, quantity: '2' }],
+      },
+      randomUUID(),
+    );
+    expect(refused.statusCode, refused.body).toBe(422);
+    expect(code(refused)).toBe('purchase_currency_not_company');
+    expect(await onHand(item.id, store.id)).toBe('0');
+  });
+
   it('hide prices from those who may not see them', async () => {
     const item = await newItem();
     const order = await newOrder({

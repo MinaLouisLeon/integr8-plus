@@ -90,6 +90,8 @@ interface Run {
 
 const today = new Date().toISOString().slice(0, 10);
 const month = today.slice(0, 7);
+// A run uses a rule set from its own year, so the suite's set follows the clock.
+const year = today.slice(0, 4);
 let categoryId: string;
 
 async function claim(amount: string) {
@@ -138,8 +140,8 @@ describe('rule sets', () => {
 
   it('are confirmed by the owner alone, and frozen after', async () => {
     const created = await call(payroller, 'POST', '/v1/payroll/rule-sets', {
-      name: 'Egypt 2026',
-      effectiveFrom: '2026-01-01',
+      name: `Egypt ${year}`,
+      effectiveFrom: `${year}-01-01`,
     });
     expect(created.statusCode, created.body).toBe(201);
     const set = json<RuleSet>(created);

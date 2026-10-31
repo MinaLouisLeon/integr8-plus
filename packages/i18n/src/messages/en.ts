@@ -18,6 +18,7 @@
  */
 
 import { apiErrorsEn } from './api-errors.en.js';
+import { legalEn } from './legal.en.js';
 
 export const en = {
   common: {
@@ -642,6 +643,16 @@ export const en = {
     },
 
     impersonationBanner: 'You are viewing this account as {{name}}. Everything you do is recorded.',
+
+    // Banners Integr8 posts from the platform dashboard, payment reminders
+    // included (P15). The severity is a word as well as a colour.
+    announcement: {
+      region: 'Announcements from Integr8',
+      info: 'Notice',
+      warning: 'Warning',
+      critical: 'Important',
+      dismiss: 'Dismiss',
+    },
   },
 
   // The company's own roles (ninth round; ADR-0013): built on a built-in
@@ -862,6 +873,10 @@ export const en = {
   // One message per error code the API can return (ADR-0012), in their own
   // file because there are so many. `API_ERROR_CODES` is the contract.
   apiErrors: apiErrorsEn,
+
+  // The terms of service, privacy policy and data processing terms, in their
+  // own file because they are long. Pages under /legal on the website.
+  legal: legalEn,
 
   states: {
     emptyTitle: 'Nothing here yet',
@@ -5940,6 +5955,7 @@ export const en = {
       serial_required: 'Choose the serial number of each part fitted.',
       work_order_not_on_phone: 'This job is not on this phone. Sync, then try again.',
       name_required: 'Give the asset a name.',
+      note_required: 'Write the note first.',
       asset_not_on_phone: 'This asset is not on this phone. Sync, then try again.',
       amount_invalid: 'Enter an amount above zero, such as 250.50.',
       date_invalid: 'Give the date the money was spent.',
@@ -6097,6 +6113,32 @@ export const en = {
     push: {
       channelJobs: 'Job changes',
       channelUrgent: 'Urgent callouts',
+    },
+    reconnect: {
+      title: 'Connect to carry on',
+      body: 'This phone has gone longer without reaching the office than it may work offline, usually a week. Connect to mobile data or Wi-Fi once to carry on. Your unsent work is safe on the phone and is sent as soon as you are back in.',
+      stillOffline: 'Still no connection. This screen tries again by itself when one appears.',
+      retry: 'Try again',
+    },
+    announcement: {
+      dismiss: 'Dismiss',
+      info: 'Notice',
+      warning: 'Warning',
+      critical: 'Important',
+    },
+    notes: {
+      none: 'No notes yet.',
+      add: 'Add a note',
+      label: 'Note',
+      placeholder: 'What happened, or what the next person needs to know',
+      internal: 'For the office',
+      customer: 'The customer may see it',
+      save: 'Save note',
+      failed: 'The note was not saved',
+    },
+    access: {
+      hint: 'Saved on this phone at once and sent when there is signal. The office sees who changed what.',
+      failed: 'The access notes were not saved',
     },
     jobs: {
       title: 'Your jobs',

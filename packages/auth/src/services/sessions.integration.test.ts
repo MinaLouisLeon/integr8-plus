@@ -7,6 +7,7 @@ import {
   InvalidCredentialsError,
   InvalidTokenError,
   NotAMemberError,
+  RateLimitedError,
   RefreshTokenReuseError,
   SessionRevokedError,
 } from '../errors.js';
@@ -21,6 +22,8 @@ import {
   type TestServices,
   uniqueEmail,
 } from '../testing/harness.js';
+import { loadAuthConfig } from '../config.js';
+import { SignInService } from './sign-in-service.js';
 
 /**
  * Sign-in, rotation, revocation and the offline grant, against a real database.
@@ -185,6 +188,78 @@ describe('lockout', () => {
     ).resolves.toBeDefined();
 
     services.setNow(new Date());
+  });
+});
+
+describe('the per-address limit', () => {
+  // Every web sign-in once counted against one address (the web server's), and
+  // successes counted too, so a busy morning locked every company out of the
+  // web app. Only failures may count.
+  it('counts failed attempts only, so successful sign-ins never trip it', async () => {
+    const office = await createMember(services.identity, northwind.id, 'dispatcher', 'office');
+    const start = new Date();
+    let now = start;
+    const signIn = new SignInService({
+      identity: services.identity,
+      sessions: services.sessions,
+      config: { ...loadAuthConfig(), AUTH_IP_ATTEMPT_LIMIT: 3 },
+      now: () => now,
+    });
+    const ipAddress = `198.51.100.${String(Math.floor(Math.random() * 200) + 20)}`;
+
+    // More successes than the limit, from one address: all let in.
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await expect(
+        signIn.signInWithPassword({
+          email: office.email,
+          password: office.password,
+          clientApp: 'web',
+          ipAddress,
+        }),
+      ).resolves.toBeDefined();
+    }
+
+    // Three failures reach the limit; the next attempt is refused, right
+    // password or not.
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      await expect(
+        signIn.signInWithPassword({
+          email: uniqueEmail('guess'),
+          password: 'Password123!',
+          clientApp: 'web',
+          ipAddress,
+        }),
+      ).rejects.toThrow(InvalidCredentialsError);
+    }
+    await expect(
+      signIn.signInWithPassword({
+        email: office.email,
+        password: office.password,
+        clientApp: 'web',
+        ipAddress,
+      }),
+    ).rejects.toThrow(RateLimitedError);
+
+    // Retrying while refused does not extend the block: once the failures age
+    // out of the window, the address is let in again.
+    now = new Date(start.getTime() + 10 * 60_000);
+    await expect(
+      signIn.signInWithPassword({
+        email: office.email,
+        password: office.password,
+        clientApp: 'web',
+        ipAddress,
+      }),
+    ).rejects.toThrow(RateLimitedError);
+    now = new Date(Date.now() + 16 * 60_000);
+    await expect(
+      signIn.signInWithPassword({
+        email: office.email,
+        password: office.password,
+        clientApp: 'web',
+        ipAddress,
+      }),
+    ).resolves.toBeDefined();
   });
 });
 
@@ -415,6 +490,82 @@ describe('the offline grant', () => {
     expect(claims.tid).toBe(northwind.id);
     expect(claims.role).toBe('engineer');
     services.setNow(new Date());
+  });
+
+  it('comes with a phone’s sign-in and with every refresh, the new one replacing the last', async () => {
+    const person = await createMember(services.identity, northwind.id, 'engineer', 'renewed');
+    const start = new Date();
+    services.setNow(start);
+    const signedIn = await services.signIn.signInWithPassword({
+      email: person.email,
+      password: person.password,
+      clientApp: 'mobile',
+    });
+    const first = signedIn.tokens.offlineGrant!;
+    expect((first.expiresAt.getTime() - start.getTime()) / 86_400_000).toBe(7);
+    const claims = await services.tokens.verifyOfflineGrant(first.token);
+    expect(claims).toMatchObject({
+      tid: northwind.id,
+      sub: person.userId,
+      role: 'engineer',
+      sid: signedIn.tokens.session.id,
+      gid: first.grantId,
+    });
+
+    // Two days later the phone has signal again: seven days from now, not from signing in.
+    const later = new Date(start.getTime() + 2 * 86_400_000);
+    services.setNow(later);
+    const refreshed = await services.sessions.refresh(signedIn.tokens.refreshToken);
+    const second = refreshed.offlineGrant!;
+    expect((second.expiresAt.getTime() - later.getTime()) / 86_400_000).toBe(7);
+    expect(second.grantId).not.toBe(first.grantId);
+
+    const live = await withTenant(northwind.id, (tx) =>
+      tx.offlineGrants.listLiveForUser(person.userId, later),
+    );
+    expect(live.map((grant) => grant.id)).toEqual([second.grantId]);
+    services.setNow(new Date());
+  });
+
+  it('never outlives the session it belongs to', async () => {
+    const person = await createMember(services.identity, northwind.id, 'engineer', 'ending');
+    const start = new Date();
+    services.setNow(start);
+    const signedIn = await services.signIn.signInWithPassword({
+      email: person.email,
+      password: person.password,
+      clientApp: 'mobile',
+    });
+    const sessionEnds = signedIn.tokens.session.expiresAt;
+
+    // Used every few weeks until a day before the session's maximum lifetime:
+    // the last grant gets that day, not seven.
+    let refreshToken = signedIn.tokens.refreshToken;
+    let at = start.getTime();
+    let grantEnds: Date | undefined;
+    while (at < sessionEnds.getTime() - 86_400_000) {
+      at = Math.min(at + 20 * 86_400_000, sessionEnds.getTime() - 86_400_000);
+      services.setNow(new Date(at));
+      const refreshed = await services.sessions.refresh(refreshToken);
+      refreshToken = refreshed.refreshToken;
+      grantEnds = refreshed.offlineGrant?.expiresAt;
+    }
+    expect(grantEnds?.getTime()).toBe(sessionEnds.getTime());
+    services.setNow(new Date());
+  });
+
+  it('is not issued with the desktop’s or the web app’s sign-in', async () => {
+    for (const clientApp of ['desktop', 'web'] as const) {
+      const signedIn = await services.signIn.signInWithPassword({
+        email: dana.email,
+        password: dana.password,
+        clientApp,
+      });
+      expect(signedIn.tokens.offlineGrant).toBeUndefined();
+      expect((await services.sessions.refresh(signedIn.tokens.refreshToken)).offlineGrant).toBe(
+        undefined,
+      );
+    }
   });
 
   it('is refused to the desktop and web apps', async () => {

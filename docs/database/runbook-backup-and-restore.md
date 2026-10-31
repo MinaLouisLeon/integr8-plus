@@ -4,9 +4,10 @@ The database is the compose stack's own Postgres (`deploy/compose.yml`), on the
 same machine as the API. There is no managed provider behind it, so there are
 no backups unless this runbook sets them up.
 
-A backup nobody has restored is a hypothesis. This runbook has two halves:
-scheduling the nightly dump, which takes ten minutes, and rehearsing a
-restore, which takes an hour and is the half that matters.
+A backup nobody has restored is a hypothesis. This runbook has three parts:
+scheduling the nightly dump, which takes ten minutes; copying each dump off
+the machine, which takes twenty; and rehearsing a restore, which is the part
+that matters.
 
 ---
 
@@ -25,16 +26,24 @@ Roles are not in the dump (they are cluster-wide, not per database).
 `integr8_auth` and `supabase_auth_admin` — from the env file every time the
 stack starts.
 
-| Setting   | Default                        | Meaning                               |
-| --------- | ------------------------------ | ------------------------------------- |
-| Files     | `/var/backups/integr8`         | `BACKUP_DIR`; the directory is `0700` |
-| Name      | `integr8-YYYYMMDD-HHMM.sql.gz` | UTC time of the dump                  |
-| Kept      | 14                             | `KEEP`; older files are deleted       |
-| Repo path | `/opt/integr8`                 | `INTEGR8_DIR`; where compose.yml is   |
+| Setting       | Default                        | Meaning                                                 |
+| ------------- | ------------------------------ | ------------------------------------------------------- |
+| Files         | `/var/backups/integr8`         | `BACKUP_DIR`; the directory is `0700`                   |
+| Name          | `integr8-YYYYMMDD-HHMM.sql.gz` | UTC time of the dump                                    |
+| Kept          | 14                             | `KEEP`; older files are deleted                         |
+| Repo path     | `/opt/integr8`                 | `INTEGR8_DIR`; where compose.yml is                     |
+| Off-machine   | none                           | `BACKUP_REMOTE` in `deploy/.env`: an rclone remote path |
+| Kept there    | 30                             | `BACKUP_REMOTE_KEEP` in `deploy/.env`                   |
+| Heartbeat URL | none                           | `BACKUP_PING_URL` in `deploy/.env`                      |
+
+The last three are read from `deploy/.env` (an environment variable of the same
+name wins), one line each, with no quotes needed. The script reads only those
+lines; it never runs the file.
 
 > **A dump contains every customer's data and every password hash.** It is the
 > most sensitive file the company holds. Keep the directory readable by root
-> only, and never copy a dump to a laptop or a chat.
+> only, encrypt the off-machine copy (Part 2 does), and never copy a dump to a
+> laptop or a chat.
 
 ## Part 1 — schedule it nightly
 
@@ -56,6 +65,9 @@ Run it once by hand so the first file exists and any error shows now:
 sudo /opt/integr8/deploy/vps/backup-postgres.sh
 ```
 
+Until Part 2 is done, every run ends with
+`BACKUP_REMOTE is not set: backups are on this machine only and are lost with it`.
+
 ### Check last night's file exists
 
 Weekly, or after any change to the server:
@@ -67,38 +79,168 @@ sudo tail -n 5 /var/log/integr8-backup.log
 
 The newest file is dated within the last 24 hours and is not a few hundred
 bytes (an empty database dumps to a few kilobytes; a real one to megabytes).
-Check it is readable:
+The log's last lines say `copied … to …` and `keeping …`, not `ERROR`. Check
+the file is readable:
 
 ```bash
 gunzip -t /var/backups/integr8/integr8-<newest>.sql.gz && echo readable
 ```
 
-## The limit, honestly
+## Part 2 — copy each dump off the machine
 
-**The files sit on the same disk as the database.** They protect against a bad
-migration, a deleted company or a mistaken bulk change. They do **not** protect
-against losing the machine, its disk or the account that holds it: all of it,
-backups included, goes at once.
+**The local files sit on the same disk as the database.** They protect against
+a bad migration, a deleted company or a mistaken bulk change. They do **not**
+protect against losing the machine, its disk or the account that holds it: all
+of it, backups included, goes at once.
 
-The next step, not yet done, is copying each night's file somewhere else: a
-cloud bucket with `rclone`, or the cloud provider's boot-volume backup policy.
-Both are described in [`docs/deployment/README.md`](../deployment/README.md).
-Until one of them is in place, the recovery targets below assume the machine
-survives.
+With `BACKUP_REMOTE` set, the script copies each night's file with
+[rclone](https://rclone.org) after writing it, then keeps the newest
+`BACKUP_REMOTE_KEEP` copies there and deletes older ones. It only ever deletes
+files with its own `integr8-YYYYMMDD-HHMM.sql.gz` names, so anything else in
+the bucket is left alone. The recommended remote is a Cloudflare R2 bucket of
+its own, behind rclone's `crypt` layer, so Cloudflare holds only ciphertext.
 
----
+### Set it up
 
-## Part 2 — rehearse a restore
+1. **A bucket and a token of its own.** Cloudflare dashboard → **R2 Object
+   Storage** → **Create bucket**, named `integr8-backups`. Then **Manage API
+   tokens** → **Create API token**: name `integr8-backups`, permission
+   **Object Read & Write**, applied to the `integr8-backups` bucket only, no
+   expiry. Copy the Access Key ID and the Secret Access Key (shown once). Do not
+   reuse the media token: that one can delete every company's bucket, and this
+   one should be able to touch nothing but backups.
 
-**Do this before the first customer, and every six months after.** Record the
-result in the table at the bottom of this file. An untimed restore procedure
-means you cannot answer "how long until we are back?", which is the only
-question anyone will ask.
+2. **A passphrase**, made on the machine and kept in the password manager
+   beside `HR_DATA_KEY` before going further. Without it the copies cannot be
+   read, by anyone, ever.
 
-Rehearse on the home test box (Ubuntu with Docker), never on production.
+   ```bash
+   openssl rand -base64 32
+   ```
+
+3. **rclone, and two remotes** (as root, because the nightly job runs as root
+   and reads root's rclone configuration). On Ubuntu `apt` has it; elsewhere,
+   rclone.org/install. Replace the capitals with the token's values, your
+   Cloudflare account ID and the passphrase:
+
+   ```bash
+   sudo apt-get install -y rclone
+   sudo rclone config create r2 s3 provider=Cloudflare \
+     access_key_id=ACCESS-KEY-ID secret_access_key=SECRET-ACCESS-KEY \
+     endpoint=https://ACCOUNT-ID.r2.cloudflarestorage.com no_check_bucket=true
+   sudo rclone config create r2crypt crypt remote=r2:integr8-backups \
+     filename_encryption=off password=PASSPHRASE --obscure
+   sudo rclone lsf r2crypt:     # no error, and nothing listed yet
+   ```
+
+   `no_check_bucket` is needed because the token cannot create buckets.
+   `filename_encryption=off` keeps the dates readable in Cloudflare's bucket
+   view (`integr8-20261101-0300.sql.gz.bin`); the contents are encrypted.
+
+4. **Tell the backup where to copy.** In `deploy/.env`:
+
+   ```bash
+   BACKUP_REMOTE=r2crypt:
+   # BACKUP_REMOTE_KEEP=30
+   ```
+
+5. **Run it by hand** and read the last lines:
+
+   ```bash
+   sudo /opt/integr8/deploy/vps/backup-postgres.sh
+   ```
+
+   They end with `copied integr8-….sql.gz to r2crypt:` and
+   `keeping 30 on r2crypt: (removed 0)`. Then prove the copy restores: Part 3's
+   drill with `--remote`.
+
+### When the copy fails
+
+The dump is written and kept on the machine first, so a failed copy loses
+nothing. But the run then ends with a line starting `ERROR:` that names what
+failed (`could not copy … it is on this machine only`, `rclone is not
+installed`, `could not delete the old copy …`) and exits with status 1. A
+broken remote is never a quiet success.
+
+### A heartbeat, so a missed night is noticed
+
+Cron writes to a log nobody reads every day. Set `BACKUP_PING_URL` to a
+heartbeat monitor's URL (Better Stack → **Heartbeats**, or healthchecks.io;
+both have free tiers), expecting a ping every day with a grace period of a few
+hours. The script calls it after every successful night and calls the same URL
+with `/fail` on the end when a night fails, so you hear about a failed backup
+at once, and about a backup that did not run at all when the grace period
+ends.
+
+### The boot-volume backup, as well
+
+Oracle can also back up the machine's whole boot volume on a schedule: Block
+Storage → Boot Volumes → the volume → **Backup policy** → Bronze. Check the
+schedule the console shows for the policy you pick; it is not nightly. It is a
+useful second layer, and the fastest way back after a broken operating system,
+but it lives in the same Oracle account as the machine: it does not survive
+losing the account, and it is not a replacement for the R2 copy.
+
+### Getting a copy back
+
+On any machine with rclone and the same two remotes (step 3 again, with the
+same passphrase):
+
+```bash
+sudo rclone lsf r2crypt:                                    # every copy, by date
+sudo rclone copy r2crypt:integr8-20261101-0300.sql.gz /var/backups/integr8/
+```
+
+The file is then an ordinary dump: restore it as in Part 3.
+
+## Part 3 — rehearse a restore
+
+An untimed restore procedure means you cannot answer "how long until we are
+back?", which is the only question anyone will ask. There are two rehearsals: a
+drill that takes minutes and can run on the live machine, and a full rehearsal
+on the test box.
+
+### The drill, monthly
+
+`deploy/vps/restore-drill.sh` restores a dump into a **throwaway Postgres
+container** and checks what came back. It never touches the live database: the
+container is started from the Postgres image directly, not through compose,
+with its own name, no network, no published port and none of the stack's
+volumes, and it is removed with its data when the drill ends, whether it
+passed or not.
+
+```bash
+sudo /opt/integr8/deploy/vps/restore-drill.sh --remote     # the newest off-machine copy
+sudo /opt/integr8/deploy/vps/restore-drill.sh              # the newest dump on this machine
+sudo /opt/integr8/deploy/vps/restore-drill.sh FILE.sql.gz  # that dump
+```
+
+`--remote` downloads through rclone exactly as a new machine would, so it
+proves the off-machine copy as well as the dump; prefer it. The drill checks:
+
+- the file is whole gzip, and restores with no error;
+- the latest applied migration, compared with the checkout's newest (a dump
+  behind the code is fine: `migrate` brings it forward on a real restore);
+- companies, members, audit entries and sign-in accounts, which should look
+  like production's;
+- row-level security policies and the runtime role's grants came back. If
+  either is missing it fails: such a restore must not serve traffic.
+
+It needs free disk for one more copy of the database, and uses the machine for
+as long as the restore takes, so pick a quiet hour. It ends by printing a row
+for the [rehearsal log](#rehearsal-log): paste it there, with anything odd in
+the notes. A drill that fails exits with status 1 and a line starting
+`DRILL FAILED:`.
+
+### The full rehearsal, every six months
+
+**Do this before the first customer, and every six months after.** The drill
+proves the data comes back; this proves the product works on it. Rehearse on
+the home test box (Ubuntu with Docker), never on production.
 
 1. **Copy one dump to the test box** over SSH (`scp`), into a root-only
-   directory. Delete it at the end.
+   directory, or fetch one there with rclone ("Getting a copy back"). Delete it
+   at the end.
 
 2. **Note the start time.**
 
@@ -159,6 +301,12 @@ Rehearse on the home test box (Ubuntu with Docker), never on production.
 This **replaces the database's contents**. The dump was written with `--clean`,
 so it drops and recreates every object it contains.
 
+Stop `web`, `api`, `worker` and `auth` first, every time: the API and worker
+write to `public`, Auth writes sign-ins and sessions to `auth`, and a restore
+that runs under any of them ends with a mix of the dump and whatever they
+wrote meanwhile. Stopping `web` keeps people from working in a half-restored
+app. The setup guide's rollback (Stage 11, part I) uses the same list.
+
 ```bash
 cd /opt/integr8
 compose() { docker compose -f deploy/compose.yml --env-file deploy/.env "$@"; }
@@ -195,16 +343,21 @@ Same steps, plus:
 
 ## Recovery objectives
 
-| Measure                                   | Target   | Mechanism                                 |
-| ----------------------------------------- | -------- | ----------------------------------------- |
-| RPO — how much data we can afford to lose | 24 hours | Nightly `backup-postgres.sh`              |
-| RPO if the machine is lost                | —        | Not covered until dumps are copied off it |
-| RTO — how long until we are serving again | 2 hours  | This runbook, rehearsed                   |
+| Measure                                   | Target   | Mechanism                                            |
+| ----------------------------------------- | -------- | ---------------------------------------------------- |
+| RPO — how much data we can afford to lose | 24 hours | Nightly `backup-postgres.sh`                         |
+| RPO if the machine is lost                | 24 hours | The same file, copied off the machine (Part 2)       |
+| RTO — how long until we are serving again | 2 hours  | This runbook, rehearsed; the drill times the restore |
 
-The RTO is a claim until a rehearsal supports it. Fill in the table below.
+The machine-loss RPO holds only once `BACKUP_REMOTE` is set and the nightly log
+says `copied`. The RTO is a claim until a rehearsal supports it. Fill in the
+table below.
 
 ## Rehearsal log
 
-| Date                                          | Performed by | Source | Restore time | Data verified | Notes |
-| --------------------------------------------- | ------------ | ------ | ------------ | ------------- | ----- |
-| _(not yet rehearsed — see P02 exit criteria)_ |              |        |              |               |       |
+`restore-drill.sh` prints a row in this shape; the full rehearsal is written by
+hand.
+
+| Date                                                                    | Performed by | Source | Restore time | Data verified | Notes |
+| ----------------------------------------------------------------------- | ------------ | ------ | ------------ | ------------- | ----- |
+| _(not yet rehearsed — run `deploy/vps/restore-drill.sh --remote`; P19)_ |              |        |              |               |       |

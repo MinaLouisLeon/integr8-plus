@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { forwardedClientHeaders } from '~/lib/api';
 import { apiBaseUrl, PLATFORM_REFRESH_COOKIE, platformCookieOptions } from '~/lib/platform-api';
 
 /**
@@ -26,7 +27,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       // is spent either way, which is itself most of a sign-out.
       const upstream = await fetch(`${apiBaseUrl()}/v1/platform/auth/refresh`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json', ...forwardedClientHeaders(request) },
         body: JSON.stringify({ refreshToken }),
       });
 
@@ -36,6 +37,7 @@ export async function POST(request: Request): Promise<NextResponse> {
           method: 'POST',
           headers: {
             'content-type': 'application/json',
+            ...forwardedClientHeaders(request),
             authorization: `Bearer ${tokens.accessToken}`,
           },
           body: JSON.stringify({ everywhere }),

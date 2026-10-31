@@ -1560,3 +1560,69 @@ describe('a job taken off the engineer', () => {
     void getPlatformDataSource;
   });
 });
+
+describe('correcting a gate code', () => {
+  it('is for the crew of an open job at the site: a closed job gives no right, on a screen or through sync', async () => {
+    // A site of its own, so an open job another test left at Block A does not count.
+    const gatehouse = (
+      await call<{ id: string }>(
+        officeToken,
+        'POST',
+        `/v1/customers/${customerId}/sites`,
+        { name: 'Gatehouse', address: { line1: '2 River Road' }, access: { gateCode: '1000#' } },
+        201,
+      )
+    ).id;
+    const created = await call<Detail>(
+      officeToken,
+      'POST',
+      '/v1/work-orders',
+      { customerId, siteId: gatehouse, jobTypeId, crew: [{ userId: engineer.userId, lead: true }] },
+      201,
+    );
+    const dispatched = await call<Detail>(
+      officeToken,
+      'POST',
+      `/v1/work-orders/${created.workOrder.id}/transitions`,
+      { to: 'dispatched', expectedRevision: created.workOrder.revision },
+    );
+    const edToken = await api.signIn(engineer);
+
+    // While the job is open, the engineer on it may.
+    await call(edToken, 'PUT', `/v1/sites/${gatehouse}/access`, { gateCode: '2000#' });
+
+    const phone = await openPhone(api, engineer);
+    await phone.sync();
+    phone.network.online = false;
+    await recordAccessChange(phone.context, { siteId: gatehouse, changes: { gateCode: '3000#' } });
+
+    // Called off while the phone had no signal.
+    await call(officeToken, 'POST', `/v1/work-orders/${created.workOrder.id}/transitions`, {
+      to: 'cancelled',
+      reason: 'The customer cancelled',
+      expectedRevision: dispatched.workOrder.revision,
+    });
+
+    const refused = await api.call(edToken, {
+      method: 'PUT',
+      url: `/v1/sites/${gatehouse}/access`,
+      payload: { gateCode: '4000#' },
+    });
+    expect(refused.statusCode, refused.body).toBe(403);
+
+    phone.network.online = true;
+    await phone.sync();
+    const [rejected] = await phone.db.read(changesNeedingAttention);
+    expect(rejected).toMatchObject({
+      kind: 'site.access',
+      state: 'failed',
+      lastError: { code: 'forbidden' },
+    });
+    const site = await call<{ site: { access: { gateCode: string } } }>(
+      officeToken,
+      'GET',
+      `/v1/sites/${gatehouse}`,
+    );
+    expect(site.site.access.gateCode).toBe('2000#');
+  });
+});

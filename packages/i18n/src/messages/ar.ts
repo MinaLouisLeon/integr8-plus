@@ -21,6 +21,7 @@
 
 import type { Messages } from './en.js';
 import { apiErrorsAr } from './api-errors.ar.js';
+import { legalAr } from './legal.ar.js';
 
 /**
  * A translation of `Messages`.
@@ -614,6 +615,14 @@ export const ar: Catalogue<Messages> = {
     },
 
     impersonationBanner: 'أنت تعرض هذا الحساب بصفة {{name}}. كل ما تفعله يُسجَّل.',
+
+    announcement: {
+      region: 'إعلانات من Integr8',
+      info: 'إشعار',
+      warning: 'تحذير',
+      critical: 'هام',
+      dismiss: 'إخفاء',
+    },
   },
 
   roles: {
@@ -823,6 +832,8 @@ export const ar: Catalogue<Messages> = {
   },
 
   apiErrors: apiErrorsAr,
+
+  legal: legalAr,
 
   states: {
     emptyTitle: 'لا شيء هنا بعد',
@@ -5979,6 +5990,7 @@ export const ar: Catalogue<Messages> = {
       serial_required: 'اختر الرقم التسلسلي لكل قطعة تم تركيبها.',
       work_order_not_on_phone: 'هذه المهمة ليست على هذا الهاتف. زامن ثم حاول مرة أخرى.',
       name_required: 'اكتب اسمًا للأصل.',
+      note_required: 'اكتب الملاحظة أولًا.',
       asset_not_on_phone: 'هذا الأصل ليس على هذا الهاتف. زامن ثم حاول مرة أخرى.',
       amount_invalid: 'أدخل مبلغًا أكبر من صفر، مثل 250.50.',
       date_invalid: 'اذكر تاريخ صرف المبلغ.',
@@ -6158,6 +6170,32 @@ export const ar: Catalogue<Messages> = {
     push: {
       channelJobs: 'تغييرات المهام',
       channelUrgent: 'نداءات عاجلة',
+    },
+    reconnect: {
+      title: 'اتصل بالإنترنت للمتابعة',
+      body: 'مضى على هذا الهاتف دون اتصال بالمكتب وقت أطول مما يُسمح له بالعمل فيه دون إشارة، وهو أسبوع عادةً. اتصل ببيانات الجوال أو بشبكة Wi-Fi مرة واحدة للمتابعة. عملك الذي لم يُرسل محفوظ بأمان على الهاتف، ويُرسل فور عودتك.',
+      stillOffline: 'لا يوجد اتصال بعد. تحاول هذه الشاشة مرة أخرى تلقائيًا عند توفر الاتصال.',
+      retry: 'حاول مرة أخرى',
+    },
+    announcement: {
+      dismiss: 'إخفاء',
+      info: 'إشعار',
+      warning: 'تنبيه',
+      critical: 'هام',
+    },
+    notes: {
+      none: 'لا توجد ملاحظات بعد.',
+      add: 'أضف ملاحظة',
+      label: 'الملاحظة',
+      placeholder: 'ما الذي حدث، أو ما يحتاج من يأتي بعدك إلى معرفته',
+      internal: 'للمكتب فقط',
+      customer: 'يمكن للعميل رؤيتها',
+      save: 'احفظ الملاحظة',
+      failed: 'لم تُحفظ الملاحظة',
+    },
+    access: {
+      hint: 'تُحفظ على هذا الهاتف فورًا وتُرسل عند توفر الإشارة. يرى المكتب من غيّر ماذا.',
+      failed: 'لم تُحفظ ملاحظات الدخول',
     },
     jobs: {
       title: 'مهامك',

@@ -27,7 +27,12 @@ describe('ETA credential sealing', () => {
     const otherKey = etaKey(randomBytes(32).toString('base64'));
     expect(() => openCredential(sealed, otherKey, tenant, 'clientId')).toThrow();
     const [prefix, nonce, payload] = sealed.split('.');
-    const flipped = `${payload!.slice(0, -2)}${payload!.endsWith('A') ? 'B' : 'A'}${payload!.slice(-1)}`;
+    // One bit of the ciphertext flipped, so the tag no longer matches. Editing
+    // a base64 character instead failed about one run in 64: the character
+    // swapped in was sometimes the one already there.
+    const bytes = Buffer.from(payload!, 'base64url');
+    bytes[0] = bytes[0]! ^ 0x01;
+    const flipped = bytes.toString('base64url');
     expect(() =>
       openCredential(`${prefix!}.${nonce!}.${flipped}`, key, tenant, 'clientId'),
     ).toThrow();

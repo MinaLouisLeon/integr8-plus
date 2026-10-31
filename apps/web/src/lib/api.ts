@@ -65,6 +65,34 @@ export function isCrossSiteRequest(request: Request): boolean {
   }
 }
 
+/**
+ * Who is really asking, passed on to the API.
+ *
+ * These handlers call the API from the web server, so without these headers
+ * every browser reaches the API from the web container's one address. The API
+ * limits sign-in attempts and requests per address, and records the address
+ * and browser on each session and audit line: all of that would describe the
+ * web server rather than the person, and one busy morning would lock every
+ * company out of the web app.
+ *
+ * Caddy sets `X-Forwarded-For` to the visitor's address and discards any value
+ * the visitor sent, so the first entry is the person's even if something
+ * appends to it on the way here. The API trusts the header because only Caddy
+ * and this server can reach it.
+ */
+export function forwardedClientHeaders(request: Request): Record<string, string> {
+  const headers: Record<string, string> = {};
+  const address = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
+  if (address !== undefined && address !== '') {
+    headers['x-forwarded-for'] = address;
+  }
+  const agent = request.headers.get('user-agent');
+  if (agent !== null && agent !== '') {
+    headers['user-agent'] = agent;
+  }
+  return headers;
+}
+
 /** The refusal `isCrossSiteRequest` earns, in the API's error shape. */
 export function crossSiteRefusal(): Response {
   return Response.json(

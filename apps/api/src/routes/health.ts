@@ -65,7 +65,7 @@ export const readinessRoute = defineRoute({
   operationId: 'getReadiness',
   summary: 'Readiness',
   description:
-    'Answers whether this container should receive traffic. Checks the database is reachable and its schema matches this build.',
+    'Answers whether this container should receive traffic. Checks the database is reachable and its schema matches this build, or is ahead of it after a rollback to an earlier release.',
   tags: ['operations'],
   security: 'public',
   params: noSchema,
@@ -81,9 +81,21 @@ export const readinessRoute = defineRoute({
     // A container whose build expects a table the database does not have will
     // fail on the first request that needs it, which is a confusing error at a
     // bad moment. Better to stay out of the load balancer and say why.
+    // A schema ahead of this build is the opposite case: an earlier release
+    // rolled back to, running on the newer schema as expand/contract promises.
+    // It is ready, and the note says the code and schema are from different
+    // releases so nobody forgets to go forward again.
     try {
-      await assertSchemaUpToDate();
-      checks.push({ name: 'schema', ok: true });
+      const { aheadOfBuild } = await assertSchemaUpToDate();
+      checks.push(
+        aheadOfBuild.length === 0
+          ? { name: 'schema', ok: true }
+          : {
+              name: 'schema',
+              ok: true,
+              detail: `Ahead of this build: a newer release applied ${aheadOfBuild.join(', ')}`,
+            },
+      );
     } catch (error) {
       checks.push({
         name: 'schema',

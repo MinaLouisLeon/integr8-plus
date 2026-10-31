@@ -113,6 +113,7 @@ export {
   workOrderPrioritySchema,
   WORK_ORDER_TRANSITIONS,
   CLOSED_WORK_ORDER_STATES,
+  OPEN_WORK_ORDER_STATES,
   ACTIVE_WORK_ORDER_STATES,
   findTransition,
   nextStates,
@@ -623,3 +624,16 @@ export {
   type ComplianceSummary,
   complianceSummary,
 } from './deadlines.js';
+
+export {
+  LEGAL_DOCUMENTS,
+  type LegalDocument,
+  LEGAL_LAST_UPDATED,
+  LEGAL_REVIEWED,
+  LEGAL_SITE_ORIGIN,
+  legalPath,
+  legalUrl,
+  type LegalOperator,
+  LEGAL_OPERATOR,
+  missingOperatorDetails,
+} from './legal.js';

@@ -6,7 +6,7 @@ with its own forms, job types, look and apps. The company's office plans and
 dispatches work; its engineers do the work on a phone that keeps working with no
 signal; the office sees the result the moment the phone reconnects.
 
-Current version: **1.2.1**. The build plan lives in [`plan/`](./plan/README.md);
+Current version: **1.2.2**. The build plan lives in [`plan/`](./plan/README.md);
 start with [`plan/ROADMAP.md`](./plan/ROADMAP.md).
 
 ---
@@ -470,6 +470,9 @@ each with a down file, applied by `pnpm --filter @integr8/db db up` (or
 | 0052      | Skills and certificates (qualifications) and expiry warnings                                          |
 | 0053      | Service contracts, maintenance plans and response deadlines                                           |
 | 0054      | Self-hosted sign-in: how each session began, and sign-in accounts to delete after a purge             |
+| 0055      | Closing a company: the purge removes every row with triggers and foreign-key checks suspended         |
+| 0056      | No plan deletes a company's files on its own: the seeded retention windows are cleared                |
+| 0057      | New companies start on Cairo time with a Sunday-to-Thursday working week                              |
 
 See [`docs/database/migrations.md`](./docs/database/migrations.md) and the
 [backup and restore runbook](./docs/database/runbook-backup-and-restore.md).

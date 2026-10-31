@@ -4,7 +4,7 @@ import { parseArgs } from 'node:util';
 import pg from 'pg';
 import { loadDatabaseConfig, requireAdminConnectionString } from '../config.js';
 import { defaultMigrationsDir, loadMigrations } from './files.js';
-import { Migrator } from './runner.js';
+import { listMigrations, migrationProblems, Migrator } from './runner.js';
 
 const { Client } = pg;
 
@@ -14,7 +14,8 @@ integr8 database CLI — run with: pnpm --filter @integr8/db db <command>
 Commands
   status                 Show every migration and whether it has been applied
   verify                 Fail if an applied migration no longer matches its file
-  up [--to NNNN]         Apply pending migrations
+  up [--to NNNN]         Apply pending migrations (none, with a warning, when a
+                         newer release has already migrated the database)
   down [--steps N]       Roll back the most recent N migrations (default 1)
   down --to NNNN         Roll back everything above NNNN
   new <slug>             Scaffold the next up/down pair
@@ -73,7 +74,7 @@ async function main(): Promise<number> {
       if (created !== 0) {
         return created;
       }
-      return report(await migrator.up(), 'Nothing to apply.');
+      return await migrateUp(migrator);
     }
 
     switch (command) {
@@ -84,7 +85,7 @@ async function main(): Promise<number> {
         console.log('All applied migrations match their files.');
         return 0;
       case 'up':
-        return report(await migrator.up(toOption(values.to)), 'Nothing to apply.');
+        return await migrateUp(migrator, toOption(values.to));
       case 'down':
         return report(
           await migrator.down({
@@ -106,6 +107,32 @@ function toOption(to: string | undefined): { to?: string } {
   return to === undefined ? {} : { to };
 }
 
+/**
+ * `up`, plus a warning when the database is ahead of this build.
+ *
+ * After a rollback to the previous image, the `migrate` service runs this with
+ * a build that has no files for the newer release's migrations. It succeeds,
+ * so the API and worker start, but it says what it found: this warning is the
+ * one line in the logs that tells somebody the schema and the code come from
+ * different releases.
+ */
+async function migrateUp(migrator: Migrator, options: { to?: string } = {}): Promise<number> {
+  const code = report(await migrator.up(options), 'Nothing to apply.');
+  const ahead = await migrator.aheadOfBuild();
+  if (ahead.length > 0) {
+    console.warn(
+      [
+        `Warning: the database is ahead of this build. A newer release applied ${listMigrations(ahead)},`,
+        'which this build has no files for, so nothing was applied. That is expected after rolling',
+        'back to an earlier release, which runs on the newer schema; the newer release finds',
+        'nothing to apply when it comes back. To undo those migrations instead, run "down" from',
+        'the newer release (docs/database/migrations.md, "Rolling back a release").',
+      ].join('\n'),
+    );
+  }
+  return code;
+}
+
 async function status(migrator: Migrator): Promise<number> {
   const rows = await migrator.status();
 
@@ -119,10 +146,20 @@ async function status(migrator: Migrator): Promise<number> {
     console.log(`${row.state.padEnd(18)} ${row.version}_${row.name}${when}`);
   }
 
-  const broken = rows.filter(
-    (row) => row.state === 'checksum-mismatch' || row.state === 'missing-file',
-  );
-  return broken.length > 0 ? 1 : 0;
+  // A schema ahead of the build is reported, not failed: it is what a rollback
+  // to the previous release looks like.
+  const ahead = rows.filter((row) => row.state === 'ahead-of-build');
+  if (ahead.length > 0) {
+    console.log(
+      `\n${String(ahead.length)} migration(s) from a newer release; this build runs on that schema.`,
+    );
+  }
+
+  const problems = migrationProblems(rows);
+  for (const problem of problems) {
+    console.error(problem);
+  }
+  return problems.length > 0 ? 1 : 0;
 }
 
 function report(

@@ -132,6 +132,13 @@ when the connection returns. A phone kept offline is not
 wiped until then; see [offline access](../auth/offline-access.md) for why that is the honest
 limit.
 
+**With no signal, the phone opens on its offline grant only** (P03): a token the API signs with
+every sign-in and refresh, which the phone checks against the keys built into the app and which
+ends seven days after the phone last reached the API. A phone whose grant has lapsed and that
+cannot reach the API shows _Connect to carry on_ (`app/reconnect.tsx`) instead of opening on its
+thirty-day refresh token, keeps its unsent work, and opens by itself once a connection appears.
+Exactly what is checked, and what is not: [offline access](../auth/offline-access.md).
+
 A wipe closes the database, deletes the key, deletes the database file and deletes the files
 directory, attempting every step even if one fails and reporting failures to Sentry. Once the
 key is gone, the database file is unreadable even if deleting it failed.

@@ -236,3 +236,9 @@ Covered by the integration suites (`packages/db` and `apps/api`, `maintenance-co
 - Found while building this: migration 0052 (P26) never added the `qualifications.expiry` row to
   `scheduled_task_runs`, so the daily certificate expiry run never won a turn. 0053 adds it with
   this phase's own two runs.
+- Found in the October 2026 audit: deadlines in working hours, maintenance due days and
+  contract years read the company's calendar, and a new company's was UTC, Monday to Friday, so
+  an Egyptian company's response clock ran through Friday and stopped on Sunday. Migration 0057
+  makes new companies start on `Africa/Cairo`, Sunday to Thursday, and the repository fallbacks
+  (`DEFAULT_SETTINGS`, the ledger's `erp_ledger_timezone`) match. Existing companies keep their
+  settings.

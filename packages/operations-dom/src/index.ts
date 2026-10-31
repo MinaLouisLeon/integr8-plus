@@ -8,6 +8,7 @@ export {
   type RowTarget,
 } from './api.js';
 export { BackLink, InlineError } from './ui.js';
+export { AnnouncementBanners, type Announcement } from './announcements.js';
 export { WorkOrderScreen } from './screens/work-order-screen.js';
 export { WorkOrderListScreen, type WorkOrderFilters } from './screens/work-order-list.js';
 export { WorkOrderFormScreen } from './screens/work-order-form.js';

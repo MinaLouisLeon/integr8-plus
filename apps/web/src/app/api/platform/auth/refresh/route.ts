@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { forwardedClientHeaders } from '~/lib/api';
 import {
   apiBaseUrl,
   PLATFORM_REFRESH_COOKIE,
@@ -17,7 +18,7 @@ import {
  * A platform access token lasts five minutes, so this runs often. That is the
  * price of a token that can reach every company being short-lived.
  */
-export async function POST(): Promise<NextResponse> {
+export async function POST(request: Request): Promise<NextResponse> {
   const store = await cookies();
   const refreshToken = store.get(PLATFORM_REFRESH_COOKIE)?.value;
 
@@ -29,6 +30,7 @@ export async function POST(): Promise<NextResponse> {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
+      ...forwardedClientHeaders(request),
       'x-client-app': 'web',
       'x-client-version': process.env.NEXT_PUBLIC_APP_VERSION ?? '1.1.0',
     },

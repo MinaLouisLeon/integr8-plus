@@ -1,7 +1,7 @@
 # P04 — API skeleton and contract
 
 **Version:** v0.1 Foundation
-**Status:** `IN PROGRESS`
+**Status:** `COMPLETED — 2026-10-31`
 **Depends on:** P03
 
 ## Goal
@@ -44,27 +44,15 @@ cannot force-update an app on an engineer's phone.
 
 ---
 
-## What remains
+## How it was closed (2026-10-31)
 
-The first exit criterion is met: `pnpm build` compiles the generated client into
-`apps/web`, `apps/desktop` and `apps/mobile`, and an endpoint that changed shape would
-stop all three compiling.
-
-The other three are written as integration tests that drive real HTTP through the
-assembled server, and none has run, because no Supabase project exists. This is the same
-position P02 and P03 are in and it closes the same way:
-
-1. **Finish the P02 runbook** —
-   [`docs/database/runbook-supabase-setup.md`](../../docs/database/runbook-supabase-setup.md).
-2. **Run the three suites** — `pnpm --filter @integr8/db test:integration`, then
-   `@integr8/auth`, then `@integr8/api`. The last one covers all three remaining
-   criteria: `server.integration.test.ts` has a `describe` block for each.
-3. **Add `TEST_DATABASE_URL_AUTH` to CI** — step 8 of the runbook.
-
-There is one piece of P04's surface deliberately absent rather than pending: **no
-platform/super-admin endpoints**. P03 left platform sign-in unbuilt because it needs a
-token shape that P15 should settle, so impersonation has no HTTP entry point yet. It is
-recorded in P03's file and in `docs/api/README.md`.
+Every task and exit criterion was already ticked; what kept the phase open was that the
+three integration suites behind the last three criteria had never run. They now run on
+every pull request in `ci.yml`'s database job, against a plain Postgres and a real Supabase
+Auth container (P36), and passed on the merged head of pull request #135 (run 41208359782)
+and again locally during the October 2026 pre-production review. The Supabase project this
+section used to wait for no longer exists (P36), and the platform endpoints it said were
+missing were built in P15.
 
 ## Decisions taken during implementation
 

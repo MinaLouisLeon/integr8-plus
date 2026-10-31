@@ -298,8 +298,10 @@ async function raiseDrift(
  * A file still referenced by a submission is taken too. That is what a
  * retention window means — the record ages out — and a policy that quietly
  * skipped anything in use would delete nothing at all, which is worse than
- * either honest answer. The window is per plan and starts at null, so nothing
- * is deleted anywhere until somebody sets one.
+ * either honest answer. The company's logo and app icon are never taken: they
+ * are its identity, not a record. The window is per plan and starts at null
+ * (0056 cleared the windows 0016 had seeded), so nothing is deleted anywhere
+ * until somebody sets one.
  */
 async function applyRetention(options: MeteringOptions, report: MeteringReport): Promise<number> {
   const platform = getPlatformDataSource();

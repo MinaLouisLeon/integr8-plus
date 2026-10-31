@@ -1,4 +1,4 @@
-import { holds, type Principal } from '@integr8/core';
+import { holds, OPEN_WORK_ORDER_STATES, type Principal } from '@integr8/core';
 import {
   type AttachmentOwner,
   type Customer,
@@ -634,7 +634,7 @@ export const updateSiteAccessRoute = defineRoute({
   operationId: 'updateSiteAccess',
   summary: 'Correct a site’s access notes',
   description:
-    'For the engineer who finds the gate code has changed: anyone working a job at the site may correct its access notes, as well as the office. Every change records who made it and when.',
+    'For the engineer who finds the gate code has changed: anyone on the crew of an open job at the site (not complete, reviewed or cancelled) may correct its access notes, as well as the office. Every change records who made it and when.',
   tags: TAGS,
   security: 'authenticated',
   permission: 'customer.read',
@@ -643,7 +643,7 @@ export const updateSiteAccessRoute = defineRoute({
   body: accessInputSchema,
   responses: {
     200: { description: 'The site.', schema: siteSchema },
-    403: { description: 'This person is not working a job at the site.' },
+    403: { description: 'This person is not working an open job at the site.' },
     404: { description: 'No such site.' },
   },
   handler: async ({ params, body }, context) => {
@@ -661,8 +661,42 @@ export const updateSiteAccessRoute = defineRoute({
 });
 
 /**
- * Corrects a site's access notes, if this person may: the office, or anyone
- * working a job at the site. Shared with a phone's sync (P12).
+ * Refuses unless this person may correct a site's access notes: the office, or
+ * anyone on the crew of an open job at the site.
+ *
+ * Open means not complete, reviewed or cancelled. Having once been sent to a
+ * site is not a standing right to its gate code: an engineer whose last job
+ * there closed a year ago, or who has left the crew, is not the person who has
+ * just found the code changed.
+ */
+export async function assertMayChangeAccess(
+  tx: TenantTransaction,
+  principal: Principal,
+  siteId: string,
+): Promise<void> {
+  if (holds(principal, 'customer.manage')) {
+    return;
+  }
+  const working =
+    holds(principal, 'work_order.progress') &&
+    (
+      await tx.workOrders.list({
+        siteId,
+        assigneeId: principal.userId,
+        states: OPEN_WORK_ORDER_STATES,
+        limit: 1,
+      })
+    ).items.length > 0;
+  if (!working) {
+    throw forbidden(
+      'Only the office, or someone working an open job at this site, can change its access notes.',
+    );
+  }
+}
+
+/**
+ * Corrects a site's access notes, if this person may. Shared with a phone's sync
+ * (P12), so a change made offline is held to the same rule when it arrives.
  */
 export async function updateAccessNotes(
   tx: TenantTransaction,
@@ -671,17 +705,7 @@ export async function updateAccessNotes(
   access: Partial<Record<'gateCode' | 'parking' | 'askFor' | 'hazards' | 'notes', string | null>>,
 ): Promise<Site> {
   const { principal } = context;
-  if (!holds(principal, 'customer.manage')) {
-    const working =
-      holds(principal, 'work_order.progress') &&
-      (await tx.workOrders.list({ siteId: current.id, assigneeId: principal.userId, limit: 1 }))
-        .items.length > 0;
-    if (!working) {
-      throw forbidden(
-        'Only the office, or someone working a job at this site, can change its access notes.',
-      );
-    }
-  }
+  await assertMayChangeAccess(tx, principal, current.id);
   const site = await tx.sites.update(current.id, { access }, principal.userId);
   await audit(tx, context, 'site.access_updated', 'site', current.id, {
     fields: Object.keys(access),

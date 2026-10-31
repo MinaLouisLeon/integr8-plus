@@ -146,3 +146,8 @@ Billing the overage is deliberately not on this list: it belongs with invoicing,
 - **Changing a company's plan did not take effect for up to thirty seconds.** The plan is read
   off the row the suspension door-check caches, and the dashboard's plan route did not clear it
   the way suspend and reactivate do. It does now.
+- **Every plan shipped with a retention window, though the docs said none did.** Migration 0016
+  seeded 90 days on trial, 365 on starter and 730 on standard, and new companies start on
+  trial, so photos, signatures, issued PDFs and the company's logo would have been soft-deleted
+  after 90 days. Found in the October 2026 audit; migration 0056 clears the seeded values
+  (leaving any set on purpose), and retention never takes the logo or app icon.

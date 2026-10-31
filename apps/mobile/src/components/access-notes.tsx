@@ -1,6 +1,6 @@
 import { useTranslation } from '@integr8/i18n';
 import { fontSize, radii, spacing } from '@integr8/tokens';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTheme } from './ui';
 
 export interface Access {
@@ -20,8 +20,17 @@ const present = (value: string | null): value is string => value !== null && val
  * about the engineer's safety before they are about the job. The gate code is
  * large, because it is read at arm's length at a keypad, often with gloves on,
  * and always left-to-right whatever language the app is in.
+ *
+ * `onCorrect`, when given, offers to correct them (P12): only to someone the
+ * server would let, which the screen works out from the phone's own data.
  */
-export function AccessNotes({ access }: { access: Access }) {
+export function AccessNotes({
+  access,
+  onCorrect,
+}: {
+  access: Access;
+  onCorrect?: (() => void) | undefined;
+}) {
   const { t } = useTranslation();
   const theme = useTheme();
   const any = [access.gateCode, access.parking, access.askFor, access.hazards, access.notes].some(
@@ -88,6 +97,14 @@ export function AccessNotes({ access }: { access: Access }) {
             <Text style={[styles.value, { color: theme.text }]}>{value}</Text>
           </View>
         ))}
+
+      {onCorrect === undefined ? null : (
+        <Pressable accessibilityRole="button" onPress={onCorrect} hitSlop={8}>
+          <Text style={[styles.action, { color: theme.accent }]}>
+            {t('operations.access.edit')}
+          </Text>
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -111,5 +128,6 @@ const styles = StyleSheet.create({
   item: { gap: 2 },
   label: { fontSize: fontSize.sm, fontWeight: '600', textAlign: 'auto' },
   value: { fontSize: fontSize.base, textAlign: 'auto' },
+  action: { fontSize: fontSize.base, fontWeight: '600', textAlign: 'auto' },
   code: { fontSize: 32, fontWeight: '700', letterSpacing: 2, fontVariant: ['tabular-nums'] },
 });

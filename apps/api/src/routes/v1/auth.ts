@@ -84,7 +84,7 @@ export const signInRoute = defineRoute({
   operationId: 'signIn',
   summary: 'Sign in with an email address and password',
   description:
-    'Returns a token pair for one company, plus every company this person belongs to. A wrong password, an unknown address and an identity with no company are all the same failure, deliberately: distinguishing them would turn this endpoint into a way of testing which addresses are customers.',
+    'Returns a token pair for one company, plus every company this person belongs to. For `clientApp: mobile` the pair also carries the offline grant that lets the phone open with no network for seven days (`offlineGrant`, `offlineGrantExpiresAt`). A wrong password, an unknown address and an identity with no company are all the same failure, deliberately: distinguishing them would turn this endpoint into a way of testing which addresses are customers.',
   tags: ['authentication'],
   security: 'public',
   params: noSchema,
@@ -196,7 +196,7 @@ export const completeMagicLinkRoute = defineRoute({
   operationId: 'completeMagicLink',
   summary: 'Sign in with an emailed 6-digit code',
   description:
-    '`token` is the 6-digit code from the email. A wrong code counts towards the account lockout exactly as a wrong password does. The session that results lets Change password go without the current password for fifteen minutes.',
+    '`token` is the 6-digit code from the email. A wrong code counts towards the account lockout exactly as a wrong password does. The session that results lets Change password go without the current password for fifteen minutes. For `clientApp: mobile` the pair carries the offline grant, as with a password.',
   tags: ['authentication'],
   security: 'public',
   params: noSchema,
@@ -244,7 +244,7 @@ export const refreshRoute = defineRoute({
   operationId: 'refreshSession',
   summary: 'Exchange a refresh token for a new pair',
   description:
-    'Single-use. The token returned replaces the one sent, and presenting a spent token is treated as theft: the session is revoked and both the thief and the legitimate holder are signed out.',
+    'Single-use. The token returned replaces the one sent, and presenting a spent token is treated as theft: the session is revoked and both the thief and the legitimate holder are signed out. A phone’s session also gets a new offline grant, replacing the last, so it runs for seven days from the phone’s last contact rather than from signing in.',
   tags: ['authentication'],
   security: 'public',
   params: noSchema,
@@ -451,6 +451,7 @@ interface IssuedLike {
   refreshToken: string;
   refreshTokenExpiresAt: Date;
   session: { id: string };
+  offlineGrant?: { token: string; expiresAt: Date } | undefined;
 }
 
 function toTokens(issued: IssuedLike) {
@@ -460,6 +461,14 @@ function toTokens(issued: IssuedLike) {
     refreshToken: issued.refreshToken,
     refreshTokenExpiresAt: iso(issued.refreshTokenExpiresAt),
     sessionId: issued.session.id,
+    // Only a phone's session has one (P03): left out, not null, so an older
+    // client's parser sees exactly the shape it always did.
+    ...(issued.offlineGrant === undefined
+      ? {}
+      : {
+          offlineGrant: issued.offlineGrant.token,
+          offlineGrantExpiresAt: iso(issued.offlineGrant.expiresAt),
+        }),
   };
 }
 

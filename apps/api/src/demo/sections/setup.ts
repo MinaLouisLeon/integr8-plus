@@ -12,8 +12,9 @@ export async function seedSetup(ctx: DemoContext): Promise<void> {
   await ctx.call('owner', 'PATCH', '/v1/settings', {
     timezone: 'Africa/Cairo',
     currency: 'EGP',
-    workDayStarts: 8,
-    workDayEnds: 17,
+    // Minutes from midnight, as the API takes them: 08:00 to 17:00.
+    workDayStarts: 8 * 60,
+    workDayEnds: 17 * 60,
     workingDays: [7, 1, 2, 3, 4],
     aiWebEnabled: true,
     aiDesktopEnabled: true,

@@ -60,6 +60,11 @@ real browser. The R2 half of the pipeline suite (`media-r2.integration.test.ts`)
 need `CLOUDFLARE_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` and
 `CLOUDFLARE_API_TOKEN` in `apps/api/.env`. The exit criteria stay open until they have.
 
+Since the October 2026 pre-production audit, CI runs that suite for real as soon as the
+repository has three secrets, `R2_TEST_ACCOUNT_ID`, `R2_TEST_ACCESS_KEY_ID` and
+`R2_TEST_SECRET_ACCESS_KEY`, for a separate Cloudflare test account (docs/media, "Proving R2
+before go-live"). Adding them is what is left before these criteria can be ticked.
+
 | Claim                                           | How it was proven so far                                                                                                                                                                                                                        |
 | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Usage equals the bucket's bytes                 | Pipeline suite (local): after every step the usage endpoint equals the sum of listing the bucket, object for object; the database suite proves the rollup equals the ledger after a mixed history of thumbnails, deletions, restores and purges |

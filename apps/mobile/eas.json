@@ -11,6 +11,7 @@
         "EXPO_PUBLIC_API_BASE_URL": "http://localhost:3000",
         "EXPO_PUBLIC_APP_ENV": "development"
       },
+      "environment": "development",
       "channel": "development"
     },
     "preview": {
@@ -19,6 +20,7 @@
         "EXPO_PUBLIC_API_BASE_URL": "https://api-test.integr8-media.com",
         "EXPO_PUBLIC_APP_ENV": "staging"
       },
+      "environment": "preview",
       "channel": "staging"
     },
     "production": {
@@ -27,6 +29,7 @@
         "EXPO_PUBLIC_API_BASE_URL": "https://api.integr8-media.com",
         "EXPO_PUBLIC_APP_ENV": "production"
       },
+      "environment": "production",
       "channel": "production"
     },
     "production-internal": {

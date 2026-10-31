@@ -261,6 +261,15 @@ describe('the pay runs', { timeout: 20_000 }, () => {
     await user.click(screen.getByRole('button', { name: 'Prepare' }));
     expect(await screen.findByText(/waiting for the owner to confirm it/u)).toBeInTheDocument();
 
+    // January on last year's figures is refused, and leads to the rules too.
+    answer = apiError(422, 'rules_from_another_year', 'Last year');
+    await user.click(screen.getByRole('button', { name: 'Prepare' }));
+    const lastYear = await screen.findByText(/from an earlier year/u);
+    expect(lastYear).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('alert')).getByRole('link', { name: 'Go to the payroll rules' }),
+    ).toBeInTheDocument();
+
     // A month that has a run already leads to it.
     answer = apiError(409, 'month_taken', 'Taken');
     fireEvent.change(month, { target: { value: '2026-10' } });

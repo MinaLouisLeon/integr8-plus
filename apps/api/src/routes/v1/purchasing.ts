@@ -59,6 +59,12 @@ import { iso, isoOrNull } from './schemas.js';
  * Prices are decimal strings in the company currency; tax is an optional
  * rate per line in basis points (2000 = 20%), a record for the company's
  * books, not a tax engine.
+ *
+ * Only the company currency. A receipt folds its price straight into the
+ * item's average cost and the ledger, both of which are in the company
+ * currency and convert nothing, so an order in dollars would have turned 100
+ * dollars into 100 pounds of stock. An order still accepts `currencyCode`, as
+ * it always has, as long as it names the company's own.
  */
 
 export const TAGS = ['purchasing'];
@@ -574,6 +580,18 @@ const orderFields = {
   notes: z.string().max(10_000).nullable().optional(),
 };
 
+/**
+ * Refuses an order in another currency: see the module comment. 422 rather
+ * than a quiet substitution, so a client that sent dollars learns its prices
+ * were not taken as pounds.
+ */
+function currencyNotCompany(currencyCode: string, companyCurrency: string, field: string): never {
+  const message = `Purchase orders are in the company currency, ${companyCurrency}. Convert ${currencyCode} prices before you enter them.`;
+  throw unprocessable('purchase_currency_not_company', message, [
+    { field, code: 'purchase_currency_not_company', message },
+  ]);
+}
+
 /** Lines as the repository takes them, with each item checked and described. */
 async function orderLineInputs(
   tx: TenantTransaction,
@@ -704,7 +722,7 @@ export const createOrderRoute = defineRoute({
   operationId: 'createPurchaseOrder',
   summary: 'Draft a purchase order',
   description:
-    'A draft in the company currency, numbered `PO-000001` onwards. Lines name catalogue items; a line without a `description` takes the item name. Honours `Idempotency-Key`.',
+    'A draft in the company currency, numbered `PO-000001` onwards. `currencyCode`, when sent, must be the company currency. Lines name catalogue items; a line without a `description` takes the item name. Honours `Idempotency-Key`.',
   tags: TAGS,
   security: 'authenticated',
   permission: 'purchasing.manage',
@@ -714,6 +732,7 @@ export const createOrderRoute = defineRoute({
   query: noSchema,
   body: z.object({
     ...orderFields,
+    /** The company currency, which is also the default; any other is refused. */
     currencyCode: currencyCodeSchema.optional(),
     lines: z.array(lineInputSchema).max(200).default([]),
   }),
@@ -723,7 +742,10 @@ export const createOrderRoute = defineRoute({
       description:
         'No such supplier (`supplier_not_found`), item (`item_not_found`) or location (`location_not_found`).',
     },
-    422: { description: 'Invalid, or the supplier is inactive (`supplier_inactive`).' },
+    422: {
+      description:
+        'Invalid, the supplier is inactive (`supplier_inactive`), or `currencyCode` is not the company currency (`purchase_currency_not_company`).',
+    },
   },
   handler: async ({ body }, context) => {
     const detail = await withTenant(context.principal.tenantId, async (tx) => {
@@ -731,7 +753,10 @@ export const createOrderRoute = defineRoute({
       if (typeof body.deliveryLocationId === 'string') {
         await requireLocation(tx, body.deliveryLocationId, 'body.deliveryLocationId');
       }
-      const currencyCode = body.currencyCode ?? (await tx.settings.get()).currency;
+      const currencyCode = (await tx.settings.get()).currency;
+      if (body.currencyCode !== undefined && body.currencyCode !== currencyCode) {
+        currencyNotCompany(body.currencyCode, currencyCode, 'body.currencyCode');
+      }
       const lines = await orderLineInputs(tx, body.lines, {
         supplierId: supplier.id,
         currencyCode,
@@ -1039,7 +1064,7 @@ export const receiveOrderRoute = defineRoute({
     },
     422: {
       description:
-        'More than is left to receive (`over_received`), no location (`location_required`), or a line named twice (`line_repeated`).',
+        'More than is left to receive (`over_received`), no location (`location_required`), a line named twice (`line_repeated`), or an order in another currency than the company’s (`purchase_currency_not_company`).',
     },
   },
   handler: async ({ params, body }, context) => {
@@ -1051,6 +1076,13 @@ export const receiveOrderRoute = defineRoute({
       }
       if (!purchaseOrderReceivable(order.status)) {
         throw conflict('order_not_receivable', 'Goods are received against an approved order.');
+      }
+      // An order drafted in another currency before that was refused would
+      // still fold its prices into stock as if they were the company's. It is
+      // cancelled and drafted again in the company currency instead.
+      const companyCurrency = (await tx.settings.get()).currency;
+      if (order.currencyCode !== companyCurrency) {
+        currencyNotCompany(order.currencyCode, companyCurrency, 'params.orderId');
       }
       const locationId = body.locationId ?? order.deliveryLocationId;
       if (locationId === null) {

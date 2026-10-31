@@ -1,3 +1,5 @@
+import { sql } from 'kysely';
+import type { PlatformTable, TenantScopedTable } from '../schema.js';
 import { TenantScopedRepository, type TenantScope } from './tenant-scope.js';
 
 /**
@@ -23,12 +25,11 @@ import { TenantScopedRepository, type TenantScope } from './tenant-scope.js';
  *
  * Listed explicitly rather than discovered from the schema: a new table should
  * have to be considered — is this the customer's data, or ours? — rather than
- * appear in every customer's export the moment somebody adds it.
- *
- * Absent on purpose: `sessions`, `refresh_tokens`, `offline_grants` and
- * `invitations`, which are credentials rather than data; `jobs`,
- * `idempotency_keys`, `sync_touches` and `rate_limit_buckets`, which are this
- * system's working state and mean nothing outside it.
+ * appear in every customer's export the moment somebody adds it. Every table
+ * that is left out is named in {@link NOT_EXPORTED_TABLES} with the reason, and
+ * the export suite fails on a company table that is in neither list: this list
+ * once went eight migrations without anybody adding documents, e-invoices,
+ * visits or the company's own settings to it.
  */
 export const EXPORTED_TABLES = [
   'tenant_roles',
@@ -55,6 +56,9 @@ export const EXPORTED_TABLES = [
   'work_order_assignments',
   'work_order_comments',
   'work_order_events',
+  // Visits (0051): the days a job was scheduled on, and who was sent each day.
+  'work_order_visits',
+  'work_order_visit_assignees',
   // Skills and certificates (0052): what people hold and what jobs need.
   'qualification_types',
   'member_qualifications',
@@ -68,6 +72,13 @@ export const EXPORTED_TABLES = [
   'submission_values',
   'files',
   'attachments',
+  // How the company works: timezone, currency, working hours, branding (0018).
+  'tenant_settings',
+  // PDF documents made from submissions (0048): the layouts, each document and
+  // the fields it was made with. The PDF itself is in `files`.
+  'document_templates',
+  'documents',
+  'document_field_values',
   'shifts',
   'saved_views',
   'imports',
@@ -112,6 +123,18 @@ export const EXPORTED_TABLES = [
   'erp_credit_note_lines',
   'erp_payment_receipts',
   'erp_payment_allocations',
+  // E-invoicing (0049): what the company sent the Tax Authority, every call
+  // about it and the answers. The submission history is a tax record, so it
+  // goes wherever the invoices go. The sealed login and the signing nonces are
+  // withheld below.
+  'eta_settings',
+  'eta_receivers',
+  'eta_item_codes',
+  'eta_unit_types',
+  'eta_tax_mappings',
+  'eta_documents',
+  'eta_attempts',
+  'eta_signing_requests',
   'erp_asset_settings',
   'erp_assets',
   'erp_asset_events',
@@ -155,7 +178,103 @@ export const EXPORTED_TABLES = [
   'erp_van_request_lines',
   'erp_work_order_purchases',
   'audit_log',
-] as const;
+] as const satisfies readonly TenantScopedTable[];
+
+export type ExportedTable = (typeof EXPORTED_TABLES)[number];
+
+/**
+ * Columns left out of a table that is otherwise exported.
+ *
+ * Sealed values are ciphertext under a key only the API holds: in an archive
+ * that leaves our hands they are of no use to the company and one more copy of
+ * something that should exist in one place. The readable part stays (the last
+ * four characters, the credentials hint). A hash or nonce that proves a link or
+ * a signature is a credential, not a record.
+ *
+ * The columns are left out of the query itself, so a withheld value never
+ * leaves the database on the export's account; the suite checks every name
+ * here is still a real column, so renaming one cannot quietly export it.
+ */
+export const WITHHELD_COLUMNS: Readonly<Partial<Record<ExportedTable, readonly string[]>>> = {
+  // The company's own login to the Tax Authority, which it holds itself.
+  eta_settings: ['client_id_sealed', 'client_secret_sealed'],
+  // Single-use proof that a signature answers this request.
+  eta_signing_requests: ['nonce'],
+  // National id, insurance and bank account numbers; their last four stay.
+  hr_employees: ['national_id_sealed', 'insurance_number_sealed', 'bank_account_sealed'],
+  // Verifies the link a customer opens a quote with.
+  crm_quotes: ['access_token_hash'],
+};
+
+/**
+ * Platform tables that carry a company's id, and so are a company's rows as
+ * far as the catalogue is concerned, though the company never reads them.
+ */
+type PlatformTableWithCompany = Extract<
+  PlatformTable,
+  'announcements' | 'billing_events' | 'signup_events' | 'signup_requests' | 'website_keys'
+>;
+
+/**
+ * Every company table that is not in {@link EXPORTED_TABLES}, and why.
+ *
+ * A record rather than a list so that a table missing from both is a compile
+ * error naming it, as well as a failure in the export suite, which compares
+ * both lists with every table whose `tenant_id` references `tenants`.
+ */
+export const NOT_EXPORTED_TABLES: Readonly<
+  Record<Exclude<TenantScopedTable, ExportedTable> | PlatformTableWithCompany, string>
+> = {
+  // Credentials rather than data.
+  sessions: 'Sign-in sessions: credentials, not records.',
+  refresh_tokens: 'Hashes of sign-in tokens: credentials, not records.',
+  offline_grants: "Phones' offline sign-in grants: credentials, not records.",
+  invitations: 'Pending invitations carry a token hash: credentials, not records.',
+  push_devices: "Phones' push notification tokens: credentials, not records.",
+  website_keys:
+    "Hashes of the company website's lookup keys, issued by Integr8 staff: credentials.",
+  // This system's working state, which means nothing outside it.
+  jobs: 'Background work queued for the worker.',
+  idempotency_keys: 'Stored answers for retried requests.',
+  sync_touches: 'Which rows changed since a phone last synced.',
+  sync_log_marks: 'How far the sync change log reaches.',
+  sync_reports: 'How each phone sync ran: diagnostics, not records.',
+  upload_intents: 'Uploads asked for and not yet confirmed; confirmed ones are in files.',
+  ai_message_reservations:
+    'Whether each assistant request was charged; the answers are in ai_messages.',
+  work_order_counters: 'The next work order number.',
+  erp_purchase_order_counters: 'The next purchase order number.',
+  sales_document_counters: 'The next quote, order and delivery numbers.',
+  finance_document_counters: 'The next invoice, credit note and receipt numbers.',
+  journal_reference_counters: 'The next journal number.',
+  asset_reference_counters: 'The next asset number.',
+  assembly_reference_counters: 'The next assembly order number.',
+  expense_reference_counters: 'The next expense claim number.',
+  service_contract_counters: 'The next contract number.',
+  // Derived from rows that are exported.
+  erp_stock_balances: 'Derived from erp_stock_movements, which is exported.',
+  erp_stock_lot_balances: 'Derived from erp_stock_movements, which is exported.',
+  // Integr8's records about the company rather than the company's own.
+  tenant_feature_flags: 'Which modules Integr8 switched on: the platform configuration.',
+  ai_tenant_policies: "The assistant allowance Integr8 set: the platform's configuration.",
+  ai_member_limits: "Members' shares carry the platform's dollar cap (ADR-0002 D7).",
+  ai_cost_periods: "The model provider's cost, never shown to the company (ADR-0002 D7).",
+  ai_member_cost_periods: "The model provider's cost, never shown to the company (ADR-0002 D7).",
+  ai_provider_calls: "The model provider's cost per call, never shown to the company.",
+  impersonation_grants:
+    'Integr8 staff access grants; each one is recorded in audit_log, which is exported.',
+  subscriptions: "The company's plan with Integr8: our billing record.",
+  billing_events: "The billing provider's notices to Integr8.",
+  tenant_storage: 'Which bucket holds the files: our infrastructure.',
+  tenant_storage_usage: 'Storage metering, kept by trigger from files.',
+  tenant_storage_samples: 'Daily storage metering for billing.',
+  storage_reconciliations: "Comparisons of our ledger with Cloudflare's bill.",
+  signup_requests: 'A sign-up before the company existed, with a token hash.',
+  signup_events: 'The anonymous sign-up funnel.',
+  announcements: 'Banners Integr8 wrote; the runtime role cannot read them.',
+  eta_schemas:
+    "A cached copy of the Tax Authority's published JSON Schema, fetched again when needed.",
+};
 
 export interface TenantDataExport {
   tables: Record<string, unknown[]>;
@@ -173,16 +292,43 @@ export class TenantDataExportRepository extends TenantScopedRepository {
     const counts: Record<string, number> = {};
 
     for (const table of EXPORTED_TABLES) {
-      const rows = await this.db
-        .selectFrom(table)
-        .selectAll()
-        .where(`${table}.tenant_id`, '=', this.tenantId)
-        .execute();
+      const withheld = WITHHELD_COLUMNS[table];
+      const rows =
+        withheld === undefined
+          ? await this.db
+              .selectFrom(table)
+              .selectAll()
+              .where(`${table}.tenant_id`, '=', this.tenantId)
+              .execute()
+          : await this.db
+              .selectFrom(table)
+              .select(
+                (await this.columnsOf(table))
+                  .filter((column) => !withheld.includes(column))
+                  .map((column) => this.db.dynamic.ref(column)),
+              )
+              .where(`${table}.tenant_id`, '=', this.tenantId)
+              .execute();
 
       tables[table] = rows;
       counts[table] = rows.length;
     }
 
     return { tables, counts };
+  }
+
+  /**
+   * A table's columns as the catalogue has them now, in table order, so a
+   * column added later is exported without anybody remembering to list it.
+   */
+  private async columnsOf(table: ExportedTable): Promise<string[]> {
+    const result = await sql<{ name: string }>`
+      select attname::text as name
+        from pg_attribute
+       where attrelid = ${`public.${table}`}::regclass
+         and attnum > 0
+         and not attisdropped
+       order by attnum`.execute(this.db);
+    return result.rows.map((row) => row.name);
   }
 }

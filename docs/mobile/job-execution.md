@@ -7,10 +7,14 @@ there is signal ([offline sync](../sync/README.md)), with the moment it happened
 
 ```
 apps/mobile
-  app/home.tsx                 Today: the clock, the next job and its one step forward, then the day's jobs
+  app/home.tsx                 Today: announcements, the clock, the next job and its one step forward, then the day's jobs
+  src/components/announcements.tsx  what Integr8 has announced, from the phone, dismissible
   app/jobs/[id].tsx            one job, in the order it is worked
   app/jobs/complete/[id].tsx   what completing still needs, the sign-off, Complete
+  app/sites/access/[id].tsx    correcting a site's access notes (P12)
   app/qualifications.tsx       My qualifications: the engineer's skills and certificates, read only
+  src/components/job-notes.tsx the job's notes, and adding one (P12)
+  src/lib/access-edit.ts       which access fields the engineer changed                ← unit tested
   src/lib/today.ts             which job is next; which steps are the engineer's       ← unit tested
   src/lib/navigation.ts        directions links for each maps app                      ← unit tested
   src/lib/qualifications.ts    whether the engineer holds what a job needs              ← unit tested
@@ -28,7 +32,15 @@ apps/mobile
 
 ## Today
 
-The home screen opens with the day:
+Above the day, **what Integr8 has announced** to the company (P15): planned maintenance, or a
+reminder that the company's bill is overdue (P17), each as a banner in its severity's colour. The
+phone keeps the announcements `/v1/me` last returned in its own database (`meta`, beside the
+permissions), asking again on launch and on coming back to the app at most every fifteen minutes,
+so the last ones heard show with no signal. One whose end has passed goes by the phone's clock.
+**Dismiss** hides one on this phone only, where the announcement allows it; a new reminder is a
+new announcement and shows again.
+
+The home screen then opens with the day:
 
 1. **The clock.** Clocked in or not, since when and for how long, and the button to change it.
    Clocking out while a job is still travelling, on site or in progress asks first.
@@ -69,6 +81,15 @@ How to get in comes first, then what to do:
 12. time on this job;
 13. then the customer, site, contact, due window, description, sign-off, crew, notes and earlier
     jobs.
+
+**Notes and access notes from the phone** (P12). **Add a note** at the end of the notes saves it
+on the phone and shows it at once, signed with the engineer's name. It is for the office unless
+they choose _The customer may see it_. **Correct access notes** on the access panel opens the gate
+code, hazards, who to ask for, parking and other notes for editing; the site and every job there
+show the correction at once. It is offered only to someone on the crew of an open job at the site
+(or the office), the same rule the server holds the change to, so a gate code cannot be changed
+from a job that is complete, reviewed or cancelled. Both go through the outbox like every other
+change ([offline sync](../sync/README.md#recording-a-change)).
 
 **Only the engineer's own transitions are offered.** `jobSteps` filters the core state machine
 to `work_order.progress`, so dispatching, rescheduling and reviewing never appear on a phone.
@@ -207,18 +228,34 @@ a phone ([checklist](device-checklist.md#p14)).
 
 ### Setting it up
 
-1. **An EAS project.** Run `eas init` in `apps/mobile`. Put the project id in `app.json` as
+1. **An EAS project.** Run `eas init` in `apps/mobile`. Put the project id in `app.config.ts` as
    `extra.eas.projectId` and in the `updates.url`, replacing the zero UUID. The phone does not
    register for push while the id is the placeholder.
-2. **Android (FCM).** Create a Firebase project and add an Android app `com.integr8.plus`.
-   Upload its FCM V1 service account key with `eas credentials` (Android → Push Notifications).
-   `google-services.json` is not needed for Expo push.
+2. **Android (FCM).** Expo reaches an Android phone through Firebase Cloud Messaging, and a
+   release build registers with FCM only when it was built with the Firebase project's
+   `google-services.json`. One Firebase project holds every app: add an Android app for
+   `com.integr8.plus` and for each company's package (`com.integr8.plus.<slug, - as _>`,
+   [company builds](company-builds.md)), download `google-services.json` again after each, and
+   upload it to EAS as the file environment variable `GOOGLE_SERVICES_JSON` (one file can carry
+   several apps). `app.config.ts` sets `android.googleServicesFile` from it only when the file
+   has an app for the package being built (`src/lib/google-services.ts`): Google's build plugin
+   fails a build whose package is missing, so such a build is made without push and its log says
+   which package to add. Then give each application identifier the Firebase service account
+   key (FCM V1) under the EAS project's **Credentials** (or `eas credentials`, Android → Push
+   Notifications). The setup guide has the clicks (Stage 0, Part J; Stage 8, part A).
 3. **iOS (APNs).** `eas credentials` creates the push key when the first build is made, with an
    Apple Developer account.
 4. **The API.** Set `PUSH_SENDER=expo`. Production refuses to start without it. If the EAS
    project has enhanced push security on, also set `EXPO_ACCESS_TOKEN`, a secret held only by
    the API and worker, like the R2 keys. Neither goes in a commit.
-5. A new development build: `expo-notifications` is native.
+5. A new build: `expo-notifications` and the Firebase file are native, so neither arrives over
+   the air.
+
+**A registration that fails is reported, not shown** (`src/local/push.ts`): to Sentry, tagged
+`area: push` and the step that failed (`channels`, `permission`, `token`, `register`), and to the
+device log. The engineer carries on without push. `token` failing on Android almost always means
+the build had no `google-services.json` for its package. No signal is not a failure: the next
+launch tries again.
 
 ## The app lock
 
@@ -239,6 +276,10 @@ Sentry's native SDKs write each event to disk before sending, and send what is s
 next launch with a connection. `maxCacheItems: 100` keeps a week's worth. Every event is tagged
 with the build (`release`), the over-the-air update it was running (`update_id`) and its channel.
 
+Nothing is reported unless the build was given `EXPO_PUBLIC_SENTRY_DSN`, the DSN of the Sentry
+project for the phone (a React Native project). It is not a secret, but it is per deployment, so
+it is an EAS environment variable rather than a value in `eas.json` (below).
+
 ## Over-the-air updates
 
 `expo-updates` with EAS Update: a fix to a screen reaches phones without a store release.
@@ -247,6 +288,20 @@ with the build (`release`), the over-the-air update it was running (`update_id`)
   code. Adding a native module needs a new build, and EAS works that out.
 - **Channels** are `development`, `staging` (the preview profile) and `production`, set per build
   profile in `eas.json`. Publish with `eas update --channel staging --message "…"`.
+- **Build settings travel with the bundle.** `EXPO_PUBLIC_API_BASE_URL`, `EXPO_PUBLIC_APP_ENV`,
+  `EXPO_PUBLIC_SENTRY_DSN` and `EXPO_PUBLIC_AUTH_VERIFICATION_KEYS` are written into the JavaScript
+  when it is bundled, by a build or by `eas update`. The first two are in each profile's `env` in
+  `eas.json`. The DSN, the verification keys (the deployment's `AUTH_VERIFICATION_KEYS`, which the
+  phone checks its [offline grant](../auth/offline-access.md) against) and the
+  `GOOGLE_SERVICES_JSON` file are **EAS environment variables**, set once per environment on
+  expo.dev; each profile names its environment (`development`, `preview`, `production`;
+  `production-internal` inherits `production`). `eas update` takes the `env` values from the shell
+  that runs it, so set the same as the channel's build profile first, and passes
+  `--environment production` (or `preview`) for the rest. A release
+  bundle without `EXPO_PUBLIC_API_BASE_URL` refuses to start rather than talk to `localhost`
+  (`src/lib/env.ts`); expo-updates' error recovery then normally goes back to the previous bundle. Only a
+  literal `process.env.EXPO_PUBLIC_…` is filled in; the mobile ESLint config rejects any other
+  way of reading them.
 - **When it applies.** The phone checks on launch and each time it comes back to the
   foreground. It downloads in the background and runs the new update from the next cold start,
   never under an engineer's fingers mid-form. The launch never waits for the check

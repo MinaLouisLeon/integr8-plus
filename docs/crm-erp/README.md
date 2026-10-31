@@ -128,6 +128,20 @@ or a decision before the pilot (phase L).
 - [ ] Try the phone's F2 screens on a device: My van offline, refill, merchant parts with a receipt in aeroplane mode, receiving by scan (the scanner closes after each code, so a barcode is never counted twice).
 - [x] Amount history on opportunities, if value by stage should use the amount a deal had at each month end rather than today's. Done in G1 (ADR-0013).
 
+### Found in the pre-production audit (2026-10-31)
+
+- [x] Purchase orders took any `currencyCode`, and a receipt folded the price into the item's
+      company-currency average cost and the ledger unconverted. Another currency is now refused
+      (422 `purchase_currency_not_company`), on the order and on a receipt against an older one.
+- [x] `PATCH /v1/settings` changed the company currency at any time, while the ledger reads it
+      live. It is now fixed once the company holds a money record (409 `currency_in_use`; the
+      list is in `07-finance-and-inventory-invariants.md`). A company that must move currency
+      needs a deliberate conversion, which does not exist yet.
+- [x] A pay run used the latest confirmed rule set in force, skipping a newer one still waiting
+      for the owner and taking last year's figures in January. It now uses the latest set in
+      force or nothing: 422 `rules_not_confirmed` while it waits, `rules_from_another_year`
+      when it starts in an earlier year (ADR-0010, 2026-10-31 addendum).
+
 ## Decisions taken with the product owner (2026-10-11)
 
 | Question                         | Decision                                                                                                 |

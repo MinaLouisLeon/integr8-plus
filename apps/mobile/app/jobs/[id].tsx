@@ -1,11 +1,12 @@
 import { CLOSED_WORK_ORDER_STATES } from '@integr8/core';
 import { useTranslation } from '@integr8/i18n';
-import { addressText, job } from '@integr8/offline';
+import { addressText, job, mayCorrectAccess } from '@integr8/offline';
 import { spacing } from '@integr8/tokens';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Linking, Pressable, Text, View } from 'react-native';
 import { AccessNotes } from '~/components/access-notes';
 import { JobForms } from '~/components/job-forms';
+import { JobNotes } from '~/components/job-notes';
 import { JobAssets } from '~/components/job-assets';
 import { JobParts } from '~/components/job-parts';
 import { JobPurchases } from '~/components/job-purchases';
@@ -56,6 +57,14 @@ function Job() {
   const { t, i18n } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const state = useLocalQuery(`job:${id}`, ['work_orders'], (sql) => job(sql, id));
+  // Whether to offer correcting the gate code: asked of the phone's own data,
+  // the same rule the server holds the change to when it arrives.
+  const siteId = state.status === 'ready' ? state.data?.detail.site.id : undefined;
+  const correctable = useLocalQuery(
+    `access-correctable:${siteId ?? ''}`,
+    ['work_orders', 'meta'],
+    (sql) => (siteId === undefined ? Promise.resolve(false) : mayCorrectAccess(sql, siteId)),
+  );
 
   if (state.status !== 'ready') {
     return <NotReadyScreen failed={state.status === 'error'} />;
@@ -82,7 +91,14 @@ function Job() {
         <JobSyncBadge workOrderId={workOrder.id} />
       </View>
 
-      <AccessNotes access={site.access} />
+      <AccessNotes
+        access={site.access}
+        onCorrect={
+          correctable.status === 'ready' && correctable.data
+            ? () => router.push({ pathname: '/sites/access/[id]', params: { id: site.id } })
+            : undefined
+        }
+      />
 
       <JobSyncCard workOrderId={workOrder.id} />
 
@@ -182,22 +198,7 @@ function Job() {
         </Section>
       )}
 
-      {detail.comments.length === 0 ? null : (
-        <Section title={t('mobile.job.notes')}>
-          {detail.comments.map((comment) => (
-            <Row
-              key={comment.id}
-              title={comment.author.name}
-              lines={[comment.body, when(comment.createdAt)]}
-              tag={
-                comment.visibility === 'internal'
-                  ? { label: t('mobile.job.internal'), tone: 'muted' }
-                  : undefined
-              }
-            />
-          ))}
-        </Section>
-      )}
+      <JobNotes detail={detail} />
 
       {detail.previousAtSite.length === 0 ? null : (
         <Section title={t('mobile.job.previous')}>

@@ -11,7 +11,7 @@ what is already done**.
 ## How this plan is organised
 
 Work is grouped into **versions**. Each version is a shippable release with a goal and
-exit criteria. Each version contains numbered **phases** (`P01`…`P35`), one file each.
+exit criteria. Each version contains numbered **phases** (`P01`…`P36`), one file each.
 
 ```
 plan/
@@ -61,7 +61,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` completed · `[!]` block
 - [x] **P01** — Monorepo and tooling
 - [~] **P02** — Database and multi-tenancy
 - [~] **P03** — Authentication and roles
-- [~] **P04** — API skeleton and contract
+- [x] **P04** — API skeleton and contract
 - [~] **P05** — Application shells
 
 ### v0.2 — Form Engine
@@ -95,21 +95,26 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` completed · `[!]` block
 - [~] **P19** — Production hardening
 - [ ] **P20** — Packaging, signing and release
 - [ ] **P21** — First customer onboarding
-- [~] **P36** — Self-hosted sign-in (approved and in progress, 2026-10-31)
+- [~] **P36** — Self-hosted sign-in (merged; the test-box run remains)
 
 ### v1.1 — Inventory and Assets
 
-- [ ] **P22** — Item catalogue and stock ledger
-- [ ] **P23** — Van stock and job consumption
-- [ ] **P24** — Asset register and service history
+- [x] **P22** — Item catalogue and stock ledger
+- [~] **P23** — Van stock and job consumption
+- [~] **P24** — Asset register and service history
 
 ### v1.2 — Scheduling and Dispatch
 
-- [ ] **P25** — Calendar and dispatch board
-- [ ] **P26** — Skills and certificates
-- [ ] **P27** — Maintenance plans, contracts and response deadlines
+- [~] **P25** — Calendar and dispatch board
+- [~] **P26** — Skills and certificates
+- [~] **P27** — Maintenance plans, contracts and response deadlines
 
 ### v1.3 — Reporting, Comms and AI
+
+> Not started as phases, but parts already exist from the module plans below (October 2026
+> review): CSV exports and the CRM and ledger reports (P28), the PDF document designer with
+> Arabic PDFs (P29), and the AI assistant, which answers and prepares actions but does not
+> build forms (P30).
 
 - [ ] **P28** — Reporting and dashboards
 - [ ] **P29** — Branded PDF reports and customer notifications
@@ -118,12 +123,27 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` completed · `[!]` block
 
 ### v2.0 — Scale and Enterprise
 
-- [ ] **P32** — Arabic and full RTL
+> P32 is largely built (every string in Arabic, RTL enforced by lint). Website keys are a first
+> piece of P33, and company roles, the audit log and per-company export are pieces of P34.
+
+- [~] **P32** — Arabic and full RTL
 - [ ] **P33** — Public API, webhooks and integrations
 - [ ] **P34** — Enterprise access and security review
 - [ ] **P35** — Dedicated-instance tier
 
 ---
+
+## Module plans outside the phase list
+
+Several modules were planned and built in their own documents rather than as phases. Their
+status lives there:
+
+| Module                                                                                 | Plan and status                                                                                                     |
+| -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| CRM, sales, finance, ledger, inventory, purchasing, assets, HR, payroll, manufacturing | [`docs/crm-erp/PLAN.md`](../docs/crm-erp/PLAN.md), tracker in [`docs/crm-erp/README.md`](../docs/crm-erp/README.md) |
+| AI assistant                                                                           | [`docs/ai/IMPLEMENTATION_STATUS.md`](../docs/ai/IMPLEMENTATION_STATUS.md)                                           |
+| PDF business documents and the company website data API                                | [`docs/documents/PLAN.md`](../docs/documents/PLAN.md), [`WEBSITE-LOOKUP.md`](../docs/documents/WEBSITE-LOOKUP.md)   |
+| Egyptian e-invoicing (test-only until validated)                                       | [`docs/e-invoicing/PLAN.md`](../docs/e-invoicing/PLAN.md)                                                           |
 
 ## Locked technical decisions
 
@@ -138,7 +158,7 @@ several phases, so change them deliberately.
 | API            | Own service in front of Postgres; REST + OpenAPI, versioned; clients never query Postgres or Auth directly                   |
 | Desktop        | React SPA wrapped by Tauri v2; the same bundle also deploys as a browser app                                                 |
 | Mobile         | Expo, offline-first; fills forms, never builds them                                                                          |
-| Website        | Next.js — marketing, self-serve signup, billing portal, super admin dashboard                                                |
+| Website        | Next.js — marketing, sign-up (off by default: staff onboard companies), billing portal, super admin dashboard                |
 
 ## Explicit non-goals
 
@@ -147,4 +167,7 @@ several phases, so change them deliberately.
 - No custom code per customer. Everything customer-specific goes through forms, task
   types, roles or feature flags.
 - No on-premise deployment.
-- No invoicing or accounting engine — export to QuickBooks, Xero or Zoho instead.
+- No statutory accounting. The finance and ledger modules (docs/crm-erp, ADR-0007 and ADR-0009)
+  are management tools; a company's statutory accounts stay with its accountant. This line
+  once said "no invoicing engine — export to QuickBooks, Xero or Zoho instead"; invoicing was
+  built and the accounting export was not (it belongs to P33).

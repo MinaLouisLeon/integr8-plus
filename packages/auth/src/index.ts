@@ -100,6 +100,7 @@ export {
 
 export {
   SessionService,
+  type IssuedOfflineGrant,
   type IssuedSession,
   type IssueSessionInput,
   type SessionServiceDeps,

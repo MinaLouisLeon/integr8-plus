@@ -25,6 +25,7 @@ export const LOCAL_REFUSAL_KEYS = {
   quantity_invalid: 'mobile.parts.invalidQuantity',
   item_not_in_van: 'mobile.parts.notInVan',
   name_required: 'mobile.localRefusal.name_required',
+  note_required: 'mobile.localRefusal.note_required',
   asset_not_on_phone: 'mobile.localRefusal.asset_not_on_phone',
   amount_invalid: 'mobile.localRefusal.amount_invalid',
   date_invalid: 'mobile.localRefusal.date_invalid',
