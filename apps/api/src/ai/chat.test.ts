@@ -61,6 +61,7 @@ describe('the system prompt at each level (ADR-0001, 2026-10-31 addendum)', () =
     expect(insights).not.toContain('Answer only from the REFERENCE ARTICLES');
     expect(insights).toContain('call a tool and answer from its result');
     expect(insights).toContain('never state a figure or a record that a tool did not return');
+    expect(insights).toContain('say how many exist in all');
     expect(insights).toContain('You cannot change any company data.');
     expect(insights).not.toContain('prepare_');
   });

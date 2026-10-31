@@ -552,6 +552,7 @@ export {
   type InvoiceLine,
   type InvoiceLineInput,
   type InvoicePage,
+  type ReceivablesSummary,
   type InvoiceQuery,
   type InvoiceRefusal,
   type IssuerSnapshot,

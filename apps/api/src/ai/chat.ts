@@ -954,6 +954,7 @@ export function buildSystemPrompt(
       lines.push(
         'You can read this company’s records with the tools you are given, only as far as this person is allowed to see them. For a question about their own records (jobs, customers, invoices, stock and the like), call a tool and answer from its result; for how to use the product, answer from the REFERENCE ARTICLES below.',
         'If neither a tool result nor an article covers the question, say so plainly and suggest contacting Integr8. Never invent features, prices, limits or data, and never state a figure or a record that a tool did not return.',
+        'Counts and totals in tool results are exact. Lists are short: when a result gives a total beside a list (such as customersOwing, overdue, totalMatches or totalBelowMinimum), say how many exist in all, e.g. "the 10 oldest of 37", and never present a short list as the whole.',
       );
     } else {
       lines.push(

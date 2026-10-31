@@ -151,6 +151,33 @@ export interface InvoicePage {
   next: { createdAt: Date; id: string } | undefined;
 }
 
+export interface ReceivablesSummary {
+  /** Issued invoices with something still owing, partly paid ones included. */
+  unpaid: number;
+  /** Of those, past their due date. */
+  overdue: number;
+  /** What is owed, and what of it is overdue, per currency. */
+  owing: { currency: string; amount: string; overdue: string }[];
+  /** How many customers owe anything. */
+  customersOwing: number;
+  /** The customers owing most, per currency, largest first. */
+  byCustomer: {
+    customerId: string;
+    customer: string;
+    currency: string;
+    invoices: number;
+    amount: string;
+  }[];
+  /** The overdue invoices longest past their due date, oldest first. */
+  oldestOverdue: {
+    reference: number | null;
+    customer: string;
+    dueDate: string;
+    currency: string;
+    balance: string;
+  }[];
+}
+
 export type InvoiceRefusal = 'not_found' | 'version_conflict';
 
 export interface CreditNote {
@@ -413,6 +440,112 @@ export class FinanceInvoicesRepository extends TenantScopedRepository {
 
   async invoiceTotals(invoiceId: string): Promise<DocumentTotals> {
     return documentTotals(this.db, 'erp_invoice_lines', 'invoice_id', this.tenantId, invoiceId);
+  }
+
+  /**
+   * What customers owe, exactly: counted and summed in the database over every
+   * issued invoice with a balance, however many there are. The assistant's
+   * figures come from here; a page of the newest invoices would leave out the
+   * old debts, which are the ones that matter.
+   */
+  async receivablesSummary(query: {
+    today: string;
+    customerId?: string;
+    customersLimit?: number;
+    oldestLimit?: number;
+  }): Promise<ReceivablesSummary> {
+    const customerLimit = Math.min(Math.max(query.customersLimit ?? 10, 1), 50);
+    const oldestLimit = Math.min(Math.max(query.oldestLimit ?? 10, 1), 50);
+    const filters = [sql`i.tenant_id = ${this.tenantId}`, sql`i.status = 'issued'`];
+    if (query.customerId !== undefined) {
+      filters.push(sql`i.customer_id = ${query.customerId}::uuid`);
+    }
+    // Written as text with the tenant predicate in it, as the other balance
+    // queries are: the tenant guard reads Kysely nodes.
+    const owed = sql`owed as (
+      select i.id, i.reference, i.customer_id, i.currency_code,
+             coalesce(i.customer_name, '') as customer_name,
+             i.due_date, a.balance,
+             (i.due_date is not null and i.due_date < ${query.today}::date) as is_overdue
+        from erp_invoices i, ${AMOUNTS}
+       where ${sql.join(filters, sql` and `)} and a.balance > 0
+    )`;
+
+    const { rows: totals } = await sql<{
+      currency: string;
+      unpaid: string;
+      overdue: string;
+      amount: string;
+      overdue_amount: string;
+    }>`
+      with ${owed}
+      select currency_code as currency, count(*)::text as unpaid,
+             count(*) filter (where is_overdue)::text as overdue,
+             sum(balance)::text as amount,
+             coalesce(sum(balance) filter (where is_overdue), 0)::text as overdue_amount
+        from owed
+       group by currency_code
+       order by currency_code
+    `.execute(this.db);
+
+    const { rows: customers } = await sql<{
+      customer_id: string;
+      customer: string;
+      currency: string;
+      invoices: string;
+      amount: string;
+      owing_customers: string;
+    }>`
+      with ${owed}
+      select customer_id, max(customer_name) as customer, currency_code as currency,
+             count(*)::text as invoices, sum(balance)::text as amount,
+             (select count(distinct customer_id) from owed)::text as owing_customers
+        from owed
+       group by customer_id, currency_code
+       order by sum(balance) desc, customer_id
+       limit ${customerLimit}
+    `.execute(this.db);
+
+    const { rows: oldest } = await sql<{
+      reference: number | null;
+      customer: string;
+      due_date: string;
+      currency: string;
+      balance: string;
+    }>`
+      with ${owed}
+      select reference, customer_name as customer, to_char(due_date, 'YYYY-MM-DD') as due_date,
+             currency_code as currency, balance::text as balance
+        from owed
+       where is_overdue
+       order by due_date, reference nulls last, id
+       limit ${oldestLimit}
+    `.execute(this.db);
+
+    return {
+      unpaid: totals.reduce((sum, row) => sum + Number(row.unpaid), 0),
+      overdue: totals.reduce((sum, row) => sum + Number(row.overdue), 0),
+      owing: totals.map((row) => ({
+        currency: row.currency,
+        amount: trimDecimal(row.amount),
+        overdue: trimDecimal(row.overdue_amount),
+      })),
+      customersOwing: Number(customers[0]?.owing_customers ?? 0),
+      byCustomer: customers.map((row) => ({
+        customerId: row.customer_id,
+        customer: row.customer,
+        currency: row.currency,
+        invoices: Number(row.invoices),
+        amount: trimDecimal(row.amount),
+      })),
+      oldestOverdue: oldest.map((row) => ({
+        reference: row.reference,
+        customer: row.customer,
+        dueDate: row.due_date,
+        currency: row.currency,
+        balance: trimDecimal(row.balance),
+      })),
+    };
   }
 
   /** Each invoice's total, what was allocated and credited, and what it still owes. */

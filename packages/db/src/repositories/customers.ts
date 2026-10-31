@@ -218,6 +218,32 @@ export class CustomersRepository extends TenantScopedRepository {
     };
   }
 
+  /** How many customers have each status: exact, however many there are. */
+  async countByStatus(): Promise<Record<Customer['status'], number>> {
+    const rows = await this.#customers()
+      .select(['status', sql<string>`count(*)`.as('count')])
+      .groupBy('status')
+      .execute();
+    const counts: Record<Customer['status'], number> = { active: 0, on_hold: 0, closed: 0 };
+    for (const row of rows) {
+      counts[row.status] = Number(row.count);
+    }
+    return counts;
+  }
+
+  /** How many customers a search matches, exactly; the same matching as {@link list}. */
+  async countMatching(text: string): Promise<number> {
+    const words = prefixQuery(text);
+    if (words === undefined) {
+      return 0;
+    }
+    const row = await this.#customers()
+      .select(sql<string>`count(*)`.as('count'))
+      .where(sql<boolean>`search @@ to_tsquery('simple', ${words})`)
+      .executeTakeFirst();
+    return Number(row?.count ?? 0);
+  }
+
   /** Every tag in use, most used first. For the filter's suggestions. */
   async tagsInUse(limit = 100): Promise<{ tag: string; customers: number }[]> {
     const rows = await this.db

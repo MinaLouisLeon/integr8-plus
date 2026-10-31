@@ -269,6 +269,18 @@ company's own records. That needs two approvals, both off by default:
 Until both are true, a company on Insights or Agent gets Help answers and a
 note saying company data is not enabled.
 
+**The figures are exact.** Every count and total an insight tool returns is
+counted and summed in the database over all the company's records the member may
+see (`apps/api/src/ai/tools/insights.ts`): unpaid and overdue invoices and what
+is owed per currency (partly paid invoices included), the customers owing most
+and the overdue invoices longest past due (`receivablesSummary`), customers and
+assets by status, the open pipeline per stage, items below their reorder level.
+Until 2026-10-31 some were worked out from a page of rows: the newest hundred
+invoices, at most two hundred customers or assets, five hundred opportunities.
+A list is still short; the total beside it (`customersOwing`, `overdue`,
+`totalMatches`, `totalWarrantyEndingSoon`, `totalBelowMinimum`) says how many
+exist, and the system prompt tells the model to say so ("the 10 oldest of 37").
+
 ## 7. Exports and deletion
 
 A member's conversations, the actions prepared for them and the message and
