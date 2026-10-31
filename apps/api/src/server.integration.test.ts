@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildServices } from './composition.js';
 import { loadApiConfig } from './config.js';
+import { legacyFingerprint } from './http/idempotency.js';
 import { createLogger } from './http/logger.js';
 import { allRoutes } from './routes/index.js';
 import { buildServer } from './server.js';
@@ -272,6 +273,41 @@ describe('idempotency', () => {
     // And exactly one invitation exists.
     const pending = await withTenant(tenantId, (tx) => tx.invitations.listPending());
     expect(pending.filter((invitation) => invitation.email === email)).toHaveLength(1);
+  });
+
+  it('still replays a record the previous release fingerprinted', async () => {
+    // A retry that crosses the deploy which keyed the fingerprints: its record
+    // holds the old plain hash, and it must replay rather than be refused as a
+    // different request.
+    const token = await signIn(owner);
+    const key = randomUUID();
+    const payload = { email: unique('legacy'), role: 'viewer' };
+    await withTenant(tenantId, async (tx) => {
+      await tx.idempotency.claim({
+        idempotencyKey: key,
+        userId: owner.userId,
+        method: 'POST',
+        path: '/v1/members/invitations',
+        requestFingerprint: legacyFingerprint('POST', '/v1/members/invitations', payload),
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      });
+      await tx.idempotency.complete(key, { status: 201, body: { id: 'recorded-before' } });
+    });
+
+    const retried = await app.inject({
+      method: 'POST',
+      url: '/v1/members/invitations',
+      headers: {
+        authorization: `Bearer ${token}`,
+        'x-client-version': '1.0.0',
+        'idempotency-key': key,
+      },
+      payload,
+    });
+
+    expect(retried.statusCode, retried.body).toBe(201);
+    expect(retried.headers['idempotent-replay']).toBe('true');
+    expect(JSON.parse(retried.body)).toEqual({ id: 'recorded-before' });
   });
 
   it('creates two invitations when two different keys are used', async () => {

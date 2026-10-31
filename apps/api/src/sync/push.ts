@@ -10,7 +10,7 @@ import { type Submission, type TenantTransaction, type WorkOrder, withTenant } f
 import { z } from 'zod';
 import { ApiError, type ErrorDetail } from '../http/errors.js';
 import { isFeatureEnabled } from '../http/features.js';
-import { fingerprintRequest } from '../http/idempotency.js';
+import { fingerprintRequest, legacyFingerprint } from '../http/idempotency.js';
 import { freshTagCode, readableAsset } from '../routes/v1/assets.js';
 import { crmAudit as assetAudit } from '../routes/v1/crm-shared.js';
 import { recordUse } from '../routes/v1/materials.js';
@@ -492,7 +492,13 @@ async function applyOnce(mutation: Mutation, push: PushContext): Promise<Mutatio
       userId: principal.userId,
       method: 'SYNC',
       path: `/v1/sync/push#${mutation.kind}`,
-      requestFingerprint: fingerprintRequest('SYNC', mutation.kind, mutation),
+      requestFingerprint: fingerprintRequest(
+        context.services.requestFingerprintKey,
+        'SYNC',
+        mutation.kind,
+        mutation,
+      ),
+      alsoMatches: [legacyFingerprint('SYNC', mutation.kind, mutation)],
       expiresAt: new Date(now.getTime() + CLAIM_SECONDS * 1000),
     }),
   );

@@ -41,6 +41,7 @@ import { buildAiProvider } from './ai/providers/index.js';
 import { INSIGHT_TOOLS } from './ai/tools/insights.js';
 import { buildPdfPrinter, type PdfPrinter } from './documents/printer.js';
 import { buildEtaServices, type EtaServices } from './eta/services.js';
+import { fingerprintKeyFrom } from './http/idempotency.js';
 import {
   type AppBuildTrigger,
   GitHubAppBuildTrigger,
@@ -116,6 +117,12 @@ export interface Services {
    * A recording stand-in unless APP_BUILDS is `github`.
    */
   appBuilds: AppBuildTrigger;
+  /**
+   * What idempotency fingerprints are keyed with (http/idempotency.ts), so a
+   * stored fingerprint cannot be checked against guesses without the server.
+   * Derived from `PLATFORM_SECRET_KEY`.
+   */
+  requestFingerprintKey: Buffer;
 }
 
 export interface BuildServicesOptions {
@@ -185,6 +192,7 @@ export async function buildServices(options: BuildServicesOptions): Promise<Serv
     pdf: buildPdfPrinter(options.config),
     eta: buildEtaServices(options.config),
     appBuilds: buildAppBuildTrigger(options.config),
+    requestFingerprintKey: fingerprintKeyFrom(authConfig.PLATFORM_SECRET_KEY),
   };
 }
 

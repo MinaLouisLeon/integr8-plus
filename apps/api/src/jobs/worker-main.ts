@@ -14,6 +14,7 @@ import { purgeDueTenants } from '../platform/purge.js';
 import { runSyncMaintenance } from '../sync/maintenance.js';
 import { buildJobHandlers } from './handlers.js';
 import { runMaintenanceSteps } from './maintenance-steps.js';
+import { runTableHousekeeping } from './table-housekeeping.js';
 import { Worker } from './worker.js';
 
 /**
@@ -265,6 +266,15 @@ async function main(): Promise<void> {
                 failures: assistant.failures.length,
               });
             }
+          },
+        },
+        {
+          // Rate-limit counters, spent idempotency records and old login
+          // attempts, which nothing else deletes. Once a night, same
+          // turn-claiming; it logs only when it removed something.
+          name: 'Table housekeeping',
+          run: async () => {
+            await runTableHousekeeping({ logger, workerId: worker.id });
           },
         },
       ],

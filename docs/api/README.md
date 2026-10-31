@@ -29,7 +29,7 @@ request that was never going to be served.
 6. **Suspension** — a suspended company is refused here, reads included.
 7. **Permission** — the matrix in `@integr8/core`.
 8. **Per-tenant rate limit** — one noisy company must not starve another.
-9. **Idempotency** — claim the key, then run the handler.
+9. **Idempotency** — claim the key, then run the handler (see below).
 
 Validation runs _before_ authentication. That means an anonymous caller can
 learn that a body is malformed, which is not a secret; the reverse order would
@@ -128,6 +128,32 @@ against is abuse rather than correctness.
 If it becomes a contention point the answer is Redis, and that is a P19
 conversation. It is one class behind one method, which is what keeps that swap
 small.
+
+## Idempotency records and what deletes them
+
+A write sent with an `Idempotency-Key` is recorded in `idempotency_keys` with a
+fingerprint of the request, so a retry with the same key replays the first
+answer and the same key with a different request answers 409
+`idempotency_key_reused`. The fingerprint is an HMAC-SHA256, keyed with a key
+derived from `PLATFORM_SECRET_KEY`, over the method, path and body **without its
+secret fields** (any name containing `password` or `secret`, any ending in
+`token`, and `code`/`otp` under `/v1/auth/` and `/v1/me/`;
+`apps/api/src/http/idempotency.ts`). Until 0065 it was a plain SHA-256 of the
+whole body, which let a reader of the table test guesses at a new password;
+0065 deleted the records already written for Change password and the ETA
+credentials. A record written by the earlier release still matches its retry
+(the old form is computed and compared, never stored) for as long as such
+records last: 24 hours, or `SYNC_REPLAY_DAYS` for a phone's change.
+
+Three tables grow with ordinary traffic and the worker deletes from them once a
+night (`housekeeping.tables` in `scheduled_task_runs`,
+`apps/api/src/jobs/table-housekeeping.ts`), in batches of 5,000 rows:
+
+| Table                | Deleted when                                        |
+| -------------------- | --------------------------------------------------- |
+| `rate_limit_buckets` | its window started more than a day ago              |
+| `idempotency_keys`   | past its own `expires_at` (24 h; a phone's: longer) |
+| `login_attempts`     | older than 90 days                                  |
 
 ## Running it
 

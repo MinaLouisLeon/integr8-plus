@@ -42,6 +42,7 @@ import {
   PublicDocumentsLookup,
   WebsiteKeysRepository,
 } from './repositories/documents.js';
+import { HousekeepingRepository } from './repositories/housekeeping.js';
 import { LedgerRepository } from './repositories/ledger.js';
 import { LedgerReportsRepository } from './repositories/ledger-reports.js';
 import { MemberGrantsRepository } from './repositories/member-grants.js';
@@ -312,6 +313,8 @@ export interface PlatformDataSource {
   readonly publicDocuments: PublicDocumentsLookup;
   /** Company websites' keys for the document lookup (D10, D11). */
   readonly websiteKeys: WebsiteKeysRepository;
+  /** The worker's nightly delete of spent rate-limit counters, idempotency records and old login attempts. */
+  readonly housekeeping: HousekeepingRepository;
   /** The assistant's plan policies, company overrides, help library, budget and usage report (docs/ai; ADR-0001). */
   readonly ai: AiPlatformRepository;
 }
@@ -587,6 +590,7 @@ export function getPlatformDataSource(): PlatformDataSource {
     publicQuotes: new PublicQuotesLookup(db),
     publicDocuments: new PublicDocumentsLookup(db),
     websiteKeys: new WebsiteKeysRepository(db),
+    housekeeping: new HousekeepingRepository(db),
     ai: new AiPlatformRepository(db),
     jobs: {
       claim: (options) => claimJobs(db, options),

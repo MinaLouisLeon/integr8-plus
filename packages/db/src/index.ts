@@ -503,6 +503,13 @@ export {
   WebsiteKeysRepository,
 } from './repositories/documents.js';
 export {
+  HOUSEKEEPING_BATCH_SIZE,
+  HOUSEKEEPING_MAX_BATCHES,
+  type HousekeepingCutoffs,
+  type HousekeepingReport,
+  HousekeepingRepository,
+} from './repositories/housekeeping.js';
+export {
   DEFAULT_ETA_SETTINGS,
   EMPTY_ETA_ADDRESS,
   type EtaAddress,
