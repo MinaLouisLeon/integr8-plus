@@ -63,8 +63,18 @@ export async function purgeDueTenants(input: PurgeDeps & { now?: Date }): Promis
   const due = await platform.lifecycle.due(input.now ?? new Date());
   const results: PurgeResult[] = [];
 
+  // One company that cannot be purged must not hold up the others, or the
+  // sign-in accounts below. It stays scheduled and is tried again next run.
   for (const deletion of due) {
-    results.push(await purgeOne(deletion.tenantId, input));
+    try {
+      results.push(await purgeOne(deletion.tenantId, input));
+    } catch (error) {
+      input.logger.error('Scheduled deletion failed; will retry on the next run', {
+        tenantId: deletion.tenantId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      results.push({ tenantId: deletion.tenantId, bucket: null, files: 0, purged: false });
+    }
   }
 
   // Every run, not only one that purged something: this is the retry for a
