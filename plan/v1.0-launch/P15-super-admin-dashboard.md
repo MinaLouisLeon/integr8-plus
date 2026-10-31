@@ -138,6 +138,17 @@ fixed, and the first two have regression tests.
   reads up to a millisecond ahead _after_ the round trip — so a banner somebody had just posted
   could be missing from the next `/v1/me`, which is the worst possible moment for the one that
   says the system is going down. It now compares against the database's clock.
+- **The purge still failed on real companies, found in the October 2026 audit.** Tried on the
+  101 companies the integration suites leave behind, 20 could not be purged: a published form
+  version refuses deletion for every role, deleting sites wrote fresh `sync_touches` after that
+  table had been emptied, a quote converted into an order and that order point at each other,
+  an approved purchase order's lines refuse to change, an `on delete set null` key blanked
+  `ai_messages.tenant_id`, and a storage counter went below zero. The bucket was already gone,
+  and the error escaped the worker's single try/catch, so deadline alerts, maintenance jobs and
+  certificate warnings stopped for every company. Migration 0055 runs the purge with triggers
+  and foreign-key checks suspended (all 101 now purge, with nothing left and no other company
+  touched), `tenant-purge.integration.test.ts` pins why that is safe, and each worker step and
+  each due company now fails on its own.
 
 ## Worth fixing next, found here but not P15's
 

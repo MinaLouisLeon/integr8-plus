@@ -198,10 +198,19 @@ export  ──▶  schedule  ──▶  (7 days)  ──▶  purge
   than active, because whoever called the deletion off decides separately whether to start
   serving them again.
 - **`purge_tenant()` refuses anything not scheduled and due**, so even the schema owner cannot
-  remove a company early. It works out its own delete order, because nearly every tenant table
-  is `on delete restrict`, and it lifts the append-only guards on `audit_log`,
-  `submission_events` and `work_order_events` for the length of the purge — a company's history
-  goes only when the company does. `platform_audit_log` is deliberately not on that list.
+  remove a company early. Since migration 0055 it runs with triggers and foreign-key checks
+  suspended (`session_replication_role = replica`) and empties every table whose `tenant_id`
+  references `tenants`, in one pass. Before that it deleted with every guard live and could not
+  purge a company that had published a form, converted a quote into an order, or approved a
+  purchase order. Suspending the checks is safe because no table outside that list points into
+  it; `packages/db/src/testing/tenant-purge.integration.test.ts` checks that on every run. A
+  company's history goes only when the company does: `platform_audit_log`, `tenant_exports` and
+  `tenant_deletions` keep their rows.
+- **One company that cannot be purged does not hold up anything else.** The worker tries each
+  due company on its own and logs the one that failed; it stays scheduled and is tried again.
+  Each housekeeping step on the worker's timer (media, sync, purges, metering, dunning, expiry
+  alerts, maintenance plans, deadlines, the assistant) also runs on its own, so a failing purge
+  no longer stops deadline alerts.
 
 **Bucket first, then rows.** The two stores cannot be emptied atomically, so the order is the
 decision:
