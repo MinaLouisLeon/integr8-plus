@@ -24,6 +24,22 @@ import {
  */
 
 const here = dirname(fileURLToPath(import.meta.url));
+
+/**
+ * The product's version, from the root package.json: the one number a release
+ * bumps. The phone sends it as `x-client-version` and Sentry files crashes
+ * under it, so a copy kept here went stale (1.1.0 while the product was 1.2.1).
+ * EAS uploads the whole workspace, so the file is there on the build server.
+ */
+function productVersion(): string {
+  const root = JSON.parse(readFileSync(join(here, '../../package.json'), 'utf8')) as {
+    version?: unknown;
+  };
+  if (typeof root.version !== 'string' || root.version === '') {
+    throw new Error('The root package.json has no version.');
+  }
+  return root.version;
+}
 const EAS_PROJECT_ID = 'b950cc9e-9e26-477a-905f-4c216767fde4';
 
 /** Why the phone may use the microphone: the assistant's spoken questions, and nothing else. */
@@ -54,7 +70,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ...config,
     name: company?.name ?? 'Integr8 Plus',
     slug: identifiers?.slug ?? 'integr8-plus',
-    version: '1.1.0',
+    version: productVersion(),
     orientation: 'portrait',
     scheme: identifiers?.scheme ?? 'integr8',
     userInterfaceStyle: 'automatic',

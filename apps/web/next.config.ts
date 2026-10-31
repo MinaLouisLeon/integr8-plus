@@ -1,6 +1,15 @@
 import { withSentryConfig } from '@sentry/nextjs/config';
 import type { NextConfig } from 'next';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
+
+/** The product's version: the root package.json, the one number a release bumps. */
+function productVersion(): string {
+  const root = JSON.parse(
+    readFileSync(path.join(import.meta.dirname, '../../package.json'), 'utf8'),
+  ) as { version?: unknown };
+  return typeof root.version === 'string' ? root.version : '0.0.0';
+}
 
 /**
  * Browser defences that cost nothing and that no page here needs relaxed.
@@ -46,8 +55,11 @@ const config: NextConfig = {
   typescript: { ignoreBuildErrors: false },
   eslint: { ignoreDuringBuilds: false },
 
+  // The build argument when there is one (the image is built per release),
+  // otherwise the root package.json: the one number a release bumps. This used
+  // to read apps/web's own package.json, which still said 1.1.0.
   env: {
-    NEXT_PUBLIC_APP_VERSION: process.env.npm_package_version ?? '1.1.0',
+    NEXT_PUBLIC_APP_VERSION: process.env.NEXT_PUBLIC_APP_VERSION || productVersion(),
   },
 };
 

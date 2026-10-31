@@ -32,4 +32,4 @@ The API is the application boundary for clients. Postgres tenant isolation is en
 - ETA integration notes: `docs/e-invoicing/`
 - Core source: `apps/api/src/routes/v1/`, `apps/web/src/app/`, `apps/mobile/app/`, `packages/operations-dom/src/`, `packages/db/migrations/`
 
-**Read carefully:** root README/roadmap summaries lag some code. Root package version is 1.2.1 and migrations currently reach 0056. Feature visibility is gated by tenant modules, plan entitlements and permissions. ETA credentials and live end-to-end validation are environment-dependent; code presence does not imply legal certification.
+**Read carefully:** root README/roadmap summaries lag some code. Root package version is 1.2.2 and migrations currently reach 0056. Feature visibility is gated by tenant modules, plan entitlements and permissions. ETA credentials and live end-to-end validation are environment-dependent; code presence does not imply legal certification.
