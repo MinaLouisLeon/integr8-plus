@@ -174,11 +174,14 @@ export const apiConfigSchema = z.object({
   // -------------------------------------------------------------------------
 
   /**
-   * Who takes the money. `stripe` is the real one; `recording` keeps the
-   * requests in memory so every other part of billing — entitlements, dunning,
-   * read-only — works with no account anywhere. Production refuses `recording`.
+   * Who takes the money. `none` takes no card payments: Integr8 invoices every
+   * company directly and sets its plan from the dashboard, and no provider
+   * keys are needed (the production default in deploy/.env.example). `stripe`
+   * takes cards; `recording` keeps the requests in memory so every other part
+   * of billing — entitlements, dunning, read-only — works with no account
+   * anywhere. Production refuses `recording`, and `stripe` with test keys.
    */
-  BILLING_PROVIDER: z.enum(['recording', 'stripe']).default('recording'),
+  BILLING_PROVIDER: z.enum(['none', 'recording', 'stripe']).default('recording'),
   /** Stripe's secret key. Server-side only; it can charge cards. */
   STRIPE_SECRET_KEY: z.string().optional(),
   /**
@@ -757,6 +760,29 @@ export function aiProblems(config: ApiConfig): string[] {
   return problems;
 }
 
+/**
+ * Stripe test keys in production: checkouts would succeed against Stripe's
+ * test mode, companies would be marked paid, and no money would move. A
+ * restricted key (`rk_`) counts as well as a secret one; a publishable key
+ * (`pk_`) cannot do the API's work at all. Webhook signing secrets look the
+ * same in both modes, so they cannot be checked here.
+ */
+export function stripeKeyProblems(config: ApiConfig): string[] {
+  if (config.BILLING_PROVIDER !== 'stripe' || config.STRIPE_SECRET_KEY === undefined) {
+    return [];
+  }
+  const key = config.STRIPE_SECRET_KEY;
+  if (/^(sk|rk)_test_/u.test(key)) {
+    return [
+      'STRIPE_SECRET_KEY is a test-mode key (sk_test_): no card would really be charged. Use the live key, or BILLING_PROVIDER=none.',
+    ];
+  }
+  if (key.startsWith('pk_')) {
+    return ['STRIPE_SECRET_KEY is a publishable key (pk_): use the secret key (sk_live_).'];
+  }
+  return [];
+}
+
 export function billingProblems(config: ApiConfig): string[] {
   if (config.BILLING_PROVIDER !== 'stripe') {
     return [];
@@ -822,8 +848,11 @@ export function assertProductionReady(
     problems.push('PUSH_SENDER is recording: no engineer would be told about a new job.');
   }
   if (config.BILLING_PROVIDER === 'recording') {
-    problems.push('BILLING_PROVIDER is recording: nobody could pay, and nothing would be charged.');
+    problems.push(
+      'BILLING_PROVIDER is recording: nobody could pay, and nothing would be charged. Use none if Integr8 invoices every company, or stripe.',
+    );
   }
+  problems.push(...stripeKeyProblems(config));
   if (config.EMAIL_SENDER === 'recording') {
     problems.push(
       'EMAIL_SENDER is recording: no invitation, signup confirmation or payment warning would leave the building.',

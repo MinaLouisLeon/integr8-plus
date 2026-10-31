@@ -26,7 +26,7 @@ const PRODUCTION_BASE = {
   MAPBOX_ACCESS_TOKEN: 'pk.token',
   PUSH_SENDER: 'expo',
   BILLING_PROVIDER: 'stripe',
-  STRIPE_SECRET_KEY: 'sk_test_x',
+  STRIPE_SECRET_KEY: 'sk_live_x',
   STRIPE_WEBHOOK_SECRET: 'whsec_x',
   EMAIL_SENDER: 'resend',
   RESEND_API_KEY: 're_x',
@@ -211,5 +211,46 @@ describe('the database connections production is given', () => {
         DATABASE_URL_ADMIN: 'postgres://postgres:x@postgres:5432/integr8',
       }),
     ).toThrow(/DATABASE_URL_ADMIN is set/u);
+  });
+});
+
+describe('the billing provider in production', () => {
+  const ready = (overrides: Record<string, string | undefined>) => () =>
+    assertProductionReady(
+      loadApiConfig({
+        ...PRODUCTION_BASE,
+        API_CORS_ORIGINS: 'https://app.example.com',
+        ...overrides,
+      }),
+      PRODUCTION_DATABASE,
+    );
+
+  it('starts with none and no Stripe keys: Integr8 invoices every company', () => {
+    expect(
+      ready({
+        BILLING_PROVIDER: 'none',
+        STRIPE_SECRET_KEY: undefined,
+        STRIPE_WEBHOOK_SECRET: undefined,
+      }),
+    ).not.toThrow();
+  });
+
+  it('refuses Stripe test keys, which would mark companies paid with no money moving', () => {
+    expect(ready({ STRIPE_SECRET_KEY: 'sk_test_abc' })).toThrow(/test-mode key/u);
+    expect(ready({ STRIPE_SECRET_KEY: 'rk_test_abc' })).toThrow(/test-mode key/u);
+    expect(ready({ STRIPE_SECRET_KEY: 'pk_live_abc' })).toThrow(/publishable key/u);
+    expect(ready({ STRIPE_SECRET_KEY: 'sk_live_abc' })).not.toThrow();
+  });
+
+  it('still refuses recording', () => {
+    expect(ready({ BILLING_PROVIDER: 'recording' })).toThrow(/BILLING_PROVIDER is recording/u);
+  });
+
+  it('lets staging use test keys', () => {
+    expect(() =>
+      assertProductionReady(
+        loadApiConfig({ ...PRODUCTION_BASE, APP_ENV: 'staging', STRIPE_SECRET_KEY: 'sk_test_abc' }),
+      ),
+    ).not.toThrow();
   });
 });

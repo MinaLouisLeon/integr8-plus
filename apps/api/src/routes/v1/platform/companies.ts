@@ -1,6 +1,7 @@
 import { toPlatformUserId, toTenantId } from '@integr8/core';
 import { getPlatformDataSource, TENANT_PLANS, type TenantSummary, withTenant } from '@integr8/db';
 import { z } from 'zod';
+import { effectiveBillingMode } from '../../../billing/provider.js';
 import { conflict, notFound } from '../../../http/errors.js';
 import { defineRoute, noSchema, type PlatformRequestContext } from '../../../http/routes.js';
 import { forgetTenantStatus } from '../../../http/suspension.js';
@@ -410,7 +411,7 @@ export const setCompanyPlanRoute = defineRoute({
   operationId: 'setCompanyPlan',
   summary: 'Change a company’s plan, seat count or billing mode',
   description:
-    'Sets the plan the API enforces and, for a company Integr8 invoices, the plan its people see on the billing screen. Switching a company to `invoiced` makes its subscription active with no trial and lifts a read-only state that non-payment caused: Integr8 is taking the money now. Switching back to `self_serve` leaves the subscription as the provider last described it.',
+    'Sets the plan the API enforces and, for a company Integr8 invoices, the plan its people see on the billing screen. Switching a company to `invoiced` makes its subscription active with no trial and lifts a read-only state that non-payment caused: Integr8 is taking the money now. Switching back to `self_serve` leaves the subscription as the provider last described it. On a deployment that takes no card payments (`BILLING_PROVIDER=none`) every company is invoiced, and `self_serve` is stored as `invoiced`.',
   tags: ['platform'],
   security: 'platform',
   params: z.object({ tenantId: z.uuid() }),
@@ -438,7 +439,13 @@ export const setCompanyPlanRoute = defineRoute({
     const tenant = await platform.tenants.setPlan(params.tenantId, {
       plan: body.plan,
       seats: body.seats,
-      ...(body.billingMode === undefined ? {} : { billingMode: body.billingMode }),
+      // With no card provider every company is invoiced (BILLING_PROVIDER=none).
+      ...(body.billingMode === undefined
+        ? {}
+        : {
+            billingMode:
+              context.services.billing.provider === 'none' ? 'invoiced' : body.billingMode,
+          }),
     });
     if (tenant === undefined) {
       throw notFound(`No company with id ${params.tenantId}`);
@@ -448,7 +455,8 @@ export const setCompanyPlanRoute = defineRoute({
     // company, so it has to agree with the plan just set. For a self-serve
     // company that is all this touches: status, period and dunning belong to
     // the provider. For an invoiced one there is no provider to wait for.
-    const invoiced = tenant.billingMode === 'invoiced';
+    const invoiced =
+      effectiveBillingMode(tenant.billingMode, context.services.billing) === 'invoiced';
     const subscription = await platform.billing.find(tenant.id);
     if (subscription === undefined) {
       await platform.billing.start({

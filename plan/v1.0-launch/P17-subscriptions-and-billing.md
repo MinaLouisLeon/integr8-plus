@@ -30,6 +30,15 @@ Plans, entitlements and Stripe. Build this only once the product is worth paying
 - [ ] Proration on seat removal — the quantity is sent at checkout, not on every membership change
 - [ ] In-app upgrade prompt shown at the moment a limit is hit — the refusal carries the numbers, but no prompt is rendered
 
+Pre-production audit, Medium (2026-10-31):
+
+- **`BILLING_PROVIDER=none`, the production default.** Integr8 invoices every company; no
+  Stripe keys are needed and production accepts it. Every company reads as invoiced
+  (`effectiveBillingMode`), new companies are stored invoiced, checkout and the portal answer
+  `billing_invoiced`, the webhook believes nothing and dunning does nothing
+  (`billing-none.integration.test.ts`). With `stripe`, production refuses test-mode keys.
+  Paymob is the planned card adapter behind the same interface (docs/billing).
+
 ## Exit criteria
 
 - [x] A company subscribes, is charged, and their entitlements apply immediately

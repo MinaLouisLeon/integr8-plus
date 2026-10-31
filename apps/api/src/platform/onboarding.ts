@@ -124,7 +124,11 @@ export async function onboardCompany(input: OnboardCompanyInput): Promise<Onboar
     name: input.name,
     plan: input.plan,
     seats: input.seats,
-    billingMode: input.billingMode ?? 'self_serve',
+    // A deployment that takes no card payments invoices every company, so one
+    // made there is invoiced whatever was asked: a self-serve trial would run
+    // out into read-only with no way to pay.
+    billingMode:
+      input.billing.provider === 'none' ? 'invoiced' : (input.billingMode ?? 'self_serve'),
     onboardedBy: input.onboardedBy,
   });
 

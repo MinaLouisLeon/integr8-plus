@@ -170,9 +170,9 @@ Invitations, sign-in codes and payment reminders are sent by the product through
 - [ ] **Create an account** at `resend.com`. Domains → Add Domain → `integr8-media.com`. Resend shows DNS records (an MX, a TXT for SPF, a DKIM record). Add each in Cloudflare → DNS → Records exactly as shown, then click Verify in Resend; minutes to an hour.
 - [ ] **Create an API key**: API Keys → Create → name `integr8-production`, permission **Sending access**, restricted to your domain. Copy it (`re_…`, shown once). Key sheet: `RESEND_API_KEY`, and `EMAIL_FROM` = `Integr8 Plus <info@integr8-media.com>`.
 
-### G. Stripe, for companies that pay in the app
+### G. Stripe, optional: only for companies that pay in the app
 
-Each company is either invoiced by you or pays in the app with a card. Stripe is for the second kind. Start in **test mode**: its own keys, its own customers, and the card `4242 4242 4242 4242` pays every time. Stage 9 repeats this in live mode.
+**Skip this part unless companies will pay in the app by card.** The server starts with `BILLING_PROVIDER=none`: you invoice every company yourself and set its plan from the dashboard, with no card provider, no keys and nothing here, in staging and in production. Paymob, for Egyptian cards, is the card option planned for later; Stripe works today. If you do want Stripe, start in **test mode**: its own keys, its own customers, and the card `4242 4242 4242 4242` pays every time. Stage 9 repeats this in live mode, and production refuses test keys.
 
 - [ ] **Create an account** at `stripe.com`; make sure the **test mode** toggle (top right) is on for everything below.
 - [ ] **Secret key**: Developers → **API keys** → Secret key, `sk_test_…`. Key sheet: `STRIPE_SECRET_KEY`.
@@ -294,8 +294,8 @@ Every value, where it came from, and where it goes. `deploy/.env` is the one fil
 | SSH public key                                                                                                                                 | Part A                                | Oracle's instance form (Stage 1)                                                                      |
 | `CLOUDFLARE_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`                                                                            | Part D                                | `deploy/.env`                                                                                         |
 | `RESEND_API_KEY`, `EMAIL_FROM`                                                                                                                 | Part F                                | `deploy/.env`                                                                                         |
-| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`                                                                                                   | Part G (test mode; live in Stage 9)   | `deploy/.env`                                                                                         |
-| Stripe price IDs                                                                                                                               | Part G                                | Dashboard → Plans (Stage 5)                                                                           |
+| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`                                                                                                   | Part G, only with Stripe              | `deploy/.env`                                                                                         |
+| Stripe price IDs                                                                                                                               | Part G, only with Stripe              | Dashboard → Plans (Stage 5)                                                                           |
 | `MAPBOX_ACCESS_TOKEN`                                                                                                                          | Part H                                | `deploy/.env`                                                                                         |
 | `SENTRY_DSN`, `WEB_SENTRY_DSN`, `WEB_PUBLIC_SENTRY_DSN`                                                                                        | Part I                                | `deploy/.env`; the public one also GitHub                                                             |
 | `DESKTOP_PUBLIC_SENTRY_DSN`                                                                                                                    | Part I                                | GitHub variable                                                                                       |
@@ -510,14 +510,21 @@ PUSH_SENDER=expo
 # EXPO_ACCESS_TOKEN=
 ```
 
-- [ ] **Billing.** `BILLING_PROVIDER=recording` becomes `stripe`. Uncomment the two key lines and replace their placeholders with the test-mode secret key and the webhook signing secret from Part G. Leave `BILLING_TRIAL_DAYS` and `BILLING_GRACE_DAYS` as they are (14 and 14: the trial a pays-in-the-app company gets, and the days between a failed payment and read-only).
+- [ ] **Billing.** Leave `BILLING_PROVIDER=none` and the two Stripe lines commented: you invoice every company, every company's billing page says so, and production needs nothing more. Only if you did Part G: `none` becomes `stripe`, uncomment the two key lines and put the test-mode secret key and the webhook signing secret from Part G in place of their placeholders, as in the second block. Leave `BILLING_TRIAL_DAYS` and `BILLING_GRACE_DAYS` as they are (14 and 14: the trial a pays-in-the-app company gets, and the days between a failed payment and read-only; with `none` nobody has a trial).
 
 ```text
+BILLING_PROVIDER=none
+# STRIPE_SECRET_KEY=sk_live_...
+# STRIPE_WEBHOOK_SECRET=whsec_...
+BILLING_TRIAL_DAYS=14
+BILLING_GRACE_DAYS=14
+```
+
+```text
+# only with Stripe (Part G)
 BILLING_PROVIDER=stripe
 STRIPE_SECRET_KEY=sk_test_51Qx…
 STRIPE_WEBHOOK_SECRET=whsec_3f9a…
-BILLING_TRIAL_DAYS=14
-BILLING_GRACE_DAYS=14
 ```
 
 - [ ] **Email.** `EMAIL_SENDER=recording` becomes `resend`. Uncomment the two lines; the key from Part F, and the sender in the form `Name <address>` with an address on the verified domain.
@@ -673,7 +680,7 @@ docker compose -f deploy/compose.yml --env-file deploy/.env \
 
 - [ ] **Save what it prints**: a password and an authenticator secret, shown once. Add the secret to Google Authenticator, 1Password or Authy (scan the `otpauth://` URI as a QR code, or type the secret). This same account signs you in to the desktop app as staff. Because the terminal made it, it is a **staff manager**: the only kind of account that can add and remove colleagues (below).
 - [ ] **Sign in** at `https://app.integr8-media.com/platform/sign-in` with the email, the password and a six-digit code. Open **Health**; it should be empty.
-- [ ] **Attach the Stripe prices to the plans**: dashboard → **Plans** → for Starter, Standard and Enterprise paste the monthly (and yearly) price IDs from the key sheet. A plan with no price cannot be bought by a company that pays in the app, and the pricing page says so. Companies you invoice never see this.
+- [ ] **Attach the Stripe prices to the plans**, only with Stripe (Part G): dashboard → **Plans** → for Starter, Standard and Enterprise paste the monthly (and yearly) price IDs from the key sheet. A plan with no price cannot be bought by a company that pays in the app, and the pricing page says so. Companies you invoice never see this.
 - [ ] **Look at Companies**: empty. Stage 7 fills it. First, Stage 6 gets you the apps.
 
 ### Colleagues: the Staff page
@@ -775,7 +782,7 @@ Everything exists now: the stack, the dashboard, both apps, real email. This sta
 - [ ] **Build the company's own apps.** Dashboard → the company's page → **Website and apps** → tick **Build apps for this company** → Save. If the machine may start builds (`APP_BUILDS=github`, Stage 8, part A), the panel says "Build started on GitHub" with a link to the run, and there is nothing more to do here. Otherwise it says to start it by hand: repository → **Actions** → **Build company apps** → **Run workflow** → type the company's short name, leave the other boxes empty, run. About 25 minutes later the Releases page has `company-<short name>-v1.2.2` with the company's desktop installers and its Android app. Stage 8 explains everything this run did and how it repeats at every release.
 - [ ] **Install the company's apps.** From that release: the Windows installer (named after the company) on your laptop, beside the staff app, and the `.apk` on the phone (open the release page on the phone, download, allow installing from this source when Android asks). The phone opens on the company's website with a **Login** button in the header; the desktop app opens on a sign-in screen in the company's colours with only the company door.
 - [ ] **Complete the job on the phone, offline.** Press Login in the company's phone app and sign in as the engineer, pull the jobs down, turn on aeroplane mode, complete the job with a photo and a signature, turn aeroplane mode off, and watch it arrive in the office. The photo lands in the company's R2 bucket. `docs/mobile/device-checklist.md` in the repository is the full list of what to try.
-- [ ] **Try in-app payment once**, in test mode: on the company's dashboard page → Plan and billing → Billing: Pays in the app → Save. As the owner, Billing → choose a plan → Stripe's checkout → card `4242 4242 4242 4242`, any future date. The plan shows as active within seconds; dashboard → Health → Billing deliveries lists the webhook events as applied. Then switch the company back to Invoiced.
+- [ ] **Try in-app payment once**, only with Stripe and in test mode (with `BILLING_PROVIDER=none` the company's Billing page says it is invoiced by Integr8, and that is the check): on the company's dashboard page → Plan and billing → Billing: Pays in the app → Save. As the owner, Billing → choose a plan → Stripe's checkout → card `4242 4242 4242 4242`, any future date. The plan shows as active within seconds; dashboard → Health → Billing deliveries lists the webhook events as applied. Then switch the company back to Invoiced.
 - [ ] **Walk the business modules once**, as the owner, on the web app: a lead converted to a customer and an opportunity dragged across the pipeline board; a quote accepted through its link, turned into a sales order and delivered; an invoice issued and a payment allocated; an item received into a warehouse, transferred to the engineer's van and used on the job from the phone (a serial-numbered item asks which serial); an asset with a printed QR label; a person given a company role under Settings → People → Company roles. Each screen is in the side menu under its group.
 
 ### The AI assistant for this company
@@ -909,7 +916,7 @@ Everything above works with Stripe in test mode and the API in staging mode. Thi
 
 ### A. The services, for real
 
-- [ ] **Stripe live mode**, only if any company will pay in the app. Activate the account (business details, bank account), switch the toggle to live, repeat Stage 0 Part G there: the live secret key (`sk_live_`), the three products with prices, a **new webhook endpoint** for the same URL with the same events and its live signing secret. Live and test share nothing. Paste the live price IDs into dashboard → Plans. If every company is invoiced, skip this and keep the test keys; production mode only requires that a provider is configured.
+- [ ] **Stripe live mode**, only if any company will pay in the app. Activate the account (business details, bank account), switch the toggle to live, repeat Stage 0 Part G there: the live secret key (`sk_live_`), the three products with prices, a **new webhook endpoint** for the same URL with the same events and its live signing secret. Live and test share nothing. Paste the live price IDs into dashboard → Plans. With `BILLING_PROVIDER=none` (every company invoiced), skip this: production needs no Stripe keys. With `stripe`, production refuses to start on a test-mode key (`sk_test_`).
 - [ ] **Edit the env file**: the live Stripe keys if any, and `APP_ENV=production`. Then:
 
 ```bash
@@ -1357,6 +1364,13 @@ Caddy now tells browsers to use HTTPS only for a year on both names (no `include
 - [ ] **Caddy's header lines**, during part F's comparison: copy the `header` lines of both blocks from `deploy/vps/Caddyfile.example` into `/etc/caddy/Caddyfile`, then `sudo systemctl reload caddy`. Stage 4's "browser security headers" check passes.
 - [ ] **Watch the reports** for two weeks: Sentry's web project lists anything the policy would have blocked as CSP reports. Nothing listed means it can be enforced; send what is listed to the developers instead of loosening Caddy.
 - [ ] **Update the desktop apps** (part G): the new policy is part of each installer.
+
+### W. Invoiced-only billing, without Stripe (included in v1.2.2)
+
+`BILLING_PROVIDER=none` is new: Integr8 invoices every company and sets its plan from the dashboard, with no card provider and no keys, and production accepts it. Every company reads as invoiced, including one made earlier as "pays in the app", so no trial runs out into read-only. With `stripe`, production now refuses a test-mode key.
+
+- [ ] **Choose**, during part C with `nano deploy/.env`. Invoicing every company: set `BILLING_PROVIDER=none` and leave the Stripe lines commented. Taking cards in the app: keep `stripe` with the live keys (Stage 9, part A); test keys stop a production start with "STRIPE_SECRET_KEY is a test-mode key".
+- [ ] **Check one company** after part D: its Billing page says "Invoiced by Integr8" with no plan buttons, and the dashboard's company page shows Billing: Invoiced by Integr8 for a company you onboard from now on.
 
 > [!NOTE]
 > **The test box (Stage 10)** updates the same way, from `staging` instead of `main`: `git pull` on its `staging` checkout, then **Pull** and **Redeploy** the stack in Arcane. Updating it first, the day before, is the cheapest rehearsal there is.

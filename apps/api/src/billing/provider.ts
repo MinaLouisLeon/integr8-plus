@@ -184,6 +184,73 @@ export interface BillingProvider {
 }
 
 // ---------------------------------------------------------------------------
+// No provider: every company is invoiced by Integr8
+// ---------------------------------------------------------------------------
+
+/**
+ * A deployment that takes no card payments (`BILLING_PROVIDER=none`).
+ *
+ * Not a fake: production accepts it. Integr8 invoices every company directly
+ * and sets each one's plan from the dashboard, so the API treats every company
+ * as invoiced whatever its row says ({@link effectiveBillingMode}), and the
+ * checkout and portal routes refuse before they reach this. If something does
+ * reach it, it refuses too, rather than hand out a link that goes nowhere.
+ *
+ * A card provider later (Paymob, for Egyptian cards; docs/billing) is another
+ * adapter behind {@link BillingProvider}, and the switch is this setting.
+ */
+export class NoBillingProvider implements BillingProvider {
+  readonly provider = 'none';
+
+  createCheckout(request: CheckoutRequest): Promise<HostedSession> {
+    void request;
+    return Promise.reject(
+      new Error('This deployment takes no card payments (BILLING_PROVIDER=none).'),
+    );
+  }
+
+  createPortal(request: PortalRequest): Promise<HostedSession> {
+    void request;
+    return Promise.reject(
+      new Error('This deployment takes no card payments (BILLING_PROVIDER=none).'),
+    );
+  }
+
+  /** Nothing is ever expected here, so nothing verifies: the webhook answers 400. */
+  parseWebhook(rawBody: string, signature: string | undefined): ParsedWebhook {
+    void rawBody;
+    void signature;
+    throw new WebhookSignatureError('No billing provider is configured on this deployment.');
+  }
+
+  /** Seats are billed by Integr8's own invoices; there is no subscription to change. */
+  setQuantity(subscriptionId: string, quantity: number): Promise<void> {
+    void subscriptionId;
+    void quantity;
+    return Promise.resolve();
+  }
+
+  listInvoices(customerId: string): Promise<Invoice[]> {
+    void customerId;
+    return Promise.resolve([]);
+  }
+}
+
+/**
+ * How a company is billed, given the deployment's provider.
+ *
+ * With no provider every company is invoiced, including one created earlier as
+ * self-serve: nobody could pay in the app, so its trial must not run out into
+ * read-only and the screens must not offer a checkout.
+ */
+export function effectiveBillingMode(
+  stored: 'self_serve' | 'invoiced',
+  provider: Pick<BillingProvider, 'provider'>,
+): 'self_serve' | 'invoiced' {
+  return provider.provider === 'none' ? 'invoiced' : stored;
+}
+
+// ---------------------------------------------------------------------------
 // The fake
 // ---------------------------------------------------------------------------
 

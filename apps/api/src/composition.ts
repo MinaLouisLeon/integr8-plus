@@ -25,6 +25,7 @@ import { LocalDiskStorage } from './media/local-disk.js';
 import { FakeGeocoder, type Geocoder, MapboxGeocoder } from './geo/geocoder.js';
 import {
   type BillingProvider,
+  NoBillingProvider,
   RecordingBillingProvider,
   StripeBillingProvider,
 } from './billing/provider.js';
@@ -220,6 +221,9 @@ export function buildAppBuildTrigger(config: ApiConfig): AppBuildTrigger {
  * this repeats the check because the two could drift.
  */
 export function buildBillingProvider(config: ApiConfig): BillingProvider {
+  if (config.BILLING_PROVIDER === 'none') {
+    return new NoBillingProvider();
+  }
   if (config.BILLING_PROVIDER !== 'stripe') {
     return new RecordingBillingProvider();
   }

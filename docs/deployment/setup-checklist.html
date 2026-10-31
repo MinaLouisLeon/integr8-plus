@@ -145,8 +145,8 @@ $k = New-Object byte[] 32; [Security.Cryptography.RandomNumberGenerator]::Create
           <li><input type="checkbox" id="a5-2"><label for="a5-2"><b>Create an API key</b>: API Keys → Create → name <code>integr8-production</code>, permission <b>Sending access</b>, restricted to your domain. Copy it (<code>re_…</code>, shown once). Key sheet: <code>RESEND_API_KEY</code>, and <code>EMAIL_FROM</code> = <code>Integr8 Plus &lt;info@integr8-media.com&gt;</code>.</label></li>
         </ul>
 
-        <h3>G. Stripe, for companies that pay in the app</h3>
-        <p>Each company is either invoiced by you or pays in the app with a card. Stripe is for the second kind. Start in <b>test mode</b>: its own keys, its own customers, and the card <code>4242 4242 4242 4242</code> pays every time. Stage 9 repeats this in live mode.</p>
+        <h3>G. Stripe, optional: only for companies that pay in the app</h3>
+        <p><b>Skip this part unless companies will pay in the app by card.</b> The server starts with <code>BILLING_PROVIDER=none</code>: you invoice every company yourself and set its plan from the dashboard, with no card provider, no keys and nothing here, in staging and in production. Paymob, for Egyptian cards, is the card option planned for later; Stripe works today. If you do want Stripe, start in <b>test mode</b>: its own keys, its own customers, and the card <code>4242 4242 4242 4242</code> pays every time. Stage 9 repeats this in live mode, and production refuses test keys.</p>
         <ul class="check" data-stage="a6">
           <li><input type="checkbox" id="a6-1"><label for="a6-1"><b>Create an account</b> at <code>stripe.com</code>; make sure the <b>test mode</b> toggle (top right) is on for everything below.</label></li>
           <li><input type="checkbox" id="a6-2"><label for="a6-2"><b>Secret key</b>: Developers → <b>API keys</b> → Secret key, <code>sk_test_…</code>. Key sheet: <code>STRIPE_SECRET_KEY</code>.</label></li>
@@ -272,8 +272,8 @@ $k = New-Object byte[] 32; [Security.Cryptography.RandomNumberGenerator]::Create
             <tr><td>SSH public key</td><td>Part A</td><td>Oracle's instance form (Stage 1)</td></tr>
             <tr><td><code>CLOUDFLARE_ACCOUNT_ID</code>, <code>R2_ACCESS_KEY_ID</code>, <code>R2_SECRET_ACCESS_KEY</code></td><td>Part D</td><td><code>deploy/.env</code></td></tr>
             <tr><td><code>RESEND_API_KEY</code>, <code>EMAIL_FROM</code></td><td>Part F</td><td><code>deploy/.env</code></td></tr>
-            <tr><td><code>STRIPE_SECRET_KEY</code>, <code>STRIPE_WEBHOOK_SECRET</code></td><td>Part G (test mode; live in Stage 9)</td><td><code>deploy/.env</code></td></tr>
-            <tr><td>Stripe price IDs</td><td>Part G</td><td>Dashboard → Plans (Stage 5)</td></tr>
+            <tr><td><code>STRIPE_SECRET_KEY</code>, <code>STRIPE_WEBHOOK_SECRET</code></td><td>Part G, only with Stripe</td><td><code>deploy/.env</code></td></tr>
+            <tr><td>Stripe price IDs</td><td>Part G, only with Stripe</td><td>Dashboard → Plans (Stage 5)</td></tr>
             <tr><td><code>MAPBOX_ACCESS_TOKEN</code></td><td>Part H</td><td><code>deploy/.env</code></td></tr>
             <tr><td><code>SENTRY_DSN</code>, <code>WEB_SENTRY_DSN</code>, <code>WEB_PUBLIC_SENTRY_DSN</code></td><td>Part I</td><td><code>deploy/.env</code>; the public one also GitHub</td></tr>
             <tr><td><code>DESKTOP_PUBLIC_SENTRY_DSN</code></td><td>Part I</td><td>GitHub variable</td></tr>
@@ -443,13 +443,17 @@ MAPBOX_ACCESS_TOKEN=pk.eyJ1IjoiaW50ZWdyOCIsImEiOiJjbG…</code></pre>
         <pre><code>PUSH_SENDER=expo
 # EXPO_ACCESS_TOKEN=</code></pre>
         <ul class="check" data-stage="s3g">
-          <li><input type="checkbox" id="s3-9"><label for="s3-9"><b>Billing.</b> <code>BILLING_PROVIDER=recording</code> becomes <code>stripe</code>. Uncomment the two key lines and replace their placeholders with the test-mode secret key and the webhook signing secret from Part G. Leave <code>BILLING_TRIAL_DAYS</code> and <code>BILLING_GRACE_DAYS</code> as they are (14 and 14: the trial a pays-in-the-app company gets, and the days between a failed payment and read-only).</label></li>
+          <li><input type="checkbox" id="s3-9"><label for="s3-9"><b>Billing.</b> Leave <code>BILLING_PROVIDER=none</code> and the two Stripe lines commented: you invoice every company, every company's billing page says so, and production needs nothing more. Only if you did Part G: <code>none</code> becomes <code>stripe</code>, uncomment the two key lines and put the test-mode secret key and the webhook signing secret from Part G in place of their placeholders, as in the second block. Leave <code>BILLING_TRIAL_DAYS</code> and <code>BILLING_GRACE_DAYS</code> as they are (14 and 14: the trial a pays-in-the-app company gets, and the days between a failed payment and read-only; with <code>none</code> nobody has a trial).</label></li>
         </ul>
-        <pre><code>BILLING_PROVIDER=stripe
-STRIPE_SECRET_KEY=sk_test_51Qx…
-STRIPE_WEBHOOK_SECRET=whsec_3f9a…
+        <pre><code>BILLING_PROVIDER=none
+# STRIPE_SECRET_KEY=sk_live_...
+# STRIPE_WEBHOOK_SECRET=whsec_...
 BILLING_TRIAL_DAYS=14
 BILLING_GRACE_DAYS=14</code></pre>
+        <pre><code># only with Stripe (Part G)
+BILLING_PROVIDER=stripe
+STRIPE_SECRET_KEY=sk_test_51Qx…
+STRIPE_WEBHOOK_SECRET=whsec_3f9a…</code></pre>
         <ul class="check" data-stage="s3h">
           <li><input type="checkbox" id="s3-9b"><label for="s3-9b"><b>Email.</b> <code>EMAIL_SENDER=recording</code> becomes <code>resend</code>. Uncomment the two lines; the key from Part F, and the sender in the form <code>Name &lt;address&gt;</code> with an address on the verified domain.</label></li>
         </ul>
@@ -562,7 +566,7 @@ docker compose -f deploy/compose.yml --env-file deploy/.env \
         <ul class="check" data-stage="s5">
           <li><input type="checkbox" id="s5-1"><label for="s5-1"><b>Save what it prints</b>: a password and an authenticator secret, shown once. Add the secret to Google Authenticator, 1Password or Authy (scan the <code>otpauth://</code> URI as a QR code, or type the secret). This same account signs you in to the desktop app as staff. Because the terminal made it, it is a <b>staff manager</b>: the only kind of account that can add and remove colleagues (below).</label></li>
           <li><input type="checkbox" id="s5-2"><label for="s5-2"><b>Sign in</b> at <code>https://app.integr8-media.com/platform/sign-in</code> with the email, the password and a six-digit code. Open <b>Health</b>; it should be empty.</label></li>
-          <li><input type="checkbox" id="s5-3"><label for="s5-3"><b>Attach the Stripe prices to the plans</b>: dashboard → <b>Plans</b> → for Starter, Standard and Enterprise paste the monthly (and yearly) price IDs from the key sheet. A plan with no price cannot be bought by a company that pays in the app, and the pricing page says so. Companies you invoice never see this.</label></li>
+          <li><input type="checkbox" id="s5-3"><label for="s5-3"><b>Attach the Stripe prices to the plans</b>, only with Stripe (Part G): dashboard → <b>Plans</b> → for Starter, Standard and Enterprise paste the monthly (and yearly) price IDs from the key sheet. A plan with no price cannot be bought by a company that pays in the app, and the pricing page says so. Companies you invoice never see this.</label></li>
           <li><input type="checkbox" id="s5-4"><label for="s5-4"><b>Look at Companies</b>: empty. Stage 7 fills it. First, Stage 6 gets you the apps.</label></li>
         </ul>
 
@@ -645,7 +649,7 @@ docker compose -f deploy/compose.yml --env-file deploy/.env \
           <li><input type="checkbox" id="s7-6b"><label for="s7-6b"><b>Build the company's own apps.</b> Dashboard → the company's page → <b>Website and apps</b> → tick <b>Build apps for this company</b> → Save. If the machine may start builds (<code>APP_BUILDS=github</code>, Stage 8, part A), the panel says "Build started on GitHub" with a link to the run, and there is nothing more to do here. Otherwise it says to start it by hand: repository → <b>Actions</b> → <b>Build company apps</b> → <b>Run workflow</b> → type the company's short name, leave the other boxes empty, run. About 25 minutes later the Releases page has <code>company-&lt;short name&gt;-v1.2.2</code> with the company's desktop installers and its Android app. Stage 8 explains everything this run did and how it repeats at every release.</label></li>
           <li><input type="checkbox" id="s7-6c"><label for="s7-6c"><b>Install the company's apps.</b> From that release: the Windows installer (named after the company) on your laptop, beside the staff app, and the <code>.apk</code> on the phone (open the release page on the phone, download, allow installing from this source when Android asks). The phone opens on the company's website with a <b>Login</b> button in the header; the desktop app opens on a sign-in screen in the company's colours with only the company door.</label></li>
           <li><input type="checkbox" id="s7-7"><label for="s7-7"><b>Complete the job on the phone, offline.</b> Press Login in the company's phone app and sign in as the engineer, pull the jobs down, turn on aeroplane mode, complete the job with a photo and a signature, turn aeroplane mode off, and watch it arrive in the office. The photo lands in the company's R2 bucket. <code>docs/mobile/device-checklist.md</code> in the repository is the full list of what to try.</label></li>
-          <li><input type="checkbox" id="s7-8"><label for="s7-8"><b>Try in-app payment once</b>, in test mode: on the company's dashboard page → Plan and billing → Billing: Pays in the app → Save. As the owner, Billing → choose a plan → Stripe's checkout → card <code>4242 4242 4242 4242</code>, any future date. The plan shows as active within seconds; dashboard → Health → Billing deliveries lists the webhook events as applied. Then switch the company back to Invoiced.</label></li>
+          <li><input type="checkbox" id="s7-8"><label for="s7-8"><b>Try in-app payment once</b>, only with Stripe and in test mode (with <code>BILLING_PROVIDER=none</code> the company's Billing page says it is invoiced by Integr8, and that is the check): on the company's dashboard page → Plan and billing → Billing: Pays in the app → Save. As the owner, Billing → choose a plan → Stripe's checkout → card <code>4242 4242 4242 4242</code>, any future date. The plan shows as active within seconds; dashboard → Health → Billing deliveries lists the webhook events as applied. Then switch the company back to Invoiced.</label></li>
           <li><input type="checkbox" id="s7-8b"><label for="s7-8b"><b>Walk the business modules once</b>, as the owner, on the web app: a lead converted to a customer and an opportunity dragged across the pipeline board; a quote accepted through its link, turned into a sales order and delivered; an invoice issued and a payment allocated; an item received into a warehouse, transferred to the engineer's van and used on the job from the phone (a serial-numbered item asks which serial); an asset with a printed QR label; a person given a company role under Settings → People → Company roles. Each screen is in the side menu under its group.</label></li>
         </ul>
 
@@ -759,7 +763,7 @@ docker compose -f deploy/compose.yml --env-file deploy/.env \
 
         <h3>A. The services, for real</h3>
         <ul class="check" data-stage="s8a">
-          <li><input type="checkbox" id="s8-2"><label for="s8-2"><b>Stripe live mode</b>, only if any company will pay in the app. Activate the account (business details, bank account), switch the toggle to live, repeat Stage 0 Part G there: the live secret key (<code>sk_live_</code>), the three products with prices, a <b>new webhook endpoint</b> for the same URL with the same events and its live signing secret. Live and test share nothing. Paste the live price IDs into dashboard → Plans. If every company is invoiced, skip this and keep the test keys; production mode only requires that a provider is configured.</label></li>
+          <li><input type="checkbox" id="s8-2"><label for="s8-2"><b>Stripe live mode</b>, only if any company will pay in the app. Activate the account (business details, bank account), switch the toggle to live, repeat Stage 0 Part G there: the live secret key (<code>sk_live_</code>), the three products with prices, a <b>new webhook endpoint</b> for the same URL with the same events and its live signing secret. Live and test share nothing. Paste the live price IDs into dashboard → Plans. With <code>BILLING_PROVIDER=none</code> (every company invoiced), skip this: production needs no Stripe keys. With <code>stripe</code>, production refuses to start on a test-mode key (<code>sk_test_</code>).</label></li>
           <li><input type="checkbox" id="s8-3"><label for="s8-3"><b>Edit the env file</b>: the live Stripe keys if any, and <code>APP_ENV=production</code>. Then:</label></li>
         </ul>
         <pre><button class="copy" type="button">Copy</button><code># machine (SSH session)
@@ -1133,6 +1137,13 @@ docker compose -f deploy/compose.yml --env-file deploy/.env exec worker printenv
           <li><input type="checkbox" id="s12-v1"><label for="s12-v1"><b>Caddy's header lines</b>, during part F's comparison: copy the <code>header</code> lines of both blocks from <code>deploy/vps/Caddyfile.example</code> into <code>/etc/caddy/Caddyfile</code>, then <code>sudo systemctl reload caddy</code>. Stage 4's "browser security headers" check passes.</label></li>
           <li><input type="checkbox" id="s12-v2"><label for="s12-v2"><b>Watch the reports</b> for two weeks: Sentry's web project lists anything the policy would have blocked as CSP reports. Nothing listed means it can be enforced; send what is listed to the developers instead of loosening Caddy.</label></li>
           <li><input type="checkbox" id="s12-v3"><label for="s12-v3"><b>Update the desktop apps</b> (part G): the new policy is part of each installer.</label></li>
+        </ul>
+
+        <h3 id="billing-none-update">W. Invoiced-only billing, without Stripe (included in v1.2.2)</h3>
+        <p><code>BILLING_PROVIDER=none</code> is new: Integr8 invoices every company and sets its plan from the dashboard, with no card provider and no keys, and production accepts it. Every company reads as invoiced, including one made earlier as "pays in the app", so no trial runs out into read-only. With <code>stripe</code>, production now refuses a test-mode key.</p>
+        <ul class="check" data-stage="s12w">
+          <li><input type="checkbox" id="s12-w1"><label for="s12-w1"><b>Choose</b>, during part C with <code>nano deploy/.env</code>. Invoicing every company: set <code>BILLING_PROVIDER=none</code> and leave the Stripe lines commented. Taking cards in the app: keep <code>stripe</code> with the live keys (Stage 9, part A); test keys stop a production start with "STRIPE_SECRET_KEY is a test-mode key".</label></li>
+          <li><input type="checkbox" id="s12-w2"><label for="s12-w2"><b>Check one company</b> after part D: its Billing page says "Invoiced by Integr8" with no plan buttons, and the dashboard's company page shows Billing: Invoiced by Integr8 for a company you onboard from now on.</label></li>
         </ul>
 
         <div class="note"><p><b>The test box (Stage 10)</b> updates the same way, from <code>staging</code> instead of <code>main</code>: <code>git pull</code> on its <code>staging</code> checkout, then <b>Pull</b> and <b>Redeploy</b> the stack in Arcane. Updating it first, the day before, is the cheapest rehearsal there is.</p></div>

@@ -91,6 +91,13 @@ export async function runDunning(options: DunningOptions): Promise<DunningReport
     failures: [],
   };
 
+  // With no card provider Integr8 invoices every company and chases its own
+  // invoices: there is nothing to pay in the app, so no trial may run out into
+  // read-only and no reminder may ask for a card.
+  if (options.config.BILLING_PROVIDER === 'none') {
+    return report;
+  }
+
   const platform = getPlatformDataSource();
   const claimed =
     options.force === true ||

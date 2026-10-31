@@ -10,7 +10,7 @@ apps/web  (app)/billing            the plan, the limits, the usage, the invoices
         │  POST /v1/billing/portal     → the provider's card/cancel page
         │
 apps/api  routes/v1/billing.ts     those three, plus the public webhook
-        │  billing/provider.ts     BillingProvider: Stripe, or a recording fake
+        │  billing/provider.ts     BillingProvider: Stripe, none, or a recording fake
         │  billing/webhook.ts      what a verified delivery does
         │  billing/entitlements.ts the refusals: seats, submissions, storage
         │  billing/dunning.ts      trial expiry → reminders → read-only
@@ -24,10 +24,16 @@ apps/api  routes/v1/billing.ts     those three, plus the public webhook
 
 ## Nothing here is Stripe-shaped except the adapter
 
-`BillingProvider` is an interface with two implementations, chosen in `composition.ts` by
+`BillingProvider` is an interface with three implementations, chosen in `composition.ts` by
 `BILLING_PROVIDER` exactly as `PUSH_SENDER` and `GEOCODER` are: `StripeBillingProvider` talks
-to Stripe's REST API, and `RecordingBillingProvider` keeps what would have been sent and hands
-back links to `billing.invalid`. Production refuses to start on the fake.
+to Stripe's REST API, `NoBillingProvider` takes no payments at all, and
+`RecordingBillingProvider` keeps what would have been sent and hands back links to
+`billing.invalid`. Production refuses to start on the fake.
+
+**Paymob is the planned card option** for Egyptian companies: Egyptian cards, wallets and
+instalments, priced in EGP. It will be a fourth adapter behind the same interface
+(`billing/provider.ts`) and a fourth value of `BILLING_PROVIDER`, mapping its own customer,
+subscription and price ids onto the same columns. Nothing above the adapter changes.
 
 Everything above the adapter says "a provider's customer" and "a provider's price". The columns
 are `provider`, `provider_customer_id`, `provider_subscription_id`, `provider_price_monthly`;
@@ -40,6 +46,33 @@ and a config value, not a migration.
 `BILLING_PROVIDER=recording` the whole flow runs, and the one part that genuinely cannot be
 faked — signature verification — is implemented by hand and tested against real signatures in
 `provider.test.ts`.
+
+---
+
+## No card provider: every company is invoiced
+
+`BILLING_PROVIDER=none` is a real mode, not a fake, and the production default in
+`deploy/.env.example`: Integr8 invoices every company directly and sets its plan from the
+dashboard. No provider keys are needed, and production starts with it.
+
+- **Every company reads as invoiced** (`effectiveBillingMode`), whatever its `billing_mode`
+  row says. `GET /v1/billing/subscription` answers `billingMode: invoiced`, and for a company
+  that was made self-serve before the switch it shows the subscription `active` with no trial,
+  arrears or grace, because those were the provider's to settle. The billing screen then says
+  "Invoiced by Integr8 … contact Integr8" in English and Arabic and shows no invoices, checkout
+  or card portal.
+- **The card routes refuse**: checkout and the portal answer 409 `billing_invoiced` ("Integr8
+  invoices this company directly. To change the plan, contact Integr8."); the invoice list is
+  empty; the webhook believes nothing (400).
+- **New companies are stored as invoiced**, from the dashboard or a public sign-up alike, and
+  start `active` with no trial. A plan change from the dashboard stores `invoiced` even if
+  `self_serve` was chosen, and, as for any invoiced company, clears a trial, arrears and a
+  read-only state that non-payment caused.
+- **Dunning does nothing.** No trial ends into read-only and no reminder asks for a card;
+  Integr8 chases its own invoices, and suspends a company from the dashboard if it must.
+
+Switching a deployment from `stripe` to `none` leaves each company's provider ids where they
+were; switching back makes self-serve companies self-serve again.
 
 ---
 
@@ -226,17 +259,21 @@ Nothing in the dunning run deletes anything. The worst it does is refuse writes.
 
 ## Configuration
 
-| Variable                | Default       | What it does                                                  |
-| ----------------------- | ------------- | ------------------------------------------------------------- |
-| `BILLING_PROVIDER`      | `recording`   | `stripe` or `recording`. Production refuses `recording`.      |
-| `STRIPE_SECRET_KEY`     | —             | Required when `stripe`. A secret; `.env` only.                |
-| `STRIPE_WEBHOOK_SECRET` | —             | Required when `stripe`. What stops anybody who knows the URL. |
-| `BILLING_RETURN_URL`    | `WEB_APP_URL` | Where the hosted pages send the browser back.                 |
-| `BILLING_TRIAL_DAYS`    | `14`          | Every company gets a subscription row and a trial on day one. |
-| `BILLING_GRACE_DAYS`    | `14`          | From a failed payment to read-only.                           |
+| Variable                | Default       | What it does                                                                                                                           |
+| ----------------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `BILLING_PROVIDER`      | `recording`   | `none`, `stripe` or `recording`. Production refuses `recording`, and `stripe` with a test-mode key. `deploy/.env.example` sets `none`. |
+| `STRIPE_SECRET_KEY`     | —             | Required when `stripe`. A secret; `.env` only.                                                                                         |
+| `STRIPE_WEBHOOK_SECRET` | —             | Required when `stripe`. What stops anybody who knows the URL.                                                                          |
+| `BILLING_RETURN_URL`    | `WEB_APP_URL` | Where the hosted pages send the browser back.                                                                                          |
+| `BILLING_TRIAL_DAYS`    | `14`          | Every company gets a subscription row and a trial on day one.                                                                          |
+| `BILLING_GRACE_DAYS`    | `14`          | From a failed payment to read-only.                                                                                                    |
 
 A missing Stripe key is **not** a silent fallback to the fake. A deployment that meant to charge
-cards and quietly did not is worse than one that refuses to start.
+cards and quietly did not is worse than one that refuses to start. For the same reason
+production refuses `STRIPE_SECRET_KEY` starting `sk_test_` or `rk_test_` (and a publishable
+`pk_` key): checkouts would succeed in Stripe's test mode, companies would be marked paid, and
+no money would move. Webhook signing secrets look the same in both modes, so that one cannot be
+checked.
 
 ---
 

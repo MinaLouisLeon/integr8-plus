@@ -7610,7 +7610,7 @@ export interface paths {
         head?: never;
         /**
          * Change a company’s plan, seat count or billing mode
-         * @description Sets the plan the API enforces and, for a company Integr8 invoices, the plan its people see on the billing screen. Switching a company to `invoiced` makes its subscription active with no trial and lifts a read-only state that non-payment caused: Integr8 is taking the money now. Switching back to `self_serve` leaves the subscription as the provider last described it.
+         * @description Sets the plan the API enforces and, for a company Integr8 invoices, the plan its people see on the billing screen. Switching a company to `invoiced` makes its subscription active with no trial and lifts a read-only state that non-payment caused: Integr8 is taking the money now. Switching back to `self_serve` leaves the subscription as the provider last described it. On a deployment that takes no card payments (`BILLING_PROVIDER=none`) every company is invoiced, and `self_serve` is stored as `invoiced`.
          */
         patch: operations["setCompanyPlan"];
         trace?: never;
@@ -10765,7 +10765,7 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description This plan has no price configured (`plan_not_purchasable`), or Integr8 invoices this company directly (`billing_invoiced`). */
+            /** @description This plan has no price configured (`plan_not_purchasable`), or Integr8 invoices this company directly (`billing_invoiced`), as it does every company on a deployment that takes no card payments. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -10849,7 +10849,7 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description This company has never paid, so there is no portal yet (`no_billing_account`), or Integr8 invoices it directly (`billing_invoiced`). */
+            /** @description This company has never paid, so there is no portal yet (`no_billing_account`), or Integr8 invoices it directly (`billing_invoiced`), as it does every company on a deployment that takes no card payments. */
             409: {
                 headers: {
                     [name: string]: unknown;
