@@ -470,6 +470,8 @@ each with a down file, applied by `pnpm --filter @integr8/db db up` (or
 | 0052      | Skills and certificates (qualifications) and expiry warnings                                          |
 | 0053      | Service contracts, maintenance plans and response deadlines                                           |
 | 0054      | Self-hosted sign-in: how each session began, and sign-in accounts to delete after a purge             |
+| 0055      | Closing a company: the purge removes every row with triggers and foreign-key checks suspended         |
+| 0056      | No plan deletes a company's files on its own: the seeded retention windows are cleared                |
 
 See [`docs/database/migrations.md`](./docs/database/migrations.md) and the
 [backup and restore runbook](./docs/database/runbook-backup-and-restore.md).

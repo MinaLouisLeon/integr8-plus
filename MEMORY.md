@@ -9,10 +9,15 @@ the end of any piece of work that changes one of them, and date each section.
 
 - **Version:** root `package.json` is **1.2.1** (the only source of the version; a
   release bumps it).
-- **Migrations:** `packages/db/migrations` reaches **0054** (`0053_maintenance_contracts_deadlines`,
-  `0054_self_hosted_sign_in`). The next one is 0055. Main briefly carried a different
-  0054, `0054_local_identities`, for a built-in sign-in; it was never applied anywhere
-  and was removed when PR #130 merged main (see Decisions).
+- **Migrations:** `packages/db/migrations` reaches **0056** (`0054_self_hosted_sign_in`,
+  `0055_purge_any_company`, `0056_no_default_retention`). The next one is 0057. Main
+  briefly carried a different 0054, `0054_local_identities`, for a built-in sign-in; it
+  was never applied anywhere and was removed when PR #130 merged main (see Decisions).
+- **Pre-production audit (2026-10-31):** plans, docs and code compared area by area; the
+  report is the claude.ai artifact https://claude.ai/artifact/FB7vANrUc691VfMXkR5h2U. Its
+  six blockers are fixed on branch `ccr-4f86fb34-8uvkk9` (phone build settings, web
+  sign-in limit, company purge, default retention, worker production check, R2 proof in CI
+  once secrets exist). Its High items are still open.
 - **Modules shipped:** field work (customers, sites, work orders, visits and the
   schedule, timesheets), forms and submissions, PDF documents, CRM, sales, finance,
   general ledger, inventory, purchasing, assets, HR, expenses, Egyptian payroll,
@@ -66,6 +71,18 @@ the end of any piece of work that changes one of them, and date each section.
   through the Auth container, with codes rather than links. The local provider, its
   tables and `IDENTITY_PROVIDER` were removed; `admin-cli user-password` was rewritten to
   set the password in Auth.
+- **The purge suspends triggers and foreign keys** (0055, 2026-10-31). Deleting with
+  every guard live kept breaking as guards were added (20 of 101 test companies could not
+  be purged). It now runs with `session_replication_role = replica` and empties every
+  table whose `tenant_id` references `tenants`. Safe only while no table outside that list
+  points into it: `tenant-purge.integration.test.ts` checks that, so a new table that
+  breaks it fails the suite. Needs the schema owner to be a superuser.
+- **No retention window by default** (0056, 2026-10-31). Setting one is a decision about
+  customers' records, made from the dashboard and told to the companies first. The logo
+  and app icon are never retired.
+- **The per-address sign-in limit counts failures only** (2026-10-31), and the web
+  server passes on the visitor's address (Caddy's `X-Forwarded-For`), so a busy office or
+  the web app's single server address no longer locks everyone out.
 - **The demo seeder goes through the API**, in-process with Fastify's `inject`, as the
   company's own people (plus a staff impersonation for staff-only setup). Direct inserts
   were rejected: they skip numbering, stock, ledger postings and audit, and produce data
