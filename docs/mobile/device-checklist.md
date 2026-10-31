@@ -27,6 +27,12 @@ in the phase's plan file under `plan/v0.3-field-loop/`.
 3. **Data.** An engineer with at least one open job whose site has access notes and hazards,
    a job closed within the last 30 days, and a customer with more than one site.
 
+4. **For notifications, crash reports and the offline grant** (P11 checklist 7, P14 checklists 4
+   and 5): a build from an EAS profile whose environment has `GOOGLE_SERVICES_JSON` (with an app
+   for the build's package), `EXPO_PUBLIC_SENTRY_DSN` and `EXPO_PUBLIC_AUTH_VERIFICATION_KEYS`
+   set, as the setup guide's Stage 8, part A describes. A development build reads the
+   `development` environment.
+
 ## P11
 
 ### 1. Encrypted at rest

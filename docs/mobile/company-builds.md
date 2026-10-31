@@ -42,6 +42,21 @@ The EAS project id, `updates.url`, `runtimeVersion` and every plugin stay the sa
 companies. EAS keeps credentials per app identifier inside the one project, and CI chooses the
 update channel with `eas build --channel production-<slug>`.
 
+## What else a company's build needs
+
+These come from the EAS environment the profile names (`production`), not from `company.json`:
+
+| Setting                              | For                                                                                        | Missing                                                          |
+| ------------------------------------ | ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------- |
+| `GOOGLE_SERVICES_JSON` (a file)      | Android notifications: an Android app per `android.package` above, in one Firebase project | No notifications; the build's log names the package to add       |
+| The FCM V1 key, under Credentials    | Expo's push service sending to that app identifier                                         | Notifications refused by Expo for that app                       |
+| `EXPO_PUBLIC_SENTRY_DSN`             | Crash reports                                                                              | Crashes reach nobody                                             |
+| `EXPO_PUBLIC_AUTH_VERIFICATION_KEYS` | Checking the [offline grant](../auth/offline-access.md) with no signal                     | The grant's end is checked, its signature is not; Sentry says so |
+
+`app.config.ts` uses the Firebase file only when it has an app for the package being built
+(`src/lib/google-services.ts`, tested), so adding a company to Integr8 before adding it to
+Firebase costs that company its notifications until the next build, never its app.
+
 ## The brand on the phone
 
 `BrandProvider` (`src/components/brand.tsx`) takes the brand from the freshest place that knows

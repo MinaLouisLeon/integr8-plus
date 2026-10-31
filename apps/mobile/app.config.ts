@@ -7,6 +7,7 @@ import {
   companyIdentifiers,
   parseCompanyBuild,
 } from './src/lib/company-config.ts';
+import { googleServicesDecision } from './src/lib/google-services.ts';
 
 /**
  * The app's config, resolved when Expo reads it.
@@ -58,6 +59,28 @@ function readCompany(): CompanyBuild | undefined {
   return company;
 }
 
+/**
+ * The Firebase file for Android push (P14), from the EAS file environment
+ * variable `GOOGLE_SERVICES_JSON` (a path on the build machine), when it has an
+ * app for this package. Without it a release build cannot register for push
+ * on Android; see `src/lib/google-services.ts` for why a missing package is
+ * left out rather than allowed to fail the build.
+ */
+function googleServicesFile(androidPackage: string): string | undefined {
+  const path = process.env.GOOGLE_SERVICES_JSON;
+  let contents: string | undefined;
+  try {
+    contents = path === undefined || path === '' ? undefined : readFileSync(path, 'utf8');
+  } catch {
+    contents = undefined;
+  }
+  const decision = googleServicesDecision(path, contents, androidPackage);
+  if (!decision.use && decision.message !== undefined) {
+    console.warn(`app.config.ts: ${decision.message}`);
+  }
+  return decision.use ? path : undefined;
+}
+
 export default ({ config }: ConfigContext): ExpoConfig => {
   const company = readCompany();
   const identifiers = company === undefined ? undefined : companyIdentifiers(company.slug);
@@ -65,6 +88,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   const icon = join(here, 'company', 'icon.png');
   const hasIcon = company !== undefined && existsSync(icon);
   const background = company?.shellColour ?? company?.brandColour ?? '#ffffff';
+  const androidPackage = identifiers?.androidPackage ?? 'com.integr8.plus';
+  const googleServices = googleServicesFile(androidPackage);
 
   return {
     ...config,
@@ -85,7 +110,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       },
     },
     android: {
-      package: identifiers?.androidPackage ?? 'com.integr8.plus',
+      package: androidPackage,
+      ...(googleServices === undefined ? {} : { googleServicesFile: googleServices }),
       // Edge to edge is always on from SDK 58 (Android 16 requires it), so there is no switch.
       ...(hasIcon
         ? { adaptiveIcon: { foregroundImage: './company/icon.png', backgroundColor: background } }

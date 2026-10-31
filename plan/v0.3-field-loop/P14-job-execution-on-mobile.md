@@ -58,6 +58,16 @@ Every task is built. Four choices were made before implementation:
 
 The design is in [the working day on the phone](../../docs/mobile/job-execution.md).
 
+- **Android push and phone crash reports, set up (2026-10-31).** The pre-production audit found
+  that no build could receive a notification on Android or report a crash: Expo push on a
+  release Android build needs the Firebase project's `google-services.json` in the build, and
+  the docs said it was not needed; no profile set `EXPO_PUBLIC_SENTRY_DSN`; and a failed
+  registration was swallowed. `app.config.ts` now takes the file from the EAS file variable
+  `GOOGLE_SERVICES_JSON` when it has an app for the package (a company missing from it is built
+  without push, not refused), each `eas.json` profile names its EAS environment, a failed
+  registration goes to Sentry and the device log with the step, and the setup guide has the
+  Firebase, Sentry and EAS steps (Stage 0 parts I and J, Stage 8 part A, Stage 11 part R).
+  Checklists 4 and 5 now need a build made that way.
 - **Announcements on Today (2026-10-31).** `/v1/me` has returned the company's announcements
   since P15, and dunning posts its payment reminders as announcements (P17), but no phone screen
   showed them. Today now opens with them, kept on the phone with the permissions from the same
