@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
 # Dumps the compose stack's Postgres to a dated, compressed file and keeps the
-# most recent ones. For the machine-hosted database only; a Supabase database
-# has its own backups (docs/database/runbook-backup-and-restore.md).
+# most recent ones. The whole integr8 database: company data in `public` and
+# the self-hosted Auth's sign-in accounts in `auth`. See
+# docs/database/runbook-backup-and-restore.md.
 #
 # Schedule it daily as root, so it can talk to Docker:
 #
 #   sudo crontab -e
 #   0 3 * * * /opt/integr8/deploy/vps/backup-postgres.sh >> /var/log/integr8-backup.log 2>&1
 #
-# Restore one file into a running stack (this replaces the database's contents):
+# Restore one file into a running stack (this replaces the database's contents;
+# stop web, api, worker and auth first — the runbook has every step):
 #
 #   gunzip -c /var/backups/integr8/integr8-20261004-0300.sql.gz \
 #     | docker compose -f /opt/integr8/deploy/compose.yml --env-file /opt/integr8/deploy/.env \
