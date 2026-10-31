@@ -52,25 +52,33 @@ const idempotencyKey = () => ({ 'Idempotency-Key': Crypto.randomUUID() });
 // What the person may do
 // ---------------------------------------------------------------------------
 
-let accessRefreshed = false;
+/** How often `/v1/me` is asked again while the app is in use. */
+const ACCESS_REFRESH_MS = 15 * 60_000;
+let accessRefreshedAt: number | undefined;
 
 /**
- * Asks once a launch what the person may do, and keeps it on the phone, so a
- * screen for the store or for payslips is offered — offline too — to those it
- * is for. The first download keeps it as well; this keeps it current.
+ * Asks what the person may do, and keeps it on the phone, so a screen for the
+ * store or for payslips is offered — offline too — to those it is for. The
+ * first download keeps it as well; this keeps it current.
+ *
+ * The same answer carries the announcements (P15): planned maintenance, or a
+ * reminder that the company's bill is overdue. So it is asked on launch and
+ * again on coming back to the app, at most every fifteen minutes, rather than
+ * once a launch, which on a phone that is never closed would be never.
  */
 export async function refreshAccess(): Promise<void> {
-  if (accessRefreshed) {
+  if (accessRefreshedAt !== undefined && Date.now() - accessRefreshedAt < ACCESS_REFRESH_MS) {
     return;
   }
   const status = localData.status();
-  if (status.phase !== 'open') {
+  // A phone opened on its offline grant alone must not try: see `canReachApi`.
+  if (status.phase !== 'open' || !(await session().canReachApi())) {
     return;
   }
   const { data } = await client().GET('/v1/me');
   if (data !== undefined) {
     await status.db.write(['meta'], (sql) => saveAccess(sql, data));
-    accessRefreshed = true;
+    accessRefreshedAt = Date.now();
   }
 }
 

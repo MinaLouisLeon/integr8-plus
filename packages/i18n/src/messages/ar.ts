@@ -6171,6 +6171,12 @@ export const ar: Catalogue<Messages> = {
       channelJobs: 'تغييرات المهام',
       channelUrgent: 'نداءات عاجلة',
     },
+    announcement: {
+      dismiss: 'إخفاء',
+      info: 'إشعار',
+      warning: 'تنبيه',
+      critical: 'هام',
+    },
     notes: {
       none: 'لا توجد ملاحظات بعد.',
       add: 'أضف ملاحظة',

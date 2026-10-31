@@ -58,6 +58,13 @@ Every task is built. Four choices were made before implementation:
 
 The design is in [the working day on the phone](../../docs/mobile/job-execution.md).
 
+- **Announcements on Today (2026-10-31).** `/v1/me` has returned the company's announcements
+  since P15, and dunning posts its payment reminders as announcements (P17), but no phone screen
+  showed them. Today now opens with them, kept on the phone with the permissions from the same
+  answer so they show offline, asked again on coming back to the app, and dismissible on the
+  phone where the announcement allows. Tested in `packages/offline/src/access.test.ts`; on a
+  phone, [checklist 4](../../docs/mobile/device-checklist.md#p14).
+
 | Claim                                                                | How it was proven so far                                                                                                                                                                                                                                                                                                                                                                                                                                                         | Still needs                       |
 | -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
 | A real engineer completes a real day using only the phone            | Every step of the day is on the phone: Today, the steps, directions, photos, checklist, forms, files, completion, sign-off, clocking out. The app bundles for Android (`expo export`, Hermes). The rules it shows (next job, the engineer's own steps, directions links, what completing needs, time) are unit tested                                                                                                                                                            | Checklist 1, observed, with notes |

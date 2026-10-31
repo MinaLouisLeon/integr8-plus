@@ -6114,6 +6114,12 @@ export const en = {
       channelJobs: 'Job changes',
       channelUrgent: 'Urgent callouts',
     },
+    announcement: {
+      dismiss: 'Dismiss',
+      info: 'Notice',
+      warning: 'Warning',
+      critical: 'Important',
+    },
     notes: {
       none: 'No notes yet.',
       add: 'Add a note',

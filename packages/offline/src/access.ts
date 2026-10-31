@@ -9,6 +9,10 @@ import type { SqlConnection } from './sql.js';
  * is for — receiving goods to the store, payslips where payroll is on — and
  * offers it offline too, so the screen can say it needs a connection rather
  * than vanish. The server decides every request all the same.
+ *
+ * The announcements in the same answer are kept beside them (P15, P17): the
+ * notices Integr8 posts — planned maintenance, a payment reminder — shown on
+ * the phone as last heard, so one posted yesterday still shows in a basement.
  */
 
 export type Permission = Me['permissions'][number];
@@ -18,19 +22,48 @@ export interface LocalAccess {
   features: Readonly<Record<string, boolean>>;
 }
 
-/** Keeps what `/v1/me` said. */
+export type Announcement = Me['announcements'][number];
+
+async function setMeta(sql: SqlConnection, key: string, value: string): Promise<void> {
+  await sql.run(
+    `insert into meta (key, value) values (?, ?)
+     on conflict (key) do update set value = excluded.value`,
+    [key, value],
+  );
+}
+
+async function readJson<T>(sql: SqlConnection, key: string, fallback: T): Promise<T> {
+  const row = await sql.get<{ value: string }>('select value from meta where key = ?', [key]);
+  if (row === undefined) {
+    return fallback;
+  }
+  try {
+    return JSON.parse(row.value) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+/**
+ * Keeps what `/v1/me` said.
+ *
+ * Announcements are replaced whole, and the ones dismissed on this phone are
+ * forgotten once the server stops sending them, so the list cannot grow.
+ */
 export async function saveAccess(
   sql: SqlConnection,
-  me: Pick<Me, 'permissions' | 'features'>,
+  me: Pick<Me, 'permissions' | 'features'> & Partial<Pick<Me, 'announcements'>>,
 ): Promise<void> {
-  for (const [key, value] of Object.entries({
-    permissions: JSON.stringify(me.permissions),
-    features: JSON.stringify(me.features),
-  })) {
-    await sql.run(
-      `insert into meta (key, value) values (?, ?)
-       on conflict (key) do update set value = excluded.value`,
-      [key, value],
+  await setMeta(sql, 'permissions', JSON.stringify(me.permissions));
+  await setMeta(sql, 'features', JSON.stringify(me.features));
+  if (me.announcements !== undefined) {
+    const ids = new Set(me.announcements.map((announcement) => announcement.id));
+    const dismissed = await readJson<string[]>(sql, 'announcements_dismissed', []);
+    await setMeta(sql, 'announcements', JSON.stringify(me.announcements));
+    await setMeta(
+      sql,
+      'announcements_dismissed',
+      JSON.stringify(dismissed.filter((id) => ids.has(id))),
     );
   }
 }
@@ -55,6 +88,35 @@ export function allows(granted: LocalAccess, permission: Permission, feature?: s
     granted.permissions.has(permission) &&
     (feature === undefined || granted.features[feature] === true)
   );
+}
+
+/**
+ * The announcements to show now: as last heard, without those that have ended
+ * since — the phone's clock decides that offline — or that were dismissed on
+ * this phone. One that cannot be dismissed always shows.
+ */
+export async function announcements(sql: SqlConnection, now: Date): Promise<Announcement[]> {
+  const kept = await readJson<Announcement[]>(sql, 'announcements', []);
+  const dismissed = new Set(await readJson<string[]>(sql, 'announcements_dismissed', []));
+  return kept.filter(
+    (announcement) =>
+      (announcement.endsAt === null || new Date(announcement.endsAt) > now) &&
+      !(announcement.dismissible && dismissed.has(announcement.id)),
+  );
+}
+
+/** Hides one announcement on this phone. The server is not told: it is this person's screen. */
+export async function dismissAnnouncement(sql: SqlConnection, id: string): Promise<void> {
+  const dismissed = await readJson<string[]>(sql, 'announcements_dismissed', []);
+  if (!dismissed.includes(id)) {
+    await setMeta(sql, 'announcements_dismissed', JSON.stringify([...dismissed, id]));
+  }
+}
+
+/** An announcement's words in `language`, or in English, or in whatever language it has. */
+export function announcementText(announcement: Announcement, language: string): string {
+  const message = announcement.message;
+  return message[language] ?? message.en ?? Object.values(message)[0] ?? '';
 }
 
 /**

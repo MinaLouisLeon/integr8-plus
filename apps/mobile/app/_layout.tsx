@@ -17,6 +17,7 @@ import { deviceLocale } from '~/lib/preferences';
 import { APP_VERSION, session, whenSignedOut } from '~/lib/session';
 import { registerBackgroundSync, unregisterBackgroundSync } from '~/local/background';
 import { localData } from '~/local/local-data';
+import { refreshAccess } from '~/local/online';
 import { channelNames, listenForPush, registerForPush, unregisterForPush } from '~/local/push';
 import { WarrantyAlerts } from '~/local/warranty-alerts';
 import { useLocalStatus } from '~/local/react';
@@ -100,6 +101,8 @@ function RootLayout() {
     const foreground = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
         void localData.sync('foreground');
+        // What the person may do, and the announcements, kept current.
+        refreshAccess().catch(() => undefined);
         void fetchUpdate();
       }
     });

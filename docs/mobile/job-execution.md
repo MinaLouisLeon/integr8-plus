@@ -7,7 +7,8 @@ there is signal ([offline sync](../sync/README.md)), with the moment it happened
 
 ```
 apps/mobile
-  app/home.tsx                 Today: the clock, the next job and its one step forward, then the day's jobs
+  app/home.tsx                 Today: announcements, the clock, the next job and its one step forward, then the day's jobs
+  src/components/announcements.tsx  what Integr8 has announced, from the phone, dismissible
   app/jobs/[id].tsx            one job, in the order it is worked
   app/jobs/complete/[id].tsx   what completing still needs, the sign-off, Complete
   app/sites/access/[id].tsx    correcting a site's access notes (P12)
@@ -31,7 +32,15 @@ apps/mobile
 
 ## Today
 
-The home screen opens with the day:
+Above the day, **what Integr8 has announced** to the company (P15): planned maintenance, or a
+reminder that the company's bill is overdue (P17), each as a banner in its severity's colour. The
+phone keeps the announcements `/v1/me` last returned in its own database (`meta`, beside the
+permissions), asking again on launch and on coming back to the app at most every fifteen minutes,
+so the last ones heard show with no signal. One whose end has passed goes by the phone's clock.
+**Dismiss** hides one on this phone only, where the announcement allows it; a new reminder is a
+new announcement and shows again.
+
+The home screen then opens with the day:
 
 1. **The clock.** Clocked in or not, since when and for how long, and the button to change it.
    Clocking out while a job is still travelling, on site or in progress asks first.

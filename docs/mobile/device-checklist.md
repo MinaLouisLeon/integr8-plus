@@ -320,6 +320,10 @@ every time they reached for paper or rang the office. Put the notes in the plan 
 - [ ] Mark a job urgent: the _Urgent callouts_ channel sounds. On Android, both channels are in
       the app's notification settings.
 - [ ] Sign out: a new assignment for that engineer sends nothing to the phone.
+- [ ] Post an announcement to the company from the dashboard (Announcements). Bring the app back
+      to the foreground: Today shows it at the top, in its severity's colour. Put the phone in
+      aeroplane mode and restart the app: it still shows. **Dismiss** it: it stays hidden after a
+      restart. An announcement that cannot be closed has no **Dismiss**.
 
 ### 5. Crashes and updates
 
