@@ -261,3 +261,21 @@ Now:
 
 The exit criterion stays unticked until [P11 checklist 7](../../docs/mobile/device-checklist.md#p11)
 has been run on a phone.
+
+## Signing out reaches the access token — 2026-10-31
+
+The pre-production audit found that `authenticate` checked only the access token's signature.
+Signing out everywhere, Change password, suspending a member and staff ending a session stopped
+refreshes, but the access token already on the device kept working for up to fifteen minutes.
+
+Now every authenticated request also asks `SessionService.assertLive`: the session exists, belongs
+to the token's person, is not revoked, has not reached its maximum lifetime, and the person is
+still an active member. The answer is cached in memory per session for 30 seconds (at most 10,000
+remembered, oldest dropped first), and a revocation made through `SessionService` forgets the
+cached answer at once. A session that is not live gets the same `401` as an expired token.
+Impersonation's per-request grant check is unchanged and still runs after it.
+
+| Proven by                                  | What                                                                                                                                        |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/auth` sessions integration suite | Refused at once after a revocation in-process; within the window after one made behind the cache; a suspended member; the bound; a mismatch |
+| `apps/api` server and members suites       | A signed-out device's token and a suspended member's token answer `401` on the next request                                                 |

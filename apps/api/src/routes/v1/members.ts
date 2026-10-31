@@ -32,20 +32,13 @@ import { inviterName } from './workspace.js';
  * itself — who am I, my sessions, the member list — and these are actions taken
  * on somebody else, each with a way of going badly wrong.
  *
- * **What "signed out everywhere" does and does not mean.** Revoking somebody's
- * sessions kills their refresh tokens, so they cannot get a new access token
- * and cannot sign in. It does **not** invalidate an access token already in
- * their hands: a tenant access token is a stateless JWT and the request
- * pipeline re-reads the database only for platform sessions and impersonation
- * grants. So a suspended or removed person keeps whatever access they had for
- * up to `AUTH_ACCESS_TOKEN_TTL_SECONDS` — fifteen minutes by default.
- *
- * That is a deliberate trade already made elsewhere in this system (it is why
- * the company suspension check is cached for a minute rather than read every
- * time), and it is written here rather than hidden because "remove somebody who
- * has just been dismissed" is exactly the case where fifteen minutes matters.
- * Closing it means a per-request membership check; that is a decision with a
- * cost on every request, and it is not one to make quietly inside P18.
+ * **What "signed out everywhere" means.** Revoking somebody's sessions kills
+ * their refresh tokens, so they cannot get a new access token and cannot sign
+ * in. An access token already in their hands is refused too: every request
+ * checks that its session is still live and the person still an active member
+ * (`SessionService.assertLive`). That answer is cached per session for thirty
+ * seconds, so a suspended or removed person keeps access for at most that long
+ * — on this API process not at all, since revoking here forgets the cache.
  */
 
 const TAGS = ['workspace'];

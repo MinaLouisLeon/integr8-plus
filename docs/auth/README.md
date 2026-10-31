@@ -48,6 +48,24 @@ is 256 random bits behind a `i8r1.` prefix — greppable, so a secret scanner ca
 be taught to recognise one in a commit or a support ticket — and only its
 SHA-256 hash is stored.
 
+## Ending a session ends its access token
+
+An access token is checked by its signature, so on its own it would keep working
+for its full fifteen minutes after the session behind it ended. It does not:
+every authenticated request also asks whether the token's session is still live
+— not revoked, not past its maximum lifetime, and the person still an active
+member of the company (`SessionService.assertLive`, called from `authenticate`
+in `apps/api/src/server.ts`). A session that is not live gets the same `401` as
+an expired token, and the client refreshes, which is refused, and signs out.
+
+The answer is cached in memory per session for **30 seconds**
+(`SESSION_LIVENESS_TTL_MS`, at most 10,000 sessions remembered), so a busy device
+costs one query per half minute rather than one per request. Signing out
+everywhere, Change password, suspending or removing somebody, and staff ending a
+session therefore stop the device within thirty seconds; when the revocation is
+made by the same API process that serves the device (the usual case with one API
+container), at once, because revoking forgets the cached answer.
+
 ## Rotation, and how theft is detected
 
 Every refresh issues a new token and marks the old one spent, naming its

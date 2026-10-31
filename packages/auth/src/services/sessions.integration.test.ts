@@ -23,6 +23,7 @@ import {
   uniqueEmail,
 } from '../testing/harness.js';
 import { loadAuthConfig } from '../config.js';
+import { SessionService } from './session-service.js';
 import { SignInService } from './sign-in-service.js';
 
 /**
@@ -460,6 +461,117 @@ describe('revocation', () => {
 
     expect(revoked).toBe(1);
     await expect(services.sessions.refresh(keep.tokens.refreshToken)).resolves.toBeDefined();
+  });
+});
+
+describe('an access token whose session has ended', () => {
+  it('is refused at once when this process revoked it', async () => {
+    const signedIn = await services.signIn.signInWithPassword({
+      email: dana.email,
+      password: dana.password,
+      clientApp: 'web',
+    });
+    const principal = await services.tokens.verifyAccessToken(signedIn.tokens.accessToken);
+    await expect(services.sessions.assertLive(principal)).resolves.toBeUndefined();
+
+    await services.sessions.revokeAllForUser(northwind.id, dana.userId, 'signed_out');
+
+    await expect(services.sessions.assertLive(principal)).rejects.toThrow(SessionRevokedError);
+  });
+
+  it('is refused within thirty seconds when it was ended elsewhere', async () => {
+    const start = new Date();
+    services.setNow(start);
+    try {
+      const signedIn = await services.signIn.signInWithPassword({
+        email: dana.email,
+        password: dana.password,
+        clientApp: 'desktop',
+      });
+      const principal = await services.tokens.verifyAccessToken(signedIn.tokens.accessToken);
+      await services.sessions.assertLive(principal);
+
+      // Another API process, or staff working on the database: nothing tells
+      // this process's cache, so it trusts its last answer for the window.
+      await withTenant(northwind.id, (tx) =>
+        tx.sessions.revoke(signedIn.tokens.session.id, 'revoked_by_admin', start),
+      );
+
+      services.setNow(new Date(start.getTime() + 29_000));
+      await expect(services.sessions.assertLive(principal)).resolves.toBeUndefined();
+
+      services.setNow(new Date(start.getTime() + 31_000));
+      await expect(services.sessions.assertLive(principal)).rejects.toThrow(SessionRevokedError);
+    } finally {
+      services.setNow(new Date());
+    }
+  });
+
+  it('is refused once the person is no longer an active member', async () => {
+    const start = new Date();
+    services.setNow(start);
+    try {
+      const suspendee = await createMember(services.identity, northwind.id, 'engineer', 'gone');
+      const signedIn = await services.signIn.signInWithPassword({
+        email: suspendee.email,
+        password: suspendee.password,
+        clientApp: 'mobile',
+      });
+      const principal = await services.tokens.verifyAccessToken(signedIn.tokens.accessToken);
+      await services.sessions.assertLive(principal);
+
+      await withTenant(northwind.id, (tx) =>
+        tx.tenantUsers.updateStatus(suspendee.userId, 'suspended'),
+      );
+
+      services.setNow(new Date(start.getTime() + 31_000));
+      await expect(services.sessions.assertLive(principal)).rejects.toThrow(SessionRevokedError);
+    } finally {
+      services.setNow(new Date());
+    }
+  });
+
+  it('keeps a bounded number of answers and asks again for one it dropped', async () => {
+    const small = new SessionService({
+      tokens: services.tokens,
+      config: loadAuthConfig(),
+      livenessMaxEntries: 1,
+    });
+    const first = await services.signIn.signInWithPassword({
+      email: marek.email,
+      password: marek.password,
+      clientApp: 'web',
+    });
+    const second = await services.signIn.signInWithPassword({
+      email: marek.email,
+      password: marek.password,
+      clientApp: 'desktop',
+    });
+    const firstPrincipal = await services.tokens.verifyAccessToken(first.tokens.accessToken);
+    const secondPrincipal = await services.tokens.verifyAccessToken(second.tokens.accessToken);
+
+    await small.assertLive(firstPrincipal);
+    // The second answer pushes the first out, so revoking the first behind
+    // the cache's back is seen on the next request rather than after the TTL.
+    await small.assertLive(secondPrincipal);
+    await withTenant(southgate.id, (tx) =>
+      tx.sessions.revoke(first.tokens.session.id, 'revoked_by_admin', new Date()),
+    );
+
+    await expect(small.assertLive(firstPrincipal)).rejects.toThrow(SessionRevokedError);
+  });
+
+  it('is refused when the token names a session of somebody else', async () => {
+    const signedIn = await services.signIn.signInWithPassword({
+      email: marek.email,
+      password: marek.password,
+      clientApp: 'web',
+    });
+    const principal = await services.tokens.verifyAccessToken(signedIn.tokens.accessToken);
+
+    await expect(
+      services.sessions.assertLive({ ...principal, userId: dana.userId }),
+    ).rejects.toThrow(SessionRevokedError);
   });
 });
 

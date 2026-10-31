@@ -577,7 +577,15 @@ describe('sessions', () => {
     expect((JSON.parse(revoked.body) as { revoked: boolean }).revoked).toBe(true);
 
     // The access token is still cryptographically valid for another quarter of
-    // an hour; refreshing is what stops.
+    // an hour, and is refused anyway: its session has ended.
+    const after = await app.inject({
+      method: 'GET',
+      url: '/v1/sessions',
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(after.statusCode).toBe(401);
+    expect((JSON.parse(after.body) as { error: { code: string } }).error.code).toBe('unauthorised');
+
     const refresh = await app.inject({
       method: 'POST',
       url: '/v1/auth/refresh',

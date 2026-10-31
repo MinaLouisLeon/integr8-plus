@@ -191,12 +191,11 @@ describe('managing a member', () => {
     expect((JSON.parse(changed.body) as { role: string }).role).toBe('dispatcher');
 
     // Their sessions are ended, so the next token they get carries the new
-    // role. The access token they are already holding is a stateless JWT and
-    // keeps its old role for up to fifteen minutes — asserted here so the
-    // window is a documented property rather than a surprise. See the note at
-    // the top of `members.ts`.
+    // role, and the access token they are already holding, with the old role
+    // in it, is refused from the next request. See the note at the top of
+    // `members.ts`.
     const stale = await api.call(theirToken, { method: 'GET', url: '/v1/members' });
-    expect(stale.statusCode).toBe(200);
+    expect(stale.statusCode).toBe(401);
   });
 
   it('refuses a role above the caller’s own', async () => {
@@ -260,7 +259,9 @@ describe('managing a member', () => {
 
   it('suspends somebody and shuts the door behind them', async () => {
     const person = await api.member('engineer', 'suspendee');
-    await api.signIn(person);
+    const personToken = await api.signIn(person);
+    const before = await api.call(personToken, { method: 'GET', url: '/v1/me' });
+    expect(before.statusCode, before.body).toBe(200);
 
     const suspended = await api.call(ownerToken, {
       method: 'PATCH',
@@ -270,10 +271,11 @@ describe('managing a member', () => {
     expect(suspended.statusCode, suspended.body).toBe(200);
 
     // The door is what closes: they cannot sign in again, and their sessions
-    // are revoked so they cannot refresh either. An access token already in
-    // their hands outlives this by up to fifteen minutes — a documented
-    // property, not an oversight. See the note at the top of `members.ts`.
+    // are revoked so they cannot refresh either. The access token already in
+    // their hands stops too: every request checks that its session is live.
     await expect(api.signIn(person)).rejects.toThrow();
+    const after = await api.call(personToken, { method: 'GET', url: '/v1/me' });
+    expect(after.statusCode, after.body).toBe(401);
   });
 
   it('removes somebody without removing what they did', async () => {

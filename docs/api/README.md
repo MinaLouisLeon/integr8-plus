@@ -19,10 +19,13 @@ request that was never going to be served.
 2. **Client version** — an unsupported build is told once, clearly.
 3. **Per-IP rate limit** — before any database work.
 4. **Validation** — zod, against the schema in the route definition.
-5. **Authentication** — verify the bearer token. A `platform` route takes a
-   super admin's token instead (P15), and re-reads its session from the
-   database, so signing a dashboard out takes effect at once rather than when
-   its token lapses.
+5. **Authentication** — verify the bearer token, then (after an impersonation
+   token's grant check) that its session is still live: not revoked, not past
+   its maximum lifetime, the person still an active member. That answer is
+   cached for 30 seconds per session, so signing out reaches a device within
+   half a minute rather than when its token lapses (docs/auth). A `platform`
+   route takes a super admin's token instead (P15), and re-reads its session
+   from the database on every request.
 6. **Suspension** — a suspended company is refused here, reads included.
 7. **Permission** — the matrix in `@integr8/core`.
 8. **Per-tenant rate limit** — one noisy company must not starve another.

@@ -99,6 +99,8 @@ export {
 } from './errors.js';
 
 export {
+  SESSION_LIVENESS_MAX_ENTRIES,
+  SESSION_LIVENESS_TTL_MS,
   SessionService,
   type IssuedOfflineGrant,
   type IssuedSession,

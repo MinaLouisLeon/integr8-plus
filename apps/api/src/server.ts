@@ -299,6 +299,11 @@ export function buildServer(options: BuildServerOptions): FastifyInstance {
             await services.impersonation.assertStillPermitted(principal);
           }
 
+          // 5a. Is the token's session still live? After the impersonation
+          // check, so an ended impersonation keeps its own 403 rather than a
+          // bare 401.
+          await assertSessionLive(principal, services);
+
           // 5b. Is this company still being served? A suspension refuses reads
           // as well as writes; see http/suspension.ts for why.
           await assertTenantServable(principal.tenantId);
@@ -500,6 +505,25 @@ async function authenticate(request: FastifyRequest, services: Services): Promis
     return await services.tokens.verifyAccessToken(authorization.slice(7).trim());
   } catch (error) {
     if (error instanceof InvalidTokenError) {
+      throw unauthorised();
+    }
+    throw error;
+  }
+}
+
+/**
+ * Refuses a token whose session has ended, with the same 401.
+ *
+ * A signature only proves the token was issued, not that its session is still
+ * wanted: signing out everywhere, Change password, a suspension or staff
+ * ending a session must stop the device well before the token lapses. The
+ * answer is cached for thirty seconds per session (`SessionService.assertLive`).
+ */
+async function assertSessionLive(principal: Principal, services: Services): Promise<void> {
+  try {
+    await services.sessions.assertLive(principal);
+  } catch (error) {
+    if (error instanceof SessionRevokedError) {
       throw unauthorised();
     }
     throw error;
