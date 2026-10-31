@@ -49,11 +49,17 @@ Enforced: **seats**, **submissions per month** and **storage**. Each is a number
 `plan_allowances`, read through one cache (`media/quota.ts`), and enforced at the moment the
 thing is taken:
 
-| Limit       | Refused at                                         | Error                          |
-| ----------- | -------------------------------------------------- | ------------------------------ |
-| Seats       | inviting somebody, **and** accepting an invitation | 409 `seat_limit_reached`       |
-| Submissions | starting a submission, **and** submitting one      | 409 `submission_limit_reached` |
-| Storage     | requesting an upload (P16)                         | 409 `storage_quota_exceeded`   |
+| Limit       | Refused at                                                                             | Error                          |
+| ----------- | -------------------------------------------------------------------------------------- | ------------------------------ |
+| Seats       | inviting somebody, accepting an invitation, **and** letting a suspended person back in | 409 `seat_limit_reached`       |
+| Submissions | starting a submission, **and** submitting one                                          | 409 `submission_limit_reached` |
+| Storage     | requesting an upload (P16)                                                             | 409 `storage_quota_exceeded`   |
+
+**Seats per company.** The seat number is the plan's, unless Integr8 staff have set the
+company's own (`tenants.seats`, the Seats field on the company's page and when onboarding). When
+set, it **replaces** the plan's number, higher or lower; left empty, the plan's applies. A null on
+both is no limit. A suspended person holds no seat, so reactivating somebody is checked like an
+invitation.
 
 Two places each, on purpose. An invitation sent last week can be accepted after the plan has
 shrunk, so the check at acceptance is the one that is load-bearing; the check at invitation

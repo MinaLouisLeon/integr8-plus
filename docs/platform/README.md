@@ -102,7 +102,9 @@ change is in the audit log as `staff.added`, `staff.restored`, `staff.credential
 
 One call, `POST /v1/platform/companies`, and a company is usable:
 
-1. the company row, with its plan and seat count;
+1. the company row, with its plan and seat count. The seat count is optional: empty, the
+   company has the plan's number of seats; set, it replaces the plan's number, higher or lower
+   (the same field on the company's page changes it later; see docs/billing);
 2. **roles** — nothing to do. Roles are a fixed set in `@integr8/core`, not rows;
 3. job types, because a company with none cannot raise a job and an empty list is the first
    thing that makes a new customer think the product is broken;

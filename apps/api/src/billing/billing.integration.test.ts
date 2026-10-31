@@ -705,6 +705,90 @@ describe('plan limits', () => {
     forgetAllowances();
   });
 
+  it('refuses to let a suspended person back in when every seat is taken', async () => {
+    const platform = getPlatformDataSource();
+    const person = await api.member('engineer', 'seat-returner');
+
+    const suspended = await api.call(token, {
+      method: 'PATCH',
+      url: `/v1/members/${person.userId}/status`,
+      payload: { status: 'suspended' },
+    });
+    expect(suspended.statusCode, suspended.body).toBe(200);
+
+    // The seat the suspension freed is taken by somebody else in the meantime:
+    // the plan is full without them.
+    const used = ((await subscription()).usage as { seatsUsed: number }).seatsUsed;
+    await platform.metering.setAllowance('starter', { seats: used, updatedBy: null });
+    forgetAllowances();
+
+    try {
+      const refused = await api.call(token, {
+        method: 'PATCH',
+        url: `/v1/members/${person.userId}/status`,
+        payload: { status: 'active' },
+      });
+      expect(refused.statusCode, refused.body).toBe(409);
+      const body = JSON.parse(refused.body) as {
+        error: { code: string; details?: { field: string }[] };
+      };
+      expect(body.error.code).toBe('seat_limit_reached');
+      expect(body.error.details?.[0]?.field).toBe('body.status');
+
+      // One more seat, and they are let back in.
+      await platform.metering.setAllowance('starter', { seats: used + 1, updatedBy: null });
+      forgetAllowances();
+      const allowed = await api.call(token, {
+        method: 'PATCH',
+        url: `/v1/members/${person.userId}/status`,
+        payload: { status: 'active' },
+      });
+      expect(allowed.statusCode, allowed.body).toBe(200);
+    } finally {
+      await platform.metering.setAllowance('starter', { seats: 5, updatedBy: null });
+      forgetAllowances();
+    }
+  });
+
+  it('uses the company’s own seat number in place of the plan’s, higher or lower', async () => {
+    const platform = getPlatformDataSource();
+    const used = ((await subscription()).usage as { seatsUsed: number }).seatsUsed;
+    const invite = () =>
+      api.call(token, {
+        method: 'POST',
+        url: '/v1/members/invitations',
+        payload: { email: `seat-${randomUUID().slice(0, 8)}@test.integr8.example`, role: 'viewer' },
+      });
+
+    try {
+      // Higher: the plan is full, the company was sold more.
+      await platform.metering.setAllowance('starter', { seats: used, updatedBy: null });
+      forgetAllowances();
+      await platform.tenants.setPlan(api.tenantId, { seats: used + 3 });
+      expect((await invite()).statusCode).toBe(201);
+      expect(((await subscription()).entitlements as { seats: number }).seats).toBe(used + 3);
+
+      // Lower: the plan has room, the company is held to fewer.
+      await platform.metering.setAllowance('starter', { seats: used + 50, updatedBy: null });
+      forgetAllowances();
+      await platform.tenants.setPlan(api.tenantId, { seats: used });
+      const refused = await invite();
+      expect(refused.statusCode).toBe(409);
+      expect((JSON.parse(refused.body) as { error: { code: string } }).error.code).toBe(
+        'seat_limit_reached',
+      );
+
+      // Empty again: the plan's number.
+      await platform.tenants.setPlan(api.tenantId, { seats: null });
+      expect((await invite()).statusCode).toBe(201);
+      expect(((await subscription()).entitlements as { seats: number }).seats).toBe(used + 50);
+    } finally {
+      await platform.tenants.setPlan(api.tenantId, { seats: null });
+      await platform.metering.setAllowance('starter', { seats: 5, updatedBy: null });
+      forgetAllowances();
+    }
+  });
+
   it('refuses a submission once the month’s allowance is spent', async () => {
     const platform = getPlatformDataSource();
 

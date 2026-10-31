@@ -88,7 +88,10 @@ export const getSubscriptionRoute = defineRoute({
     ]);
 
     const plan = subscription?.plan ?? 'trial';
-    const [entitlements, usage] = await Promise.all([entitlementsFor(plan), usageFor(tenantId)]);
+    const [entitlements, usage] = await Promise.all([
+      entitlementsFor(plan, tenant?.seats ?? null),
+      usageFor(tenantId),
+    ]);
 
     return {
       status: 200,

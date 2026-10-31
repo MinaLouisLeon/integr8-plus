@@ -495,7 +495,7 @@ export interface paths {
         head?: never;
         /**
          * Change what somebody may do
-         * @description A built-in `role`, or one of the company’s own roles by `customRoleId` (ADR-0013), which ranks as its base. Nobody may grant a role above their own, for the same reason nobody may invite at one: without that rule, changing a role is a way of promoting yourself; below the owner, nobody gives a company role holding something they do not (422 `role_beyond_own`). Their sessions are ended, so the next token they get carries the new role — but an access token already issued keeps its old role until it lapses, within fifteen minutes.
+         * @description A built-in `role`, or one of the company’s own roles by `customRoleId` (ADR-0013), which ranks as its base. Nobody may grant a role above their own, for the same reason nobody may invite at one: without that rule, changing a role is a way of promoting yourself; below the owner, nobody gives a company role holding something they do not (422 `role_beyond_own`). Their sessions are ended, so the next token they get carries the new role, and an access token already issued, with the old role, is refused within thirty seconds.
          */
         patch: operations["changeMemberRole"];
         trace?: never;
@@ -515,7 +515,7 @@ export interface paths {
         head?: never;
         /**
          * Suspend somebody, or let them back in
-         * @description Suspending refuses them entry and keeps everything they have ever done. It is the reversible half of removing somebody: the right answer for a lost phone or somebody between jobs. Their sessions are ended, so they cannot sign in or refresh — but see the note on this file about the fifteen minutes an access token already in their hands stays valid.
+         * @description Suspending refuses them entry and keeps everything they have ever done. It is the reversible half of removing somebody: the right answer for a lost phone or somebody between jobs. Their sessions are ended, so they cannot sign in or refresh, and an access token already in their hands is refused within thirty seconds. Letting them back in takes a seat, and is refused with 409 `seat_limit_reached` when every seat is taken.
          */
         patch: operations["setMemberStatus"];
         trace?: never;
@@ -532,7 +532,7 @@ export interface paths {
         post?: never;
         /**
          * Remove somebody from this company
-         * @description Soft, and deliberately so: everything they filled in, signed and submitted stays, and the history still names them. What goes is their way in and the seat they were taking up. As with suspending, an access token already issued outlives this by up to fifteen minutes.
+         * @description Soft, and deliberately so: everything they filled in, signed and submitted stays, and the history still names them. What goes is their way in and the seat they were taking up. As with suspending, an access token already issued is refused within thirty seconds.
          */
         delete: operations["removeMember"];
         options?: never;
@@ -11348,7 +11348,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description This is the company’s only owner (`last_owner`). */
+            /** @description This is the company’s only owner (`last_owner`), or every seat is taken (`seat_limit_reached`). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -78824,7 +78824,10 @@ export interface operations {
                      * @enum {string}
                      */
                     plan?: "trial" | "starter" | "standard" | "enterprise";
-                    /** @default null */
+                    /**
+                     * @description The company’s own seat number. When set it replaces the plan’s, higher or lower; null uses the plan’s.
+                     * @default null
+                     */
                     seats?: number | null;
                     /**
                      * @default self_serve
@@ -79340,6 +79343,7 @@ export interface operations {
                 "application/json": {
                     /** @enum {string} */
                     plan: "trial" | "starter" | "standard" | "enterprise";
+                    /** @description The company’s own seat number. When set it replaces the plan’s, higher or lower; null uses the plan’s. */
                     seats: number | null;
                     /** @enum {string} */
                     billingMode?: "self_serve" | "invoiced";

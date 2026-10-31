@@ -12,7 +12,9 @@ import {
 } from '@integr8/core';
 import { withTenant } from '@integr8/db';
 import { z } from 'zod';
+import { assertSeatAvailable } from '../../billing/entitlements.js';
 import { deliverInvitation } from '../../email/deliver.js';
+import { planFor } from '../../http/suspension.js';
 import { conflict, forbidden, notFound, unprocessable } from '../../http/errors.js';
 import { defineRoute, noSchema, type RequestContext } from '../../http/routes.js';
 import { invitationSchema, iso, memberSchema } from './schemas.js';
@@ -202,7 +204,7 @@ export const changeMemberRoleRoute = defineRoute({
   operationId: 'changeMemberRole',
   summary: 'Change what somebody may do',
   description:
-    'A built-in `role`, or one of the company’s own roles by `customRoleId` (ADR-0013), which ranks as its base. Nobody may grant a role above their own, for the same reason nobody may invite at one: without that rule, changing a role is a way of promoting yourself; below the owner, nobody gives a company role holding something they do not (422 `role_beyond_own`). Their sessions are ended, so the next token they get carries the new role — but an access token already issued keeps its old role until it lapses, within fifteen minutes.',
+    'A built-in `role`, or one of the company’s own roles by `customRoleId` (ADR-0013), which ranks as its base. Nobody may grant a role above their own, for the same reason nobody may invite at one: without that rule, changing a role is a way of promoting yourself; below the owner, nobody gives a company role holding something they do not (422 `role_beyond_own`). Their sessions are ended, so the next token they get carries the new role, and an access token already issued, with the old role, is refused within thirty seconds.',
   tags: TAGS,
   security: 'authenticated',
   permission: 'member.update_role',
@@ -304,7 +306,7 @@ export const setMemberStatusRoute = defineRoute({
   operationId: 'setMemberStatus',
   summary: 'Suspend somebody, or let them back in',
   description:
-    'Suspending refuses them entry and keeps everything they have ever done. It is the reversible half of removing somebody: the right answer for a lost phone or somebody between jobs. Their sessions are ended, so they cannot sign in or refresh — but see the note on this file about the fifteen minutes an access token already in their hands stays valid.',
+    'Suspending refuses them entry and keeps everything they have ever done. It is the reversible half of removing somebody: the right answer for a lost phone or somebody between jobs. Their sessions are ended, so they cannot sign in or refresh, and an access token already in their hands is refused within thirty seconds. Letting them back in takes a seat, and is refused with 409 `seat_limit_reached` when every seat is taken.',
   tags: TAGS,
   security: 'authenticated',
   permission: 'member.suspend',
@@ -314,7 +316,10 @@ export const setMemberStatusRoute = defineRoute({
   responses: {
     200: { description: 'The person, with their new status.', schema: memberSchema },
     404: { description: 'No such person in this company.' },
-    409: { description: 'This is the company’s only owner (`last_owner`).' },
+    409: {
+      description:
+        'This is the company’s only owner (`last_owner`), or every seat is taken (`seat_limit_reached`).',
+    },
   },
   handler: async ({ params, body }, context) => {
     const tenantId = context.principal.tenantId;
@@ -327,6 +332,11 @@ export const setMemberStatusRoute = defineRoute({
 
     if (body.status === 'suspended') {
       await assertNotLastOwner(tenantId, params.userId, 'suspended');
+    } else if (target.status !== 'active') {
+      // A suspended person holds no seat, so letting them back in takes one.
+      // Without this check, suspending somebody, inviting a replacement and
+      // reactivating the first went past the plan's limit (P17).
+      await assertSeatAvailable({ tenantId, plan: await planFor(tenantId), field: 'body.status' });
     }
 
     const updated = await withTenant(tenantId, async (tx) => {
@@ -368,7 +378,7 @@ export const removeMemberRoute = defineRoute({
   operationId: 'removeMember',
   summary: 'Remove somebody from this company',
   description:
-    'Soft, and deliberately so: everything they filled in, signed and submitted stays, and the history still names them. What goes is their way in and the seat they were taking up. As with suspending, an access token already issued outlives this by up to fifteen minutes.',
+    'Soft, and deliberately so: everything they filled in, signed and submitted stays, and the history still names them. What goes is their way in and the seat they were taking up. As with suspending, an access token already issued is refused within thirty seconds.',
   tags: TAGS,
   security: 'authenticated',
   permission: 'member.remove',

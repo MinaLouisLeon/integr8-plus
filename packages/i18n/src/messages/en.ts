@@ -7899,7 +7899,8 @@ export const en = {
       slugHint: 'Lower case letters, digits and hyphens. It cannot be changed.',
       plan: 'Plan',
       seats: 'Seats',
-      seatsHint: 'Leave empty for no limit.',
+      seatsHint:
+        'Leave empty to use the plan’s number of seats. A number here replaces the plan’s, higher or lower.',
       billingMode: 'Billing',
       billingModeHint:
         'Invoiced: you bill them and set their plan here; no trial, no checkout. Pays in the app: they start a trial and subscribe with a card.',
@@ -8257,7 +8258,8 @@ export const en = {
       mode: 'Billing',
       plan: 'Plan',
       seats: 'Seats',
-      seatsHint: 'Leave empty for no limit.',
+      seatsHint:
+        'Leave empty to use the plan’s number of seats. A number here replaces the plan’s, higher or lower.',
       save: 'Save',
       saving: 'Saving\u2026',
       saved: 'Saved.',

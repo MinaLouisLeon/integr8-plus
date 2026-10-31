@@ -192,7 +192,16 @@ export const onboardCompanyRoute = defineRoute({
     name: z.string().min(1).max(200),
     plan: z.enum(TENANT_PLANS).default('trial'),
     /** Null means uncapped. */
-    seats: z.number().int().min(1).max(100_000).nullable().default(null),
+    seats: z
+      .number()
+      .int()
+      .min(1)
+      .max(100_000)
+      .nullable()
+      .default(null)
+      .describe(
+        'The company’s own seat number. When set it replaces the plan’s, higher or lower; null uses the plan’s.',
+      ),
     /**
      * `invoiced` starts the company active on its plan with no trial, since
      * Integr8 is taking the money; `self_serve` starts the trial as before.
@@ -408,7 +417,15 @@ export const setCompanyPlanRoute = defineRoute({
   query: noSchema,
   body: z.object({
     plan: planSchema,
-    seats: z.number().int().min(1).max(100_000).nullable(),
+    seats: z
+      .number()
+      .int()
+      .min(1)
+      .max(100_000)
+      .nullable()
+      .describe(
+        'The company’s own seat number. When set it replaces the plan’s, higher or lower; null uses the plan’s.',
+      ),
     /** Left out: unchanged. */
     billingMode: billingModeSchema.optional(),
   }),
