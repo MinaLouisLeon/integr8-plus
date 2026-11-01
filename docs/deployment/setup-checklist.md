@@ -627,7 +627,7 @@ grep -n '^# [A-Z_]*=' deploy/.env               # should print only EXPO_ACCESS_
 grep -n '^AI_' deploy/.env                      # the assistant's lines, as you set them
 ```
 
-- [ ] **No example values left.** The command below lists, by name, every setting that still holds a value from the template: a `change-me` password, a `your-domain.example` address or any other `.example` or `.local` one, `your-github-owner`, or a database password shorter than 16 characters (on its own line or inside a `DATABASE_URL` address). It never prints the values, so its output is safe to paste anywhere. Fix each line it names with `nano deploy/.env` and run it again until it says `no example values left`. In production the API, the worker and the `bootstrap` and `migrate` steps refuse to start while any of these remains; in staging they start and log each one, beginning "Production would refuse".
+- [ ] **No example values left.** The command below lists, by name, every setting that still holds a value from the template: a `change-me` password, a `your-domain.example` address or any other `.example` one, a public address (such as `AUTH_ISSUER` or `WEB_APP_URL`) on a `.local` host, `your-github-owner`, or a database password shorter than 16 characters (on its own line or inside a `DATABASE_URL` address). It never prints the values, so its output is safe to paste anywhere. Fix each line it names with `nano deploy/.env` and run it again until it says `no example values left`. In production the API, the worker and the `bootstrap` and `migrate` steps refuse to start while any of these remains; in staging they start and log each one, beginning "Production would refuse".
 
 ```bash
 # machine (SSH session), from /opt/integr8

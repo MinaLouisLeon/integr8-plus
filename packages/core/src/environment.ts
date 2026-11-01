@@ -60,9 +60,23 @@ const SECRET_SETTING = /PASSWORD|SECRET|TOKEN|KEY/u;
 
 /**
  * Settings holding one address or a comma-separated list of them, by name:
- * `WEB_APP_URL`, `DATABASE_URL_ADMIN`, `API_CORS_ORIGINS`, `AUTH_ISSUER`.
+ * `WEB_APP_URL`, `DATABASE_URL_ADMIN`, `API_CORS_ORIGINS`, `AUTH_ISSUER`, `R2_ENDPOINT`.
  */
-const ADDRESS_SETTING = /URL|ORIGINS|ISSUER|DSN/u;
+const ADDRESS_SETTING = /URL|ORIGINS|ISSUER|DSN|ENDPOINT/u;
+
+/**
+ * The addresses people and apps are sent to, which must be public. A `.local`
+ * host is refused only in these: an internal service (a model server, a
+ * database) may well be reached by a `.local` name on a private network.
+ */
+const PUBLIC_ADDRESSES: ReadonlySet<string> = new Set([
+  'AUTH_ISSUER',
+  'WEB_APP_URL',
+  'API_PUBLIC_URL',
+  'PUBLIC_API_URL',
+  'API_UPDATE_URL',
+  'API_CORS_ORIGINS',
+]);
 
 /** The database passwords, as their own settings. */
 const DATABASE_PASSWORDS = [
@@ -95,20 +109,22 @@ function hostOf(address: string): string | undefined {
 
 /**
  * Whether a host is a placeholder: under `.example` (`api.your-domain.example`,
- * the template's) or `.local` (`api.integr8.local`, the sign-in issuer's old
- * default). Neither can be a public address, so a production server that names
- * one is pointing people somewhere that does not exist.
+ * the template's), which never resolves anywhere, or, unless `local` is false,
+ * `.local` (`api.integr8.local`, the sign-in issuer's development default),
+ * which is never a public address. A production server that sends people to
+ * either is pointing them somewhere that does not exist.
  */
-export function isExampleHost(host: string): boolean {
-  return /(?:^|\.)(?:example|local)\.?$/u.test(host.toLowerCase());
+export function isExampleHost(host: string, { local = true }: { local?: boolean } = {}): boolean {
+  const lower = host.toLowerCase();
+  return /(?:^|\.)example\.?$/u.test(lower) || (local && /(?:^|\.)local\.?$/u.test(lower));
 }
 
 /** Whether an address, or any address in a comma-separated list, is a placeholder. */
-export function hasExampleAddress(value: string): boolean {
+export function hasExampleAddress(value: string, options: { local?: boolean } = {}): boolean {
   return value
     .split(',')
     .map(hostOf)
-    .some((host) => host !== undefined && isExampleHost(host));
+    .some((host) => host !== undefined && isExampleHost(host, options));
 }
 
 /** The password inside a `postgres://user:password@host/db` address, if it has one. */
@@ -128,7 +144,8 @@ export function connectionPassword(address: string): string | undefined {
  * Which settings still hold a value from `deploy/.env.example`, and why.
  *
  * - a password, key, token, secret or address containing `change-me`;
- * - an address whose host is a placeholder (`.example`, `.local`);
+ * - an address on a `.example` host, or a public one (the issuer, the web
+ *   app, the API's own, the update page, the browser origins) on `.local`;
  * - a database password shorter than {@link MIN_DATABASE_PASSWORD_LENGTH},
  *   whether set on its own or inside a connection address.
  *
@@ -155,7 +172,7 @@ export function exampleValueProblems(env: NodeJS.ProcessEnv): string[] {
       );
       continue;
     }
-    if (address && hasExampleAddress(value)) {
+    if (address && hasExampleAddress(value, { local: PUBLIC_ADDRESSES.has(name) })) {
       problems.push(
         `${name} names an example address (a .example or .local host), which nothing can reach: set the real one.`,
       );

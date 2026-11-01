@@ -68,10 +68,14 @@ describe('example values a deployment must not run on', () => {
       API_CORS_ORIGINS: 'https://app.integr8-media.com,https://app.your-domain.example',
       API_PUBLIC_URL: 'https://api.integr8-media.com',
       SENTRY_DSN: 'https://key@o1.ingest.sentry.io/2',
+      // An internal service may have a .local name; never a .example one.
+      AI_OPENAI_BASE_URL: 'http://models.local/v1',
+      R2_ENDPOINT: 'https://r2.your-domain.example',
     });
     expect(problems.map((problem) => problem.split(' ')[0])).toEqual([
       'API_CORS_ORIGINS',
       'AUTH_ISSUER',
+      'R2_ENDPOINT',
       'WEB_APP_URL',
     ]);
   });
@@ -108,6 +112,8 @@ describe('example values a deployment must not run on', () => {
     expect(isExampleHost('api.integr8.local')).toBe(true);
     expect(isExampleHost('app.example.com')).toBe(false);
     expect(isExampleHost('localhost')).toBe(false);
+    expect(isExampleHost('models.local', { local: false })).toBe(false);
+    expect(isExampleHost('api.your-domain.example', { local: false })).toBe(true);
     expect(hasExampleAddress('postgres://u:p.local@db.internal/x')).toBe(false);
     expect(connectionPassword('postgres://u:p%40ss@db/x')).toBe('p@ss');
     expect(connectionPassword('postgres://u@db/x')).toBeUndefined();

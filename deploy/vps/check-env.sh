@@ -10,8 +10,9 @@
 # bootstrap and migrate steps), plus the template's other placeholders:
 #
 #   - a password, key, token, secret or address containing "change-me";
-#   - an address on a .example or .local host (the template's
-#     your-domain.example lines);
+#   - an address on a .example host (the template's your-domain.example
+#     lines), or a public one (AUTH_ISSUER, WEB_APP_URL, the API's own, the
+#     update page, the browser origins) on a .local host;
 #   - a database password shorter than 16 characters, on its own line or
 #     inside a DATABASE_URL* address;
 #   - any value naming your-domain.example or your-github-owner (the contact
@@ -54,9 +55,12 @@ password_of() {
   printf '%s\n' "$1" | sed -n 's#^[A-Za-z][A-Za-z0-9+.-]*://[^:@/?\#]*:\([^@/?\#]*\)@.*#\1#p'
 }
 
+# A .example host never resolves; a .local one is never public, so it counts
+# only for the addresses people and apps are sent to (second argument "public").
 is_example_host() {
   case "$1" in
-    example | local | *.example | *.local | example. | local. | *.example. | *.local.) return 0 ;;
+    example | *.example | example. | *.example.) return 0 ;;
+    local | *.local | local. | *.local.) [ "$2" = public ] ;;
     *) return 1 ;;
   esac
 }
@@ -90,7 +94,7 @@ while IFS= read -r line || [ -n "$line" ]; do
   secret=0
   address=0
   case "$name" in *PASSWORD* | *SECRET* | *TOKEN* | *KEY*) secret=1 ;; esac
-  case "$name" in *URL* | *ORIGINS* | *ISSUER* | *DSN*) address=1 ;; esac
+  case "$name" in *URL* | *ORIGINS* | *ISSUER* | *DSN* | *ENDPOINT*) address=1 ;; esac
 
   if [ $((secret + address)) -gt 0 ]; then
     case "$lower" in
@@ -102,15 +106,22 @@ while IFS= read -r line || [ -n "$line" ]; do
   fi
 
   if [ "$address" -eq 1 ]; then
+    reach=internal
+    case "$name" in
+      AUTH_ISSUER | WEB_APP_URL | API_PUBLIC_URL | PUBLIC_API_URL | API_UPDATE_URL | API_CORS_ORIGINS) reach=public ;;
+    esac
     flagged=0
     old_ifs=$IFS
     IFS=,
+    # No globbing while the list is split: a value is data, not a pattern.
+    set -f
     for entry in $value; do
       host=$(host_of "$entry")
-      if [ -n "$host" ] && is_example_host "$host"; then
+      if [ -n "$host" ] && is_example_host "$host" "$reach"; then
         flagged=1
       fi
     done
+    set +f
     IFS=$old_ifs
     if [ "$flagged" -eq 1 ]; then
       say "$name" 'an example address (.example or .local host)'
