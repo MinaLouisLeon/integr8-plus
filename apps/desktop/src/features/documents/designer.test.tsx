@@ -8,7 +8,16 @@ import { compileDefinition } from '@integr8/form-engine';
 import { createI18n, I18nextProvider } from '@integr8/i18n';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { BlockList } from './block-editor';
+import { BlockTree } from './block-editor';
+import { historyReducer, initialHistory } from './designer-state';
+import {
+  columnContainer,
+  duplicateBlock,
+  insertBlocks,
+  locateBlock,
+  moveBlock,
+  ROOT,
+} from './designer-tree';
 import {
   BLOCK_TYPES,
   freshBlockId,
@@ -28,7 +37,7 @@ import {
  */
 
 const compiled = compileDefinition({
-  schemaVersion: 1,
+  schemaVersion: 2,
   title: { en: 'Gas safety' },
   pages: [
     {
@@ -49,6 +58,7 @@ const compiled = compileDefinition({
               ],
             },
             { id: 'photos', type: 'photo', label: { en: 'Photos' } },
+            { id: 'gas_off', type: 'information', body: { en: 'Turn the gas off first.' } },
           ],
         },
         {
@@ -144,9 +154,16 @@ describe('the content list', () => {
     };
     const html = renderToStaticMarkup(
       <I18nextProvider i18n={i18n}>
-        <BlockList
+        <BlockTree
           blocks={design.blocks}
-          context={{ design, form, locale: 'en' }}
+          context={{
+            design,
+            form,
+            locale: 'en',
+            attention: new Map([['qr-1', 'Not in the form any more']]),
+            onDuplicate: () => undefined,
+            onCopy: () => undefined,
+          }}
           onChange={() => undefined}
         />
       </I18nextProvider>,
@@ -155,5 +172,118 @@ describe('the content list', () => {
     expect(html).toContain('Certificate');
     expect(html).toContain('QR code');
     expect(html).toContain('Side by side');
+    expect(html).toContain('Duplicate');
+    expect(html).toContain('Not in the form any more');
+    expect(html).toContain('data-attention="true"');
+  });
+});
+
+/** A template with a row: two blocks at the top, a row of two columns, one block in the first. */
+function withRow(): TemplateDesign {
+  return {
+    ...emptyDesign(),
+    blocks: [
+      { type: 'heading', id: 'title', text: { en: 'Title' }, level: 1, align: 'start' },
+      { type: 'page_break', id: 'break' },
+      {
+        type: 'row',
+        id: 'row-1',
+        columns: [
+          { width: 1, blocks: [{ type: 'qr', id: 'qr-1', size: 30, align: 'end' }] },
+          { width: 1, blocks: [] },
+        ],
+      },
+      { type: 'divider', id: 'line' },
+    ],
+  };
+}
+
+describe('moving blocks (1.3.0)', () => {
+  it('moves within the template and into and out of a row’s columns', () => {
+    const design = withRow();
+    const down = moveBlock(design.blocks, 'title', { container: ROOT, index: 2 });
+    expect(down?.map((block) => block.id)).toEqual(['break', 'row-1', 'title', 'line']);
+
+    const intoRow = moveBlock(design.blocks, 'line', {
+      container: columnContainer('row-1', 1),
+      index: 0,
+    })!;
+    expect(intoRow.map((block) => block.id)).toEqual(['title', 'break', 'row-1']);
+    expect(locateBlock(intoRow, 'line')).toEqual({
+      container: columnContainer('row-1', 1),
+      index: 0,
+    });
+
+    const outOfRow = moveBlock(design.blocks, 'qr-1', { container: ROOT, index: 0 })!;
+    expect(outOfRow.map((block) => block.id)).toEqual(['qr-1', 'title', 'break', 'row-1', 'line']);
+  });
+
+  it('keeps rows and page breaks out of columns, and a row out of itself', () => {
+    const design = withRow();
+    expect(
+      moveBlock(design.blocks, 'break', { container: columnContainer('row-1', 0), index: 0 }),
+    ).toBeNull();
+    expect(
+      moveBlock(design.blocks, 'row-1', { container: columnContainer('row-1', 1), index: 0 }),
+    ).toBeNull();
+    expect(moveBlock(design.blocks, 'title', { container: ROOT, index: 0 })).toBeNull();
+  });
+
+  it('duplicates and pastes with ids nothing else has, a row’s blocks included', () => {
+    const design = withRow();
+    const twice = duplicateBlock(design, 'row-1')!;
+    expect(twice.blocks.map((block) => block.id)).toEqual([
+      'title',
+      'break',
+      'row-1',
+      'row-2',
+      'line',
+    ]);
+    const copy = twice.blocks[3];
+    expect(copy?.type === 'row' && copy.columns[0]?.blocks[0]?.id).toBe('qr-2');
+    const parsed = parseDesign(twice);
+    expect(parsed.ok).toBe(true);
+
+    const pasted = insertBlocks(design, [design.blocks[0]!, design.blocks[1]!], {
+      container: columnContainer('row-1', 1),
+      index: 0,
+    });
+    // A page break cannot stand in a column; the heading can.
+    const row = pasted.blocks.find((block) => block.id === 'row-1');
+    expect(row?.type === 'row' && row.columns[1]?.blocks.map((block) => block.id)).toEqual([
+      'heading-1',
+    ]);
+  });
+});
+
+describe('undo and redo (1.3.0)', () => {
+  it('joins typing into one step, keeps other changes apart, and redoes', () => {
+    const start = { design: emptyDesign(), name: 'A' };
+    let state = initialHistory(start);
+    state = historyReducer(state, {
+      type: 'edit',
+      draft: { ...start, name: 'AB' },
+      kind: 'typing',
+      at: 1_000,
+    });
+    state = historyReducer(state, {
+      type: 'edit',
+      draft: { ...start, name: 'ABC' },
+      kind: 'typing',
+      at: 1_400,
+    });
+    expect(state.past).toHaveLength(1);
+    const moved = { ...state.present, design: { ...state.present.design, blocks: [] } };
+    state = historyReducer(state, { type: 'edit', draft: moved, kind: 'step', at: 1_500 });
+    expect(state.past).toHaveLength(2);
+    state = historyReducer(state, { type: 'undo' });
+    expect(state.present.name).toBe('ABC');
+    expect(state.present.design.blocks).toHaveLength(1);
+    state = historyReducer(state, { type: 'undo' });
+    expect(state.present.name).toBe('A');
+    state = historyReducer(state, { type: 'redo' });
+    state = historyReducer(state, { type: 'redo' });
+    expect(state.present.design.blocks).toHaveLength(0);
+    expect(state.future).toHaveLength(0);
   });
 });

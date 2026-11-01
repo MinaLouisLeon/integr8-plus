@@ -1,4 +1,4 @@
-import { touchKey } from '@integr8/form-engine';
+import { isInformation, touchKey } from '@integr8/form-engine';
 import { dependentChoices, entriesOf, entryTitle, isRequiredNow, say } from '@integr8/form-input';
 import { useTranslation } from '@integr8/i18n';
 import { fontSize, radii, spacing } from '@integr8/tokens';
@@ -20,6 +20,7 @@ import { AnswerList } from './answer-list';
 import { EntryList, EntryView } from './entries';
 import { FieldBlock } from './field-block';
 import type { FillModel } from './fill-model';
+import { Description, InformationBlock } from './information';
 import { FormMediaProvider } from './media';
 import { ActionButton, Muted, Problem, TextBox } from './widgets/kit';
 import { refusalMessage } from '~/lib/refusals';
@@ -271,7 +272,7 @@ export function FormFiller(props: FormFillerProps) {
             )}
 
             {reviewing ? (
-              <View style={styles.content}>
+              <View testID="part:review" style={styles.content}>
                 <Text accessibilityRole="header" style={[styles.pageTitle, { color: theme.text }]}>
                   {t('fill.review.title')}
                 </Text>
@@ -327,7 +328,7 @@ export function FormFiller(props: FormFillerProps) {
                 </View>
               </View>
             ) : page === undefined ? null : (
-              <View style={styles.content}>
+              <View testID={`page:${page.id}`} style={styles.content}>
                 <View>
                   {pages.length > 1 ? (
                     <Muted>
@@ -342,6 +343,7 @@ export function FormFiller(props: FormFillerProps) {
                       {say(page.title, locale) || t('fill.nav.page', { number: pageIndex + 1 })}
                     </Text>
                   ) : null}
+                  <Description text={page.description} locale={locale} of="page" />
                 </View>
 
                 {snapshot.openEntry !== undefined ? (
@@ -366,6 +368,7 @@ export function FormFiller(props: FormFillerProps) {
                     <View
                       key={section.id}
                       ref={register(section.id)}
+                      testID={`${section.repeat === undefined ? 'section' : 'repeat'}:${section.id}`}
                       collapsable={false}
                       style={[
                         styles.section,
@@ -375,11 +378,13 @@ export function FormFiller(props: FormFillerProps) {
                       {section.title === undefined ? null : (
                         <Text
                           accessibilityRole="header"
+                          testID="part:section-title"
                           style={[styles.sectionTitle, { color: theme.text }]}
                         >
                           {say(section.title, locale)}
                         </Text>
                       )}
+                      <Description text={section.description} locale={locale} of="section" />
                       {section.repeat !== undefined ? (
                         <EntryList
                           model={model}
@@ -393,22 +398,26 @@ export function FormFiller(props: FormFillerProps) {
                           (field) =>
                             section.repeat === undefined && view.visible.get(field.id) === true,
                         )
-                        .map((field) => (
-                          <FieldBlock
-                            key={field.id}
-                            ref={register(field.id)}
-                            field={field}
-                            value={view.values.get(field.id) ?? snapshot.state.answers[field.id]}
-                            errors={view.shownErrors.filter((error) => error.field === field.id)}
-                            locale={locale}
-                            disabled={false}
-                            required={isRequiredNow(view, field)}
-                            choices={dependentChoices(model.form, view, field, locale)}
-                            onAnswer={(value) => model.answer(field.id, value)}
-                            onClear={() => model.clear(field.id)}
-                            onBlur={() => model.touch(field.id)}
-                          />
-                        ))}
+                        .map((field) =>
+                          isInformation(field) ? (
+                            <InformationBlock key={field.id} item={field} locale={locale} />
+                          ) : (
+                            <FieldBlock
+                              key={field.id}
+                              ref={register(field.id)}
+                              field={field}
+                              value={view.values.get(field.id) ?? snapshot.state.answers[field.id]}
+                              errors={view.shownErrors.filter((error) => error.field === field.id)}
+                              locale={locale}
+                              disabled={false}
+                              required={isRequiredNow(view, field)}
+                              choices={dependentChoices(model.form, view, field, locale)}
+                              onAnswer={(value) => model.answer(field.id, value)}
+                              onClear={() => model.clear(field.id)}
+                              onBlur={() => model.touch(field.id)}
+                            />
+                          ),
+                        )}
                     </View>
                   ))}
 

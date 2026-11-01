@@ -113,3 +113,82 @@ export function parseDatetime(text: string): number | undefined {
     (Number(offset.slice(1, 3)) * 3_600 + Number(offset.slice(4, 6)) * 60) * sign;
   return localSeconds - offsetSeconds;
 }
+
+// ---------------------------------------------------------------------------
+// Date arithmetic (schema version 2)
+// ---------------------------------------------------------------------------
+
+const FIRST_DAY = daysFromCivil(1, 1, 1);
+/** The latest date a calculation may produce: four-digit years only, like the text form. */
+const LAST_DAY = daysFromCivil(9999, 12, 31);
+
+function pad(value: number, width: number): string {
+  return String(value).padStart(width, '0');
+}
+
+/**
+ * The calendar date of a day count, `YYYY-MM-DD`: Howard Hinnant's
+ * `civil_from_days`, the inverse of `daysFromCivil`, in the same integer
+ * arithmetic. `undefined` outside the years 1 to 9999.
+ */
+export function formatDate(days: number): string | undefined {
+  if (!Number.isSafeInteger(days) || days < FIRST_DAY || days > LAST_DAY) {
+    return undefined;
+  }
+  const shifted = days + 719468;
+  const era = Math.floor(shifted / 146097);
+  const dayOfEra = shifted - era * 146097;
+  const yearOfEra = Math.floor(
+    (dayOfEra -
+      Math.floor(dayOfEra / 1460) +
+      Math.floor(dayOfEra / 36524) -
+      Math.floor(dayOfEra / 146096)) /
+      365,
+  );
+  const dayOfYear =
+    dayOfEra - (365 * yearOfEra + Math.floor(yearOfEra / 4) - Math.floor(yearOfEra / 100));
+  const monthIndex = Math.floor((5 * dayOfYear + 2) / 153);
+  const day = dayOfYear - Math.floor((153 * monthIndex + 2) / 5) + 1;
+  const month = monthIndex < 10 ? monthIndex + 3 : monthIndex - 9;
+  const year = yearOfEra + era * 400 + (month <= 2 ? 1 : 0);
+  return `${pad(year, 4)}-${pad(month, 2)}-${pad(day, 2)}`;
+}
+
+/**
+ * A date moved by a whole number of days, weeks or months.
+ *
+ * Days and weeks are plain day counts: a date has no time of day, so no time
+ * zone and no daylight-saving change can move it. Months keep the day of the
+ * month and clamp to the end of a shorter month — 31 January plus one month is
+ * 28 February (29 in a leap year), and 31 March minus one month the same —
+ * which is what a person counting on a calendar means by "a month later".
+ * `undefined` past the years 1 to 9999.
+ */
+export function shiftDays(
+  days: number,
+  unit: 'days' | 'weeks' | 'months',
+  amount: number,
+): number | undefined {
+  if (!Number.isSafeInteger(amount) || formatDate(days) === undefined) {
+    return undefined;
+  }
+  if (unit !== 'months') {
+    const moved = days + amount * (unit === 'weeks' ? 7 : 1);
+    return formatDate(moved) === undefined ? undefined : moved;
+  }
+  const text = formatDate(days) ?? '';
+  const year = Number(text.slice(0, 4));
+  const month = Number(text.slice(5, 7));
+  const day = Number(text.slice(8, 10));
+  const monthsSinceYearOne = (year - 1) * 12 + (month - 1) + amount;
+  const targetYear = Math.floor(monthsSinceYearOne / 12) + 1;
+  const targetMonth = monthsSinceYearOne - (targetYear - 1) * 12 + 1;
+  if (targetYear < 1 || targetYear > 9999) {
+    return undefined;
+  }
+  return daysFromCivil(
+    targetYear,
+    targetMonth,
+    Math.min(day, daysInMonth(targetYear, targetMonth)),
+  );
+}

@@ -5,6 +5,7 @@ import {
   type MessageLocale,
   wordsFor,
 } from '../notifications/words.js';
+import { ar, en } from '@integr8/i18n/core';
 import type { EmailMessage } from './sender.js';
 
 /**
@@ -495,4 +496,48 @@ export function hrSuspensionEmail(input: {
     paragraphs: [fill(words.body, values), fill(words.next, values)],
     ...(input.url === null ? {} : { action: { label: words.action, url: input.url } }),
   });
+}
+
+/**
+ * A business PDF sent to the customer or supplier it is for (1.3.0): a quote,
+ * an invoice, a purchase order or a job report, attached. Written in the
+ * language the PDF was made in, so the words and the document agree; the
+ * company's own note, if any, is quoted as it was typed.
+ */
+export function businessDocumentEmail(input: {
+  to: string;
+  companyName: string;
+  /** What the document is, as its own heading says: "Invoice INV-000123". */
+  documentTitle: string;
+  note: string | null;
+  attachment: { filename: string; content: Uint8Array };
+  replyTo?: string;
+  locale?: EmailLocale;
+}): EmailMessage {
+  const locale = input.locale ?? 'en';
+  const words = (locale === 'ar' ? ar : en).businessPdfs.message;
+  const values = { company: input.companyName, document: input.documentTitle };
+  const note = input.note?.trim() ?? '';
+  const message = compose({
+    to: input.to,
+    locale,
+    subject: fill(words.subject, values),
+    title: input.documentTitle,
+    paragraphs: [
+      fill(words.body, values),
+      ...(note === '' ? [] : [fill(words.note, values), note]),
+      fill(words.reply, values),
+    ],
+  });
+  return {
+    ...message,
+    attachments: [
+      {
+        filename: input.attachment.filename,
+        contentType: 'application/pdf',
+        content: input.attachment.content,
+      },
+    ],
+    ...(input.replyTo === undefined ? {} : { replyTo: input.replyTo }),
+  };
 }

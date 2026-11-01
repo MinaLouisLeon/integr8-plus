@@ -1641,7 +1641,13 @@ async function submit(
   const today = resolveToday(mutation.payload.filledOn, recordedAt(mutation));
   let answers: Record<string, unknown>;
   try {
-    answers = await revalidate(tx, compiledVersion(version), plan.answers, today);
+    answers = await revalidate(
+      tx,
+      compiledVersion(version),
+      plan.answers,
+      today,
+      recordedAt(mutation),
+    );
   } catch (error) {
     if (
       error instanceof ApiError &&

@@ -1,16 +1,12 @@
 import {
   addField,
-  compileDefinition,
   emptyDefinition,
-  evaluateForm,
-  type Expression,
   type FormDefinition,
   newField,
   remove,
   updateField,
 } from '@integr8/form-engine';
 import { describe, expect, it } from 'vitest';
-import { fromCalculation, toCalculation } from './calculation';
 import { editorReducer, initialEditor } from './editor';
 import { parseLocalCopy, recoveryFor } from './recovery';
 import { issueElement } from './issues';
@@ -121,61 +117,6 @@ describe('crash recovery', () => {
     expect(
       parseLocalCopy(JSON.stringify({ baseRevision: 2, definition: {}, savedAt: 'now' })),
     ).toEqual({ baseRevision: 2, definition: {}, savedAt: 'now' });
-  });
-});
-
-describe('calculations', () => {
-  it('round-trips a left-to-right chain, and evaluates it the way it reads', () => {
-    const chain = {
-      first: { kind: 'field' as const, field: 'hours' },
-      rest: [
-        { operator: 'multiply' as const, term: { kind: 'field' as const, field: 'rate' } },
-        { operator: 'add' as const, term: { kind: 'number' as const, value: '25' } },
-      ],
-    };
-    const expression = fromCalculation(chain);
-    expect(toCalculation(expression)).toEqual(chain);
-
-    const definition: FormDefinition = {
-      ...base(),
-      pages: [
-        {
-          id: 'page_1',
-          sections: [
-            {
-              id: 'section_1',
-              fields: [
-                { id: 'hours', type: 'number', label: { en: 'Hours' } },
-                { id: 'rate', type: 'number', label: { en: 'Rate' } },
-                { id: 'total', type: 'number', label: { en: 'Total' }, calculation: expression },
-              ],
-            },
-          ],
-        },
-      ],
-    };
-    const compiled = compileDefinition(definition);
-    expect(compiled.ok).toBe(true);
-    if (compiled.ok) {
-      expect(evaluateForm(compiled.form, { hours: 3, rate: 40 }).values.get('total')).toBe(145);
-    }
-  });
-
-  it('refuses to show as a chain anything that is not one', () => {
-    const grouped: Expression = {
-      kind: 'arithmetic',
-      operator: 'multiply',
-      left: { kind: 'answer', field: 'a' },
-      right: {
-        kind: 'arithmetic',
-        operator: 'add',
-        left: { kind: 'answer', field: 'b' },
-        right: { kind: 'number', value: '1' },
-      },
-    };
-    expect(toCalculation(grouped)).toBeUndefined();
-    expect(toCalculation({ kind: 'today' })).toBeUndefined();
-    expect(toCalculation(undefined)).toBeUndefined();
   });
 });
 

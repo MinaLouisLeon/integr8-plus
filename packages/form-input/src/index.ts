@@ -66,6 +66,13 @@ export {
   type SignaturePoint,
 } from './signature.js';
 export {
+  calculatedText,
+  informationText,
+  localNow,
+  needsNewerApp,
+  type InformationText,
+} from './version2.js';
+export {
   formatBytes,
   normaliseDigits,
   offsetText,

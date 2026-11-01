@@ -5,19 +5,35 @@ import {
   localizedTextSchema,
 } from '@integr8/form-engine';
 import { z } from 'zod';
+import { DOCUMENT_FONT_KEYS } from './fonts.js';
+import {
+  bandIsEmpty,
+  headerFooterSchema,
+  type HeaderFooterSpec,
+  hexColourSchema,
+  type Margins,
+  marginsSchema,
+} from './look.js';
 
 /**
  * A PDF template's design (docs/documents/ADR-0001 D1-D3, D6).
  *
- * A template is a column of blocks on A4 portrait pages, one under another,
- * with a row block for two or three side by side. It names the form's fields
+ * A template is a column of blocks on A4 pages, portrait or landscape, one
+ * under another, with a row block for two or three side by side, a header
+ * and a footer with three places each, and a style: brand colour, font,
+ * table lines. It names the form's fields
  * by id, never by label, so a label changed in the form changes the document
  * with it. The design is data: the designer edits it, the API validates it
  * with {@link parseDesign} and {@link checkDesignAgainstForm} before storing
  * it, and the renderer reads it.
  */
 
-export const DESIGN_SCHEMA_VERSION = 1;
+/**
+ * 2 (1.3.0) added the header, the three-place footer, landscape pages, the
+ * template's style and each block's colour. A version 1 design is upgraded on
+ * reading ({@link upgradeDesign}) into one that prints exactly as it did.
+ */
+export const DESIGN_SCHEMA_VERSION = 2;
 
 /** Limits that keep a template a document rather than a program. */
 export const DESIGN_LIMITS = {
@@ -29,6 +45,9 @@ export const DESIGN_LIMITS = {
   textLength: 4000,
 } as const;
 
+/** A header or footer place holds a line or two, not a paragraph. */
+const BAND_TEXT_LENGTH = 500;
+
 const ID = /^[a-z][a-z0-9_]{0,63}$/u;
 const elementId = z.string().regex(ID);
 const blockId = z.string().regex(/^[a-z0-9][a-z0-9_-]{0,63}$/u);
@@ -38,17 +57,61 @@ const optionalText = localizedTextSchema.optional();
 const align = z.enum(['start', 'center', 'end']).default('start');
 const millimetres = (min: number, max: number) => z.number().min(min).max(max);
 
-export const marginsSchema = z.object({
-  top: millimetres(0, 60),
-  end: millimetres(0, 60),
-  bottom: millimetres(0, 60),
-  start: millimetres(0, 60),
+export { marginsSchema };
+export type { Margins };
+
+/** A footer as every template had before headers: page numbers at the end. */
+export const DEFAULT_FOOTER: HeaderFooterSpec = {
+  start: null,
+  center: null,
+  end: { kind: 'page' },
+  notOnFirstPage: false,
+};
+
+/**
+ * The template's look (D9 of the 1.3.0 decisions). `brandColour`: `company`
+ * for the company's accent colour at the moment of printing, a `#rrggbb` of
+ * its own, or null for black (every template made before 1.3.0).
+ */
+export const styleSchema = z.object({
+  brandColour: z
+    .union([z.literal('company'), hexColourSchema])
+    .nullable()
+    .default('company'),
+  font: z.enum(DOCUMENT_FONT_KEYS).default('noto-sans'),
+  /** The lines of every table: none, light grey (before 1.3.0), or strong. */
+  tableLines: z.enum(['none', 'light', 'strong']).default('light'),
+  /** Every other row of a table lightly shaded. */
+  stripedRows: z.boolean().default(false),
+  /** Table header rows lightly shaded. */
+  headerShading: z.boolean().default(true),
 });
-export type Margins = z.infer<typeof marginsSchema>;
+export type TemplateStyle = z.infer<typeof styleSchema>;
+
+/** How every template made before 1.3.0 looks. */
+export const CLASSIC_STYLE: TemplateStyle = {
+  brandColour: null,
+  font: 'noto-sans',
+  tableLines: 'light',
+  stripedRows: false,
+  headerShading: true,
+};
+
+/** A block's text colour, from the palette (D9). */
+export const BLOCK_COLOURS = ['black', 'grey', 'brand', 'red'] as const;
+export type BlockColour = (typeof BLOCK_COLOURS)[number];
+/** What any block that shows text may set besides its own settings. */
+const appearance = {
+  colour: z.enum(BLOCK_COLOURS).optional(),
+  /** A light background behind the whole block. */
+  shaded: z.boolean().optional(),
+};
 
 export const pageSchema = z.object({
-  /** Always A4 portrait (D3). Named so a reader of the JSON knows. */
+  /** Always A4 (D3). Named so a reader of the JSON knows. */
   size: z.literal('A4').default('A4'),
+  /** Portrait (210 x 297 mm) or landscape (297 x 210 mm); backgrounds are drawn to match. */
+  orientation: z.enum(['portrait', 'landscape']).default('portrait'),
   margins: marginsSchema,
   /** An image drawn behind every page, or behind every page but the first when that differs. */
   background: z.object({ fileId }).nullable().default(null),
@@ -74,13 +137,10 @@ export const pageSchema = z.object({
   language: z.enum(['en', 'ar']).nullable().default(null),
   /** Base text size in points. */
   fontSize: z.number().min(7).max(16).default(10),
-  footer: z
-    .object({
-      /** "Page 2 of 5" at the foot of every page. */
-      pageNumbers: z.boolean().default(true),
-      text: optionalText,
-    })
-    .default({ pageNumbers: true }),
+  /** Printed in the top margin of every page, or every page but the first. */
+  header: headerFooterSchema.nullable().default(null),
+  /** Printed in the bottom margin; before 1.3.0 page numbers and a line of text. */
+  footer: headerFooterSchema.default(DEFAULT_FOOTER),
 });
 export type PageSettings = z.infer<typeof pageSchema>;
 
@@ -125,6 +185,7 @@ export type DocumentField = z.infer<typeof documentFieldSchema>;
 const headingBlock = z.object({
   type: z.literal('heading'),
   id: blockId,
+  ...appearance,
   text,
   level: z.union([z.literal(1), z.literal(2), z.literal(3)]).default(2),
   align,
@@ -133,6 +194,7 @@ const headingBlock = z.object({
 const textBlock = z.object({
   type: z.literal('text'),
   id: blockId,
+  ...appearance,
   /** May hold placeholders: `{{answer.<field>}}`, `{{field.<key>}}`, `{{company.name}}`, … */
   text,
   align,
@@ -143,6 +205,7 @@ const textBlock = z.object({
 const fieldBlock = z.object({
   type: z.literal('field'),
   id: blockId,
+  ...appearance,
   fieldId: elementId,
   /** The form's own label when absent. */
   label: optionalText,
@@ -152,6 +215,7 @@ const fieldBlock = z.object({
 const checkboxBlock = z.object({
   type: z.literal('checkbox'),
   id: blockId,
+  ...appearance,
   fieldId: elementId,
   /**
    * For a choice field, the option that ticks the box; for yes/no, `yes`,
@@ -164,6 +228,7 @@ const checkboxBlock = z.object({
 const optionsBlock = z.object({
   type: z.literal('options'),
   id: blockId,
+  ...appearance,
   /** A choice, yes/no or checkbox field: every option, each with its box. */
   fieldId: elementId,
   label: optionalText,
@@ -173,6 +238,7 @@ const optionsBlock = z.object({
 const fieldsTableBlock = z.object({
   type: z.literal('fields_table'),
   id: blockId,
+  ...appearance,
   title: optionalText,
   rows: z
     .array(z.object({ fieldId: elementId, label: optionalText }))
@@ -183,6 +249,7 @@ const fieldsTableBlock = z.object({
 const repeatTableBlock = z.object({
   type: z.literal('repeat_table'),
   id: blockId,
+  ...appearance,
   /** A repeating section: one row per entry. */
   sectionId: elementId,
   title: optionalText,
@@ -204,6 +271,7 @@ const repeatTableBlock = z.object({
 const staticTableBlock = z.object({
   type: z.literal('static_table'),
   id: blockId,
+  ...appearance,
   title: optionalText,
   header: z.array(text).max(DESIGN_LIMITS.tableColumns).default([]),
   rows: z
@@ -215,6 +283,7 @@ const staticTableBlock = z.object({
 const imageBlock = z.object({
   type: z.literal('image'),
   id: blockId,
+  ...appearance,
   source: z.discriminatedUnion('kind', [
     z.object({ kind: z.literal('logo') }),
     z.object({ kind: z.literal('file'), fileId }),
@@ -230,9 +299,21 @@ const imageBlock = z.object({
 const qrBlock = z.object({
   type: z.literal('qr'),
   id: blockId,
+  ...appearance,
   size: millimetres(15, 80).default(30),
   align,
   caption: optionalText,
+});
+
+/**
+ * One of the form's Information blocks (form schema version 2), printed as the
+ * form shows it — heading, paragraph, style — when it is shown for these
+ * answers. A block prints only where a template puts it, never by itself.
+ */
+const informationBlock = z.object({
+  type: z.literal('information'),
+  id: blockId,
+  informationId: elementId,
 });
 
 const dividerBlock = z.object({ type: z.literal('divider'), id: blockId });
@@ -255,6 +336,7 @@ const leafBlock = z.discriminatedUnion('type', [
   staticTableBlock,
   imageBlock,
   qrBlock,
+  informationBlock,
   dividerBlock,
   spacerBlock,
 ]);
@@ -285,6 +367,7 @@ export const blockSchema = z.discriminatedUnion('type', [
   staticTableBlock,
   imageBlock,
   qrBlock,
+  informationBlock,
   dividerBlock,
   spacerBlock,
   pageBreakBlock,
@@ -297,6 +380,7 @@ export type BlockType = Block['type'];
 export const designSchema = z.object({
   schemaVersion: z.literal(DESIGN_SCHEMA_VERSION),
   page: pageSchema,
+  style: styleSchema.default(CLASSIC_STYLE),
   fields: z.array(documentFieldSchema).max(DESIGN_LIMITS.fields).default([]),
   blocks: z.array(blockSchema).max(DESIGN_LIMITS.blocks),
 });
@@ -323,18 +407,30 @@ export interface DesignIssue {
 export type DesignResult =
   { ok: true; design: TemplateDesign } | { ok: false; issues: DesignIssue[] };
 
-/** A new template: comfortable margins, page numbers, a heading with the form's title. */
+/**
+ * A new template: comfortable margins, page numbers, the company's colour,
+ * a heading with the form's title.
+ */
 export function emptyDesign(): TemplateDesign {
   return {
     schemaVersion: DESIGN_SCHEMA_VERSION,
     page: {
       size: 'A4',
+      orientation: 'portrait',
       margins: { top: 20, end: 15, bottom: 20, start: 15 },
       background: null,
       firstPage: null,
       language: null,
       fontSize: 10,
-      footer: { pageNumbers: true },
+      header: null,
+      footer: DEFAULT_FOOTER,
+    },
+    style: {
+      brandColour: 'company',
+      font: 'noto-sans',
+      tableLines: 'light',
+      stripedRows: false,
+      headerShading: true,
     },
     fields: [],
     blocks: [
@@ -363,9 +459,56 @@ export function allBlocks(design: Pick<TemplateDesign, 'blocks'>): (Block | Leaf
   return out;
 }
 
+/**
+ * A version 1 design as version 2, printing exactly as before: portrait, no
+ * header, black headings, the Noto fonts, and its footer — page numbers at
+ * the end, its line of text at the start — in the three places. Anything that
+ * is not a version 1 design is returned as it is.
+ */
+export function upgradeDesign(input: unknown): unknown {
+  if (
+    input === null ||
+    typeof input !== 'object' ||
+    (input as { schemaVersion?: unknown }).schemaVersion !== 1
+  ) {
+    return input;
+  }
+  const v1 = input as { page?: unknown };
+  const page =
+    v1.page !== null && typeof v1.page === 'object' ? (v1.page as Record<string, unknown>) : {};
+  const footer =
+    page.footer !== null && typeof page.footer === 'object'
+      ? (page.footer as { pageNumbers?: unknown; text?: unknown })
+      : {};
+  const text = footer.text;
+  const hasText =
+    text !== null &&
+    typeof text === 'object' &&
+    Object.values(text as Record<string, unknown>).some(
+      (value) => typeof value === 'string' && value !== '',
+    );
+  const rest = Object.fromEntries(Object.entries(page).filter(([key]) => key !== 'footer'));
+  return {
+    ...(input as Record<string, unknown>),
+    schemaVersion: DESIGN_SCHEMA_VERSION,
+    page: {
+      ...rest,
+      orientation: 'portrait',
+      header: null,
+      footer: {
+        start: hasText ? { kind: 'text', text, bold: false } : null,
+        center: null,
+        end: footer.pageNumbers === false ? null : { kind: 'page' },
+        notOnFirstPage: false,
+      },
+    },
+    style: CLASSIC_STYLE,
+  };
+}
+
 /** Structural validation: the shape, the limits and the rules within the design itself. */
 export function parseDesign(input: unknown): DesignResult {
-  const parsed = designSchema.safeParse(input);
+  const parsed = designSchema.safeParse(upgradeDesign(input));
   if (!parsed.success) {
     return {
       ok: false,
@@ -405,6 +548,23 @@ export function parseDesign(input: unknown): DesignResult {
             message: `Text is limited to ${String(DESIGN_LIMITS.textLength)} characters.`,
           });
         }
+      }
+    }
+  }
+  for (const [name, band] of [
+    ['header', design.page.header],
+    ['footer', design.page.footer],
+  ] as const) {
+    for (const slot of band === null ? [] : [band.start, band.center, band.end]) {
+      if (
+        slot?.kind === 'text' &&
+        Object.values(slot.text).some((content) => content.length > BAND_TEXT_LENGTH)
+      ) {
+        issues.push({
+          path: `page.${name}`,
+          code: 'text_too_long',
+          message: `A header or footer text is limited to ${String(BAND_TEXT_LENGTH)} characters.`,
+        });
       }
     }
   }
@@ -556,6 +716,23 @@ export function checkDesignAgainstForm(design: TemplateDesign, form: CompiledFor
         }
         break;
       }
+      case 'information': {
+        const element = form.elements.get(block.informationId);
+        if (element?.information === undefined) {
+          issues.push({
+            path,
+            code: 'unknown_field',
+            message: `The form has no Information block "${block.informationId}".`,
+          });
+        } else if (element.entries !== undefined) {
+          issues.push({
+            path,
+            code: 'outside_section',
+            message: `"${block.informationId}" is inside a repeating section, and prints only outside one.`,
+          });
+        }
+        break;
+      }
       case 'image':
         if (block.source.kind === 'answer') {
           const found = topLevel(path, block.source.fieldId);
@@ -569,6 +746,40 @@ export function checkDesignAgainstForm(design: TemplateDesign, form: CompiledFor
     }
   }
   return issues;
+}
+
+/** Whether the design shows the company's logo anywhere: a block, the header or the footer. */
+export function designUsesLogo(design: TemplateDesign): boolean {
+  const inBand = (band: HeaderFooterSpec | null) =>
+    band !== null &&
+    !bandIsEmpty(band) &&
+    [band.start, band.center, band.end].some((slot) => slot?.kind === 'logo');
+  return (
+    inBand(design.page.header) ||
+    inBand(design.page.footer) ||
+    allBlocks(design).some((block) => block.type === 'image' && block.source.kind === 'logo')
+  );
+}
+
+/**
+ * The blocks and document fields a list of issues names, for the designer to
+ * mark: `blocks.<id>` and `fields.<key>`.
+ */
+export function issueTargets(issues: readonly Pick<DesignIssue, 'path'>[]): {
+  blocks: Set<string>;
+  fields: Set<string>;
+} {
+  const blocks = new Set<string>();
+  const fields = new Set<string>();
+  for (const issue of issues) {
+    const [scope, id] = issue.path.split('.');
+    if (scope === 'blocks' && id !== undefined) {
+      blocks.add(id);
+    } else if (scope === 'fields' && id !== undefined) {
+      fields.add(id);
+    }
+  }
+  return { blocks, fields };
 }
 
 /** Every uploaded image a design uses: backgrounds and image blocks. */

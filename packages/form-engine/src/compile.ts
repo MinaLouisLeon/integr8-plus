@@ -1,18 +1,26 @@
 import type { z } from 'zod';
 import { parseDecimal } from './decimal.js';
-import { type FormDefinition, formDefinitionSchema, LIMITS, type Repeat } from './definition.js';
+import {
+  DEFINITION_SCHEMA_VERSION,
+  type FormDefinition,
+  formDefinitionSchema,
+  LIMITS,
+  type Repeat,
+  requiredSchemaVersion,
+} from './definition.js';
 import { type Expression, measure, referencedFields, referencedSections } from './expression.js';
 import {
+  calculationOf,
   choiceValues,
   type DependsOn,
   dependsOnOf,
   describeFieldType,
   type Field,
   fieldConfigIssues,
-  isCalculated,
   type ValueType,
 } from './field-types.js';
 import type { ElementId } from './ids.js';
+import { type Information, isInformation } from './information.js';
 import { parseDate, parseDatetime, parseTime } from './temporal.js';
 
 /**
@@ -37,7 +45,8 @@ import { parseDate, parseDatetime, parseTime } from './temporal.js';
  * ever has to discover it — or discover it differently.
  */
 
-export type ElementKind = 'page' | 'section' | 'field';
+/** `information` is an Information block (schema version 2): shown, never answered. */
+export type ElementKind = 'page' | 'section' | 'field' | 'information';
 
 export interface ElementInfo {
   id: ElementId;
@@ -50,15 +59,20 @@ export interface ElementInfo {
   /** Where it sits, e.g. `pages[0].sections[1].fields[2]`. */
   path: string;
   field: Field | undefined;
+  /** For an Information block: the block. */
+  information: Information | undefined;
   /** For a repeatable section: how it repeats. */
   repeat: Repeat | undefined;
-  /** For a field of a repeatable section: that section. Its answers live in entries. */
+  /**
+   * For a field (or Information block) of a repeatable section: that section.
+   * Its answers live in entries.
+   */
   entries: ElementId | undefined;
 }
 
 export interface CompiledForm {
   readonly definition: FormDefinition;
-  /** Every field, in the order a person reads them. */
+  /** Every question — never an Information block — in the order a person reads them. */
   readonly fields: readonly Field[];
   readonly elements: ReadonlyMap<ElementId, ElementInfo>;
   /** Dependencies before dependents. */
@@ -81,6 +95,9 @@ export const DEFINITION_ISSUE_CODES = [
   'not_repeatable',
   'inside_repeat',
   'not_in_section',
+  // Schema version 2.
+  'schema_version_too_low',
+  'schema_version_unsupported',
 ] as const;
 
 export type DefinitionIssueCode = (typeof DEFINITION_ISSUE_CODES)[number];
@@ -99,6 +116,30 @@ export type CompileResult =
   { ok: true; form: CompiledForm } | { ok: false; issues: DefinitionIssue[] };
 
 export function compileDefinition(input: unknown): CompileResult {
+  // A format newer than this engine is not a broken form: the app is too old
+  // for it, and says "update the app", not "tell the office".
+  const declared =
+    typeof input === 'object' && input !== null && !Array.isArray(input)
+      ? (input as { schemaVersion?: unknown }).schemaVersion
+      : undefined;
+  if (
+    typeof declared === 'number' &&
+    Number.isInteger(declared) &&
+    declared > DEFINITION_SCHEMA_VERSION
+  ) {
+    return {
+      ok: false,
+      issues: [
+        {
+          code: 'schema_version_unsupported',
+          message: `This form needs a newer app: it is written in format ${String(declared)}, and this app reads up to ${String(DEFINITION_SCHEMA_VERSION)}`,
+          path: 'schemaVersion',
+          elements: [],
+        },
+      ],
+    };
+  }
+
   const parsed = formDefinitionSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, issues: parsed.error.issues.map(structureIssue) };
@@ -106,15 +147,34 @@ export function compileDefinition(input: unknown): CompileResult {
 
   const definition = parsed.data;
   const issues: DefinitionIssue[] = [];
+  const needed = requiredSchemaVersion(definition);
+  if (definition.schemaVersion < needed) {
+    // Published like this, an older app would try to open it and fail on the
+    // first new thing it met instead of asking to be updated.
+    return {
+      ok: false,
+      issues: [
+        {
+          code: 'schema_version_too_low',
+          message: `This form uses features of format ${String(needed)} (a description, an Information block or a newer calculation), so its schemaVersion must be ${String(needed)}`,
+          path: 'schemaVersion',
+          elements: [],
+        },
+      ],
+    };
+  }
   const elements = collectElements(definition, issues);
   const fields = [...elements.values()].flatMap((element) =>
     element.field === undefined ? [] : [element.field],
   );
+  const items = [...elements.values()].filter(
+    (element) => element.kind === 'field' || element.kind === 'information',
+  ).length;
 
-  if (fields.length > LIMITS.fieldsTotal) {
+  if (items > LIMITS.fieldsTotal) {
     issues.push({
       code: 'too_large',
-      message: `A form may have at most ${String(LIMITS.fieldsTotal)} fields; this one has ${String(fields.length)}`,
+      message: `A form may have at most ${String(LIMITS.fieldsTotal)} fields; this one has ${String(items)}`,
       path: 'pages',
       elements: [],
     });
@@ -200,6 +260,7 @@ function collectElements(
         parent: undefined,
         visibleWhen: page.visibleWhen,
         field: undefined,
+        information: undefined,
         repeat: undefined,
         entries: undefined,
       },
@@ -215,20 +276,23 @@ function collectElements(
           parent: page.id,
           visibleWhen: section.visibleWhen,
           field: undefined,
+          information: undefined,
           repeat: section.repeat,
           entries: undefined,
         },
         sectionPath,
       );
 
-      section.fields.forEach((field, fieldIndex) => {
+      section.fields.forEach((item, fieldIndex) => {
+        const information = isInformation(item) ? item : undefined;
         add(
           {
-            id: field.id,
-            kind: 'field',
+            id: item.id,
+            kind: information === undefined ? 'field' : 'information',
             parent: section.id,
-            visibleWhen: field.visibleWhen,
-            field,
+            visibleWhen: item.visibleWhen,
+            field: isInformation(item) ? undefined : item,
+            information,
             repeat: undefined,
             entries: section.repeat === undefined ? undefined : section.id,
           },
@@ -298,14 +362,11 @@ function checkElement(
     checkDependsOn(element, field, dependsOn, elements, issues, scopes);
   }
 
-  if (
-    isCalculated(field) &&
-    (field.type === 'number' || field.type === 'decimal') &&
-    field.calculation !== undefined
-  ) {
+  const calculation = calculationOf(field);
+  if (calculation !== undefined) {
     checkExpression(
-      field.calculation,
-      'number',
+      calculation,
+      field.type === 'date' ? 'date' : 'number',
       `${path}.calculation`,
       field.id,
       elements,
@@ -446,7 +507,7 @@ function checkDependsOn(
 
 function checkExpression(
   expression: Expression,
-  expected: 'boolean' | 'number',
+  expected: 'boolean' | 'number' | 'date',
   path: string,
   owner: ElementId,
   elements: ReadonlyMap<ElementId, ElementInfo>,
@@ -471,7 +532,7 @@ function checkExpression(
       message:
         expected === 'boolean'
           ? `The condition on "${owner}" must be true or false, but it produces a ${found} value`
-          : `The calculation for "${owner}" must produce a number, but it produces a ${found} value`,
+          : `The calculation for "${owner}" must produce a ${expected}, but it produces a ${found} value`,
       path,
       elements: [owner],
     });
@@ -574,6 +635,8 @@ function typeOf(
         : 'datetime';
     case 'today':
       return 'date';
+    case 'now':
+      return 'datetime';
     case 'answer': {
       const field = fieldFor(expression.field);
       return field === undefined ? undefined : describeFieldType(field.type).valueType;
@@ -677,8 +740,83 @@ function typeOf(
       }
       return 'number';
     }
+    case 'round': {
+      const operand = inner(expression.operand);
+      if (operand === undefined) {
+        return undefined;
+      }
+      return operand === 'number'
+        ? 'number'
+        : report('type_mismatch', `"round" needs a number, not a ${operand} value`);
+    }
+    case 'percentage': {
+      const part = inner(expression.part);
+      const whole = inner(expression.whole);
+      if (part === undefined || whole === undefined) {
+        return undefined;
+      }
+      return part === 'number' && whole === 'number'
+        ? 'number'
+        : report('type_mismatch', `"percentage" needs two numbers, not ${part} and ${whole}`);
+    }
+    case 'statistic': {
+      let broken = false;
+      for (const operand of expression.operands) {
+        const type = inner(operand);
+        if (type === undefined) {
+          broken = true;
+        } else if (type !== 'number') {
+          report(
+            'type_mismatch',
+            `Every part of "${expression.operator}" must be a number, not a ${type} value`,
+          );
+          broken = true;
+        }
+      }
+      return broken ? undefined : 'number';
+    }
+    case 'difference': {
+      const from = inner(expression.from);
+      const to = inner(expression.to);
+      if (from === undefined || to === undefined) {
+        return undefined;
+      }
+      if (from !== to || !TEMPORAL.has(from)) {
+        return report(
+          'type_mismatch',
+          from === to
+            ? `A difference is between two dates, two times or two dates and times, not ${from} values`
+            : `A difference is between two values of one kind, not a ${from} and a ${to} value`,
+        );
+      }
+      if (from === 'time' && expression.unit === 'days') {
+        return report('type_mismatch', 'Two times of day are apart by minutes or hours, not days');
+      }
+      return 'number';
+    }
+    case 'shift_date': {
+      const date = inner(expression.date);
+      const amount = inner(expression.amount);
+      if (date === undefined || amount === undefined) {
+        return undefined;
+      }
+      if (date !== 'date') {
+        return report(
+          'type_mismatch',
+          `Only a date can be moved by days, weeks or months, not a ${date} value`,
+        );
+      }
+      return amount === 'number'
+        ? 'date'
+        : report(
+            'type_mismatch',
+            `A date is moved by a number of ${expression.unit}, not a ${amount} value`,
+          );
+    }
   }
 }
+
+const TEMPORAL: ReadonlySet<RuleType> = new Set(['date', 'time', 'datetime']);
 
 function compareType(
   expression: Extract<Expression, { kind: 'compare' }>,
@@ -783,15 +921,9 @@ function dependenciesOf(element: ElementInfo): Dependency[] {
     }
   }
   const field = element.field;
-  if (
-    field !== undefined &&
-    (field.type === 'number' || field.type === 'decimal') &&
-    field.calculation !== undefined
-  ) {
-    for (const id of [
-      ...referencedFields(field.calculation),
-      ...referencedSections(field.calculation),
-    ]) {
+  const calculation = field === undefined ? undefined : calculationOf(field);
+  if (calculation !== undefined) {
+    for (const id of [...referencedFields(calculation), ...referencedSections(calculation)]) {
       push(id, 'calculated_from');
     }
   }

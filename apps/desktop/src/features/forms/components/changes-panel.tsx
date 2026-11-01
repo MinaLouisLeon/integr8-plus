@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { Button, ErrorState, LoadingState } from '~/components/ui';
 import { checkDraft, type DraftCheck, formKeys, publishDraft, type VersionSummary } from '../api';
 import { breakingText, issueElement, issueText } from '../model/issues';
+import { AffectedTemplates } from '../../documents/affected-templates';
 import { nameOf } from './canvas';
 import { Dialog } from './dialog';
 
@@ -72,6 +73,7 @@ export function ChangesPanel({
   hasLive,
   flush,
   onShow,
+  onTranslations,
 }: {
   formId: string;
   definition: FormDefinition;
@@ -79,6 +81,8 @@ export function ChangesPanel({
   hasLive: boolean;
   flush: () => Promise<number | null>;
   onShow: (elementId: string) => void;
+  /** Opens the Translations tab on the texts with no Arabic. */
+  onTranslations: () => void;
 }) {
   const { t } = useTranslation();
   const { state, run } = useCheck(formId, flush);
@@ -106,6 +110,7 @@ export function ChangesPanel({
           locale={locale}
           hasLive={hasLive}
           onShow={onShow}
+          onTranslations={onTranslations}
         />
       ) : null}
     </div>
@@ -118,12 +123,14 @@ function CheckReport({
   locale,
   hasLive,
   onShow,
+  onTranslations,
 }: {
   check: DraftCheck;
   definition: FormDefinition;
   locale: string;
   hasLive: boolean;
   onShow?: (elementId: string) => void;
+  onTranslations: () => void;
 }) {
   const { t } = useTranslation();
   return (
@@ -141,13 +148,46 @@ function CheckReport({
           />
         )}
       </section>
+      <TranslationWarning check={check} onOpen={onTranslations} />
       {check.valid ? (
         <>
           <BreakingList diff={check.diff} definition={definition} locale={locale} />
+          <AffectedTemplates templates={check.documentTemplates} />
           <ChangeList diff={check.diff} definition={definition} locale={locale} hasLive={hasLive} />
         </>
       ) : null}
     </>
+  );
+}
+
+/**
+ * "12 texts have no Arabic": a warning, never a reason publishing is refused
+ * (owner's decision, 1.3.0). The server counts with the same function the
+ * Translations tab lists with, so the number matches the rows there.
+ */
+export function TranslationWarning({ check, onOpen }: { check: DraftCheck; onOpen: () => void }) {
+  const { t } = useTranslation();
+  // A server from before 1.3.0 sends no warnings.
+  const warnings = (check as { warnings?: DraftCheck['warnings'] }).warnings ?? [];
+  const missing = warnings.filter((warning) => warning.code === 'missing_translation').length;
+  if (missing === 0) {
+    return null;
+  }
+  return (
+    <section
+      role="status"
+      className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-warning bg-warning-subtle px-3 py-2 text-sm text-content"
+    >
+      <span className="flex flex-col gap-0.5">
+        <span className="font-medium">
+          {t('forms.translations.missingCount', { count: missing })}
+        </span>
+        <span className="text-xs text-content-muted">{t('forms.translations.warningHint')}</span>
+      </span>
+      <Button variant="secondary" onClick={onOpen}>
+        {t('forms.translations.open')}
+      </Button>
+    </section>
   );
 }
 
@@ -298,6 +338,7 @@ export function PublishDialog({
   onClose,
   onPublished,
   onShow,
+  onTranslations,
 }: {
   formId: string;
   definition: FormDefinition;
@@ -308,18 +349,26 @@ export function PublishDialog({
   onClose: () => void;
   onPublished: (version: VersionSummary) => void;
   onShow: (elementId: string) => void;
+  onTranslations: () => void;
 }) {
   const { t } = useTranslation();
   const queries = useQueryClient();
   const { state, run } = useCheck(formId, flush);
   const [note, setNote] = useState('');
   const [acknowledged, setAcknowledged] = useState(false);
+  // PDF templates the version would leave needing attention (1.3.0): confirmed apart.
+  const [templatesAcknowledged, setTemplatesAcknowledged] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [problem, setProblem] = useState<string | undefined>(undefined);
 
   const check = state.kind === 'done' ? state.check : undefined;
   const breaking = (check?.diff.breaking.length ?? 0) > 0;
-  const canPublish = check?.valid === true && (!breaking || acknowledged) && !publishing;
+  const affectsTemplates = (check?.documentTemplates.length ?? 0) > 0;
+  const canPublish =
+    check?.valid === true &&
+    (!breaking || acknowledged) &&
+    (!affectsTemplates || templatesAcknowledged) &&
+    !publishing;
 
   const publish = async () => {
     if (check === undefined) {
@@ -332,6 +381,7 @@ export function PublishDialog({
         expectedRevision: check.revision,
         ...(note.trim() === '' ? {} : { changeNote: note.trim() }),
         acknowledgeBreakingChanges: acknowledged,
+        acknowledgeTemplateChanges: templatesAcknowledged,
       });
       setNote('');
       await Promise.all([
@@ -395,6 +445,7 @@ export function PublishDialog({
       ) : null}
       {check?.valid === true ? (
         <>
+          <TranslationWarning check={check} onOpen={onTranslations} />
           <BreakingList diff={check.diff} definition={definition} locale={locale} />
           {breaking ? (
             <label className="flex items-start gap-2 font-medium">
@@ -405,6 +456,18 @@ export function PublishDialog({
                 className="mt-1"
               />
               {t('forms.publish.acknowledge')}
+            </label>
+          ) : null}
+          <AffectedTemplates templates={check.documentTemplates} />
+          {affectsTemplates ? (
+            <label className="flex items-start gap-2 font-medium">
+              <input
+                type="checkbox"
+                checked={templatesAcknowledged}
+                onChange={(event) => setTemplatesAcknowledged(event.target.checked)}
+                className="mt-1"
+              />
+              {t('documents.pdfBuilder.formCheck.acknowledge')}
             </label>
           ) : null}
           <ChangeList diff={check.diff} definition={definition} locale={locale} hasLive={hasLive} />

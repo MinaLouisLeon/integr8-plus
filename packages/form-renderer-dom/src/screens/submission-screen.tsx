@@ -1,5 +1,6 @@
 import { ApiRequestError } from '@integr8/api-client';
 import { type Answers, compileDefinition } from '@integr8/form-engine';
+import { needsNewerApp } from '@integr8/form-input';
 import { formatDateTime, useTranslation } from '@integr8/i18n';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -59,6 +60,16 @@ export function SubmissionScreen({ submissionId }: { submissionId: string }) {
           <Loading />
         ) : detail.isError ? (
           <Failure error={detail.error} onRetry={() => void detail.refetch()} />
+        ) : needsNewerApp(detail.data.version.definition) ? (
+          // Written for a newer app than this one (schema version 2 and on):
+          // not a broken form, so not a failure.
+          <div
+            role="status"
+            className="flex flex-col gap-1 rounded-lg border border-warning bg-warning-subtle p-4"
+          >
+            <p className="font-semibold text-content">{t('fill.updateApp.title')}</p>
+            <p className="text-sm text-content">{t('fill.updateApp.body')}</p>
+          </div>
         ) : (
           <Failure error={undefined} />
         )}

@@ -17,16 +17,25 @@ import {
   emptyDesign,
   parseDesign,
   resolveDocumentFields,
+  sampleAnswers,
   type TemplateDesign,
 } from '@integr8/document-render';
 import { holds } from '@integr8/core';
 import { z } from 'zod';
 import {
+  latestForms,
+  problemKey,
+  type TemplateProblem,
+  templateProblems,
+} from '../../documents/attention.js';
+import {
   DOCUMENT_RENDER_ATTEMPTS,
   DOCUMENT_RENDER_QUEUE,
   documentLink,
+  printDesign,
+  RenderFailed,
 } from '../../documents/render.js';
-import { documentSources } from '../../documents/sources.js';
+import { dayIn, documentSources } from '../../documents/sources.js';
 import {
   ApiError,
   conflict,
@@ -34,6 +43,7 @@ import {
   notFound,
   unprocessable,
 } from '../../http/errors.js';
+import { createRateLimiter } from '../../http/rate-limit.js';
 import { defineRoute, noSchema, type RequestContext } from '../../http/routes.js';
 import { planFor } from '../../http/suspension.js';
 import { assertUploadFits } from '../../media/quota.js';
@@ -77,7 +87,16 @@ const TEMPLATE_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 const localized = z.record(z.string(), z.string());
 const designInput = z.record(z.string(), z.unknown());
 
-const templateSchema = z.object({
+const templateProblemSchema = z.object({
+  /** Where: `blocks.<id>` or `fields.<key>`. */
+  path: z.string(),
+  code: z.string(),
+  message: z.string(),
+  blockId: z.string().nullable(),
+  fieldKey: z.string().nullable(),
+});
+
+export const templateSchema = z.object({
   id: z.uuid(),
   formId: z.uuid(),
   name: z.string(),
@@ -87,6 +106,13 @@ const templateSchema = z.object({
   archived: z.boolean(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
+  /**
+   * Whether a published version of the form dropped or changed a question
+   * the template uses (1.3.0): `problems` names each block to fix. Documents
+   * are still made meanwhile; what is missing prints blank or is left out.
+   */
+  needsAttention: z.boolean(),
+  problems: z.array(templateProblemSchema),
 });
 
 const documentFieldSchema = z.object({
@@ -96,18 +122,39 @@ const documentFieldSchema = z.object({
   lookupRole: z.enum(['key', 'confirm']).nullable(),
 });
 
-const documentSchema = z.object({
+/** Where a document came from (0067, 0074). */
+const documentSourceSchema = z.enum([
+  'generated',
+  'uploaded',
+  'quote',
+  'invoice',
+  'purchase_order',
+  'job_report',
+]);
+
+export const documentSchema = z.object({
   id: z.uuid(),
   title: z.string(),
-  /** `generated` from a submission, or `uploaded` as a PDF by a person (0067). */
-  source: z.enum(['generated', 'uploaded']),
+  /**
+   * `generated` from a submission, `uploaded` as a PDF by a person (0067), or
+   * printed by the server from a record: `quote`, `invoice`, `purchase_order`,
+   * `job_report` (0074).
+   */
+  source: documentSourceSchema,
   /** Null for an uploaded document. */
   templateId: z.uuid().nullable(),
   templateRevision: z.number().int().nullable(),
   submissionId: z.uuid().nullable(),
   formId: z.uuid().nullable(),
-  /** An uploaded document's reference number; null for a generated one. */
+  /** An uploaded document's reference number, or a business PDF's record number; null for a generated one. */
   reference: z.string().nullable(),
+  /** The record a business PDF was printed from (0074); null for the others. */
+  record: z
+    .object({
+      kind: z.enum(['quote', 'invoice', 'purchase_order', 'job_report']),
+      id: z.uuid(),
+    })
+    .nullable(),
   /** The customer an uploaded document is for. */
   customer: z.object({ id: z.uuid(), name: z.string() }).nullable(),
   /**
@@ -143,7 +190,10 @@ const documentParams = z.object({ documentId: z.uuid() });
 // Bodies
 // ---------------------------------------------------------------------------
 
-function templateBody(template: DocumentTemplate): z.infer<typeof templateSchema> {
+export function templateBody(
+  template: DocumentTemplate,
+  problems: readonly TemplateProblem[],
+): z.infer<typeof templateSchema> {
   return {
     id: template.id,
     formId: template.formId,
@@ -153,10 +203,26 @@ function templateBody(template: DocumentTemplate): z.infer<typeof templateSchema
     archived: template.archivedAt !== null,
     createdAt: iso(template.createdAt),
     updatedAt: iso(template.updatedAt),
+    needsAttention: problems.length > 0,
+    problems: [...problems],
   };
 }
 
-async function documentBodies(
+/** Templates as the API shows them, each checked against its form as last published. */
+export async function templateBodies(
+  tx: TenantTransaction,
+  templates: readonly DocumentTemplate[],
+): Promise<z.infer<typeof templateSchema>[]> {
+  const forms = await latestForms(
+    tx,
+    templates.map((template) => template.formId),
+  );
+  return templates.map((template) =>
+    templateBody(template, templateProblems(template.design, forms.get(template.formId))),
+  );
+}
+
+export async function documentBodies(
   tx: TenantTransaction,
   context: RequestContext,
   documents: readonly DocumentRecord[],
@@ -181,6 +247,7 @@ async function documentBodies(
     submissionId: document.submissionId,
     formId: document.formId,
     reference: document.reference,
+    record: document.record === null ? null : { ...document.record },
     customer:
       document.customerId === null
         ? null
@@ -211,7 +278,7 @@ async function documentBody(
   return body!;
 }
 
-function designRefused(issues: readonly DesignIssue[]): never {
+export function designRefused(issues: readonly DesignIssue[]): never {
   throw unprocessable(
     'document_template_invalid',
     'The template has problems; each is listed with where it is.',
@@ -228,11 +295,17 @@ function designRefused(issues: readonly DesignIssue[]): never {
  * A design checked as far as it can be: its own shape, then against the form
  * it belongs to as last published, then its pictures, which must be images
  * this company stored and nobody else uses.
+ *
+ * A question the form has since dropped or changed (1.3.0 decision 13) does
+ * not stop a save: the template already names it, and refusing would stop
+ * staff fixing anything else first. Only a problem the stored design did not
+ * already have is refused, so a save never adds a new broken reference.
  */
 async function acceptedDesign(
   tx: TenantTransaction,
   formId: string,
   input: unknown,
+  stored?: unknown,
 ): Promise<TemplateDesign> {
   const parsed = parseDesign(input);
   if (!parsed.ok) {
@@ -245,7 +318,13 @@ async function acceptedDesign(
       'This form has no published version yet; publish it before designing its documents.',
     );
   }
-  const issues = checkDesignAgainstForm(parsed.design, compiledVersion(version));
+  const form = compiledVersion(version);
+  const already = new Set(
+    stored === undefined ? [] : templateProblems(stored, form).map(problemKey),
+  );
+  const issues = checkDesignAgainstForm(parsed.design, form).filter(
+    (issue) => !already.has(problemKey(issue)),
+  );
   if (issues.length > 0) {
     designRefused(issues);
   }
@@ -281,7 +360,7 @@ async function linkTemplateFiles(
   }
 }
 
-async function audit(
+export async function audit(
   tx: TenantTransaction,
   context: RequestContext,
   action: string,
@@ -331,10 +410,16 @@ export const listDocumentTemplatesRoute = defineRoute({
     200: { description: 'The templates.', schema: z.object({ items: z.array(templateSchema) }) },
   },
   handler: async ({ query }, context) => {
-    const items = await withTenant(context.principal.tenantId, (tx) =>
-      tx.documentTemplates.list({ formId: query.formId, includeArchived: query.includeArchived }),
+    const items = await withTenant(context.principal.tenantId, async (tx) =>
+      templateBodies(
+        tx,
+        await tx.documentTemplates.list({
+          formId: query.formId,
+          includeArchived: query.includeArchived,
+        }),
+      ),
     );
-    return { status: 200, body: { items: items.map(templateBody) } };
+    return { status: 200, body: { items } };
   },
 });
 
@@ -355,13 +440,14 @@ export const getDocumentTemplateRoute = defineRoute({
     404: { description: 'No such template.' },
   },
   handler: async ({ params }, context) => {
-    const template = await withTenant(context.principal.tenantId, (tx) =>
-      tx.documentTemplates.find(params.templateId),
-    );
+    const template = await withTenant(context.principal.tenantId, async (tx) => {
+      const found = await tx.documentTemplates.find(params.templateId);
+      return found === undefined ? undefined : (await templateBodies(tx, [found]))[0];
+    });
     if (template === undefined) {
       throw notFound('This template does not exist.');
     }
-    return { status: 200, body: templateBody(template) };
+    return { status: 200, body: template };
   },
 });
 
@@ -410,9 +496,9 @@ export const createDocumentTemplateRoute = defineRoute({
         formId: form.id,
         name: body.name,
       });
-      return created;
+      return (await templateBodies(tx, [created]))[0]!;
     });
-    return { status: 201, body: templateBody(template) };
+    return { status: 201, body: template };
   },
 });
 
@@ -422,7 +508,7 @@ export const updateDocumentTemplateRoute = defineRoute({
   operationId: 'updateDocumentTemplate',
   summary: 'Save a PDF template',
   description:
-    'Staff only. `revision` is the one last read: a template saved meanwhile by someone else answers 409 `document_template_changed`, and nothing is overwritten. Documents already made keep the design they were printed with.',
+    'Staff only. `revision` is the one last read: a template saved meanwhile by someone else answers 409 `document_template_changed`, and nothing is overwritten. Documents already made keep the design they were printed with. A question the form has since dropped or changed does not stop a save when the template already named it (it stays in `problems`); a save that adds a new broken reference is refused (422). A version 1 design sent over a template a newer designer saved is refused (409 `document_template_newer`).',
   tags: TAGS,
   security: 'authenticated',
   permission: 'document.design',
@@ -437,7 +523,10 @@ export const updateDocumentTemplateRoute = defineRoute({
   responses: {
     200: { description: 'The saved template.', schema: templateSchema },
     404: { description: 'No such template.' },
-    409: { description: 'Saved meanwhile by someone else (`document_template_changed`).' },
+    409: {
+      description:
+        'Saved meanwhile by someone else (`document_template_changed`), or an older designer saving over a newer design (`document_template_newer`).',
+    },
     422: { description: 'The design has problems (`document_template_invalid`).' },
   },
   handler: async ({ params, body }, context) => {
@@ -446,10 +535,21 @@ export const updateDocumentTemplateRoute = defineRoute({
       if (current === undefined) {
         throw notFound('This template does not exist.');
       }
+      if (
+        body.design !== undefined &&
+        (body.design as { schemaVersion?: unknown }).schemaVersion === 1 &&
+        current.designSchemaVersion > 1
+      ) {
+        // An app from before 1.3.0 reads a newer design as an empty one; saving it would lose it.
+        throw conflict(
+          'document_template_newer',
+          'This template was saved by a newer version of the designer. Update the app to edit it.',
+        );
+      }
       const design =
         body.design === undefined
           ? undefined
-          : await acceptedDesign(tx, current.formId, body.design);
+          : await acceptedDesign(tx, current.formId, body.design, current.design);
       const saved = await tx.documentTemplates.update(
         current.id,
         body.revision,
@@ -469,9 +569,9 @@ export const updateDocumentTemplateRoute = defineRoute({
         revision: saved.revision,
         ...(body.name === undefined ? {} : { name: body.name }),
       });
-      return saved;
+      return (await templateBodies(tx, [saved]))[0]!;
     });
-    return { status: 200, body: templateBody(template) };
+    return { status: 200, body: template };
   },
 });
 
@@ -511,9 +611,198 @@ export const archiveDocumentTemplateRoute = defineRoute({
         saved.id,
         {},
       );
-      return saved;
+      return (await templateBodies(tx, [saved]))[0]!;
     });
-    return { status: 200, body: templateBody(template) };
+    return { status: 200, body: template };
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Previewing a design as a PDF (1.3.0 decision 12)
+// ---------------------------------------------------------------------------
+
+/**
+ * Previews per person per minute. A preview is a real print by Chromium in
+ * the API process, a second or two of a CPU the documents queue also needs.
+ */
+export const PREVIEW_PER_PERSON_PER_MINUTE = 6;
+/** Previews per minute across every company on this server, so previews cannot crowd out documents. */
+export const PREVIEW_PER_SERVER_PER_MINUTE = 30;
+const previewLimiter = createRateLimiter();
+
+const previewSchema = z.object({
+  contentType: z.literal('application/pdf'),
+  /** The PDF itself, base64. Nothing is stored. */
+  base64: z.string(),
+  pageCount: z.number().int(),
+  byteSize: z.number().int(),
+});
+
+export const previewDocumentTemplateRoute = defineRoute({
+  method: 'post',
+  path: '/v1/document-templates/:templateId/preview',
+  operationId: 'previewDocumentTemplate',
+  summary: 'Print a design as a PDF, without keeping it',
+  description:
+    'Staff only (`document.design`). Prints `design` — the designer’s current one, saved or not — the way a document is printed, filled with a submission of the template’s form or, without one, with sample answers. The PDF is returned and nothing is stored or counted against the company’s storage. A few per minute per person and a cap for the whole server (429 `rate_limited`); 503 `document_preview_failed` when the printer cannot print.',
+  tags: TAGS,
+  security: 'authenticated',
+  permission: 'document.design',
+  feature: 'documents',
+  allowedWhenReadOnly: true,
+  params: templateParams,
+  query: noSchema,
+  body: z.object({
+    design: designInput,
+    /** A submitted submission of the template's form; sample answers when absent. */
+    submissionId: z.uuid().nullable().optional(),
+  }),
+  responses: {
+    200: { description: 'The PDF.', schema: previewSchema },
+    404: { description: 'No such template, or no such submission this person may read.' },
+    409: { description: 'The submission is of another form (`document_template_wrong_form`).' },
+    422: { description: 'The design has problems (`document_template_invalid`).' },
+    429: { description: 'Too many previews (`rate_limited`).' },
+    503: { description: 'The printer could not print it (`document_preview_failed`).' },
+  },
+  handler: async ({ params, body }, context) => {
+    const { principal } = context;
+    await previewLimiter.consume({
+      bucketKey: `documents.preview:person:${principal.userId}`,
+      limit: PREVIEW_PER_PERSON_PER_MINUTE,
+      windowMs: 60_000,
+      logger: context.logger,
+    });
+    await previewLimiter.consume({
+      bucketKey: 'documents.preview:server',
+      limit: PREVIEW_PER_SERVER_PER_MINUTE,
+      windowMs: 60_000,
+      logger: context.logger,
+    });
+    const parsed = parseDesign(body.design);
+    if (!parsed.ok) {
+      designRefused(parsed.issues);
+    }
+    const design = parsed.design;
+    const brand = await getPlatformDataSource().tenantSettings.brandByTenantId(principal.tenantId);
+    const now = new Date();
+    const gathered = await withTenant(principal.tenantId, async (tx) => {
+      const template = await tx.documentTemplates.find(params.templateId);
+      if (template === undefined) {
+        throw notFound('This template does not exist.');
+      }
+      if (body.submissionId != null) {
+        const submission = await readable(tx, principal, body.submissionId);
+        if (submission.formId !== template.formId) {
+          throw conflict(
+            'document_template_wrong_form',
+            'This submission is of another form than the template.',
+          );
+        }
+        const sources = await documentSources(tx, {
+          submission,
+          design,
+          companyName: brand?.name ?? '',
+          documentDate: now,
+        });
+        return { template, sources };
+      }
+      // No submission: the form as last published, answered with made-up values.
+      const [version, form, settings] = await Promise.all([
+        tx.forms.findLatestPublished(template.formId),
+        tx.forms.findForm(template.formId),
+        tx.settings.get(),
+      ]);
+      if (version === undefined) {
+        throw conflict(
+          'form_not_published',
+          'This form has no published version yet; publish it before designing its documents.',
+        );
+      }
+      const compiled = compiledVersion(version);
+      const locale = design.page.language ?? (settings.locale.startsWith('ar') ? 'ar' : 'en');
+      const today = dayIn(now, settings.timezone);
+      return {
+        template,
+        sources: {
+          form: compiled,
+          answers: sampleAnswers(compiled, locale, today),
+          locale,
+          today,
+          facts: {
+            companyName: brand?.name ?? '',
+            formTitle: form?.title ?? '',
+            submittedAt: now.toISOString(),
+            submittedBy: null,
+            workOrderReference: null,
+            assetReference: null,
+            documentDate: now.toISOString(),
+            timeZone: settings.timezone,
+          },
+        },
+      };
+    });
+    const { template, sources } = gathered;
+    // Typed fields show their label in brackets, where the person's words will go.
+    const typed = Object.fromEntries(
+      design.fields
+        .filter((field) => field.source.kind === 'typed')
+        .map((field) => [
+          field.key,
+          `[${field.label[sources.locale] ?? field.label.en ?? field.key}]`.slice(
+            0,
+            field.source.kind === 'typed' ? field.source.maxLength : 100,
+          ),
+        ]),
+    );
+    const resolved = resolveDocumentFields({
+      design,
+      form: sources.form,
+      answers: sources.answers,
+      typed,
+      facts: sources.facts,
+      locale: sources.locale,
+      today: sources.today,
+    });
+    try {
+      const { pdf } = await printDesign(context.services, {
+        tenantId: principal.tenantId,
+        design,
+        form: sources.form,
+        answers: sources.answers,
+        locale: sources.locale,
+        facts: sources.facts,
+        fields: resolved.ok ? resolved.fields : [],
+        qrUrl: documentLink(context.config, 'preview'),
+        today: sources.today,
+        logoMediaId: brand?.logoMediaId ?? null,
+        brandColour: brand?.brandColour ?? null,
+        title: template.name,
+      });
+      return {
+        status: 200,
+        body: {
+          contentType: 'application/pdf' as const,
+          base64: Buffer.from(pdf.bytes).toString('base64'),
+          pageCount: pdf.pageCount,
+          byteSize: pdf.bytes.byteLength,
+        },
+      };
+    } catch (error) {
+      if (error instanceof RenderFailed) {
+        context.logger.warn('Template preview failed', {
+          templateId: template.id,
+          reason: error.reason,
+          error: error.message,
+        });
+        throw new ApiError(
+          503,
+          'document_preview_failed',
+          'The preview could not be printed just now. Try again in a minute.',
+        );
+      }
+      throw error;
+    }
   },
 });
 
@@ -702,8 +991,8 @@ export const listDocumentsRoute = defineRoute({
     formId: z.uuid().optional(),
     templateId: z.uuid().optional(),
     submissionId: z.uuid().optional(),
-    /** Only documents made from submissions, or only uploaded ones (0067). */
-    source: z.enum(['generated', 'uploaded']).optional(),
+    /** Only documents made from submissions, only uploaded ones (0067), or one kind of business PDF (0074). */
+    source: documentSourceSchema.optional(),
     state: z.enum(['active', 'expired', 'pending', 'failed']).optional(),
     from: z.iso.date().optional(),
     before: z.iso.date().optional(),
@@ -1165,6 +1454,7 @@ export const documentRoutes = [
   createDocumentTemplateRoute,
   updateDocumentTemplateRoute,
   archiveDocumentTemplateRoute,
+  previewDocumentTemplateRoute,
   createDocumentRoute,
   listDocumentsRoute,
   getDocumentRoute,

@@ -165,6 +165,22 @@ every decision with the golden file the server's tests use (`@integr8/form-engin
 That is the phone's own Hermes and the release build's own bytecode, which CI's command-line
 Hermes is not. Support can ask for it on any phone.
 
+### Forms newer than the app (1.3.0)
+
+A form version says which definition format it needs (`schemaVersion`; see
+[the engine](../form-engine/README.md#formats-and-apps-too-old-for-one)). From 1.3.0 the
+phone checks it before starting a form (`liveNeedsNewerApp` in `src/forms/session.ts`):
+one written for a newer app is not started, and the engineer is asked to update the app; a
+draft that cannot be opened says the same rather than "tell the office". Builds before
+1.3.0 cannot check, so the server marks such forms' names for them, and the first sync
+after updating pulls everything again (offline migration 11).
+
+Format 2 also brings page and section descriptions, Information blocks among the
+questions (`src/forms/information.tsx`: plain, tip, or an amber warning, following their
+Shown when) and calculated dates. A calculation that reads `now` uses the phone's clock at
+each change; the server works it out again when the submit reaches it, with the moment the
+phone recorded the submit.
+
 ## Tests
 
 - `apps/mobile/src/forms/fill-model.test.ts`: a twenty-question form over three pages, filled

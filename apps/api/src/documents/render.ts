@@ -9,12 +9,17 @@ import {
   allBlocks,
   designFileIds,
   designMediaFields,
+  designUsesLogo,
+  type DocumentLocale,
   mediaIdsOf,
   parseDesign,
   renderDocumentHtml,
   type RenderImages,
+  type ResolvedField,
+  type SubmissionFacts,
   type TemplateDesign,
 } from '@integr8/document-render';
+import type { CompiledForm } from '@integr8/form-engine';
 import type { ApiConfig } from '../config.js';
 import { ApiError } from '../http/errors.js';
 import type { Logger } from '../http/logger.js';
@@ -23,6 +28,7 @@ import { assertUploadFits } from '../media/quota.js';
 import type { MediaStorage, ObjectStore } from '../media/storage.js';
 import { getStorage, StorageNotReadyError } from '../media/tenant-storage.js';
 import { type Backgrounds, underlayBackgrounds } from './backgrounds.js';
+import { documentFontFaces } from './fonts.js';
 import { backgroundImage, inlineImage } from './images.js';
 import { type PdfPrinter, PrinterUnavailableError, PrintTimeoutError } from './printer.js';
 import { documentSources } from './sources.js';
@@ -76,7 +82,7 @@ export type RenderOutcome =
   | { outcome: 'failed'; reason: RenderFailure }
   | { outcome: 'skipped'; reason: 'not_pending' | 'company_gone' };
 
-class RenderFailed extends Error {
+export class RenderFailed extends Error {
   constructor(
     readonly reason: RenderFailure,
     readonly retry: boolean,
@@ -98,7 +104,12 @@ export async function renderDocument(
   }
 
   try {
-    return await render(deps, { ...job, companyName: brand.name, logoMediaId: brand.logoMediaId });
+    return await render(deps, {
+      ...job,
+      companyName: brand.name,
+      logoMediaId: brand.logoMediaId,
+      brandColour: brand.brandColour,
+    });
   } catch (error) {
     if (error instanceof NotPending) {
       return { outcome: 'skipped', reason: 'not_pending' };
@@ -132,7 +143,7 @@ export async function renderDocument(
 }
 
 /** The document was deleted or settled by someone else: nothing to do. */
-class NotPending extends Error {}
+export class NotPending extends Error {}
 
 async function render(
   deps: RenderDeps,
@@ -142,6 +153,7 @@ async function render(
     design?: unknown;
     companyName: string;
     logoMediaId: string | null;
+    brandColour: string | null;
   },
 ): Promise<RenderOutcome> {
   const { tenantId, documentId } = job;
@@ -177,80 +189,13 @@ async function render(
       companyName: job.companyName,
       documentDate: document.createdAt,
     });
-    const mediaIds = designMediaFields(design, sources.form)
-      .flatMap((fieldId) => mediaIdsInAnswers(sources.answers, fieldId))
-      .slice(0, MAX_MEDIA_IMAGES);
-    const wantsLogo = allBlocks(design).some(
-      (block) => block.type === 'image' && block.source.kind === 'logo',
-    );
-    const files = await tx.files.findMany([
-      ...designFileIds(design),
-      ...mediaIds,
-      ...(wantsLogo && job.logoMediaId !== null ? [job.logoMediaId] : []),
-    ]);
-    return { document, design, sources, files, mediaIds, wantsLogo };
+    return { document, design, sources };
   });
-  const { document, design, sources, files, mediaIds, wantsLogo } = gathered;
+  const { document, design, sources } = gathered;
 
-  // 2. The pictures, from the company's bucket.
-  let store: ObjectStore;
-  try {
-    store = await getStorage(deps.media, tenantId);
-  } catch (error) {
-    throw new RenderFailed(
-      'storage_unavailable',
-      !(error instanceof StorageNotReadyError),
-      error instanceof Error ? error.message : String(error),
-    );
-  }
-  const byId = new Map(files.map((file) => [file.id, file]));
-  const read = async (fileId: string | null | undefined): Promise<Uint8Array | undefined> => {
-    const file = fileId === null || fileId === undefined ? undefined : byId.get(fileId);
-    if (file === undefined || !printable(file)) {
-      return undefined;
-    }
-    try {
-      return await store.get(file.storageKey);
-    } catch (error) {
-      throw new RenderFailed(
-        'storage_unavailable',
-        true,
-        error instanceof Error ? error.message : String(error),
-      );
-    }
-  };
-  const inline = async (fileId: string | null | undefined) => {
-    const bytes = await read(fileId);
-    return bytes === undefined ? undefined : inlineImage(bytes);
-  };
-
-  const images: {
-    logo: string | null;
-    files: Record<string, string>;
-    media: Record<string, string>;
-  } = {
-    logo: wantsLogo ? ((await inline(job.logoMediaId)) ?? null) : null,
-    files: {},
-    media: {},
-  };
-  for (const block of allBlocks(design)) {
-    if (block.type === 'image' && block.source.kind === 'file') {
-      const made = await inline(block.source.fileId);
-      if (made !== undefined) {
-        images.files[block.source.fileId] = made;
-      }
-    }
-  }
-  for (const mediaId of mediaIds) {
-    const made = await inline(mediaId);
-    if (made !== undefined) {
-      images.media[mediaId] = made;
-    }
-  }
-  const backgrounds = await readBackgrounds(design, read);
-
-  // 3. Print, then lay the backgrounds underneath.
-  const rendered = renderDocumentHtml({
+  // 2 and 3. Pictures from the company's bucket, printed, backgrounds laid underneath.
+  const { pdf, store } = await printDesign(deps, {
+    tenantId,
     design,
     form: sources.form,
     answers: sources.answers,
@@ -258,33 +203,10 @@ async function render(
     facts: sources.facts,
     fields: document.fields,
     qrUrl: documentLink(deps.config, document.publicCode),
-    images: images satisfies RenderImages,
-    mode: 'pdf',
     today: sources.today,
-  });
-  const status = await deps.pdf.status();
-  if (!status.ok) {
-    throw new RenderFailed('renderer_unavailable', false, status.reason);
-  }
-  let printed: Uint8Array;
-  try {
-    printed = await deps.pdf.print(rendered);
-  } catch (error) {
-    if (error instanceof PrinterUnavailableError) {
-      throw new RenderFailed('renderer_unavailable', false, error.message);
-    }
-    if (error instanceof PrintTimeoutError) {
-      throw new RenderFailed('render_timeout', true, error.message);
-    }
-    throw new RenderFailed(
-      'render_failed',
-      true,
-      error instanceof Error ? error.message : String(error),
-    );
-  }
-  const pdf = await underlayBackgrounds(printed, backgrounds, {
+    logoMediaId: job.logoMediaId,
+    brandColour: job.brandColour,
     title: document.title,
-    author: job.companyName,
   });
 
   // 4. Store it, within the company's allowance (D5).
@@ -349,8 +271,147 @@ async function render(
   return { outcome: 'ready', fileId, pageCount: pdf.pageCount, byteSize: stored.byteSize };
 }
 
+/** Everything a design is printed with, besides the company's files. */
+export interface PrintInput {
+  tenantId: string;
+  design: TemplateDesign;
+  form: CompiledForm;
+  answers: Readonly<Record<string, unknown>>;
+  locale: DocumentLocale;
+  facts: SubmissionFacts;
+  fields: readonly ResolvedField[];
+  qrUrl: string | null;
+  today: string;
+  logoMediaId: string | null;
+  /** The company's accent colour, for a template whose brand colour is the company's. */
+  brandColour: string | null;
+  /** The PDF's title. */
+  title: string;
+}
+
+/**
+ * A design filled with answers, as PDF bytes: its pictures read from the
+ * company's bucket, its fonts embedded, printed by Chromium, its backgrounds
+ * drawn underneath. Shared by the render job, which stores the result, and
+ * the designer's preview (1.3.0), which only returns it. Failures are
+ * {@link RenderFailed}, with whether another attempt might help.
+ */
+export async function printDesign(
+  deps: Pick<RenderDeps, 'media' | 'pdf'>,
+  input: PrintInput,
+): Promise<{ pdf: { bytes: Uint8Array; pageCount: number }; store: ObjectStore }> {
+  const { tenantId, design } = input;
+  const mediaIds = designMediaFields(design, input.form)
+    .flatMap((fieldId) => mediaIdsInAnswers(input.answers, fieldId))
+    .slice(0, MAX_MEDIA_IMAGES);
+  const wantsLogo = designUsesLogo(design);
+  const files = await withTenant(tenantId, (tx) =>
+    tx.files.findMany([
+      ...designFileIds(design),
+      ...mediaIds,
+      ...(wantsLogo && input.logoMediaId !== null ? [input.logoMediaId] : []),
+    ]),
+  );
+
+  let store: ObjectStore;
+  try {
+    store = await getStorage(deps.media, tenantId);
+  } catch (error) {
+    throw new RenderFailed(
+      'storage_unavailable',
+      !(error instanceof StorageNotReadyError),
+      error instanceof Error ? error.message : String(error),
+    );
+  }
+  const byId = new Map(files.map((file) => [file.id, file]));
+  const read = async (fileId: string | null | undefined): Promise<Uint8Array | undefined> => {
+    const file = fileId === null || fileId === undefined ? undefined : byId.get(fileId);
+    if (file === undefined || !printable(file)) {
+      return undefined;
+    }
+    try {
+      return await store.get(file.storageKey);
+    } catch (error) {
+      throw new RenderFailed(
+        'storage_unavailable',
+        true,
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+  };
+  const inline = async (fileId: string | null | undefined) => {
+    const bytes = await read(fileId);
+    return bytes === undefined ? undefined : inlineImage(bytes);
+  };
+
+  const images: {
+    logo: string | null;
+    files: Record<string, string>;
+    media: Record<string, string>;
+  } = {
+    logo: wantsLogo ? ((await inline(input.logoMediaId)) ?? null) : null,
+    files: {},
+    media: {},
+  };
+  for (const block of allBlocks(design)) {
+    if (block.type === 'image' && block.source.kind === 'file') {
+      const made = await inline(block.source.fileId);
+      if (made !== undefined) {
+        images.files[block.source.fileId] = made;
+      }
+    }
+  }
+  for (const mediaId of mediaIds) {
+    const made = await inline(mediaId);
+    if (made !== undefined) {
+      images.media[mediaId] = made;
+    }
+  }
+  const backgrounds = await readBackgrounds(design, read);
+
+  const rendered = renderDocumentHtml({
+    design,
+    form: input.form,
+    answers: input.answers,
+    locale: input.locale,
+    facts: input.facts,
+    fields: input.fields,
+    qrUrl: input.qrUrl,
+    images: images satisfies RenderImages,
+    mode: 'pdf',
+    today: input.today,
+    companyBrandColour: input.brandColour,
+    fontFaceCss: await documentFontFaces(design.style.font),
+  });
+  const status = await deps.pdf.status();
+  if (!status.ok) {
+    throw new RenderFailed('renderer_unavailable', false, status.reason);
+  }
+  let printed: Uint8Array;
+  try {
+    printed = await deps.pdf.print(rendered);
+  } catch (error) {
+    if (error instanceof PrinterUnavailableError) {
+      throw new RenderFailed('renderer_unavailable', false, error.message);
+    }
+    if (error instanceof PrintTimeoutError) {
+      throw new RenderFailed('render_timeout', true, error.message);
+    }
+    throw new RenderFailed(
+      'render_failed',
+      true,
+      error instanceof Error ? error.message : String(error),
+    );
+  }
+  const pdf = await underlayBackgrounds(printed, backgrounds, {
+    title: input.title,
+    author: input.facts.companyName,
+  });
+  return { pdf, store };
+}
+
 /** A file's bytes may go into a document: not deleted, and a picture. */
-function printable(file: FileRecord): boolean {
+export function printable(file: FileRecord): boolean {
   return file.deletedAt === null && file.purgedAt === null && file.contentType.startsWith('image/');
 }
 
@@ -379,7 +440,9 @@ async function readBackgrounds(
       return null;
     }
     const bytes = await read(background.fileId);
-    return bytes === undefined ? null : ((await backgroundImage(bytes)) ?? null);
+    return bytes === undefined
+      ? null
+      : ((await backgroundImage(bytes, design.page.orientation)) ?? null);
   };
   const every = await load(design.page.background);
   const firstPage = design.page.firstPage;

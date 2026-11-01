@@ -4,18 +4,21 @@ import {
   findField,
   type FormEvent,
   type FormState,
+  requiredSchemaVersion,
   toSubmission,
   transition,
   viewForm,
 } from '@integr8/form-engine';
+import { localNow } from '@integr8/form-input';
 import { SectionProblem } from '@integr8/form-renderer-dom';
 import { apiErrorMessage, useTranslation } from '@integr8/i18n';
-import { useMemo, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 import { Button } from '~/components/ui';
 import { type TestSubmission, testSubmission } from '../api';
 import { say } from '../model/text';
 import { nameOf } from './canvas';
 import { ErrorText, FormRenderer } from './form-renderer';
+import { type PhoneBrand, PhonePreview } from './phone-preview';
 
 /** A fresh test fill: a repeatable section that needs entries opens with that many. */
 const freshState = (form: CompiledForm) =>
@@ -36,10 +39,13 @@ export function PreviewPanel({
   locale,
   canTest,
   flush,
+  brand,
 }: {
   form: CompiledForm;
   formId: string;
   locale: string;
+  /** The company's colour and theme, which the phone app wears. */
+  brand: PhoneBrand;
   /** Test fill checks the server's copy of the draft, so there must be one. */
   canTest: boolean;
   flush: () => Promise<number | null>;
@@ -50,7 +56,15 @@ export function PreviewPanel({
   const [result, setResult] = useState<TestSubmission | undefined>(undefined);
   const [failure, setFailure] = useState<string | undefined>(undefined);
   const [checking, setChecking] = useState(false);
-  const context = useMemo(() => ({ today }), [today]);
+  const [olderApp, setOlderApp] = useState(false);
+  const olderAppHint = useId();
+  // `now` is the clock, read again at every change, as the phone and the web read it.
+  const context = useMemo(
+    () => ({ today, now: localNow() }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `state` is what refreshes the clock
+    [today, state],
+  );
+  const newerFormat = requiredSchemaVersion(form.definition) > 1;
   const view = useMemo(() => viewForm(form, state, context), [form, state, context]);
 
   const onEvent = (event: FormEvent) => {
@@ -201,18 +215,33 @@ export function PreviewPanel({
           </div>
         </Viewport>
         <Viewport label={t('forms.preview.phone')}>
-          <div className="mx-auto w-[24.5rem] max-w-full rounded-[2rem] border-8 border-content/80 bg-background">
-            <div className="h-[44rem] overflow-y-auto rounded-[1.5rem] p-4">
-              <FormRenderer
-                form={form}
-                state={state}
-                view={view}
-                onEvent={onEvent}
-                viewport="phone"
-                locale={locale}
-              />
+          <PhonePreview
+            form={form}
+            state={state}
+            view={view}
+            onEvent={onEvent}
+            locale={locale}
+            context={context}
+            brand={brand}
+            olderApp={newerFormat && olderApp}
+          />
+          <p className="text-xs text-content-muted">{t('forms.phonePreview.note')}</p>
+          {newerFormat ? (
+            <div className="flex flex-col gap-1 text-start">
+              <label className="flex items-center gap-2 text-sm text-content">
+                <input
+                  type="checkbox"
+                  checked={olderApp}
+                  onChange={(event) => setOlderApp(event.target.checked)}
+                  aria-describedby={olderAppHint}
+                />
+                {t('forms.phonePreview.olderApp')}
+              </label>
+              <p id={olderAppHint} className="text-xs text-content-muted">
+                {t('forms.phonePreview.olderAppHint')}
+              </p>
             </div>
-          </div>
+          ) : null}
         </Viewport>
       </div>
     </div>

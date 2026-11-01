@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
+import { FORM_PACKAGE_ERROR_CODES } from '@integr8/form-package';
 
 /**
  * Every error code the API can return, read from its source (ADR-0012).
@@ -85,6 +86,8 @@ const DYNAMIC_SITES: Record<string, (source: string) => readonly string[]> = {
   // `refuse('code', 'message', field)` for serial numbers and batches.
   'routes/v1/stock-lots.ts|code': (source) =>
     [...source.matchAll(/refuse\(\s*'([a-z][a-z0-9_]*)'/gu)].map(([, code]) => code ?? ''),
+  // A `.integr8form` file refused: the package's own codes, passed through.
+  'documents/form-packages.ts|error.code': () => FORM_PACKAGE_ERROR_CODES,
 };
 
 const CODE = /^[a-z][a-z0-9_.]*$/u;

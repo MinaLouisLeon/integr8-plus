@@ -47,12 +47,12 @@ describe('the registry', () => {
     );
   });
 
-  it('lets only numbers be calculated', () => {
+  it('lets only numbers and (schema version 2) dates be calculated', () => {
     expect(
       FIELD_TYPES.filter((description) => description.calculable).map(
         (description) => description.type,
       ),
-    ).toEqual(['number', 'decimal']);
+    ).toEqual(['number', 'decimal', 'date']);
     expect(describeFieldType('photo').valueType).toBe('opaque');
   });
 

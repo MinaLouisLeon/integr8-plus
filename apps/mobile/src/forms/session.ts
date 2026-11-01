@@ -1,5 +1,5 @@
 import { type CompiledForm, compileDefinition } from '@integr8/form-engine';
-import { hasCarryOver, prefillAnswers } from '@integr8/form-input';
+import { hasCarryOver, needsNewerApp, prefillAnswers } from '@integr8/form-input';
 import {
   type AssetCarryOver,
   assetCarryOver,
@@ -32,6 +32,25 @@ export function compiledVersion(versionId: string, definition: unknown): Compile
     compiled.set(versionId, result.ok ? result.form : undefined);
   }
   return compiled.get(versionId);
+}
+
+/**
+ * Whether the version a new submission of this form would be filled on is
+ * written for a newer app than this one (schema version 2 and on). Such a form
+ * is not started: the engineer is asked to update the app first, so no draft
+ * is left on the job that this phone cannot open.
+ */
+export async function liveNeedsNewerApp(context: ChangeContext, form: JobForm): Promise<boolean> {
+  const liveVersionId = form.liveVersionId;
+  if (liveVersionId === null) {
+    return false;
+  }
+  const live = await context.db.read((sql) =>
+    sql.get<{ definition: string }>('select definition from form_versions where id = ?', [
+      liveVersionId,
+    ]),
+  );
+  return live !== undefined && needsNewerApp(JSON.parse(live.definition) as unknown);
 }
 
 /** Today in the engineer's calendar, `YYYY-MM-DD` — what "before today" rules are judged on. */

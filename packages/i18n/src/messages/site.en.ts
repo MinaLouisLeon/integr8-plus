@@ -247,6 +247,13 @@ export const siteEn = {
       body: 'For Integr8’s own team: set up companies, build their forms and job types, and look after their branding.',
       none: 'No staff release has been published yet.',
     },
+    formsAi: {
+      title: 'Integr8 Forms for AI',
+      body: 'For Integr8’s own team: lets AI coding tools such as Claude Code, Codex, Cursor or VS Code build forms and PDF templates as .integr8form files, offline. Download the file for your computer, double-click it, tick your AI tools, then ask your AI to build a form.',
+      program: 'Program, one file',
+      warning:
+        'Not signed: Windows and macOS warn when it is first opened. On a Mac, right-click it and choose Open.',
+    },
     general: {
       companyDesktopTitle: 'Your company’s desktop app',
       companyDesktopBody:

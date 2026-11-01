@@ -510,7 +510,7 @@ async function receiptBodies(
   });
 }
 
-async function orderDetail(
+export async function orderDetail(
   tx: TenantTransaction,
   context: RequestContext,
   order: PurchaseOrder,

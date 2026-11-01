@@ -28,6 +28,7 @@ export const BLOCK_TYPES: readonly BlockType[] = [
   'static_table',
   'image',
   'qr',
+  'information',
   'divider',
   'spacer',
   'page_break',
@@ -107,6 +108,8 @@ export function newBlock(type: BlockType, id: string, form: CompiledForm | null)
       return { type, id, source: { kind: 'logo' }, width: 40, align: 'start' };
     case 'qr':
       return { type, id, size: 30, align: 'end' };
+    case 'information':
+      return { type, id, informationId: informationBlocks(form)[0]?.id ?? '' };
     case 'divider':
       return { type, id };
     case 'spacer':
@@ -192,6 +195,29 @@ export function questions(
       },
     ];
   });
+}
+
+/**
+ * The form's Information blocks (form schema version 2) that can be printed:
+ * those outside repeating sections, each named by its heading or first words.
+ */
+export function informationBlocks(
+  form: CompiledForm | null,
+): { id: string; heading: LocalizedText | undefined; body: LocalizedText }[] {
+  if (form === null) {
+    return [];
+  }
+  return [...form.elements.values()].flatMap((element) =>
+    element.information === undefined || element.entries !== undefined
+      ? []
+      : [
+          {
+            id: element.id,
+            heading: element.information.heading,
+            body: element.information.body,
+          },
+        ],
+  );
 }
 
 /** The form's repeating sections. */

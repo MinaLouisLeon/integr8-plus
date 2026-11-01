@@ -327,6 +327,30 @@ describe('checking and publishing — an invalid definition cannot be published'
     expect(audit.map((entry) => entry.action)).toEqual(['form.published']);
   });
 
+  it('warns about every text with no Arabic, and publishes anyway', async () => {
+    const { form } = await createForm('English only');
+    await save(form.id, inspection(), 1);
+
+    const check = json<{
+      valid: boolean;
+      warnings: { code: string; path: string; elements: string[]; locale?: string }[];
+    }>(await api.call(builderToken, { method: 'POST', url: `/v1/forms/${form.id}/draft/check` }));
+    expect(check.valid).toBe(true);
+    expect(check.warnings.map((warning) => [warning.code, warning.path, warning.elements])).toEqual(
+      [
+        ['missing_translation', 'title', []],
+        ['missing_translation', 'pages[0].sections[0].fields[0].label', ['result']],
+        ['missing_translation', 'pages[0].sections[0].fields[0].options[0].label', ['result']],
+        ['missing_translation', 'pages[0].sections[0].fields[0].options[1].label', ['result']],
+        ['missing_translation', 'pages[0].sections[0].fields[1].label', ['reason']],
+      ],
+    );
+    expect(check.warnings.every((warning) => warning.locale === 'ar')).toBe(true);
+
+    const response = await publish(form.id, 2);
+    expect(response.statusCode, response.body).toBe(200);
+  });
+
   it('refuses to publish a draft that was saved again after it was reviewed', async () => {
     const { form } = await createForm('Stale publish');
     await save(form.id, inspection(), 1);
@@ -660,13 +684,15 @@ describe('the template library', () => {
   });
 
   it('is listed and previewable by anyone, and cloned only by builders', async () => {
-    const list = json<{ items: { key: string; fieldCount: number }[] }>(
+    const list = json<{ items: { key: string; fieldCount: number; source: string }[] }>(
       await api.call(engineerToken, { method: 'GET', url: '/v1/form-templates' }),
     );
     // Every shipped template is listed. Asserted as a set rather than an
     // ordered array: the order is the query's, not a promise, and pinning it
     // made this test fail for the crime of adding a template (P18 added three).
-    expect([...list.items.map((item) => item.key)].sort()).toEqual(
+    // Staff-made ones (1.3.0) other suites saved sit beside them.
+    const builtIn = list.items.filter((item) => item.source === 'builtin');
+    expect([...builtIn.map((item) => item.key)].sort()).toEqual(
       [...FORM_TEMPLATES.map((template) => template.key)].sort(),
     );
     expect(list.items.every((item) => item.fieldCount > 0)).toBe(true);

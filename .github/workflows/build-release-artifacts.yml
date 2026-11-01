@@ -369,6 +369,66 @@ jobs:
           retention-days: 30
 
   # ---------------------------------------------------------------------------
+  # Integr8 Forms for AI: one executable per operating system
+  # ---------------------------------------------------------------------------
+  # The offline MCP server staff connect their AI coding tools to (decision 15
+  # of the 1.3.0 form builder round, docs/forms-ai/README.md). A Node single
+  # executable cannot be cross-built, so each one is built on its own runner.
+  # Unsigned on purpose: like the desktop apps without certificates, Windows
+  # and macOS warn on first open. macOS gets the ad hoc signature without which
+  # Apple Silicon will not run it at all (build-sea.mjs does it). The files are
+  # attached to the release with the installers; the installer's update check
+  # and the /download page find them there by name.
+  forms-ai:
+    name: Forms for AI (${{ matrix.label }})
+    if: vars.FORMS_AI_BUILDS != 'disabled'
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { runner: windows-latest, label: windows-x64 }
+          - { runner: macos-latest, label: macos-arm64 }
+          - { runner: macos-15-intel, label: macos-x64 }
+          - { runner: ubuntu-latest, label: linux-x64 }
+          - { runner: ubuntu-24.04-arm, label: linux-arm64 }
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Install Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build the packages it bundles
+        run: pnpm turbo run build --filter=@integr8/forms-ai^...
+
+      # The release's own version goes into the program (a nightly's full
+      # version too), so the update check compares like with like.
+      - name: Build the single executable
+        shell: bash
+        env:
+          FORMS_AI_VERSION: ${{ inputs.version }}
+        run: node apps/forms-ai/scripts/build-sea.mjs --out forms-ai-out
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: forms-ai-${{ matrix.label }}-${{ inputs.version }}
+          path: forms-ai-out/*
+          if-no-files-found: error
+          retention-days: 30
+
+  # ---------------------------------------------------------------------------
   # Mobile, when there is an Expo account behind it
   # ---------------------------------------------------------------------------
   mobile:

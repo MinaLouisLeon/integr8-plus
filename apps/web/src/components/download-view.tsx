@@ -6,13 +6,22 @@ import { useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { MarketingShell, PageIntro, pillClass } from '~/components/marketing-shell';
 import { Magnetic } from '~/components/site/motion';
-import type { AppRelease, Installer, InstallerPlatform } from '~/lib/desktop-updates';
+import type {
+  AppRelease,
+  FormsAiRelease,
+  Installer,
+  InstallerPlatform,
+} from '~/lib/desktop-updates';
 import { formatBytes } from '~/lib/platform-format';
 import { apiClient } from '~/lib/session';
 
 /** What the server found for one app (see `app/download/page.tsx`). */
 export type ReleaseLookup =
   { status: 'found'; release: AppRelease } | { status: 'none' } | { status: 'unavailable' };
+
+/** Integr8 Forms for AI, from the newest staff release that carries it. */
+export type FormsAiLookup =
+  { status: 'found'; release: FormsAiRelease } | { status: 'none' } | { status: 'unavailable' };
 
 export interface CompanyLookup {
   slug: string;
@@ -33,9 +42,11 @@ const DESKTOP: readonly InstallerPlatform[] = ['windows', 'macos', 'linux'];
  */
 export function DownloadView({
   staff,
+  formsAi,
   company,
 }: {
   staff: ReleaseLookup;
+  formsAi: FormsAiLookup;
   company: CompanyLookup | null;
 }) {
   const { t } = useTranslation();
@@ -110,6 +121,7 @@ export function DownloadView({
                 : t('site.download.staff.none')}
             </p>
           )}
+          {formsAi.status === 'found' ? <FormsAiSection release={formsAi.release} /> : null}
         </InfoCard>
       </div>
     </MarketingShell>
@@ -222,6 +234,63 @@ function CompanyPanel({ company }: { company: CompanyLookup }) {
       <p className="relative mt-8 max-w-2xl border-t border-site-line pt-6 text-sm text-site-muted">
         {t('site.download.company.updatesNote')}
       </p>
+    </section>
+  );
+}
+
+/**
+ * Integr8 Forms for AI inside the staff card: one program file per computer,
+ * linked like the installers. Shown only when a release carries it; the
+ * program itself is English only, these words are the page's.
+ */
+function FormsAiSection({ release }: { release: FormsAiRelease }) {
+  const { t, i18n } = useTranslation();
+  return (
+    <section
+      aria-labelledby="forms-ai"
+      className="mt-2 flex flex-col gap-3 border-t border-site-line pt-5"
+    >
+      <h3 id="forms-ai" className="font-display text-lg font-semibold">
+        {t('site.download.formsAi.title')}
+      </h3>
+      <p className="text-sm leading-relaxed text-site-muted">{t('site.download.formsAi.body')}</p>
+      <p className="font-mono text-xs text-site-muted">
+        {t('site.download.company.version', { version: release.version })}
+      </p>
+      <ul className="flex flex-col gap-2">
+        {release.downloads.map((file) => (
+          <li key={file.name}>
+            <a
+              href={file.url}
+              download
+              aria-label={t('site.download.file', { name: file.name })}
+              className="group flex w-full items-center justify-between gap-3 rounded-2xl border border-site-line bg-white/[0.02] px-4 py-3 transition-colors hover:border-lime"
+            >
+              <span className="flex min-w-0 flex-col">
+                <span className="text-sm text-site-fg">
+                  {t(`site.download.platforms.${file.platform}`)}
+                </span>
+                <span className="truncate font-mono text-[11px] text-site-muted">
+                  {[
+                    t('site.download.formsAi.program'),
+                    t(`site.download.architecture.${file.arch}`),
+                    file.size === null ? null : formatBytes(file.size, i18n.language),
+                  ]
+                    .filter((part) => part !== null)
+                    .join(' · ')}
+                </span>
+              </span>
+              <span
+                aria-hidden="true"
+                className="flex size-8 shrink-0 items-center justify-center rounded-full bg-lime text-site-bg transition-transform group-hover:translate-y-0.5"
+              >
+                ↓
+              </span>
+            </a>
+          </li>
+        ))}
+      </ul>
+      <p className="text-xs text-site-muted">{t('site.download.formsAi.warning')}</p>
     </section>
   );
 }

@@ -3,6 +3,7 @@ import type { ApiConfig } from '../config.js';
 import type { Logger } from '../http/logger.js';
 import { acceptInvitationUrl } from './links.js';
 import {
+  businessDocumentEmail,
   type EmailLocale,
   invitationEmail,
   passwordChangedEmail,
@@ -169,4 +170,37 @@ export function deliver(
   context: Record<string, unknown> = {},
 ): Promise<Delivery> {
   return post(sender, logger, message, context);
+}
+
+/**
+ * Sends a business PDF to the customer or supplier it is for (1.3.0). The
+ * person asked for it from the record's screen, so the answer is shown to
+ * them: sent, or why not.
+ */
+export async function deliverBusinessDocument(input: {
+  sender: EmailSender;
+  logger: Logger;
+  tenantId: string;
+  to: string;
+  companyName: string;
+  documentTitle: string;
+  note: string | null;
+  attachment: { filename: string; content: Uint8Array };
+  replyTo?: string;
+  locale: EmailLocale;
+}): Promise<Delivery> {
+  return post(
+    input.sender,
+    input.logger,
+    businessDocumentEmail({
+      to: input.to,
+      companyName: input.companyName,
+      documentTitle: input.documentTitle,
+      note: input.note,
+      attachment: input.attachment,
+      ...(input.replyTo === undefined ? {} : { replyTo: input.replyTo }),
+      locale: input.locale,
+    }),
+    { kind: 'business_document', tenantId: input.tenantId },
+  );
 }

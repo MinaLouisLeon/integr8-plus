@@ -1,11 +1,7 @@
-import {
-  DEFINITION_SCHEMA_VERSION,
-  type FormDefinition,
-  type Page,
-  type Section,
-} from '../definition.js';
+import type { FormDefinition, Page, Section } from '../definition.js';
 import type { Field, FieldOf, FieldType } from '../field-types.js';
 import { ELEMENT_ID, type ElementId, type LocalizedText } from '../ids.js';
+import type { Information, SectionItem } from '../information.js';
 
 /**
  * New things, ready to drop onto the canvas.
@@ -93,7 +89,12 @@ export function newField(
   }
 }
 
-export function newSection(id: ElementId, fields: Field[] = []): Section {
+/** An Information block (schema version 2): a paragraph, plain until a style is chosen. */
+export function newInformation(id: ElementId, body: LocalizedText): Information {
+  return { id, type: 'information', body };
+}
+
+export function newSection(id: ElementId, fields: SectionItem[] = []): Section {
   return { id, fields };
 }
 
@@ -113,10 +114,14 @@ export function newPage(id: ElementId, sections: Section[]): Page {
   return { id, sections };
 }
 
-/** A form with one page, one empty section and a title, which is where every builder session starts. */
+/**
+ * A form with one page, one empty section and a title, which is where every
+ * builder session starts. Format 1: nothing in it needs more, and the builder
+ * raises it as soon as something does (`withRequiredSchemaVersion`).
+ */
 export function emptyDefinition(title: LocalizedText): FormDefinition {
   return {
-    schemaVersion: DEFINITION_SCHEMA_VERSION,
+    schemaVersion: 1,
     title,
     pages: [newPage('page_1', [newSection('section_1')])],
   };

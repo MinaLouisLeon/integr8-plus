@@ -124,6 +124,7 @@ export const pullRoute = defineRoute({
         retentionDays: query.retentionDays,
         now: new Date(),
         webAppUrl: context.config.WEB_APP_URL,
+        clientVersion: context.clientVersion,
       }),
     );
     return { status: 200, body };

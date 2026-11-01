@@ -76,6 +76,41 @@ Pages of sections of fields, stored verbatim in `form_versions.definition`.
 - **Repeatable sections** ask their questions once per thing found on site, stored as a
   list of `{ id, values }` entries under the section's id — see
   [repeating groups](repeating-groups.md) (P13b).
+- **Versioned by format.** `schemaVersion` is the lowest format that has everything the
+  definition uses: 1, or 2 for the 1.3.0 additions below. See
+  [Formats, and apps too old for one](#formats-and-apps-too-old-for-one).
+
+### Descriptions and Information blocks (format 2)
+
+A page or a section may carry a `description` (localized plain text) shown under its
+title in every filler and in the builder.
+
+An **Information block** is text among a section's questions:
+
+```jsonc
+{
+  "id": "isolate_first",
+  "type": "information",
+  "heading": { "en": "Before you start", "ar": "قبل أن تبدأ" }, // optional
+  "body": { "en": "Isolate the supply.\nTest it is dead." }, // plain text, line breaks kept
+  "style": "warning", // plain (default) · tip · warning (amber)
+  "visibleWhen": { "kind": "answered", "field": "result" }, // optional, like a question's
+}
+```
+
+**Why it is stored with the questions but typed apart from them.** It sits in the
+section's `fields` list, so it keeps its place between two questions, moves, duplicates
+and is removed like one, shares the id namespace and follows "Shown when" through the
+same evaluation (`FormEvaluation.visible`, per entry inside a repeatable section). But in
+the engine's types it is an `Information`, not a `Field`: `SectionItem = Field |
+Information`, and `CompiledForm.fields` — what validation, submissions, reporting
+(`reportableFields`, hence `submission_values`), exports, the assistant and the PDF answer
+blocks read — holds questions only. A rule cannot read one (`not_a_field`), an answer to
+one is refused (`unknown_field`), and code that walks a section's items has to choose
+(`isQuestion`, `isInformation`), so nothing can include one by accident. A field type
+"with no value" was the alternative; it would have put the block in every list of
+answers, to be filtered out by hand in each. It prints on a PDF only where a template
+places it, with the `information` block (`@integr8/document-render`).
 
 ## Field types
 
@@ -87,7 +122,7 @@ Pages of sections of fields, stored verbatim in `form_versions.definition`.
 | `number`            | safe integer                                              | number     | `min`, `max`, `unit`, `default`, `calculation`                  |
 | `decimal`           | decimal **text**, e.g. `"12.50"`                          | number     | `decimalPlaces`, `min`, `max`, `unit`, `default`, `calculation` |
 | `rating`            | integer 1…`scale`                                         | number     | `scale` (3–10)                                                  |
-| `date`              | `YYYY-MM-DD`                                              | date       | `earliest`, `latest`, `default`                                 |
+| `date`              | `YYYY-MM-DD`                                              | date       | `earliest`, `latest`, `default`, `calculation` (format 2)       |
 | `time`              | `HH:MM`                                                   | time       | `earliest`, `latest`, `default`                                 |
 | `datetime`          | `YYYY-MM-DDTHH:MM[:SS]` **with offset**                   | datetime   | `earliest`, `latest`, `default`                                 |
 | `dropdown`, `radio` | option value                                              | text       | `options`, `default`                                            |
@@ -144,16 +179,75 @@ Three choices that look fussy and are not:
 A rule is a typed syntax tree, never a string of code. Nothing in this package calls
 `eval` or `new Function`, and the lint config makes that an error.
 
-| Kind                                               | Produces                                          |
-| -------------------------------------------------- | ------------------------------------------------- |
-| `text` `number` `boolean` `date` `time` `datetime` | a literal                                         |
-| `answer` `field`                                   | that field's value, or **unknown**                |
-| `today`                                            | the date the caller supplied — never a clock read |
-| `answered` `field`                                 | true or false, never unknown                      |
-| `includes` `field` `option`                        | multi-select membership                           |
-| `not` · `all` · `any`                              | logic                                             |
-| `compare` `eq ne lt le gt ge`                      | boolean                                           |
-| `arithmetic` `add subtract multiply divide`        | number                                            |
+| Kind                                                | Produces                                          |
+| --------------------------------------------------- | ------------------------------------------------- |
+| `text` `number` `boolean` `date` `time` `datetime`  | a literal                                         |
+| `answer` `field`                                    | that field's value, or **unknown**                |
+| `today`                                             | the date the caller supplied — never a clock read |
+| `answered` `field`                                  | true or false, never unknown                      |
+| `includes` `field` `option`                         | multi-select membership                           |
+| `not` · `all` · `any`                               | logic                                             |
+| `compare` `eq ne lt le gt ge`                       | boolean                                           |
+| `arithmetic` `add subtract multiply divide`         | number                                            |
+| `now` (format 2)                                    | the date and time the caller supplied             |
+| `round` `operand` `places` (0–6) (format 2)         | number, half away from zero                       |
+| `percentage` `part` `whole` (format 2)              | part ÷ whole × 100; unknown when whole is 0       |
+| `statistic` `min max average` `operands` (format 2) | number over the known operands; unknown if none   |
+| `difference` `minutes hours days` `from` `to`       | number: `to` − `from`, exact (format 2)           |
+| `shift_date` `add subtract` `days weeks months`     | a date moved by a whole number (format 2)         |
+
+`arithmetic` is a tree, so brackets are simply nesting; a calculation the builder used to
+write as a left-to-right chain is the left-nested tree it always was, and evaluates exactly
+as before (the conformance golden file keeps every earlier case byte for byte).
+
+### Dates and times in calculations (format 2)
+
+- **No time zone in a date.** A `date` is a calendar day (days since 1970-01-01, integer
+  arithmetic, no `Date`). Days between two dates, and a date moved by days or weeks, are
+  plain day counts; no time zone or clock change can move them.
+- **Months keep the day of the month and clamp to the month's end.** 31 January + 1 month
+  is 28 February (29 in a leap year); 31 March − 1 month likewise; 29 February 2028 + 12
+  months is 28 February 2029. A fractional amount gives no date (unknown), not a rounded
+  one. Results outside the years 1–9999 are unknown.
+- **Two dates and times** are the time elapsed between the two instants, offsets applied —
+  a difference across a change of clocks is the real elapsed time. A date and a date-time
+  cannot be mixed (refused at publish): which day "now" falls on depends on a time zone the
+  engine does not have.
+- **Two times of day** are on the same day unless the later is earlier on the clock — a
+  22:00 to 06:00 shift is 8 hours, taken as the next day. Times are apart in minutes or
+  hours, never days.
+- **`today` and `now` come from the caller.** `today` is the filler's calendar date (the
+  phone's, which in Egypt is the company's `Africa/Cairo` day; the server accepts a claimed
+  day within one of its own). `now` is the filler's clock with its offset, read again at
+  every change. The server works a calculation out again when the form is submitted, with
+  `now` being the moment of submission (or, for a phone, when it recorded the submit), and
+  stores its own value — so a "minutes on site" figure is the server's, to the minute.
+- A date result is stored as `YYYY-MM-DD` on a calculated `date` question, can be compared
+  in rules (`due < today`), and is shown read-only, written the way the language writes
+  dates.
+
+### Formats, and apps too old for one
+
+`DEFINITION_SCHEMA_VERSION` is the newest format the engine reads (2 from 1.3.0).
+`requiredSchemaVersion(definition)` reads a definition — valid or half-built — and returns
+the lowest format that has what it uses (2 for a description, an Information block, a
+calculated date or any format-2 expression node). `withRequiredSchemaVersion` sets it: the
+API applies it on every draft save and the builder on every edit, so nobody types it, and a
+form that uses none of the additions stays format 1 that every phone opens. The compiler
+refuses a definition declaring less than it uses (`schema_version_too_low`), so a published
+version always says what it needs, and answers a format newer than its own with
+`schema_version_unsupported` — "update the app to open this form" (`needsNewerApp` in
+`@integr8/form-input`), never "this form is broken".
+
+Apps before 1.3.0 cannot read that marker: given a format 2 form they fail to compile it
+and show "This form cannot be shown on this phone. Tell the office it needs checking." —
+safely, without a crash. So the API's sync pull names such forms for a phone that declares
+an older `x-client-version` (`apps/api/src/sync/form-formats.ts`): the form's name becomes
+"Boiler service — Update the app to open this form · حدّث التطبيق لفتح هذا النموذج" in the
+job's list and at the top of the form. The definition is still sent unchanged, so the form
+opens as soon as the app is updated; the updated app pulls everything again once (offline
+migration 11), which replaces the marked names. An app from 1.3.0 checks the format itself
+and asks the engineer to update before starting the form.
 
 ### Unknown is a value
 

@@ -12,5 +12,8 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/testing/setup.ts'],
+    // A test may wait up to 5 s for an element (setup.ts), so the test itself needs
+    // longer than vitest's default 5 s or a busy machine fails it at the edge.
+    testTimeout: 20_000,
   },
 });

@@ -1,0 +1,359 @@
+import { describe, expect, it } from 'vitest';
+import { DEFAULT_BRAND_COLOUR, type DocumentLook } from '../look.js';
+import type { BusinessDocumentKind, BusinessLocale, BusinessRenderInput } from './model.js';
+import { renderBusinessDocumentHtml } from './render.js';
+import {
+  sampleDocument,
+  sampleInvoice,
+  sampleJobReport,
+  samplePurchaseOrder,
+  sampleQuote,
+} from './samples.js';
+
+/**
+ * The business layouts without a browser: what each page says, in which
+ * language and direction, and that nothing anyone typed becomes markup. The
+ * PDF itself is printed by the server's own test and by the sample command.
+ */
+
+const PNG = 'data:image/png;base64,iVBORw0KGgo=';
+
+/** The company's look, as the server makes it: its colour and logo, in Noto Sans. */
+const look = (brandColour: string | null, logo: string | null = null): DocumentLook => ({
+  brandColour,
+  fontKey: 'noto-sans',
+  logo,
+});
+
+function input(
+  overrides: Partial<BusinessRenderInput> & { data: BusinessRenderInput['data'] },
+): BusinessRenderInput {
+  return {
+    locale: 'en',
+    timeZone: 'Africa/Cairo',
+    qrUrl: 'https://app.example.com/d/abcdefghijklmnopqrstuv',
+    images: { logo: null, media: {} },
+    look: look('#0e7490'),
+    ...overrides,
+  };
+}
+
+const KINDS: readonly BusinessDocumentKind[] = ['quote', 'invoice', 'purchase_order', 'job_report'];
+const LOCALES: readonly BusinessLocale[] = ['en', 'ar'];
+
+describe('every business layout', () => {
+  for (const kind of KINDS) {
+    for (const locale of LOCALES) {
+      it(`prints a ${kind} in ${locale}, with its reference, a QR code and page numbers`, () => {
+        const data = sampleDocument(kind, locale);
+        const page = renderBusinessDocumentHtml(input({ data, locale }));
+        expect(page.html).toContain(`lang="${locale}" dir="${locale === 'ar' ? 'rtl' : 'ltr'}"`);
+        expect(page.html).toContain(data.reference);
+        expect(page.html).toContain('<svg');
+        expect(page.parts.footerHtml).toContain('<span class="pageNumber"></span>');
+        expect(page.parts.footerHtml).toContain('<span class="totalPages"></span>');
+        expect(page.parts.footerHtml).toContain(data.reference);
+        expect(page.parts.headerHtml).toContain(data.issuer.name);
+        expect(page.html).toContain('--brand: #0e7490');
+        // Logical sides only, so Arabic mirrors.
+        expect(page.html).not.toMatch(/text-align:\s*(left|right)/u);
+      });
+    }
+  }
+});
+
+describe('the quote', () => {
+  it('carries what the browser-printed quote carries', () => {
+    const data = sampleQuote('en');
+    const page = renderBusinessDocumentHtml(input({ data }));
+    for (const text of [
+      'Quote',
+      'Valid until 27 November 2026',
+      'Horizon Business Park',
+      'Mona Adel',
+      'Thank you for your enquiry',
+      'Terms',
+      'Gross',
+      'Net',
+      '10%',
+      '14%',
+    ]) {
+      expect(page.html).toContain(text);
+    }
+    // Intl puts a no-break space between the currency and the amount.
+    expect(page.html).toMatch(/EGP\s22,537\.80/u);
+    expect(page.title).toBe('Quote QT-000042-R2');
+  });
+
+  it('says how it was answered, and that it was withdrawn', () => {
+    const answered = renderBusinessDocumentHtml(
+      input({
+        data: {
+          ...sampleQuote('en'),
+          status: 'accepted',
+          answer: { status: 'accepted', at: '2026-10-29T08:00:00Z', name: 'Mona Adel' },
+        },
+      }),
+    );
+    expect(answered.html).toContain('Accepted on');
+    expect(answered.html).toContain('by Mona Adel');
+    const withdrawn = renderBusinessDocumentHtml(
+      input({ data: { ...sampleQuote('en'), status: 'cancelled' } }),
+    );
+    expect(withdrawn.html).toContain('class="stamp">Withdrawn');
+  });
+
+  it('says what its QR code opens', () => {
+    const toQuote = renderBusinessDocumentHtml(
+      input({
+        data: sampleQuote('en'),
+        qrUrl: 'https://app.example.com/q/token',
+        qrOpensQuote: true,
+      }),
+    );
+    expect(toQuote.html).toContain('Scan to read and answer this quote online.');
+    const none = renderBusinessDocumentHtml(input({ data: sampleQuote('en'), qrUrl: null }));
+    expect(none.html).not.toContain('<svg');
+  });
+
+  it('leaves out discount columns when no line has one', () => {
+    const data = sampleQuote('en');
+    const page = renderBusinessDocumentHtml(
+      input({ data: { ...data, lines: data.lines.map((line) => ({ ...line, discountBp: 0 })) } }),
+    );
+    expect(page.html).not.toContain('>Discount<');
+    expect(page.html).not.toContain('>Gross<');
+  });
+});
+
+describe('the invoice', () => {
+  it('shows credits, payments, the balance and how to pay', () => {
+    const page = renderBusinessDocumentHtml(input({ data: sampleInvoice('en') }));
+    for (const text of [
+      'Invoice',
+      'Bill to',
+      'Due 29 November 2026',
+      'Credited',
+      'Paid',
+      'Balance due',
+      'CN-000021',
+      'RCPT-000140',
+      'How to pay',
+      'National Bank of Egypt',
+      'Tax number',
+    ]) {
+      expect(page.html).toContain(text);
+    }
+    expect(page.html).toMatch(/Balance due<\/th><td class="num">EGP\s12,037\.80/u);
+  });
+
+  it('marks a void invoice', () => {
+    const page = renderBusinessDocumentHtml(
+      input({ data: { ...sampleInvoice('en'), status: 'void' } }),
+    );
+    expect(page.html).toContain('class="stamp">Void');
+  });
+
+  it('is in Arabic, right to left, with Arabic words', () => {
+    const page = renderBusinessDocumentHtml(input({ data: sampleInvoice('ar'), locale: 'ar' }));
+    expect(page.html).toContain('dir="rtl"');
+    expect(page.html).toContain('فاتورة');
+    expect(page.html).toContain('الرصيد المستحق');
+    expect(page.parts.footerHtml).toContain('صفحة');
+    // A reference reads left to right inside Arabic.
+    expect(page.html).toContain('<bdi dir="ltr" class="nowrap">INV-000317</bdi>');
+  });
+});
+
+describe('the purchase order', () => {
+  it('names the supplier, delivery, codes and totals', () => {
+    const page = renderBusinessDocumentHtml(input({ data: samplePurchaseOrder('en') }));
+    for (const text of [
+      'Purchase order',
+      'Delta HVAC Parts',
+      'orders@deltahvac.example',
+      'Deliver to',
+      'Main warehouse',
+      'FLT-G4-592',
+      'Expected 5 November 2026',
+    ]) {
+      expect(page.html).toContain(text);
+    }
+    expect(page.html).toMatch(/EGP\s45,155\.40/u);
+  });
+
+  it('prints no prices when the snapshot has none', () => {
+    const data = samplePurchaseOrder('en');
+    const page = renderBusinessDocumentHtml(
+      input({
+        data: {
+          ...data,
+          totals: null,
+          lines: data.lines.map((line) => ({ ...line, unitPrice: null, subtotal: null })),
+        },
+      }),
+    );
+    expect(page.html).not.toContain('Unit price');
+    expect(page.html).not.toContain('EGP');
+  });
+});
+
+describe('the job report', () => {
+  it('covers the job from the customer to the sign-off', () => {
+    const page = renderBusinessDocumentHtml(
+      input({
+        data: sampleJobReport('en', ['p1', 'p2', 'p4', 'p5'], 'sig'),
+        images: { logo: PNG, media: { p1: PNG, p2: PNG, p5: PNG, sig: PNG } },
+      }),
+    );
+    for (const text of [
+      'Job report',
+      'WO-000512',
+      'Horizon Business Park',
+      'Building B2',
+      'Coordinates: 30.019874, 31.491302',
+      'https://www.google.com/maps/search/?api=1&amp;query=30.019874,31.491302',
+      'Planned maintenance',
+      'Complete',
+      'Visits',
+      'Omar Khaled, Youssef Ibrahim',
+      'Time on site',
+      '8 h 50 min',
+      'Parts used',
+      'Serial numbers: ',
+      'PS-88213, PS-88214',
+      'Batches: ',
+      'Planned maintenance checklist',
+      'Service certificate',
+      'Checklist',
+      'Before',
+      'After',
+      'Signed by Hassan Farouk, Facilities manager',
+      'Notes for the customer',
+    ]) {
+      expect(page.html).toContain(text);
+    }
+    // Three photos had pictures; the third had none and is left out.
+    expect(page.html.match(/class="photo"/gu)).toHaveLength(3);
+    expect(page.html).toContain('class="signature"');
+    expect(page.html).toContain('class="logo"');
+  });
+
+  it('says how many photos were left out, with Arabic plurals', () => {
+    const many = renderBusinessDocumentHtml(
+      input({ data: { ...sampleJobReport('en'), morePhotos: 4 } }),
+    );
+    expect(many.html).toContain('4 more photos are kept with the job');
+    const two = renderBusinessDocumentHtml(
+      input({ data: { ...sampleJobReport('ar'), morePhotos: 2 }, locale: 'ar' }),
+    );
+    expect(two.html).toContain('صورتان أخريان');
+  });
+
+  it('says why the customer could not sign, and when nobody has', () => {
+    const data = sampleJobReport('en');
+    const unavailable = renderBusinessDocumentHtml(
+      input({
+        data: {
+          ...data,
+          signoff: {
+            signedAt: '2026-10-30T13:41:00Z',
+            name: null,
+            role: null,
+            signatureFileId: null,
+            unavailableReason: 'Nobody on site',
+          },
+        },
+      }),
+    );
+    expect(unavailable.html).toContain('The customer could not sign: Nobody on site');
+    const none = renderBusinessDocumentHtml(input({ data: { ...data, signoff: null } }));
+    expect(none.html).toContain('Not signed off yet.');
+  });
+});
+
+describe('safety', () => {
+  it('escapes everything anyone typed', () => {
+    const data = sampleQuote('en');
+    const page = renderBusinessDocumentHtml(
+      input({
+        data: {
+          ...data,
+          title: '<script>alert(1)</script>',
+          customerName: '"><img src=x onerror=alert(1)>',
+          lines: [{ ...data.lines[0]!, description: '<b>bold</b>' }],
+        },
+      }),
+    );
+    expect(page.html).not.toContain('<script>');
+    expect(page.html).not.toContain('<img src=x');
+    expect(page.html).toContain('&lt;b&gt;bold&lt;/b&gt;');
+  });
+
+  it('prints only pictures inlined as data, never a link', () => {
+    const page = renderBusinessDocumentHtml(
+      input({
+        data: sampleJobReport('en', ['p1'], null),
+        images: { logo: 'https://evil.example/logo.png', media: { p1: 'javascript:alert(1)' } },
+        look: look(null, 'https://evil.example/logo.png'),
+      }),
+    );
+    expect(page.html).not.toContain('evil.example');
+    expect(page.html).not.toContain('javascript:');
+  });
+
+  it('takes only a colour as the brand colour', () => {
+    const bad = renderBusinessDocumentHtml(
+      input({ data: sampleQuote('en'), look: look('red; background: url(x)') }),
+    );
+    expect(bad.html).not.toContain('url(x)');
+    expect(bad.html).toContain(`--brand: ${DEFAULT_BRAND_COLOUR}`);
+  });
+});
+
+describe('the look', () => {
+  it('prints a look’s own bands in three places, page numbers included, escaped', () => {
+    const page = renderBusinessDocumentHtml(
+      input({
+        data: sampleInvoice('ar'),
+        locale: 'ar',
+        look: {
+          brandColour: '#123456',
+          fontKey: 'noto-naskh',
+          header: {
+            start: { kind: 'text', text: { ar: '<Company> {{field.x}}' }, bold: true },
+            center: null,
+            end: { kind: 'page' },
+            notOnFirstPage: true,
+          },
+        },
+        fontFaceCss: '@font-face { font-family: "Probe"; }',
+      }),
+    );
+    const { parts } = page;
+    // A placeholder other than the page's is printed as typed.
+    expect(parts.headerHtml).toContain('<b>&lt;Company&gt; {{field.x}}</b>');
+    expect(parts.headerHtml).toContain('<span class="pageNumber"></span>');
+    expect(parts.headerHtml).toContain('<span class="totalPages"></span>');
+    expect(parts.headerHtml).toContain('dir="rtl"');
+    expect(parts.headerHtml).toContain('font-family: "Probe"');
+    expect(parts).toMatchObject({ hasHeader: true, hasFooter: true, landscape: false });
+    // No footer of its own: the document's number and the page numbers.
+    expect(parts.footerHtml).toContain(sampleInvoice('ar').reference);
+    expect(parts.footerHtml).toContain('<span class="totalPages"></span>');
+    // Header left off the first page: the printer prints that page with its own bands.
+    expect(parts.firstPage).toMatchObject({ hasHeader: false, hasFooter: true });
+    expect(page.html).toContain('Noto Naskh Arabic');
+    expect(page.html).toContain('font-family: "Probe"');
+    // Only what the printer takes.
+    expect(Object.keys(parts).sort()).toEqual([
+      'firstPage',
+      'footerHtml',
+      'hasFooter',
+      'hasHeader',
+      'headerHtml',
+      'landscape',
+      'margins',
+    ]);
+  });
+});

@@ -165,6 +165,10 @@ const INSTALLER_KINDS: readonly {
 export function installerOf(
   name: string,
 ): { platform: InstallerPlatform; kind: InstallerKind; arch: InstallerArch | null } | undefined {
+  // Integr8 Forms for AI rides in the staff release but is not the staff app.
+  if (formsAiAssetOf(name) !== undefined) {
+    return undefined;
+  }
   const found = INSTALLER_KINDS.find((entry) => entry.test.test(name));
   if (found === undefined) {
     return undefined;
@@ -217,6 +221,80 @@ export function releaseInstallers(
   );
   const version = /v(\d+\.\d+\.\d+)$/u.exec(release.tag_name)?.[1] ?? release.tag_name;
   return { tag: release.tag_name, version, installers };
+}
+
+/**
+ * Integr8 Forms for AI (1.3.0 decision 15): a single program per computer,
+ * built by the version release and attached to the staff release `vX.Y.Z` as
+ * `integr8-forms-ai-<version>-<windows|macos|linux>-<x64|arm64>[.exe]`, each
+ * with a `.sha256` beside it (`apps/forms-ai/scripts/build-sea.mjs`).
+ */
+const FORMS_AI_ASSET =
+  /^integr8-forms-ai-(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)-(windows|macos|linux)-(x64|arm64)(\.exe)?$/u;
+
+/** One build of the forms AI tool, as the download page lists it. */
+export interface FormsAiDownload {
+  name: string;
+  url: string;
+  platform: Exclude<InstallerPlatform, 'android'>;
+  arch: 'x64' | 'arm64';
+  size: number | null;
+}
+
+/** The newest staff release that carries the forms AI tool. */
+export interface FormsAiRelease {
+  tag: string;
+  version: string;
+  downloads: FormsAiDownload[];
+}
+
+/** What a release file is, when it is a build of the forms AI tool (not its checksum). */
+export function formsAiAssetOf(
+  name: string,
+): { platform: FormsAiDownload['platform']; arch: FormsAiDownload['arch'] } | undefined {
+  const match = FORMS_AI_ASSET.exec(name);
+  if (match === null) {
+    return undefined;
+  }
+  const platform = match[2] as FormsAiDownload['platform'];
+  // Only Windows builds end in .exe, and they always do.
+  if ((platform === 'windows') !== (match[4] === '.exe')) {
+    return undefined;
+  }
+  return { platform, arch: match[3] as FormsAiDownload['arch'] };
+}
+
+/** A staff release with at least one build of the forms AI tool. */
+export function hasFormsAi(release: GitHubRelease): boolean {
+  return release.assets.some((asset) => formsAiAssetOf(asset.name) !== undefined);
+}
+
+/** The forms AI builds of one release, Windows first, linked like the installers. */
+export function formsAiDownloads(
+  release: GitHubRelease,
+  options: { proxyBase?: string | undefined },
+): FormsAiRelease {
+  const downloads: FormsAiDownload[] = [];
+  for (const asset of release.assets) {
+    const kind = formsAiAssetOf(asset.name);
+    if (kind === undefined) continue;
+    downloads.push({
+      name: asset.name,
+      url:
+        options.proxyBase === undefined
+          ? asset.browser_download_url
+          : `${options.proxyBase.replace(/\/+$/u, '')}/desktop-updates/staff/download/${encodeURIComponent(release.tag_name)}/${encodeURIComponent(asset.name)}`,
+      ...kind,
+      size: typeof asset.size === 'number' ? asset.size : null,
+    });
+  }
+  downloads.sort(
+    (a, b) =>
+      PLATFORM_ORDER.indexOf(a.platform) - PLATFORM_ORDER.indexOf(b.platform) ||
+      a.arch.localeCompare(b.arch),
+  );
+  const version = /v(\d+\.\d+\.\d+)$/u.exec(release.tag_name)?.[1] ?? release.tag_name;
+  return { tag: release.tag_name, version, downloads };
 }
 
 /**
@@ -289,6 +367,18 @@ export class DesktopUpdateFeed {
       app,
       proxyBase: this.#token === undefined ? undefined : origin,
     });
+  }
+
+  /**
+   * The newest staff release with Integr8 Forms for AI in it, for the
+   * download page's staff section, or `undefined` when none has it.
+   */
+  async formsAi(origin = ''): Promise<FormsAiRelease | undefined> {
+    const release = newestRelease(await this.#listReleases(), 'staff', hasFormsAi);
+    if (release === undefined) {
+      return undefined;
+    }
+    return formsAiDownloads(release, { proxyBase: this.#token === undefined ? undefined : origin });
   }
 
   /**

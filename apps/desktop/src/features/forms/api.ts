@@ -195,7 +195,13 @@ export async function checkDraft(formId: string): Promise<DraftCheck> {
 
 export async function publishDraft(
   formId: string,
-  body: { expectedRevision: number; changeNote?: string; acknowledgeBreakingChanges: boolean },
+  body: {
+    expectedRevision: number;
+    changeNote?: string;
+    acknowledgeBreakingChanges: boolean;
+    /** PDF templates the version leaves needing attention were seen (1.3.0). */
+    acknowledgeTemplateChanges?: boolean;
+  },
 ): Promise<VersionSummary> {
   return (
     await client().POST('/v1/forms/{formId}/draft/publish', { params: { path: { formId } }, body })

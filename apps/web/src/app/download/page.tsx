@@ -1,6 +1,6 @@
 import { ar, en } from '@integr8/i18n/core';
 import type { Metadata } from 'next';
-import { DownloadView, type ReleaseLookup } from '~/components/download-view';
+import { DownloadView, type FormsAiLookup, type ReleaseLookup } from '~/components/download-view';
 import { desktopUpdateFeed, isAppName, type DesktopUpdateFeed } from '~/lib/desktop-updates';
 import { readPreferences } from '~/lib/preferences';
 
@@ -17,6 +17,9 @@ import { readPreferences } from '~/lib/preferences';
  * repository. A name nobody has, or a company with nothing published yet, is
  * a sentence asking the reader to check with their administrator, never an
  * error page.
+ *
+ * The staff card also lists Integr8 Forms for AI (1.3.0 decision 15), the
+ * program staff connect their AI coding tools to, from the same staff release.
  *
  * Rendered on the server because the release list is the server's (its
  * repository and token are server settings); the words are the client's.
@@ -44,8 +47,9 @@ export default async function DownloadPage({
   // `staff` is the staff app's name in the feed, not a company: it is listed
   // on its own below whatever is asked for.
   const slug = requested === '' || requested === 'staff' ? null : requested;
-  const [staff, companyRelease] = await Promise.all([
+  const [staff, formsAi, companyRelease] = await Promise.all([
     lookup(feed, 'staff'),
+    lookupFormsAi(feed),
     slug === null
       ? Promise.resolve(undefined)
       : isAppName(slug)
@@ -56,6 +60,7 @@ export default async function DownloadPage({
   return (
     <DownloadView
       staff={staff}
+      formsAi={formsAi}
       company={
         slug === null || companyRelease === undefined
           ? null
@@ -76,6 +81,20 @@ async function lookup(feed: DesktopUpdateFeed | undefined, app: string): Promise
     return release === undefined ? { status: 'none' } : { status: 'found', release };
   } catch (error) {
     console.error('download page', app, error);
+    return { status: 'unavailable' };
+  }
+}
+
+/** Integr8 Forms for AI, from the staff releases; never throws either. */
+async function lookupFormsAi(feed: DesktopUpdateFeed | undefined): Promise<FormsAiLookup> {
+  if (feed === undefined) {
+    return { status: 'none' };
+  }
+  try {
+    const release = await feed.formsAi();
+    return release === undefined ? { status: 'none' } : { status: 'found', release };
+  } catch (error) {
+    console.error('download page', 'forms-ai', error);
     return { status: 'unavailable' };
   }
 }

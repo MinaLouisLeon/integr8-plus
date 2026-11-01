@@ -51,8 +51,10 @@ ENV PORT=3000
 ENV HOST=0.0.0.0
 # Chromium prints PDF documents in the worker (docs/documents ADR-0001 D4), and
 # the Noto fonts give it Latin and Arabic to print with. Debian's own packages,
-# so their security fixes arrive with the base image. The API process never
-# starts Chromium; it is here because the worker is this same image.
+# so their security fixes arrive with the base image. The API process starts
+# Chromium only for the PDF designer's "Preview as PDF" (1.3.0). The Integr8
+# Media website fonts a template may use are not installed here: they are the
+# pinned @fontsource packages in node_modules, embedded into each document.
 RUN apt-get update \
   && apt-get install -y --no-install-recommends chromium fonts-noto-core fonts-dejavu-core \
   && rm -rf /var/lib/apt/lists/*

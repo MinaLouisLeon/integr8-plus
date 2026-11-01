@@ -6,7 +6,7 @@ with its own forms, job types, look and apps. The company's office plans and
 dispatches work; its engineers do the work on a phone that keeps working with no
 signal; the office sees the result the moment the phone reconnects.
 
-Current version: **1.2.4**. The build plan lives in [`plan/`](./plan/README.md);
+Current version: **1.3.0**. The build plan lives in [`plan/`](./plan/README.md);
 start with [`plan/ROADMAP.md`](./plan/ROADMAP.md).
 
 ---
@@ -238,12 +238,13 @@ with type-aware rules; Prettier.
 
 ### Apps
 
-| App            | Package            | What it is                                                                                                           |
-| -------------- | ------------------ | -------------------------------------------------------------------------------------------------------------------- |
-| `apps/api`     | `@integr8/api`     | Fastify service: versioned `/v1` routes, generated OpenAPI, idempotency, rate limits, the background worker, the CLI |
-| `apps/web`     | `@integr8/web`     | Next.js: marketing pages, the company's office app, billing, the platform dashboard. Port 3001                       |
-| `apps/desktop` | `@integr8/desktop` | React SPA in Tauri v2: form builder, branding, operations, submissions. Staff and per-company flavours. Port 3002    |
-| `apps/mobile`  | `@integr8/mobile`  | Expo Router, offline-first: the engineer's day; one build per company                                                |
+| App             | Package             | What it is                                                                                                                                                                   |
+| --------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/api`      | `@integr8/api`      | Fastify service: versioned `/v1` routes, generated OpenAPI, idempotency, rate limits, the background worker, the CLI                                                         |
+| `apps/web`      | `@integr8/web`      | Next.js: marketing pages, the company's office app, billing, the platform dashboard. Port 3001                                                                               |
+| `apps/desktop`  | `@integr8/desktop`  | React SPA in Tauri v2: form builder, branding, operations, submissions. Staff and per-company flavours. Port 3002                                                            |
+| `apps/mobile`   | `@integr8/mobile`   | Expo Router, offline-first: the engineer's day; one build per company                                                                                                        |
+| `apps/forms-ai` | `@integr8/forms-ai` | Integr8 Forms for AI: offline MCP server and terminal installer that let AI coding tools build `.integr8form` files; one executable per OS ([docs](docs/forms-ai/README.md)) |
 
 ### Shared packages
 
@@ -254,6 +255,7 @@ with type-aware rules; Prettier.
 | `@integr8/auth`              | Sign-in, sessions, refresh rotation, impersonation, offline grants, platform sessions, key generation         |
 | `@integr8/api-client`        | Typed client generated from the OpenAPI document, plus the session manager every app uses                     |
 | `@integr8/form-engine`       | The form definition, compiler, evaluator, validation, versioning diff and conformance suite. No UI, no I/O    |
+| `@integr8/form-package`      | The `.integr8form` file: a form, its PDF templates and pictures packed, read strictly and checked             |
 | `@integr8/form-input`        | Turning engine state into what a filler shows: navigation, entries, prefill, dependent choices                |
 | `@integr8/form-renderer-dom` | The form renderer and submission screens for web and desktop                                                  |
 | `@integr8/operations-dom`    | Customer, site, job type, work order, import and timesheet screens for web and desktop                        |
@@ -483,6 +485,8 @@ each with a down file, applied by `pnpm --filter @integr8/db db up` (or
 | 0066      | Each phone's language, for its notifications                                                          |
 | 0067      | Uploaded PDF documents and a sharing switch; new documents start not shared                           |
 | 0068      | An index of the files each submission uses, for safe file clean-up                                    |
+| 0069      | Staff-made library templates (retire, source form) and the PDF templates and pictures they carry      |
+| 0074      | Business PDFs in the Documents register: quotes, invoices, purchase orders and job reports            |
 
 See [`docs/database/migrations.md`](./docs/database/migrations.md) and the
 [backup and restore runbook](./docs/database/runbook-backup-and-restore.md).

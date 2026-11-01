@@ -53,7 +53,11 @@ import { mediaRoutes } from './v1/media.js';
 import { platformRoutes } from './v1/platform/index.js';
 import { publicBrandRoutes } from './v1/public-brand.js';
 import { submissionRoutes } from './v1/submissions.js';
+import { businessDocumentRoutes } from './v1/business-documents.js';
 import { documentRoutes } from './v1/documents.js';
+import { documentTemplateCopyRoutes } from './v1/document-template-copy.js';
+import { formCopyRoutes } from './v1/form-copy.js';
+import { formPackageRoutes } from './v1/form-package.js';
 import { documentPublicRoutes } from './v1/documents-public.js';
 import { websiteDataRoutes } from './v1/website-data.js';
 import { etaSettingsRoutes } from './v1/e-invoicing.js';
@@ -84,8 +88,12 @@ export function allRoutes(config: ApiConfig): AnyRoute[] {
     ...onboardingRoutes,
     ...workspaceRoutes,
     ...formRoutes,
+    ...formCopyRoutes,
+    ...formPackageRoutes,
     ...submissionRoutes,
     ...documentRoutes,
+    ...documentTemplateCopyRoutes,
+    ...businessDocumentRoutes,
     ...documentPublicRoutes,
     ...websiteDataRoutes,
     ...etaSettingsRoutes,

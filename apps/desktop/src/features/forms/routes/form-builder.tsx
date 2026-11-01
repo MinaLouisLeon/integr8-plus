@@ -12,6 +12,8 @@ import { ConfigPanel } from '../components/config-panel';
 import { Dialog } from '../components/dialog';
 import { HistoryPanel, SettingsPanel } from '../components/history-settings';
 import { PreviewPanel } from '../components/preview-panel';
+import { useResolvedTheme } from '~/components/company-brand';
+import { TranslationsPanel } from '../components/translations-panel';
 import { editorReducer, initialEditor } from '../model/editor';
 import { issueElement, issueText } from '../model/issues';
 import {
@@ -24,6 +26,8 @@ import {
 } from '../model/recovery';
 import { useDraftSync } from '../use-draft-sync';
 import { DocumentDesigner } from '../../documents/designer';
+import { StaffCopyActions } from '../components/staff-copy';
+import { ExportFormAction } from '../components/form-package';
 
 /**
  * The form builder.
@@ -76,28 +80,46 @@ export function FormBuilderRoute() {
         design: me.data.permissions.includes('document.design'),
         enabled: me.data.features.documents === true,
         companyName: me.data.company?.name ?? '',
+        brandColour: me.data.company?.brandColour ?? null,
+        logoMediaId: me.data.company?.logoMediaId ?? null,
+      }}
+      brand={{
+        colour: me.data.company?.brandColour ?? null,
+        theme: me.data.company?.defaultTheme ?? 'system',
       }}
     />
   );
 }
 
-type Tab = 'build' | 'preview' | 'changes' | 'history' | 'settings' | 'pdf';
+type Tab = 'build' | 'translations' | 'preview' | 'changes' | 'history' | 'settings' | 'pdf';
 
 function Builder({
   detail,
   tenantId,
   manage,
   documents,
+  brand,
 }: {
   detail: FormDetail;
   tenantId: string;
   manage: boolean;
+  /** The company's colour and theme, for the phone in the preview. */
+  brand: { colour: string | null; theme: 'light' | 'dark' | 'system' };
   /** PDF templates (docs/documents): whether this seat designs them, and whether the company has them. */
-  documents: { design: boolean; enabled: boolean; companyName: string };
+  documents: {
+    design: boolean;
+    enabled: boolean;
+    companyName: string;
+    brandColour: string | null;
+    logoMediaId: string | null;
+  };
 }) {
   const { t, i18n } = useTranslation();
   const locale = i18n.language;
   const queries = useQueryClient();
+  // A company on "system" has phones that follow their own setting; the preview follows this screen's.
+  const screenTheme = useResolvedTheme();
+  const phoneTheme = brand.theme === 'system' ? screenTheme : brand.theme;
   const formId = detail.form.id;
   const source = (detail.draft ?? detail.live)!;
   const key = recoveryKey(tenantId, formId);
@@ -108,6 +130,14 @@ function Builder({
     initialEditor,
   );
   const [tab, setTab] = useState<Tab>('build');
+  // The PDF designer stays open once visited, so its unsaved work survives a look at another tab.
+  const [pdfOpened, setPdfOpened] = useState(false);
+  // Opening Translations from the publish check shows only the texts with no Arabic.
+  const [onlyMissing, setOnlyMissing] = useState(false);
+  const openTranslations = () => {
+    setOnlyMissing(true);
+    setTab('translations');
+  };
   const [publishing, setPublishing] = useState(false);
   const [notice, setNotice] = useState<string | undefined>(undefined);
   const [live, setLive] = useState(detail.live);
@@ -170,9 +200,9 @@ function Builder({
     return ids;
   }, [live, versions.data]);
 
-  // Keyboard undo and redo, as everywhere else on the desktop.
+  // Keyboard undo and redo, as everywhere else on the desktop. The PDF tab has its own.
   useEffect(() => {
-    if (!manage) {
+    if (!manage || tab === 'pdf') {
       return;
     }
     const onKey = (event: KeyboardEvent) => {
@@ -193,7 +223,7 @@ function Builder({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [manage]);
+  }, [manage, tab]);
 
   const show = (elementId: string) => {
     setTab('build');
@@ -202,8 +232,8 @@ function Builder({
 
   const tabs: Tab[] = [
     ...(manage
-      ? (['build', 'preview', 'changes', 'history', 'settings'] as const)
-      : (['build', 'preview', 'history'] as const)),
+      ? (['build', 'translations', 'preview', 'changes', 'history', 'settings'] as const)
+      : (['build', 'translations', 'preview', 'history'] as const)),
     ...(documents.design ? (['pdf'] as const) : []),
   ];
   const problems = compiled.ok ? 0 : compiled.issues.length;
@@ -247,6 +277,17 @@ function Builder({
               >
                 {t('forms.builder.redo')}
               </Button>
+              <StaffCopyActions
+                formId={formId}
+                formTitle={detail.form.title}
+                published={live !== null}
+              />
+              <ExportFormAction
+                formId={formId}
+                formTitle={detail.form.title}
+                publishedVersion={live?.versionNumber ?? null}
+                hasDraft={sync.revision !== null}
+              />
               <Button disabled={sync.status === 'conflict'} onClick={() => setPublishing(true)}>
                 {t('forms.builder.publish')}
               </Button>
@@ -262,7 +303,13 @@ function Builder({
             type="button"
             role="tab"
             aria-selected={tab === name}
-            onClick={() => setTab(name)}
+            onClick={() => {
+              setOnlyMissing(false);
+              setTab(name);
+              if (name === 'pdf') {
+                setPdfOpened(true);
+              }
+            }}
             className={[
               'border-b-2 px-3 py-2 text-sm',
               tab === name
@@ -339,6 +386,18 @@ function Builder({
         />
       ) : null}
 
+      {tab === 'translations' ? (
+        <TranslationsPanel
+          key={onlyMissing ? 'missing' : 'all'}
+          definition={editor.definition}
+          locale={locale}
+          readOnly={!manage}
+          dispatch={dispatch}
+          onShow={show}
+          initiallyOnlyMissing={onlyMissing}
+        />
+      ) : null}
+
       {tab === 'preview' ? (
         compiled.ok ? (
           <PreviewPanel
@@ -347,6 +406,7 @@ function Builder({
             locale={locale}
             canTest={manage && (sync.revision !== null || sync.status !== 'saved')}
             flush={sync.flush}
+            brand={{ colour: brand.colour, theme: phoneTheme }}
           />
         ) : (
           <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 p-6 text-start">
@@ -397,20 +457,29 @@ function Builder({
           hasLive={live !== null}
           flush={sync.flush}
           onShow={show}
+          onTranslations={openTranslations}
         />
       ) : null}
 
       {tab === 'history' ? <HistoryPanel formId={formId} locale={locale} /> : null}
       {tab === 'settings' ? <SettingsPanel detail={detail} /> : null}
-      {tab === 'pdf' ? (
-        <DocumentDesigner
-          formId={formId}
-          formTitle={detail.form.title}
-          form={liveForm}
-          locale={locale}
-          enabled={documents.enabled}
-          companyName={documents.companyName}
-        />
+      {documents.design && (tab === 'pdf' || pdfOpened) ? (
+        <div className={tab === 'pdf' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
+          <DocumentDesigner
+            formId={formId}
+            formTitle={detail.form.title}
+            form={liveForm}
+            locale={locale}
+            enabled={documents.enabled}
+            active={tab === 'pdf'}
+            company={{
+              tenantId,
+              name: documents.companyName,
+              brandColour: documents.brandColour,
+              logoMediaId: documents.logoMediaId,
+            }}
+          />
+        </div>
       ) : null}
 
       {manage && publishing ? (
@@ -423,6 +492,10 @@ function Builder({
           flush={sync.flush}
           onClose={() => setPublishing(false)}
           onShow={show}
+          onTranslations={() => {
+            setPublishing(false);
+            openTranslations();
+          }}
           onPublished={(version) => {
             setPublishing(false);
             setLive({

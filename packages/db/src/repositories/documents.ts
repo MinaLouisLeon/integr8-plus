@@ -84,6 +84,7 @@ export class DocumentTemplatesRepository extends TenantScopedRepository {
         form_id: input.formId,
         name: input.name,
         design: JSON.stringify(input.design),
+        design_schema_version: schemaVersionOf(input.design),
         created_by: toUserId(input.by),
         updated_by: toUserId(input.by),
       })
@@ -106,7 +107,12 @@ export class DocumentTemplatesRepository extends TenantScopedRepository {
       .updateTable('document_templates')
       .set({
         ...(change.name === undefined ? {} : { name: change.name }),
-        ...(change.design === undefined ? {} : { design: JSON.stringify(change.design) }),
+        ...(change.design === undefined
+          ? {}
+          : {
+              design: JSON.stringify(change.design),
+              design_schema_version: schemaVersionOf(change.design),
+            }),
         revision: sql<number>`revision + 1`,
         updated_by: toUserId(by),
       })
@@ -132,6 +138,12 @@ export class DocumentTemplatesRepository extends TenantScopedRepository {
       .executeTakeFirst();
     return row === undefined ? undefined : toTemplate(row);
   }
+}
+
+/** The design's own `schemaVersion`, kept beside it so a query can find old designs (1.3.0). */
+function schemaVersionOf(design: unknown): number {
+  const version = (design as { schemaVersion?: unknown } | null)?.schemaVersion;
+  return typeof version === 'number' && Number.isInteger(version) && version > 0 ? version : 1;
 }
 
 function toTemplate(row: Selectable<DocumentTemplatesTable>): DocumentTemplate {
@@ -172,8 +184,10 @@ export interface DocumentRecord {
   formId: string | null;
   /** An uploaded document's reference number. */
   reference: string | null;
-  /** The customer an uploaded document is for. */
+  /** The customer an uploaded document or a business PDF is for. */
   customerId: string | null;
+  /** The record a business PDF was printed from (0074); null for the others. */
+  record: BusinessDocumentRecord | null;
   /** Whether the QR code's link and the company website may show it (0067). */
   shareable: boolean;
   title: string;
@@ -212,6 +226,34 @@ export function normalizeFieldValue(value: string): string {
   return value.trim().replace(/\s+/gu, ' ').toLocaleLowerCase('en');
 }
 
+/** The kinds of record the server prints in the company's look (0074). */
+export type BusinessDocumentKind = 'quote' | 'invoice' | 'purchase_order' | 'job_report';
+
+export const BUSINESS_DOCUMENT_KINDS: readonly BusinessDocumentKind[] = [
+  'quote',
+  'invoice',
+  'purchase_order',
+  'job_report',
+];
+
+/** The one record a business PDF was printed from. */
+export interface BusinessDocumentRecord {
+  kind: BusinessDocumentKind;
+  id: string;
+}
+
+/** The column that names each kind's record. */
+const RECORD_COLUMN = {
+  quote: 'quote_id',
+  invoice: 'invoice_id',
+  purchase_order: 'purchase_order_id',
+  job_report: 'work_order_id',
+} as const satisfies Record<BusinessDocumentKind, keyof DocumentsTable>;
+
+export function isBusinessDocumentKind(source: string): source is BusinessDocumentKind {
+  return (BUSINESS_DOCUMENT_KINDS as readonly string[]).includes(source);
+}
+
 export interface DocumentListQuery {
   /** Matched against every field value, and the title. */
   q?: string | undefined;
@@ -220,8 +262,12 @@ export interface DocumentListQuery {
   formId?: string | undefined;
   templateId?: string | undefined;
   submissionId?: string | undefined;
-  /** Generated from submissions, or uploaded (0067). */
+  /** Generated from submissions, uploaded (0067), or one kind of business PDF (0074). */
   source?: DocumentSource | undefined;
+  /** Only the business PDFs printed from this record (0074). */
+  record?: BusinessDocumentRecord | undefined;
+  /** Only the documents this person made. */
+  createdBy?: string | undefined;
   /** `active`: the link opens; `expired`: it does not, by a person or by date. */
   state?: 'active' | 'expired' | 'pending' | 'failed' | undefined;
   createdFrom?: Date | undefined;
@@ -319,6 +365,47 @@ export class DocumentsRepository extends TenantScopedRepository {
     return toDocument(row, [...input.fields]);
   }
 
+  /**
+   * Records a business PDF the worker is about to print (0074): pending, with
+   * the record it is made from, its number as the reference, and the customer
+   * it is for. Not shareable unless the person asked and may.
+   */
+  async createBusiness(input: {
+    id: string;
+    record: BusinessDocumentRecord;
+    title: string;
+    reference: string;
+    customerId: string | null;
+    publicCode: string;
+    shareable: boolean;
+    by: UserId | string;
+    fields: readonly DocumentFieldValue[];
+  }): Promise<DocumentRecord> {
+    const row = await this.db
+      .insertInto('documents')
+      .values({
+        id: input.id,
+        tenant_id: this.tenantId,
+        source: input.record.kind,
+        template_id: null,
+        template_revision: null,
+        submission_id: null,
+        form_id: null,
+        [RECORD_COLUMN[input.record.kind]]: input.record.id,
+        reference: input.reference,
+        customer_id: input.customerId,
+        shareable: input.shareable,
+        title: input.title,
+        public_code: input.publicCode,
+        expires_at: null,
+        created_by: toUserId(input.by),
+      })
+      .returningAll()
+      .executeTakeFirstOrThrow();
+    await this.#insertFields(input.id, input.fields);
+    return toDocument(row, [...input.fields]);
+  }
+
   async #insertFields(documentId: string, fields: readonly DocumentFieldValue[]): Promise<void> {
     if (fields.length === 0) {
       return;
@@ -398,6 +485,14 @@ export class DocumentsRepository extends TenantScopedRepository {
     }
     if (query.source !== undefined) {
       select = select.where('documents.source', '=', query.source);
+    }
+    if (query.record !== undefined) {
+      select = select
+        .where('documents.source', '=', query.record.kind)
+        .where(`documents.${RECORD_COLUMN[query.record.kind]}`, '=', query.record.id);
+    }
+    if (query.createdBy !== undefined) {
+      select = select.where('documents.created_by', '=', query.createdBy);
     }
     if (query.createdFrom !== undefined) {
       select = select.where('documents.created_at', '>=', query.createdFrom);
@@ -652,6 +747,14 @@ function toFieldValue(row: Selectable<DocumentFieldValuesTable>): DocumentFieldV
   return { key: row.field_key, label: row.label, value: row.value, lookupRole: row.lookup_role };
 }
 
+function recordOf(row: Selectable<DocumentsTable>): BusinessDocumentRecord | null {
+  if (!isBusinessDocumentKind(row.source)) {
+    return null;
+  }
+  const id = row[RECORD_COLUMN[row.source]];
+  return id === null ? null : { kind: row.source, id };
+}
+
 function toDocument(row: Selectable<DocumentsTable>, fields: DocumentFieldValue[]): DocumentRecord {
   return {
     id: row.id,
@@ -662,6 +765,7 @@ function toDocument(row: Selectable<DocumentsTable>, fields: DocumentFieldValue[
     formId: row.form_id,
     reference: row.reference,
     customerId: row.customer_id,
+    record: recordOf(row),
     shareable: row.shareable,
     title: row.title,
     publicCode: row.public_code,

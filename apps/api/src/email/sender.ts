@@ -45,6 +45,19 @@ export interface EmailMessage {
    * `actionUrl`: for the recording sender only.
    */
   code?: string;
+  /**
+   * Files sent with the message (1.3.0: a business PDF to its customer or
+   * supplier). Kept small by the caller; the provider limits the whole message.
+   */
+  attachments?: readonly EmailAttachment[];
+  /** Where a reply goes, when not to the sender: the company's own address. */
+  replyTo?: string;
+}
+
+export interface EmailAttachment {
+  filename: string;
+  contentType: string;
+  content: Uint8Array;
 }
 
 export type EmailResult =
@@ -138,6 +151,16 @@ export class ResendEmailSender implements EmailSender {
           subject: message.subject,
           text: message.text,
           html: message.html,
+          ...(message.replyTo === undefined ? {} : { reply_to: message.replyTo }),
+          ...(message.attachments === undefined || message.attachments.length === 0
+            ? {}
+            : {
+                attachments: message.attachments.map((attachment) => ({
+                  filename: attachment.filename,
+                  content: Buffer.from(attachment.content).toString('base64'),
+                  content_type: attachment.contentType,
+                })),
+              }),
         }),
       });
     } catch (error) {

@@ -532,6 +532,12 @@ describe('what the runtime role may do', () => {
     expect(await privileges('form_templates')).toEqual(['SELECT']);
   });
 
+  it('holds nothing on the PDF templates and pictures a library form carries', async () => {
+    // Read by the API as the platform role and copied into a company (0069).
+    expect(await privileges('form_template_documents')).toEqual([]);
+    expect(await privileges('form_template_files')).toEqual([]);
+  });
+
   it('is neither a superuser nor a BYPASSRLS role nor an owner', async () => {
     const role = await owner.query<{ rolsuper: boolean; rolbypassrls: boolean }>(
       `select rolsuper, rolbypassrls from pg_roles where rolname = 'integr8_app'`,

@@ -5,6 +5,7 @@ import {
   type FieldError,
   type FormEvent,
   type FormState,
+  isInformation,
   ownAnswer,
   storedEntries,
   toSubmission,
@@ -16,6 +17,7 @@ import {
   dependentChoices,
   firstPerField,
   isRequiredNow,
+  localNow,
   pageIndexOfField,
 } from '@integr8/form-input';
 import { useTranslation } from '@integr8/i18n';
@@ -23,6 +25,7 @@ import { useId, useMemo, useRef, useState } from 'react';
 import { AnswerView } from './answer-view.js';
 import { EntryList, entryName, entryPrefix, sectionName, sectionProblemsId } from './entries.js';
 import { controlId, FieldBlock } from './field.js';
+import { Description, InformationBlock } from './information.js';
 import type { MediaAdapter } from './media.js';
 import { say } from './text.js';
 import { buttonClass, inputClass } from './widgets/types.js';
@@ -59,6 +62,12 @@ export interface FormFillerProps {
   media?: MediaAdapter;
   /** The day the form is being filled, `YYYY-MM-DD`, for rules about today. */
   today?: string;
+  /**
+   * The moment calculations that read `now` use (schema version 2), a date and
+   * time with its offset. This device's clock, read again at every change,
+   * unless a test or preview fixes it.
+   */
+  now?: string;
   /** After every change: everything typed, for autosave. */
   onAnswersChange?: (answers: Record<string, unknown>) => void;
   /** Sends what the engine says to submit: visible answers, no calculated values. */
@@ -80,6 +89,7 @@ export function FormFiller({
   locale,
   media,
   today,
+  now,
   onAnswersChange,
   onSubmit,
   correction = false,
@@ -87,10 +97,19 @@ export function FormFiller({
 }: FormFillerProps) {
   const { t } = useTranslation();
   const prefix = useId().replaceAll(':', '');
-  const context = useMemo(() => (today === undefined ? {} : { today }), [today]);
   // A repeatable section that needs entries opens with that many.
   const [state, setState] = useState<FormState>(() =>
     createFormState(form, initialAnswers, { newEntryId }),
+  );
+  // `now` is read again whenever the answers change, so a time worked out from
+  // it is as fresh as the last thing typed.
+  const context = useMemo(
+    () => ({
+      ...(today === undefined ? {} : { today }),
+      now: now ?? localNow(),
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `state` is what refreshes the clock
+    [today, now, state],
   );
   const [pageIndex, setPageIndex] = useState(0);
   const [reviewing, setReviewing] = useState(false);
@@ -340,7 +359,7 @@ export function FormFiller({
         ) : null}
 
         {reviewing ? (
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-6" data-part="review">
             <div className="flex flex-col gap-1">
               <h3 className="text-lg font-semibold text-content">{t('fill.review.title')}</h3>
               <p className="text-sm text-content-muted">{t('fill.review.intro')}</p>
@@ -449,12 +468,13 @@ export function FormFiller({
             </div>
           </div>
         ) : current === undefined ? null : (
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-6" data-page={current.id}>
             {pages.length > 1 || current.title !== undefined ? (
               <h3 className="text-lg font-semibold text-content">
                 {say(current.title, locale) || t('fill.nav.page', { number: currentIndex + 1 })}
               </h3>
             ) : null}
+            <Description text={current.description} locale={locale} of="page" />
 
             {current.sections
               .filter((section) => view.visible.get(section.id) === true)
@@ -462,6 +482,8 @@ export function FormFiller({
                 <section
                   key={section.id}
                   id={`${prefix}-section-${section.id}`}
+                  data-section={section.id}
+                  data-repeat={section.repeat === undefined ? undefined : ''}
                   {...(section.title === undefined
                     ? {}
                     : { 'aria-labelledby': `${prefix}-section-${section.id}-title` })}
@@ -470,12 +492,14 @@ export function FormFiller({
                   {section.title === undefined ? null : (
                     <h4
                       id={`${prefix}-section-${section.id}-title`}
+                      data-part="section-title"
                       tabIndex={section.repeat === undefined ? undefined : -1}
                       className="text-base font-semibold text-content outline-none"
                     >
                       {say(section.title, locale)}
                     </h4>
                   )}
+                  <Description text={section.description} locale={locale} of="section" />
                   {section.repeat === undefined ? null : (
                     <EntryList
                       section={section}
@@ -522,25 +546,29 @@ export function FormFiller({
                       (field) =>
                         section.repeat === undefined && view.visible.get(field.id) === true,
                     )
-                    .map((field) => (
-                      <FieldBlock
-                        key={field.id}
-                        field={field}
-                        value={view.values.get(field.id) ?? state.answers[field.id]}
-                        errors={view.shownErrors.filter(
-                          (error) => error.field === field.id && error.entry === undefined,
-                        )}
-                        prefix={prefix}
-                        locale={locale}
-                        media={media}
-                        disabled={false}
-                        required={isRequiredNow(view, field)}
-                        choices={dependentChoices(form, view, field, locale)}
-                        onAnswer={(value) => dispatch({ type: 'answer', field: field.id, value })}
-                        onClear={() => dispatch({ type: 'clear', field: field.id })}
-                        onBlur={() => dispatch({ type: 'touch', field: field.id })}
-                      />
-                    ))}
+                    .map((field) =>
+                      isInformation(field) ? (
+                        <InformationBlock key={field.id} item={field} locale={locale} />
+                      ) : (
+                        <FieldBlock
+                          key={field.id}
+                          field={field}
+                          value={view.values.get(field.id) ?? state.answers[field.id]}
+                          errors={view.shownErrors.filter(
+                            (error) => error.field === field.id && error.entry === undefined,
+                          )}
+                          prefix={prefix}
+                          locale={locale}
+                          media={media}
+                          disabled={false}
+                          required={isRequiredNow(view, field)}
+                          choices={dependentChoices(form, view, field, locale)}
+                          onAnswer={(value) => dispatch({ type: 'answer', field: field.id, value })}
+                          onClear={() => dispatch({ type: 'clear', field: field.id })}
+                          onBlur={() => dispatch({ type: 'touch', field: field.id })}
+                        />
+                      ),
+                    )}
                 </section>
               ))}
 

@@ -81,6 +81,8 @@ const UNSENT_WORK_AT: Record<number, (driver: SqlDriver) => Promise<void>> = {
   8: (driver) => UNSENT_WORK_AT[7]!(driver),
   // Version 9 added what the van's stock has free and item images: downloaded data.
   9: (driver) => UNSENT_WORK_AT[8]!(driver),
+  // Version 10 added the van's serial numbers and batches: downloaded data.
+  10: (driver) => UNSENT_WORK_AT[9]!(driver),
   4: async (driver) => {
     await UNSENT_WORK_AT[3]!(driver);
     await driver.run(
@@ -169,6 +171,14 @@ describe('upgrading with unsent work on the phone', () => {
       expect(await db.read((sql) => job(sql, JOB))).toBeDefined();
     },
   );
+
+  it('forgets the sync cursor once on reaching version 11, so 1.3.0 pulls everything again', async () => {
+    const driver = await databaseAt(10);
+    await driver.run(`insert into meta (key, value) values ('sync_cursor', 'v1.42')`);
+    await driver.run(`insert into meta (key, value) values ('user_id', 'someone')`);
+    await migrate(driver);
+    expect(await driver.all('select key from meta order by key')).toEqual([{ key: 'user_id' }]);
+  });
 
   it('opens a fresh phone straight at the newest version', async () => {
     const driver = new NodeSqlDriver();

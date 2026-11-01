@@ -5,22 +5,25 @@ still open. Facts that are not obvious from the code and go stale. Update this f
 the end of any piece of work that changes one of them, and date each section.
 `CLAUDE.md` and `AGENTS.md` are the how-to; this is the state.
 
-## Snapshot (2026-11-01, after the audit's Low fixes)
+## Snapshot (2026-11-01, after the form builder and PDF builder round)
 
-- **Version:** root `package.json` is **1.2.4** on branch `ccr-4f86fb34-8uvkk9` (not merged
-  yet); `dev` is 1.2.3 (PR #138), `main` is 1.2.2 (released 31 Oct from PR #136). The root `package.json` is the only
+- **Version:** root `package.json` is **1.3.0** on branch `ccr-4f86fb34-8uvkk9` (not merged
+  yet); `dev` is 1.2.4 (PRs #139, #143), `main` is 1.2.2 (released 31 Oct from PR #136). The root `package.json` is the only
   source: the phone (`app.config.ts`) and the web build (`next.config.ts`) read it, and
   `apps/api/src/app-info.ts` has a copy a test keeps equal.
-- **Migrations:** `packages/db/migrations` reaches **0068**. **0059 was never used** (workers
+- **Migrations:** `packages/db/migrations` reaches **0074**. **0059 was never used** (workers
   had reserved ranges) and the migrator does not need contiguous numbers; the next one is
-  **0069**. 1.2.2 carries 0054–0057; 1.2.3 adds 0058 and 0060–0066; 1.2.4 adds 0067–0068.
+  **0075**. 1.2.2 carries 0054–0057; 1.2.3 adds 0058 and 0060–0066; 1.2.4 adds 0067–0068;
+  1.3.0 adds 0069 and 0074 (0070–0073 were reserved by workers and never used).
 - **Pre-production audit (2026-10-31):** plans, docs and code compared area by area; the
   report is the claude.ai artifact https://claude.ai/artifact/FB7vANrUc691VfMXkR5h2U. Its
   6 blockers and 14 High items shipped in 1.2.2 (PR #136). The owner then reviewed the 24
   Medium items one by one (decisions in the report); all were fixed on branch
   `ccr-4f86fb34-8uvkk9` for 1.2.3 (PR #138), maps by removing the map. The 15 Low items
   were decided the same way and built for 1.2.4 on the same branch name, restarted from
-  `dev`. What is left is the owner's own steps under "Open items".
+  `dev` (PR #139). The owner then reviewed 13 gaps in the form builder and PDF template
+  builder one by one; all were built for 1.3.0 on the same branch name. What is left is the
+  owner's own steps under "Open items".
 - **Modules shipped:** field work (customers, sites, work orders, visits and the
   schedule, timesheets), forms and submissions, PDF documents, CRM, sales, finance,
   general ledger, inventory, purchasing, assets, HR, expenses, Egyptian payroll,
@@ -62,7 +65,7 @@ the end of any piece of work that changes one of them, and date each section.
   ZimaOS).
 - The owner keeps a published copy of the setup guide as a claude.ai artifact:
   https://claude.ai/artifact/HCVbJdp3u9YJT28cCaRw29 (the HTML with its CSS and JS as separate
-  files). On 1 Nov it was republished from branch `ccr-4f86fb34-8uvkk9` (1.2.4, PR #139);
+  files). On 1 Nov it was republished from branch `ccr-4f86fb34-8uvkk9` (1.3.0);
   republish it from `setup-checklist.html` whenever the guide changes.
 
 ## Decisions
@@ -120,6 +123,35 @@ the end of any piece of work that changes one of them, and date each section.
   Exact versions everywhere and Node `>=22.22.1 <23` (`pnpm pins:check`); the permission
   table `packages/core/src/permissions.table.md`; Standard storage overage listed for
   invoicing; quote links say "no longer available online" while Sales is off.
+- **Form builder and PDF builder (2026-11-01, 1.3.0), as the owner chose them:** staff copy a
+  form to another company (as a draft, optionally with its PDF templates and their pictures)
+  or save it as a staff-made library template (`form_templates.source = 'staff'`, managed on
+  the dashboard's Templates page; built-ins stay code-managed by `db:templates`; pictures in a
+  `platform-library` bucket). English and Arabic side by side plus a Translations tab;
+  missing Arabic only warns. Form format 2 (`schemaVersion` 2): Information blocks
+  (in a section's `fields`, never answers), page/section descriptions, date/time and number
+  calculations with brackets; phones older than 1.3.0 get "Update the app" on such forms
+  (`apps/api/src/sync/form-formats.ts`). A behaviour check holds the web filler, the phone
+  and the builder's preview to the same screens. PDF templates (design version 2): a
+  three-place header and footer, landscape, brand colour/palette/lines/fonts (the website
+  fonts embedded as data URIs), drag and drop with undo, copy/duplicate with a
+  question-matching step, "Preview as PDF" (rate-limited, not stored; api memory cap 1 GB),
+  and templates that keep printing when a form version drops a question ("Needs
+  attention"). Branded server PDFs for quotes, invoices, purchase orders and a job report
+  (0074), in the Documents register, emailable.
+- **Form files and AI form building (2026-11-01, 1.3.0), as the owner chose them:** a form with
+  its PDF templates and pictures travels as one `.integr8form` file (`@integr8/form-package`,
+  spec `docs/form-engine/package-format.md`; a strict ZIP reader of its own on Node's zlib, no
+  library, so oversized or malformed files are refused). Staff export a form (published, or the
+  draft) and import one as a new draft; the dashboard imports into and exports from the
+  library (library import refuses a form that would not publish). "Integr8 Forms for AI"
+  (`apps/forms-ai`) is an offline MCP server (no credentials, never calls the server) that
+  AI coding tools use to build those files: format guide generated from the real schemas,
+  checks with the app's own rules, PDF previews through the machine's Chrome/Edge, save and
+  open files. It ships as one executable per OS from the release workflow (Node SEA, about
+  130 MB, unsigned), linked from `/download`; double-clicked it opens a terminal installer
+  that connects Claude Code, Codex, Claude Desktop, Cursor, VS Code, Windsurf and Gemini CLI
+  globally and offers updates from GitHub releases.
 - **The demo seeder goes through the API**, in-process with Fastify's `inject`, as the
   company's own people (plus a staff impersonation for staff-only setup). Direct inserts
   were rejected: they skip numbering, stock, ledger postings and audit, and produce data
@@ -141,6 +173,16 @@ Update them together at each release or new migration:
 - Released versions: `gh release list`. v1.2.1 (2026-10-27) carries migrations 0051–0053.
 
 ## Open items
+
+- **Owner steps for 1.3.0 (2026-11-01):** Stage 11 parts AC and AD (migrations 0069 and
+  0074; the api container's 1 GB cap; wait a day after updating before publishing forms
+  that use the new features, so phones have the 1.3.0 app). Check "Preview as PDF" and pdf.js
+  in the real Tauri app on Windows and macOS (only tested in Chromium). The real Resend path
+  with PDF attachments is untested. No job-report button on the phone yet. Forms for AI:
+  the Windows and macOS executables are first built by the next release run (the
+  `macos-15-intel` runner label is unverified); on a real machine check the installer's setup
+  for Claude Desktop, Cursor, VS Code and Windsurf (their config formats could not be checked
+  against their docs) and macOS/Linux need `chmod +x` after download.
 
 - **Owner steps for 1.2.4 (2026-11-01):** run `sh deploy/vps/check-env.sh` and replace
   any value it names (Stage 11 part AA), comment out `API_UPDATE_URL`; tell companies using

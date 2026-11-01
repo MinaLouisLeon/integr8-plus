@@ -3,6 +3,7 @@ import {
   DesktopUpdateFeed,
   desktopUpdateFeed,
   type GitHubAsset,
+  formsAiAssetOf,
   type GitHubRelease,
   hasInstaller,
   installerOf,
@@ -266,6 +267,90 @@ describe('what the download page lists (Low 6)', () => {
     expect(found?.installers.find((file) => file.kind === 'apk')?.url).toBe(
       '/desktop-updates/acme/download/company-acme-v1.3.0/integr8-acme-1.3.0.apk',
     );
+  });
+});
+
+/** A staff release with the installer and Integr8 Forms for AI beside it. */
+function staffRelease(tag: string, version: string): GitHubRelease {
+  const files = [
+    `integr8-plus-staff_${version}_x64-setup.exe`,
+    `integr8-forms-ai-${version}-windows-x64.exe`,
+    `integr8-forms-ai-${version}-windows-x64.exe.sha256`,
+    `integr8-forms-ai-${version}-macos-arm64`,
+    `integr8-forms-ai-${version}-macos-arm64.sha256`,
+    `integr8-forms-ai-${version}-macos-x64`,
+    `integr8-forms-ai-${version}-linux-x64`,
+    `integr8-forms-ai-${version}-linux-x64.sha256`,
+    'latest.json',
+  ];
+  return {
+    tag_name: tag,
+    draft: false,
+    prerelease: false,
+    assets: files.map((name) => asset(tag, name)),
+  };
+}
+
+describe('Integr8 Forms for AI on the download page (1.3.0 decision 15)', () => {
+  it('knows its builds by name, and they are never the staff app’s installers', () => {
+    expect(formsAiAssetOf('integr8-forms-ai-1.3.0-windows-x64.exe')).toEqual({
+      platform: 'windows',
+      arch: 'x64',
+    });
+    expect(formsAiAssetOf('integr8-forms-ai-1.3.0-macos-arm64')).toEqual({
+      platform: 'macos',
+      arch: 'arm64',
+    });
+    for (const name of [
+      'integr8-forms-ai-1.3.0-linux-x64.sha256',
+      'integr8-forms-ai-1.3.0-windows-x64',
+      'integr8-forms-ai-1.3.0-linux-x64.exe',
+      'integr8-plus-staff_1.3.0_x64-setup.exe',
+    ]) {
+      expect(formsAiAssetOf(name), name).toBeUndefined();
+    }
+    expect(installerOf('integr8-forms-ai-1.3.0-windows-x64.exe')).toBeUndefined();
+  });
+
+  it('lists the newest staff release’s builds, Windows first, apart from the installers', async () => {
+    const feed = new DesktopUpdateFeed({
+      repository: 'o/r',
+      fetch: () =>
+        Promise.resolve(
+          Response.json([staffRelease('v1.2.4', '1.2.4'), staffRelease('v1.3.0', '1.3.0')]),
+        ),
+    });
+    const found = await feed.formsAi();
+    expect(found?.version).toBe('1.3.0');
+    expect(found?.downloads.map((file) => `${file.platform}-${file.arch}`)).toEqual([
+      'windows-x64',
+      'macos-arm64',
+      'macos-x64',
+      'linux-x64',
+    ]);
+    expect(found?.downloads[0]?.url).toBe(
+      'https://github.com/o/r/releases/download/v1.3.0/integr8-forms-ai-1.3.0-windows-x64.exe',
+    );
+    const staff = await feed.installers('staff');
+    expect(staff?.installers.map((file) => file.name)).toEqual([
+      'integr8-plus-staff_1.3.0_x64-setup.exe',
+    ]);
+  });
+
+  it('links through this server for a private repository, and offers nothing before a release has it', async () => {
+    const feed = new DesktopUpdateFeed({
+      repository: 'o/r',
+      token: 't0ken',
+      fetch: () => Promise.resolve(Response.json([staffRelease('v1.3.0', '1.3.0')])),
+    });
+    expect((await feed.formsAi())?.downloads[0]?.url).toBe(
+      '/desktop-updates/staff/download/v1.3.0/integr8-forms-ai-1.3.0-windows-x64.exe',
+    );
+    const older = new DesktopUpdateFeed({
+      repository: 'o/r',
+      fetch: () => Promise.resolve(Response.json([release('v1.2.4')])),
+    });
+    expect(await older.formsAi()).toBeUndefined();
   });
 });
 

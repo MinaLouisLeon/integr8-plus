@@ -13,19 +13,35 @@ import type { BackgroundImage } from './backgrounds.js';
 
 /** Longest side of a picture placed in the content, in pixels: a full-width photo at 200 dpi. */
 const CONTENT_MAX_PX = 1600;
-/** A4 at 300 dpi, for backgrounds drawn edge to edge. */
-const BACKGROUND_WIDTH_PX = 2480;
-const BACKGROUND_HEIGHT_PX = 3508;
+/**
+ * A4 at 300 dpi, for backgrounds drawn edge to edge: 2480 x 3508 portrait,
+ * 3508 x 2480 landscape (1.3.0). A picture of another shape is fitted inside
+ * and stretched to the page when drawn, so the designer asks for these sizes.
+ */
+export const BACKGROUND_PIXELS = {
+  portrait: { width: 2480, height: 3508 },
+  landscape: { width: 3508, height: 2480 },
+} as const;
 
-export async function inlineImage(bytes: Uint8Array): Promise<string | undefined> {
-  const prepared = await prepare(bytes, { width: CONTENT_MAX_PX, height: CONTENT_MAX_PX });
+/**
+ * A picture as a data URI for the page. `maxPx` lowers the longest side for
+ * pictures printed small, such as a job report's photo grid.
+ */
+export async function inlineImage(
+  bytes: Uint8Array,
+  maxPx: number = CONTENT_MAX_PX,
+): Promise<string | undefined> {
+  const prepared = await prepare(bytes, { width: maxPx, height: maxPx });
   return prepared === undefined
     ? undefined
     : `data:image/${prepared.format};base64,${Buffer.from(prepared.bytes).toString('base64')}`;
 }
 
-export async function backgroundImage(bytes: Uint8Array): Promise<BackgroundImage | undefined> {
-  return prepare(bytes, { width: BACKGROUND_WIDTH_PX, height: BACKGROUND_HEIGHT_PX });
+export async function backgroundImage(
+  bytes: Uint8Array,
+  orientation: 'portrait' | 'landscape' = 'portrait',
+): Promise<BackgroundImage | undefined> {
+  return prepare(bytes, BACKGROUND_PIXELS[orientation]);
 }
 
 async function prepare(

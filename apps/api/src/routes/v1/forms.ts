@@ -3,18 +3,28 @@ import {
   type Form,
   type FormVersion,
   type FormVersionSummary,
+  getPlatformDataSource,
   type TenantTransaction,
   withTenant,
 } from '@integr8/db';
 import {
+  type CompiledForm,
   compileDefinition,
   type DefinitionIssue,
   diffDefinitions,
   emptyDefinition,
   type FormDefinition,
+  missingTranslations,
   validateSubmission,
+  withRequiredSchemaVersion,
 } from '@integr8/form-engine';
 import { z } from 'zod';
+import {
+  bringTemplatesIn,
+  discardPictures,
+  libraryTemplatesFor,
+} from '../../documents/template-copies.js';
+import { type AffectedTemplate, templatesAffected } from '../../documents/attention.js';
 import { conflict, type ErrorDetail, notFound, unprocessable } from '../../http/errors.js';
 import { defineRoute, noSchema, type RequestContext } from '../../http/routes.js';
 import { iso, isoOrNull, listSchema } from './schemas.js';
@@ -138,12 +148,64 @@ const diffSchema = z.object({
   breaking: z.array(breakingSchema),
 });
 
+/** A PDF template the new version would leave needing attention (1.3.0 decision 13). */
+const affectedTemplateSchema = z.object({
+  templateId: z.uuid(),
+  name: z.string(),
+  /** Each block or document field naming a question the new version drops or changes. */
+  problems: z.array(
+    z.object({
+      path: z.string(),
+      code: z.string(),
+      message: z.string(),
+      blockId: z.string().nullable(),
+      fieldKey: z.string().nullable(),
+    }),
+  ),
+});
+
+/**
+ * Something worth knowing before publishing that does not stop it. Today one
+ * code: `missing_translation`, a text with nothing in `locale` (Arabic), one
+ * warning per text, so "12 texts have no Arabic" is a count of these.
+ */
+const warningSchema = z.object({
+  code: z.string(),
+  message: z.string(),
+  path: z.string(),
+  elements: z.array(z.string()),
+  locale: z.string().optional(),
+});
+
 const checkSchema = z.object({
   revision: z.number().int(),
   valid: z.boolean(),
   issues: z.array(issueSchema),
   diff: diffSchema,
+  /**
+   * PDF templates that use a question this version drops or changes. Publishing
+   * needs `acknowledgeTemplateChanges` (or `acknowledgeBreakingChanges`) when
+   * there are any; documents keep being made from them meanwhile.
+   */
+  documentTemplates: z.array(affectedTemplateSchema),
+  /** Never refuses publishing; listed so the builder can say what is left to do. */
+  warnings: z.array(warningSchema),
 });
+
+/** The form's PDF templates the draft would leave needing attention. */
+async function affectedTemplates(
+  tx: TenantTransaction,
+  formId: string,
+  live: FormVersion | undefined,
+  next: CompiledForm,
+): Promise<AffectedTemplate[]> {
+  const templates = await tx.documentTemplates.list({ formId });
+  if (templates.length === 0) {
+    return [];
+  }
+  const liveForm = live === undefined ? undefined : compileDefinition(live.definition);
+  return templatesAffected(templates, liveForm?.ok === true ? liveForm.form : undefined, next);
+}
 
 const templateSummarySchema = z.object({
   key: z.string(),
@@ -151,6 +213,10 @@ const templateSummarySchema = z.object({
   description: localizedSchema,
   category: z.enum(['maintenance', 'safety', 'completion']),
   fieldCount: z.number().int(),
+  /** `builtin`: ships with the product. `staff`: made by Integr8 from a company's form (1.3.0). */
+  source: z.enum(['builtin', 'staff']),
+  /** PDF templates a new form started from this one gets copies of (1.3.0). */
+  documentTemplateCount: z.number().int(),
 });
 
 const templateSchema = templateSummarySchema.extend({ definition: definitionSchema });
@@ -205,14 +271,19 @@ function versionBody(version: FormVersion) {
   return { ...summaryBody(version), definition: version.definition };
 }
 
+/** Questions only: an Information block (schema version 2) is not one. */
 function fieldCount(definition: Record<string, unknown>): number {
   const pages = Array.isArray(definition.pages)
-    ? (definition.pages as { sections?: { fields?: unknown[] }[] }[])
+    ? (definition.pages as { sections?: { fields?: { type?: unknown }[] }[] }[])
     : [];
   return pages.reduce(
     (total, page) =>
       total +
-      (page.sections ?? []).reduce((sum, section) => sum + (section.fields?.length ?? 0), 0),
+      (page.sections ?? []).reduce(
+        (sum, section) =>
+          sum + (section.fields ?? []).filter((item) => item.type !== 'information').length,
+        0,
+      ),
     0,
   );
 }
@@ -257,7 +328,7 @@ async function createFormWithDraft(
   });
   const draft = await tx.forms.createDraft({
     formId: form.id,
-    definition: input.definition,
+    definition: withRequiredSchemaVersion(input.definition),
     createdBy: context.principal.userId,
   });
   return { form: formBody(form), draft: versionBody(draft), live: null };
@@ -516,7 +587,7 @@ export const saveDraftRoute = defineRoute({
   operationId: 'saveFormDraft',
   summary: 'Autosave the draft',
   description:
-    'Stores the definition as it is, valid or not. `expectedRevision` is the revision the builder last saw, or `null` to start a draft when there is none. A save based on an older revision is refused with 409, so a second tab cannot overwrite the first.',
+    'Stores the definition as it is, valid or not, except that the server sets `schemaVersion` to the lowest format that has everything the definition uses (2 for descriptions, Information blocks and the 1.3.0 calculations; otherwise 1) — the response carries the definition as stored. `expectedRevision` is the revision the builder last saw, or `null` to start a draft when there is none. A save based on an older revision is refused with 409, so a second tab cannot overwrite the first.',
   tags: TAGS,
   security: 'authenticated',
   permission: 'form.manage',
@@ -534,9 +605,11 @@ export const saveDraftRoute = defineRoute({
   handler: async ({ params, body }, context) => {
     const result = await withTenant(context.principal.tenantId, async (tx) => {
       await requireForm(tx, params.formId);
+      // The format the draft needs is the server's to say (schema version 2):
+      // an older app is told by it, before it tries, that it cannot open the form.
       return tx.forms.saveDraft(
         params.formId,
-        body.definition,
+        withRequiredSchemaVersion(body.definition),
         body.expectedRevision,
         context.principal.userId,
       );
@@ -581,7 +654,7 @@ export const checkDraftRoute = defineRoute({
   operationId: 'checkFormDraft',
   summary: 'Validate the draft and compare it with the live version',
   description:
-    'What publishing would decide, without publishing: every issue that would refuse it, named by field, and every change against the live version with the breaking ones marked.',
+    'What publishing would decide, without publishing: every issue that would refuse it, named by field, every change against the live version with the breaking ones marked, and the PDF templates that use a question the draft drops or changes.',
   tags: TAGS,
   security: 'authenticated',
   permission: 'form.manage',
@@ -595,6 +668,11 @@ export const checkDraftRoute = defineRoute({
   handler: async ({ params }, context) => {
     const { draft, live } = await draftAndLive(context, params.formId);
     const compiled = compileDefinition(draft.definition);
+    const documentTemplates = compiled.ok
+      ? await withTenant(context.principal.tenantId, (tx) =>
+          affectedTemplates(tx, params.formId, live, compiled.form),
+        )
+      : [];
 
     return {
       status: 200,
@@ -605,10 +683,27 @@ export const checkDraftRoute = defineRoute({
         diff: compiled.ok
           ? diffDefinitions(liveDefinition(live), compiled.form.definition)
           : { titleChanged: false, changes: [], breaking: [] },
+        documentTemplates,
+        warnings: translationWarnings(draft.definition),
       },
     };
   },
 });
+
+/**
+ * The texts of the draft with no Arabic (owner's decision, 1.3.0): a warning,
+ * never a refusal, because an English-only company is a normal customer. The
+ * builder's Translations tab counts the same texts with the same function.
+ */
+function translationWarnings(definition: Record<string, unknown>) {
+  return missingTranslations(definition, 'ar').map((text) => ({
+    code: 'missing_translation',
+    message: `${text.pathText} has no Arabic.`,
+    path: text.pathText,
+    elements: text.element === undefined ? [] : [text.element],
+    locale: 'ar',
+  }));
+}
 
 export const publishDraftRoute = defineRoute({
   method: 'post',
@@ -626,13 +721,19 @@ export const publishDraftRoute = defineRoute({
     expectedRevision: z.number().int().min(1),
     changeNote: z.string().trim().max(2000).optional(),
     acknowledgeBreakingChanges: z.boolean().default(false),
+    /**
+     * The person saw the PDF templates the check listed and publishes anyway
+     * (1.3.0). `acknowledgeBreakingChanges` counts too: dropping or changing a
+     * question is almost always a breaking change already.
+     */
+    acknowledgeTemplateChanges: z.boolean().default(false),
   }),
   responses: {
     200: { description: 'The new version.', schema: versionSummarySchema },
     404: { description: 'No such form, or no draft.' },
     409: {
       description:
-        'The draft changed since it was reviewed, or breaking changes were not acknowledged.',
+        'The draft changed since it was reviewed, breaking changes were not acknowledged, or PDF templates would need attention and that was not acknowledged (`document_templates_affected`).',
     },
     422: { description: 'The definition does not compile. Details name the fields.' },
   },
@@ -668,6 +769,18 @@ export const publishDraftRoute = defineRoute({
         );
       }
 
+      const affected = await affectedTemplates(tx, params.formId, live, compiled.form);
+      if (
+        affected.length > 0 &&
+        !body.acknowledgeTemplateChanges &&
+        !body.acknowledgeBreakingChanges
+      ) {
+        throw conflict(
+          'document_templates_affected',
+          `Publishing leaves ${String(affected.length)} PDF template(s) using questions this version drops or changes. Confirm to publish; they will be marked to fix.`,
+        );
+      }
+
       const published = await tx.forms.publishDraft(draft.id, context.principal.userId, {
         changeNote: body.changeNote ?? null,
         changes: diff as unknown as Record<string, unknown>,
@@ -694,6 +807,7 @@ export const publishDraftRoute = defineRoute({
           versionNumber: published.versionNumber,
           breakingChanges: diff.breaking.length,
           acknowledged: body.acknowledgeBreakingChanges,
+          documentTemplatesAffected: affected.map((template) => template.templateId),
         },
       });
 
@@ -739,11 +853,10 @@ export const testSubmissionRoute = defineRoute({
       );
     }
 
-    const check = validateSubmission(
-      compiled.form,
-      body.answers,
-      body.today === undefined ? {} : { today: body.today },
-    );
+    const check = validateSubmission(compiled.form, body.answers, {
+      ...(body.today === undefined ? {} : { today: body.today }),
+      now: `${new Date().toISOString().slice(0, 19)}Z`,
+    });
     return {
       status: 200,
       body: {
@@ -839,6 +952,14 @@ export const listTemplatesRoute = defineRoute({
   responses: { 200: { description: 'Templates.', schema: listSchema(templateSummarySchema) } },
   handler: async (_input, context) => {
     const templates = await withTenant(context.principal.tenantId, (tx) => tx.formTemplates.list());
+    // How many PDF templates each carries is library data the runtime role
+    // cannot read (0069), so it comes from the platform's side.
+    const counts = new Map(
+      (await getPlatformDataSource().formTemplates.list()).map((template) => [
+        template.key,
+        template.documentCount,
+      ]),
+    );
     return {
       status: 200,
       body: {
@@ -848,6 +969,8 @@ export const listTemplatesRoute = defineRoute({
           description: template.description,
           category: template.category,
           fieldCount: fieldCount(template.definition),
+          source: template.source,
+          documentTemplateCount: counts.get(template.key) ?? 0,
         })),
       },
     };
@@ -884,6 +1007,9 @@ export const getTemplateRoute = defineRoute({
         description: template.description,
         category: template.category,
         fieldCount: fieldCount(template.definition),
+        source: template.source,
+        documentTemplateCount:
+          (await getPlatformDataSource().formTemplates.find(template.key))?.documentCount ?? 0,
         definition: template.definition,
       },
     };
@@ -896,33 +1022,88 @@ export const cloneTemplateRoute = defineRoute({
   operationId: 'cloneFormTemplate',
   summary: 'Start a form from a template',
   description:
-    'The new form starts as a draft of the template. The template itself never changes. Honours `Idempotency-Key`.',
+    'The new form starts as a draft of the template. The template itself never changes. A staff-made template’s PDF templates come too unless `includeDocumentTemplates` is false, their pictures copied into the company’s storage (409 `storage_quota_exceeded` past a blocking allowance); `documentTemplatesCopied` says how many. Honours `Idempotency-Key`.',
   tags: TAGS,
   security: 'authenticated',
   permission: 'form.manage',
   idempotent: true,
   params: z.object({ key: z.string().regex(/^[a-z][a-z0-9_]{0,63}$/u) }),
   query: noSchema,
-  body: z.object({ title: z.string().trim().min(1).max(200).optional() }),
+  body: z.object({
+    title: z.string().trim().min(1).max(200).optional(),
+    includeDocumentTemplates: z.boolean().default(true),
+  }),
   responses: {
-    201: { description: 'The new form and its draft.', schema: formDetailSchema },
+    201: {
+      description: 'The new form and its draft.',
+      schema: formDetailSchema.extend({ documentTemplatesCopied: z.number().int() }),
+    },
     404: { description: 'No such template.' },
+    409: { description: 'Not enough storage for its PDF templates’ pictures.' },
   },
   handler: async ({ params, body }, context) => {
-    const detail = await withTenant(context.principal.tenantId, async (tx) => {
-      const template = await tx.formTemplates.find(params.key);
-      if (template === undefined) {
-        throw notFound('This template does not exist.');
-      }
-      const title =
-        body.title ?? template.title.en ?? Object.values(template.title)[0] ?? template.key;
-      return createFormWithDraft(tx, context, {
-        title,
-        definition: template.definition,
-        sourceTemplateKey: template.key,
+    const { tenantId } = context.principal;
+    const found = await withTenant(tenantId, (tx) => tx.formTemplates.find(params.key));
+    if (found === undefined) {
+      throw notFound('This template does not exist.');
+    }
+    // A staff-made template's PDF templates, with their pictures copied into
+    // this company's bucket before anything is written (decision 10b).
+    const carried =
+      found.source === 'staff' && body.includeDocumentTemplates
+        ? await libraryTemplatesFor({
+            media: context.services.media,
+            tenantId,
+            templateKey: found.key,
+          })
+        : { templates: [], copies: [], store: null };
+    try {
+      const detail = await withTenant(tenantId, async (tx) => {
+        const template = await tx.formTemplates.find(params.key);
+        if (template === undefined) {
+          throw notFound('This template does not exist.');
+        }
+        const title =
+          body.title ?? template.title.en ?? Object.values(template.title)[0] ?? template.key;
+        const created = await createFormWithDraft(tx, context, {
+          title,
+          definition: template.definition,
+          sourceTemplateKey: template.key,
+        });
+        const brought = await bringTemplatesIn({
+          tx,
+          formId: created.form.id,
+          templates: carried.templates,
+          copies: carried.copies,
+          by: context.principal.userId,
+        });
+        if (brought.templateIds.length > 0) {
+          await tx.auditLog.append({
+            actorKind: 'tenant_user',
+            actorId: context.principal.userId,
+            actorLabel: context.principal.userId,
+            action: 'form.started_from_library',
+            resourceType: 'form',
+            resourceId: created.form.id,
+            requestId: context.requestId,
+            ipAddress: context.ipAddress,
+            userAgent: context.userAgent,
+            metadata: {
+              key: template.key,
+              documentTemplates: brought.templateIds,
+              pictures: brought.pictures,
+            },
+          });
+        }
+        return { ...created, documentTemplatesCopied: brought.templateIds.length };
       });
-    });
-    return { status: 201, body: detail };
+      return { status: 201, body: detail };
+    } catch (error) {
+      if (carried.store !== null) {
+        await discardPictures(carried.store, carried.copies);
+      }
+      throw error;
+    }
   },
 });
 

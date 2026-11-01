@@ -9,6 +9,7 @@ import {
   type EarlierOffer,
   earlierOffer,
   jobAsset,
+  liveNeedsNewerApp,
   startForm,
 } from '~/forms/session';
 import { formatWhen } from '~/lib/format';
@@ -48,6 +49,10 @@ export function useOpenForm(workOrderId: string, siteId: string) {
     }
     setOpening(form.formId);
     try {
+      if (await liveNeedsNewerApp(context, form)) {
+        Alert.alert(t('fill.updateApp.title'), t('fill.updateApp.body'));
+        return;
+      }
       // For the job's asset (E3): its marked answers carry over from its last
       // visit. With several assets, the engineer starts it from the asset.
       const asset = await jobAsset(context, { form, workOrderId });

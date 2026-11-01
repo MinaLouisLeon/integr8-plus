@@ -11,6 +11,7 @@ import { platformStorageRoutes } from './storage.js';
 import { funnelRoutes } from './funnel.js';
 import { platformHealthRoutes } from './health.js';
 import { platformSupportRoutes } from './support.js';
+import { platformTemplatePackageRoutes } from './template-packages.js';
 import { platformTemplateRoutes } from './templates.js';
 import { platformWebsiteKeyRoutes } from './website-keys.js';
 
@@ -32,6 +33,7 @@ export const platformRoutes: AnyRoute[] = [
   ...platformSettingsRoutes,
   ...platformAiRoutes,
   ...platformTemplateRoutes,
+  ...platformTemplatePackageRoutes,
   ...platformSupportRoutes,
   ...platformStaffRoutes,
   ...platformStorageRoutes,
