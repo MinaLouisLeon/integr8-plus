@@ -104,7 +104,7 @@ everything regardless.
 `.github/workflows/ci.yml` runs on every pull request. `verify.yml` runs the same
 checks on the merge result for every push to `dev`, `staging` and `main`:
 
-1. **verify** — install, `format:check`, `licences:check`, `guide:check`, `lint`, `typecheck`,
+1. **verify** — install, `format:check`, `licences:check`, `pins:check`, `guide:check`, `lint`, `typecheck`,
    `test`, `build`, and the OpenAPI drift check
 2. **commit-messages** — commitlint over the PR's commit range
 3. **database** — rolls the schema down and back up, then runs the tenant-isolation
@@ -120,6 +120,22 @@ All must pass before merge.
 
 Every dependency is pinned to an exact version. Dependabot proposes upgrades weekly,
 grouped so each pull request covers one concern.
+
+`pnpm pins:check` (`scripts/pins/check.mjs`, run by CI) enforces it:
+
+- Every workspace `package.json` names exact versions (`1.2.3`) in `dependencies`,
+  `devDependencies` and `optionalDependencies`; `^`, `~`, `>=`, `x`, tags and URLs fail.
+  Links to workspace packages (`workspace:*`) are the exception. `.npmrc` has
+  `save-exact=true`, so `pnpm add` writes exact versions by itself.
+- `peerDependencies` may hold ranges: a peer range says what a shared package works with
+  (`react >=19`) and installs nothing; the app that installs React pins it.
+- **Node is one release.** Use Node 22.22.1 or newer 22.x (22.22.2 recommended, see
+  `.nvmrc`). `.nvmrc` names it and CI reads it; every `FROM node:` in the Dockerfiles is that
+  exact release (`node:22.22.2-bookworm-slim`); and it must satisfy the root `package.json`
+  `engines.node` (`>=22.22.1 <23`), which `engine-strict` makes pnpm enforce. 22.22.1 is
+  lint-staged's minimum; Node 23 and later are not supported by this release. Moving Node
+  means changing `.nvmrc` and both Dockerfiles in one change (Dependabot's base-image PR
+  fails the check until `.nvmrc` follows); a new major also moves `engines`.
 
 **TypeScript is pinned to 6.0.3, not the latest 7.x.** `typescript-eslint@8` declares
 `typescript: >=4.8.4 <6.1.0`, so TypeScript 7 would silently disable type-aware linting —
@@ -160,10 +176,12 @@ in history.
 Read variables through `requireEnv` / `optionalEnv` from `@integr8/core` so a missing
 value fails loudly at startup instead of surfacing as `undefined` inside a request handler.
 
-`packages/db/.env.example` documents the database variables. Two connection strings, two
-roles: `DATABASE_URL` is the runtime role that RLS applies to, and `DATABASE_URL_ADMIN` is
-the schema owner, which bypasses it. An API container should not have the second one set
-at all.
+`packages/db/.env.example` documents the database variables. `DATABASE_URL` is the runtime
+role that RLS applies to; `DATABASE_URL_PLATFORM` is `integr8_platform`, which the API and
+the worker use outside one company and which bypasses RLS without owning anything;
+`DATABASE_URL_ADMIN` is the schema owner, for migrations and the suites. An API or worker
+container must not have the last one set at all, and production refuses to start with it
+(`docs/database/README.md`, "The roles").
 
 ## Changing the interface
 
@@ -173,6 +191,11 @@ Read [`docs/ui/`](./docs/ui/README.md) before adding a screen. The short version
 - Every string comes from `@integr8/i18n`, keyed by meaning rather than by words.
 - Layout uses logical properties, so Arabic mirrors for free. Tick "Preview
   right-to-left" in the app to check.
+- A screen whose behaviour changes updates its help article in
+  `packages/i18n/src/help/articles.ts`, English and Arabic, in the same change. The
+  library is both the AI assistant's knowledge and the public Help centre; a new
+  switchable module needs an article or `apps/api/src/ai/help/articles.test.ts` fails
+  (docs/ai/RUNBOOK.md, "The help library").
 
 ## Changing the API
 

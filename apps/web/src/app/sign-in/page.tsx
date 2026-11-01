@@ -38,7 +38,13 @@ export default function SignInPage() {
   const { t, i18n } = useTranslation();
   const router = useRouter();
 
-  const [email, setEmail] = useState('');
+  // Somebody who has just accepted an invitation arrives with `?email=`, so
+  // they only type the password (Low 5). Read as an external store whose
+  // server snapshot is empty, so the server's render and the hydrating one
+  // agree; whatever they type replaces it.
+  const invited = useSyncExternalStore(subscribeToNothing, invitedEmail, () => '');
+  const [typedEmail, setEmail] = useState<string | null>(null);
+  const email = typedEmail ?? invited;
   const [password, setPassword] = useState('');
   const [mode, setMode] = useState<'password' | 'code'>('password');
   const [code, setCode] = useState('');
@@ -232,4 +238,14 @@ export default function SignInPage() {
       <LegalLinks className="pt-2" />
     </main>
   );
+}
+
+/** The address an accepted invitation sent this page, from `?email=`. */
+function invitedEmail(): string {
+  return new URLSearchParams(window.location.search).get('email') ?? '';
+}
+
+/** The query string does not change under a mounted page; nothing to subscribe to. */
+function subscribeToNothing(): () => void {
+  return () => undefined;
 }

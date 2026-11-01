@@ -31,19 +31,71 @@ export const INVOICE_STATUSES = [
 export const invoiceStatusSchema = z.enum(INVOICE_STATUSES);
 export type InvoiceStatus = z.infer<typeof invoiceStatusSchema>;
 
+/** ISO 4217 currencies whose minor unit is not hundredths. */
+const MINOR_UNITS: Readonly<Record<string, number>> = {
+  BIF: 0,
+  CLP: 0,
+  DJF: 0,
+  GNF: 0,
+  ISK: 0,
+  JPY: 0,
+  KMF: 0,
+  KRW: 0,
+  PYG: 0,
+  RWF: 0,
+  UGX: 0,
+  UYI: 0,
+  VND: 0,
+  VUV: 0,
+  XAF: 0,
+  XOF: 0,
+  XPF: 0,
+  BHD: 3,
+  IQD: 3,
+  JOD: 3,
+  KWD: 3,
+  LYD: 3,
+  OMR: 3,
+  TND: 3,
+};
+
+/**
+ * How many decimal places a currency's smallest coin has (ISO 4217): 2 for the
+ * Egyptian pound and most others. Kept in step with the database's
+ * `erp_currency_minor_unit` (0064), which rounds each sales and finance line
+ * to it.
+ */
+export function currencyMinorUnits(currencyCode: string): number {
+  return MINOR_UNITS[currencyCode.toUpperCase()] ?? 2;
+}
+
+/** One of the currency's minor units as a decimal string: `0.01` for EGP, `1` for JPY. */
+export function minorUnit(currencyCode: string): string {
+  const places = currencyMinorUnits(currencyCode);
+  return places === 0 ? '1' : `0.${'1'.padStart(places, '0')}`;
+}
+
+/** Whether a remaining balance is less than one minor unit: nothing a payment could carry. */
+export function balanceSettled(balance: string, currencyCode: string): boolean {
+  return compareDecimals(balance, minorUnit(currencyCode)) < 0;
+}
+
 /**
  * The status an issued invoice has from its balance: `paid` once payments and
  * credits cover it (`credited` when credit notes alone did), `partially_paid`
- * once any payment is allocated, else `issued`.
+ * once any payment is allocated, else `issued`. A balance under one minor unit
+ * of the currency counts as covered (0064): an invoice issued while lines kept
+ * four places can be left owing a fraction no payment can carry.
  */
 export function invoiceStatus(
   stored: InvoiceStoredStatus,
   amounts: { balance: string; allocated: string },
+  currencyCode = 'EGP',
 ): InvoiceStatus {
   if (stored !== 'issued') {
     return stored;
   }
-  const settled = compareDecimals(amounts.balance, '0') <= 0;
+  const settled = balanceSettled(amounts.balance, currencyCode);
   const anyPaid = compareDecimals(amounts.allocated, '0') > 0;
   if (settled) {
     return anyPaid ? 'paid' : 'credited';

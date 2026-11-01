@@ -142,6 +142,42 @@ email_code`.
 With the recording email sender (staging) the code is written to the API log,
 as the invitation link is; with a real sender it never is.
 
+## Accepting an invitation
+
+Since 1.2.4 (Low 5). The invitation email links to the web app's
+`/accept-invitation?token=…`, on whatever device opens it; it is the only
+acceptance screen. The desktop and phone apps have none: once the person has
+accepted, the same address and password work in them.
+
+1. The page calls `POST /v1/invitations/inspect` with the token (in the body,
+   never the URL). The answer is the address the invitation was sent to and
+   `passwordRequired`: true when Auth has no account for the address yet. A
+   spent, withdrawn, expired or invented token is `422
+auth.invitation_invalid`, the same as at acceptance.
+2. The person types the name their team will see and, **only for a new
+   account**, a password. `POST /v1/invitations/accept`:
+   - **No account yet:** a password is required. Without one the answer is
+     `422 auth.invitation_password_required`, whose message (English and
+     Arabic, for an app that does not know the code) says to update the app or
+     accept on the web. The password must pass the product's rules
+     (`packages/auth/src/password-policy.ts`), including not containing the
+     address's local part (`422 auth.weak_password`). Nothing is created in
+     Auth until it does.
+   - **An account already exists** (a member of another company, somebody
+     invited back): no password is needed, and one sent anyway is **ignored**
+     rather than refused. Changing a password another company's sign-in rests
+     on is not what accepting means. The answer says `existingAccount: true` so
+     the screen can say "the password you already use".
+3. Accepting makes the membership and **no session**. The answer is
+   `{accepted, email, existingAccount, signInRequired: true}`; the page shows
+   "Done — now sign in" and its button opens `/sign-in?email=…` with the
+   address filled in. Before 1.2.4 a session was made (`signed_in_with =
+invitation`) though never returned; the invitation token travels by email,
+   so it now buys a membership and nothing a password does not also guard.
+
+The audit line `invitation.accepted` records the app and whether the account
+already existed.
+
 ## Change password
 
 Under the account menu on web, desktop and phone; `POST /v1/me/password`.
@@ -159,7 +195,9 @@ Under the account menu on web, desktop and phone; `POST /v1/me/password`.
 - Auth stores it (`PUT /admin/users/{id}`). Then **every other session the
   person has, in every company, is signed out**, offline access on phones
   included (`revoked_reason = password_changed`). The device that made the
-  change stays signed in.
+  change stays signed in. Their access tokens stop being accepted within 30
+  seconds, not when they lapse: every request checks that its session is still
+  live (`docs/auth/README.md`, "Ending a session ends its access token").
 - An audit entry is written, and the address is emailed "your password was
   changed", with the time, in English or Arabic. A failed send is logged and
   does not undo the change.
@@ -193,3 +231,7 @@ invited back, or belong to another company.
   CI's database job starts `supabase/auth:v2.197.0` with the same settings and
   runs create, find, sign in, code, verify, set password and delete against it.
   This proves the container's configuration, not only our side.
+  `invitations.auth-server.test.ts` accepts invitations through it too: a new
+  address gets the password it chose and no session, a missing or refused
+  password leaves no account behind, and an existing account keeps its
+  password. It also needs the test database, which that CI job has.

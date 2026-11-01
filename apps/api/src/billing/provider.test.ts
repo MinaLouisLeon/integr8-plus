@@ -1,6 +1,8 @@
 import { createHmac } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
+  effectiveBillingMode,
+  NoBillingProvider,
   RecordingBillingProvider,
   STRIPE_TOLERANCE_SECONDS,
   StripeBillingProvider,
@@ -490,5 +492,23 @@ describe('the fake', () => {
       undefined,
     );
     expect(hinted.event).toMatchObject({ kind: 'subscription_changed', tenantHint: 'tenant-1' });
+  });
+});
+
+describe('a deployment with no card provider', () => {
+  const none = new NoBillingProvider();
+
+  it('treats every company as invoiced, and leaves the others as they are', () => {
+    expect(effectiveBillingMode('self_serve', none)).toBe('invoiced');
+    expect(effectiveBillingMode('invoiced', none)).toBe('invoiced');
+    expect(effectiveBillingMode('self_serve', new RecordingBillingProvider())).toBe('self_serve');
+  });
+
+  it('hands out no payment page and believes no webhook', async () => {
+    await expect(
+      none.createPortal({ customerId: 'cus_1', returnUrl: 'https://app.example' }),
+    ).rejects.toThrow(/no card payments/u);
+    expect(() => none.parseWebhook('{}', 't=1,v1=x')).toThrow(WebhookSignatureError);
+    await expect(none.listInvoices('cus_1')).resolves.toEqual([]);
   });
 });

@@ -237,6 +237,68 @@ export default function HealthPage() {
               </table>
             )}
           </section>
+
+          <section className="flex flex-col gap-3">
+            <h2 className="text-lg font-semibold text-content">
+              {t('platform.health.maintenance.title')}
+            </h2>
+            {health.data.maintenance.items.length === 0 ? (
+              <EmptyState title={t('platform.health.maintenance.empty')} />
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-sm">
+                  <thead>
+                    <tr className="border-b border-border-subtle text-content-muted">
+                      <th scope="col" className="py-2 pe-3 text-start">
+                        {t('platform.health.maintenance.company')}
+                      </th>
+                      <th scope="col" className="py-2 pe-3 text-start">
+                        {t('platform.health.maintenance.plan')}
+                      </th>
+                      <th scope="col" className="py-2 pe-3 text-start">
+                        {t('platform.health.maintenance.error')}
+                      </th>
+                      <th scope="col" className="py-2 pe-3 text-start">
+                        {t('platform.health.maintenance.when')}
+                      </th>
+                      <th scope="col" className="py-2 text-end">
+                        {t('platform.health.maintenance.failures')}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {health.data.maintenance.items.map((plan) => (
+                      <tr key={plan.planId} className="border-b border-border-subtle align-top">
+                        <td className="py-2 pe-3">
+                          <Link
+                            href={`/platform/companies/${plan.tenantId}`}
+                            className="text-accent underline-offset-4 hover:underline"
+                          >
+                            {plan.companyName}
+                          </Link>
+                        </td>
+                        <td dir="auto" className="py-2 pe-3">
+                          {plan.title}
+                        </td>
+                        <td className="py-2 pe-3">
+                          <span dir="auto" className="block max-w-prose text-xs text-content">
+                            {plan.error}
+                          </span>
+                          {plan.gaveUp ? (
+                            <span className="block text-xs font-medium text-danger">
+                              {t('platform.health.maintenance.gaveUp')}
+                            </span>
+                          ) : null}
+                        </td>
+                        <td className="py-2 pe-3">{formatWhen(plan.failedAt)}</td>
+                        <td className="py-2 text-end tabular-nums">{plan.failureCount}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
         </>
       ) : null}
     </main>

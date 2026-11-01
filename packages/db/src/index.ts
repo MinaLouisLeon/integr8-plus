@@ -19,12 +19,14 @@
  */
 
 export {
+  assertPlatformRoleIsLimited,
   AuthRoleTooBroadError,
   closeDatabase,
   configureDatabase,
   getAuthDataSource,
   getPlatformDataSource,
   getTenantDataSource,
+  PlatformRoleTooBroadError,
   RlsNotEnforcedError,
   withTenant,
   type AuthDataSource,
@@ -39,6 +41,7 @@ export {
   loadDatabaseConfig,
   requireAdminConnectionString,
   requireAuthConnectionString,
+  requirePlatformConnectionString,
   type DatabaseConfig,
 } from './config.js';
 
@@ -182,6 +185,7 @@ export type {
 } from './repositories/tenant-lifecycle.js';
 
 export type {
+  MaintenanceFailure,
   PlatformHealthRepository,
   PlatformInsightsRepository,
   RecentFailure,
@@ -214,6 +218,7 @@ export {
 export {
   StorageMeteringRepository,
   TenantStorageHistory,
+  type OverageSample,
   type PlanAllowance,
   type Reconciliation,
   type SampleCategories,
@@ -366,6 +371,7 @@ export type {
   ConfirmedFile,
   CreateUploadIntentInput,
   FileRecord,
+  FileUse,
   FilesRepository,
   StorageUsage,
   UploadIntent,
@@ -503,6 +509,13 @@ export {
   WebsiteKeysRepository,
 } from './repositories/documents.js';
 export {
+  HOUSEKEEPING_BATCH_SIZE,
+  HOUSEKEEPING_MAX_BATCHES,
+  type HousekeepingCutoffs,
+  type HousekeepingReport,
+  HousekeepingRepository,
+} from './repositories/housekeeping.js';
+export {
   DEFAULT_ETA_SETTINGS,
   EMPTY_ETA_ADDRESS,
   type EtaAddress,
@@ -545,6 +558,7 @@ export {
   type InvoiceLine,
   type InvoiceLineInput,
   type InvoicePage,
+  type ReceivablesSummary,
   type InvoiceQuery,
   type InvoiceRefusal,
   type IssuerSnapshot,
@@ -556,6 +570,7 @@ export {
   type PaymentAllocation,
   type PaymentReceipt,
   type PaymentReceiptInput,
+  type PaymentReversal,
   type ReceiptAmounts,
 } from './repositories/finance-payments.js';
 export {
@@ -602,6 +617,7 @@ export {
   type EmployeeQuery,
   type EmployeeRefusal,
   type SealedField,
+  type SealedValues,
 } from './repositories/hr-employees.js';
 export {
   HrExpensesRepository,
@@ -810,7 +826,11 @@ export {
   type Shift,
   ShiftsRepository,
 } from './repositories/shifts.js';
-export { type PushDevice, PushDevicesRepository } from './repositories/push-devices.js';
+export {
+  type PushDevice,
+  PushDevicesRepository,
+  type PushLocale,
+} from './repositories/push-devices.js';
 
 export {
   ATTACHMENT_KINDS,
@@ -861,6 +881,8 @@ export {
   type MediaCategory,
   type DocumentLookupRole,
   type DocumentStatus,
+  type DocumentSource,
+  type SubmissionFileUseSource,
   type StorageProvider,
   type ThumbnailStatus,
   type UsageCategory,

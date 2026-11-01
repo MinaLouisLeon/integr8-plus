@@ -35,6 +35,7 @@ import {
 import { requireLocation, stockRefusal } from './inventory-stock.js';
 import { byLot, lotSpecsSchema, lotsArriving, lotsLeaving } from './stock-lots.js';
 import { itemSummary, itemSummarySchema, seesCosts } from './inventory.js';
+import { companyName } from './finance-invoices.js';
 import { stripUndefined } from './customers.js';
 import { companyToday } from './sales-quotes.js';
 import {
@@ -379,6 +380,26 @@ export const orderDetailSchema = z.object({
   order: orderSchema,
   lines: z.array(orderLineSchema),
   receipts: z.array(receiptSchema),
+  /**
+   * Who is buying and from whom, as the printed order names them: the company
+   * as its invoices do (legal name, address and tax number from the finance
+   * settings, else its name), and the supplier as it is now.
+   */
+  parties: z.object({
+    buyer: z.object({
+      name: z.string(),
+      address: z.string().nullable(),
+      taxReference: z.string().nullable(),
+    }),
+    supplier: z.object({
+      name: z.string(),
+      address: addressSchema.nullable(),
+      contactName: z.string().nullable(),
+      email: z.string().nullable(),
+      phone: z.string().nullable(),
+      taxReference: z.string().nullable(),
+    }),
+  }),
   can: z.object({
     edit: z.boolean(),
     approve: z.boolean(),
@@ -496,16 +517,33 @@ async function orderDetail(
 ): Promise<z.infer<typeof orderDetailSchema>> {
   const { principal } = context;
   const prices = seesPrices(principal);
-  const [body, lines, receipts] = await Promise.all([
+  const [body, lines, receipts, supplier, finance] = await Promise.all([
     orderBody(tx, order, prices),
     tx.inventoryPurchasing.orderLines(order.id),
     tx.inventoryPurchasing.receiptsFor(order.id),
+    tx.inventoryPurchasing.findSupplier(order.supplierId),
+    tx.financeInvoices.settings(),
   ]);
   const manage = holds(principal, 'purchasing.manage');
   return {
     order: body,
     lines: await lineBodies(tx, lines, prices),
     receipts: await receiptBodies(tx, receipts, prices),
+    parties: {
+      buyer: {
+        name: finance.legalName ?? (await companyName(principal.tenantId)),
+        address: finance.address,
+        taxReference: finance.taxReference,
+      },
+      supplier: {
+        name: supplier?.name ?? order.supplierName,
+        address: supplier?.address ?? null,
+        contactName: supplier?.contactName ?? null,
+        email: supplier?.email ?? null,
+        phone: supplier?.phone ?? null,
+        taxReference: supplier?.taxReference ?? null,
+      },
+    },
     can: {
       edit: manage && order.status === 'draft',
       approve: holds(principal, 'purchasing.approve') && order.status === 'draft',

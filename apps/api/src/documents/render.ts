@@ -152,9 +152,14 @@ async function render(
     if (document?.status !== 'pending') {
       throw new NotPending();
     }
+    // Only a generated document is ever printed; an uploaded one is ready from the start.
+    const { templateId, submissionId } = document;
+    if (templateId === null || submissionId === null) {
+      throw new RenderFailed('source_missing', false, 'An uploaded document has nothing to print.');
+    }
     const [template, submission] = await Promise.all([
-      tx.documentTemplates.find(document.templateId),
-      tx.submissions.findById(document.submissionId),
+      tx.documentTemplates.find(templateId),
+      tx.submissions.findById(submissionId),
     ]);
     if (template === undefined || submission === undefined) {
       throw new RenderFailed('source_missing', false, 'The template or the submission is gone.');

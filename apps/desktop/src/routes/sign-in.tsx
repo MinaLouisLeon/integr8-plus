@@ -2,6 +2,7 @@ import { ApiRequestError } from '@integr8/api-client';
 import { apiErrorMessage, type TFunction, useTranslation } from '@integr8/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState, type FormEvent } from 'react';
+import { integr8Fonts } from '@integr8/tokens';
 import { useNavigate } from 'react-router';
 import { useResolvedTheme } from '~/components/company-brand';
 import { LegalLinks } from '~/components/legal-links';
@@ -14,6 +15,7 @@ import {
   type RememberedBrand,
 } from '~/lib/company-theme';
 import { API_BASE_URL, APP_FLAVOR, COMPANY_SLUG } from '~/lib/env';
+import { integr8Look } from '~/lib/look';
 import { session } from '~/lib/session';
 import {
   type CompanyChoice,
@@ -48,42 +50,65 @@ export function SignInRoute() {
   const brand = useRememberedBrand();
 
   return (
-    <Shell>
-      <div className="mx-auto flex min-h-dvh w-full max-w-sm flex-col justify-center gap-6 px-6 py-8">
-        {brand === undefined ? null : <RememberedBrandMark brand={brand} />}
+    // The staff build signs in on Integr8's own look (Low 3); a company's build on its brand.
+    <div {...integr8Look()} className="min-h-dvh">
+      <Shell>
+        <div className="mx-auto flex min-h-dvh w-full max-w-sm flex-col justify-center gap-6 px-6 py-8">
+          {APP_FLAVOR === 'staff' ? <Integr8Mark /> : null}
+          {brand === undefined ? null : <RememberedBrandMark brand={brand} />}
 
-        {APP_FLAVOR === 'staff' ? (
-          <StaffSignIn />
-        ) : APP_FLAVOR === 'company' ? (
-          <CompanySignIn companyName={brand?.name ?? COMPANY_SLUG ?? ''} />
-        ) : (
-          <>
-            <div role="tablist" aria-label={t('auth.signInTitle')} className="flex gap-1">
-              <ModeTab
-                selected={mode === 'company'}
-                onSelect={() => {
-                  forgetPlatformSession();
-                  setMode('company');
-                }}
-              >
-                {t('auth.staff.companyTab')}
-              </ModeTab>
-              <ModeTab selected={mode === 'staff'} onSelect={() => setMode('staff')}>
-                {t('auth.staff.tab')}
-              </ModeTab>
-            </div>
+          {APP_FLAVOR === 'staff' ? (
+            <StaffSignIn />
+          ) : APP_FLAVOR === 'company' ? (
+            <CompanySignIn companyName={brand?.name ?? COMPANY_SLUG ?? ''} />
+          ) : (
+            <>
+              <div role="tablist" aria-label={t('auth.signInTitle')} className="flex gap-1">
+                <ModeTab
+                  selected={mode === 'company'}
+                  onSelect={() => {
+                    forgetPlatformSession();
+                    setMode('company');
+                  }}
+                >
+                  {t('auth.staff.companyTab')}
+                </ModeTab>
+                <ModeTab selected={mode === 'staff'} onSelect={() => setMode('staff')}>
+                  {t('auth.staff.tab')}
+                </ModeTab>
+              </div>
 
-            {mode === 'company' ? (
-              <CompanySignIn companyName={brand?.name ?? ''} />
-            ) : (
-              <StaffSignIn />
-            )}
-          </>
-        )}
+              {mode === 'company' ? (
+                <CompanySignIn companyName={brand?.name ?? ''} />
+              ) : (
+                <StaffSignIn />
+              )}
+            </>
+          )}
 
-        <LegalLinks />
-      </div>
-    </Shell>
+          <LegalLinks />
+        </div>
+      </Shell>
+    </div>
+  );
+}
+
+/** Integr8's mark above the staff sign-in: "Integr", a lime "8", and "PLUS". */
+function Integr8Mark() {
+  return (
+    <p
+      dir="ltr"
+      className="flex items-center self-start text-2xl font-extrabold text-content"
+      style={{ fontFamily: integr8Fonts.display }}
+    >
+      Integr<span className="text-lime">8</span>
+      <span
+        className="ms-2 text-xs font-medium tracking-[0.3em] text-content-muted"
+        style={{ fontFamily: integr8Fonts.body }}
+      >
+        PLUS
+      </span>
+    </p>
   );
 }
 

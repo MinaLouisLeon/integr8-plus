@@ -141,6 +141,23 @@ or a decision before the pilot (phase L).
       for the owner and taking last year's figures in January. It now uses the latest set in
       force or nothing: 422 `rules_not_confirmed` while it waits, `rules_from_another_year`
       when it starts in an earlier year (ADR-0010, 2026-10-31 addendum).
+- [x] Parts could be recorded on any job, closed, cancelled or invoiced; a job invoices once,
+      so a part added after its invoice was never billed. The office's screens now refuse
+      completed, reviewed, cancelled and invoiced jobs (409 `work_order_closed`,
+      `work_order_invoiced`; returns stay allowed). The phone's part recorded before the job
+      closed is accepted, posted and marked `recordedAfterClose` (migration 0062); on an
+      invoiced job the job shows "Parts not yet billed", the invoice list filters for them
+      (`partsNotBilled=true`) and drafting from the job again bills just those parts. A
+      cancelled job takes no part from anyone, refused by the database.
+- [x] Lines rounded to four places, so an invoice could only be paid by an exact four-place
+      amount. Lines now round to the currency's minor unit (two places for EGP), half up, for
+      documents written from 0064 on; older ones keep their figures and count as paid below one
+      piastre. **An accountant must confirm the rule** (ADR-0007 addendum).
+- [x] A payment receipt could not be undone. Owners and admins now reverse one with a reason:
+      its allocations go, the invoices owe again, the ledger posts the opposite entry, and both
+      stay in the history (`POST /v1/finance/payments/:id/reverse`, migration 0064).
+- [x] Purchase orders had no printable form. The order screen prints one in the invoice's style:
+      the company, the supplier, delivery, lines and totals, in English or Arabic.
 
 ## Decisions taken with the product owner (2026-10-11)
 

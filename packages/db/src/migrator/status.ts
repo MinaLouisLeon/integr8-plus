@@ -1,9 +1,6 @@
-import pg from 'pg';
-import { loadDatabaseConfig, requireAdminConnectionString } from '../config.js';
+import { getPlatformDb } from '../connection.js';
 import { loadMigrations } from './files.js';
-import { listMigrations, type MigrationStatus, Migrator } from './runner.js';
-
-const { Client } = pg;
+import { compareMigrations, listMigrations, type MigrationStatus } from './runner.js';
 
 export class SchemaOutOfDateError extends Error {
   constructor(readonly pending: readonly string[]) {
@@ -64,27 +61,38 @@ export function checkSchema(statuses: readonly MigrationStatus[]): {
  * A database ahead of this build passes, and the result names what it has
  * that this build does not (`checkSchema`).
  *
- * Uses the owner connection, so it runs where migrations run — deploy scripts,
- * the API's readiness check, and the test suites of packages that depend on
- * this schema without owning it.
+ * Reads the migration history over the platform pool, which the API and the
+ * worker already hold, rather than opening a connection of its own: the
+ * readiness check calls it, and neither process has the owner's password. The
+ * platform role may read the history and not write it (0058). It never creates
+ * the history table, as the migrator does; a database with none has every
+ * migration pending.
  */
 export async function assertSchemaUpToDate(): Promise<SchemaCheck> {
-  const client = new Client({
-    connectionString: requireAdminConnectionString(loadDatabaseConfig()),
-    application_name: 'integr8-schema-check',
-  });
-  await client.connect();
+  const { problems, aheadOfBuild } = checkSchema(
+    compareMigrations(await appliedMigrations(), loadMigrations()),
+  );
 
+  if (problems.length > 0) {
+    throw new SchemaOutOfDateError(problems);
+  }
+  return { aheadOfBuild };
+}
+
+async function appliedMigrations(): Promise<
+  { version: string; name: string; checksum: string; applied_at: Date }[]
+> {
   try {
-    const { problems, aheadOfBuild } = checkSchema(
-      await new Migrator(client, loadMigrations()).status(),
-    );
-
-    if (problems.length > 0) {
-      throw new SchemaOutOfDateError(problems);
+    return await getPlatformDb()
+      .selectFrom('schema_migrations')
+      .select(['version', 'name', 'checksum', 'applied_at'])
+      .orderBy('version')
+      .execute();
+  } catch (error) {
+    // undefined_table: nothing has ever been migrated here.
+    if ((error as { code?: unknown }).code === '42P01') {
+      return [];
     }
-    return { aheadOfBuild };
-  } finally {
-    await client.end();
+    throw error;
   }
 }

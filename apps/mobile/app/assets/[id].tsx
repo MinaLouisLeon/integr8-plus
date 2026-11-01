@@ -32,10 +32,14 @@ import { localData } from '~/local/local-data';
 import { useLocalQuery } from '~/local/react';
 import { refusalMessage } from '~/lib/refusals';
 
+/** How much history shows at first, and how much more each "Show older" adds (Low 14). */
+const TIMELINE_PAGE = 50;
+
 /**
  * One asset on the phone (CRM/ERP plan, phase E3; ADR-0008): what it is,
  * where, and everything ever done to it, newest first, from the phone's own
- * copy — so a scanned tag in a plant room opens with no signal. Recording its
+ * copy — so a scanned tag in a plant room opens with no signal. The history
+ * shows its newest fifty entries, and older ones fifty at a time. Recording its
  * condition, and linking it to the job it was opened from, are sent with the
  * job.
  */
@@ -67,6 +71,7 @@ function Asset() {
   const [condition, setCondition] = useState<ConditionValue | null>(null);
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
+  const [shown, setShown] = useState(TIMELINE_PAGE);
 
   if (state.status !== 'ready') {
     return <NotReadyScreen failed={state.status === 'error'} />;
@@ -218,13 +223,20 @@ function Asset() {
 
       <Section title={t('assets.timeline')}>
         {data.timeline.length === 0 ? <Body muted>{t('assets.noHistory')}</Body> : null}
-        {data.timeline.map((entry) => (
+        {data.timeline.slice(0, shown).map((entry) => (
           <HistoryItem
             key={`${entry.kind}-${entry.id}`}
             entry={entry}
             siteId={data.asset.site.id}
           />
         ))}
+        {data.timeline.length > shown ? (
+          <Button
+            label={t('assets.timelinePages.showOlder')}
+            variant="secondary"
+            onPress={() => setShown((count) => count + TIMELINE_PAGE)}
+          />
+        ) : null}
       </Section>
       {assetFilesIn(data).length === 0 ? null : <Body muted>{t('mobile.assets.filesHint')}</Body>}
     </ScrollScreen>

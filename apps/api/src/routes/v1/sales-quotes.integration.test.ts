@@ -164,7 +164,8 @@ describe('drafting', () => {
     expect(first.quote).toMatchObject({
       status: 'draft',
       currencyCode: 'EGP',
-      totals: { gross: '3.3', discount: '0.06', net: '3.24', tax: '0.0336', total: '3.2736' },
+      // Each line to the pound's two places, half up (0064).
+      totals: { gross: '3.3', discount: '0.06', net: '3.24', tax: '0.03', total: '3.27' },
       internalNotes: 'Margin is thin',
     });
     expect(first.quote.reference).toMatch(/^QT-\d{6}$/u);
@@ -172,7 +173,7 @@ describe('drafting', () => {
       description: 'Ball valve 15mm',
       unit: 'each',
       unitPrice: '0.1',
-      total: '0.2736',
+      total: '0.27',
     });
     expect(first.can).toEqual({
       edit: true,

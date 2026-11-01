@@ -1,5 +1,7 @@
-import { randomBytes, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import {
+  DOCUMENT_FILE_ENTITY,
+  type DocumentFieldValue,
   type DocumentRecord,
   type DocumentTemplate,
   getPlatformDataSource,
@@ -48,11 +50,26 @@ import { iso, isoOrNull } from './schemas.js';
  * (D4) into the company's bucket (D5). The register lists, searches, expires
  * and deletes them (D8). Every route here belongs to the `documents` module
  * (D9).
+ *
+ * A PDF the company already has can be uploaded into the same register
+ * (0067), with a reference number the website lookup finds it by. Whether any
+ * document may be shown outside the company — its QR code's link and the
+ * website — is its own switch, `shareable`, off for every new document.
  */
 
 const TAGS = ['documents'];
 const DOWNLOAD_LINK_SECONDS = 5 * 60;
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** The largest PDF that may be uploaded into the register (0067). */
+export const DOCUMENT_UPLOAD_MAX_BYTES = 20 * 1024 * 1024;
+
+/** What every PDF starts with, whatever its version (ISO 32000). */
+const PDF_SIGNATURE = Buffer.from('%PDF-', 'latin1');
+
+/** The labels an uploaded document's lookup fields are shown with. */
+const REFERENCE_LABEL = { en: 'Reference', ar: 'المرجع' };
+const CUSTOMER_LABEL = { en: 'Customer', ar: 'العميل' };
 
 /** Image types a template may use as a background or a picture. */
 const TEMPLATE_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
@@ -82,14 +99,29 @@ const documentFieldSchema = z.object({
 const documentSchema = z.object({
   id: z.uuid(),
   title: z.string(),
-  templateId: z.uuid(),
-  templateRevision: z.number().int(),
-  submissionId: z.uuid(),
-  formId: z.uuid(),
+  /** `generated` from a submission, or `uploaded` as a PDF by a person (0067). */
+  source: z.enum(['generated', 'uploaded']),
+  /** Null for an uploaded document. */
+  templateId: z.uuid().nullable(),
+  templateRevision: z.number().int().nullable(),
+  submissionId: z.uuid().nullable(),
+  formId: z.uuid().nullable(),
+  /** An uploaded document's reference number; null for a generated one. */
+  reference: z.string().nullable(),
+  /** The customer an uploaded document is for. */
+  customer: z.object({ id: z.uuid(), name: z.string() }).nullable(),
+  /**
+   * Whether the QR code's link and the company website may show it. New
+   * documents start off; someone with `document.upload` switches it on.
+   */
+  shareable: z.boolean(),
   /** `pending` while the worker prints it; `failed` with `failureCode` if it could not. */
   status: z.enum(['pending', 'ready', 'failed']),
   failureCode: z.string().nullable(),
-  /** Whether the QR code's link opens now. */
+  /**
+   * Whether the link is live now: ready and not expired. It opens outside the
+   * company only when `shareable` is on too.
+   */
   linkOpens: z.boolean(),
   /** The page the QR code opens, or null where this server has no web address. */
   link: z.string().nullable(),
@@ -135,14 +167,25 @@ async function documentBodies(
       member.displayName,
     ]),
   );
+  const customerIds = [...new Set(documents.flatMap((document) => document.customerId ?? []))];
+  const customers = new Map(
+    (await tx.customers.findMany(customerIds)).map((customer) => [customer.id, customer.name]),
+  );
   const now = new Date();
   return documents.map((document) => ({
     id: document.id,
     title: document.title,
+    source: document.source,
     templateId: document.templateId,
     templateRevision: document.templateRevision,
     submissionId: document.submissionId,
     formId: document.formId,
+    reference: document.reference,
+    customer:
+      document.customerId === null
+        ? null
+        : { id: document.customerId, name: customers.get(document.customerId) ?? '' },
+    shareable: document.shareable,
     status: document.status,
     failureCode: document.failureCode,
     linkOpens: linkOpens(document, now),
@@ -659,6 +702,8 @@ export const listDocumentsRoute = defineRoute({
     formId: z.uuid().optional(),
     templateId: z.uuid().optional(),
     submissionId: z.uuid().optional(),
+    /** Only documents made from submissions, or only uploaded ones (0067). */
+    source: z.enum(['generated', 'uploaded']).optional(),
     state: z.enum(['active', 'expired', 'pending', 'failed']).optional(),
     from: z.iso.date().optional(),
     before: z.iso.date().optional(),
@@ -680,6 +725,7 @@ export const listDocumentsRoute = defineRoute({
         formId: query.formId,
         templateId: query.templateId,
         submissionId: query.submissionId,
+        source: query.source,
         state: query.state,
         createdFrom: query.from === undefined ? undefined : new Date(`${query.from}T00:00:00Z`),
         createdBefore:
@@ -930,6 +976,189 @@ export const deleteDocumentRoute = defineRoute({
   },
 });
 
+// ---------------------------------------------------------------------------
+// Uploaded documents and sharing (0067)
+// ---------------------------------------------------------------------------
+
+/** Whether these bytes are a PDF: its signature within the first kilobyte, as readers accept it. */
+export function looksLikePdf(bytes: Uint8Array): boolean {
+  return Buffer.from(bytes.subarray(0, 1024)).includes(PDF_SIGNATURE);
+}
+
+export const uploadDocumentRoute = defineRoute({
+  method: 'post',
+  path: '/v1/documents',
+  operationId: 'uploadDocument',
+  summary: 'Add a PDF the company already has to the register',
+  description:
+    'Needs `document.upload`. Upload the PDF first (`/v1/media`, as `application/pdf`, at most 20 MB), then name it here with a title and its reference number (a certificate number, say), and optionally the customer it is for. The bytes are checked to be a PDF (422 `document_not_pdf`). It is ready at once, with its own public code and link like a generated document, and starts not shareable unless `shareable` is true. The website lookup finds it by its reference, and by the customer’s name as the second value when a customer is given. Honours `Idempotency-Key`.',
+  tags: TAGS,
+  security: 'authenticated',
+  permission: 'document.upload',
+  feature: 'documents',
+  idempotent: true,
+  params: noSchema,
+  query: noSchema,
+  body: z.object({
+    fileId: z.uuid(),
+    title: z.string().trim().min(1).max(200),
+    reference: z.string().trim().min(1).max(100),
+    customerId: z.uuid().nullable().optional(),
+    /** When the link stops opening by itself; null or absent for never. */
+    expiresAt: z.iso.datetime().nullable().optional(),
+    shareable: z.boolean().default(false),
+  }),
+  responses: {
+    201: { description: 'The document, ready.', schema: documentSchema },
+    404: { description: 'No such file uploaded by this person, or no such customer.' },
+    409: { description: 'The file is already used by something else (`media_in_use`).' },
+    422: {
+      description:
+        'Not a PDF (`document_not_pdf`), larger than 20 MB (`document_too_large`), or an expiry already past (`document_expiry_past`).',
+    },
+    503: { description: 'No web address for the QR link (`document_link_unavailable`).' },
+  },
+  handler: async ({ body }, context) => {
+    const { principal, config } = context;
+    if (config.WEB_APP_URL === undefined) {
+      throw new ApiError(
+        503,
+        'document_link_unavailable',
+        'This server has no WEB_APP_URL, so a document’s QR code would have nowhere to point.',
+      );
+    }
+    const expiresAt = body.expiresAt == null ? null : new Date(body.expiresAt);
+    if (expiresAt !== null && expiresAt.getTime() <= Date.now()) {
+      throw unprocessable('document_expiry_past', 'The expiry date has already passed.', [
+        { field: 'body.expiresAt', code: 'document_expiry_past', message: body.expiresAt ?? '' },
+      ]);
+    }
+    const notPdf = () =>
+      unprocessable('document_not_pdf', 'Only a PDF can be uploaded as a document.', [
+        { field: 'body.fileId', code: 'document_not_pdf', message: body.fileId },
+      ]);
+
+    const { file, customer } = await withTenant(principal.tenantId, async (tx) => {
+      const stored = await tx.files.find(body.fileId);
+      if (stored?.deletedAt !== null || stored.uploadedBy !== principal.userId) {
+        throw notFound('This file does not exist.');
+      }
+      const named = body.customerId == null ? undefined : await tx.customers.find(body.customerId);
+      if (body.customerId != null && named === undefined) {
+        throw notFound('This customer does not exist.');
+      }
+      return { file: stored, customer: named };
+    });
+    if (file.contentType !== 'application/pdf') {
+      throw notPdf();
+    }
+    if (file.byteSize > DOCUMENT_UPLOAD_MAX_BYTES) {
+      throw unprocessable('document_too_large', 'A document can be at most 20 MB.', [
+        {
+          field: 'body.fileId',
+          code: 'document_too_large',
+          message: `At most ${String(DOCUMENT_UPLOAD_MAX_BYTES)} bytes.`,
+          params: { maximum: String(DOCUMENT_UPLOAD_MAX_BYTES) },
+        },
+      ]);
+    }
+    // The type was declared by the browser; the bytes say what it really is.
+    const store = await getStorage(context.services.media, principal.tenantId);
+    const bytes = await store.get(file.storageKey);
+    if (bytes === undefined) {
+      throw notFound('This file does not exist.');
+    }
+    if (!looksLikePdf(bytes)) {
+      throw notPdf();
+    }
+    const sha256 = createHash('sha256').update(bytes).digest('hex');
+
+    const document = await withTenant(principal.tenantId, async (tx) => {
+      const id = randomUUID();
+      const fields: DocumentFieldValue[] = [
+        { key: 'reference', label: REFERENCE_LABEL, value: body.reference, lookupRole: 'key' },
+        ...(customer === undefined
+          ? []
+          : [
+              {
+                key: 'customer',
+                label: CUSTOMER_LABEL,
+                value: customer.name,
+                lookupRole: 'confirm' as const,
+              },
+            ]),
+      ];
+      if (await tx.files.isReferenced(file.id)) {
+        throw conflict('media_in_use', 'This file is already used elsewhere; upload it again.');
+      }
+      const created = await tx.documents.createUploaded({
+        id,
+        title: body.title,
+        reference: body.reference,
+        customerId: customer?.id ?? null,
+        publicCode: randomBytes(16).toString('base64url'),
+        expiresAt,
+        shareable: body.shareable,
+        by: principal.userId,
+        file: { fileId: file.id, byteSize: file.byteSize, sha256, pageCount: null },
+        fields,
+      });
+      if (!(await tx.files.link(file.id, { type: DOCUMENT_FILE_ENTITY, id }))) {
+        throw conflict('media_in_use', 'This file is already used elsewhere; upload it again.');
+      }
+      await audit(tx, context, 'document.uploaded', 'document', id, {
+        title: body.title,
+        reference: body.reference,
+        customerId: customer?.id ?? null,
+        fileId: file.id,
+        shareable: body.shareable,
+      });
+      return documentBody(tx, context, created);
+    });
+    return { status: 201, body: document };
+  },
+});
+
+export const setDocumentShareableRoute = defineRoute({
+  method: 'post',
+  path: '/v1/documents/:documentId/share',
+  operationId: 'setDocumentShareable',
+  summary: 'Let a document be shown outside the company, or stop it',
+  description:
+    'Needs `document.upload`. `shareable: false` stops the QR code’s link (it answers as if the code did not exist) and the website lookup at once; `true` lets them show it again, while it is not expired. Each change is recorded in the audit log. Works the same for generated and uploaded documents.',
+  tags: TAGS,
+  security: 'authenticated',
+  permission: 'document.upload',
+  feature: 'documents',
+  params: documentParams,
+  query: noSchema,
+  body: z.object({ shareable: z.boolean() }),
+  responses: {
+    200: { description: 'The document.', schema: documentSchema },
+    404: { description: 'No such document.' },
+  },
+  handler: async ({ params, body }, context) => {
+    const document = await withTenant(context.principal.tenantId, async (tx) => {
+      const result = await tx.documents.setShareable(params.documentId, body.shareable);
+      if (result === undefined) {
+        throw notFound('This document does not exist.');
+      }
+      if (result.changed) {
+        await audit(
+          tx,
+          context,
+          body.shareable ? 'document.shared' : 'document.unshared',
+          'document',
+          result.document.id,
+          { title: result.document.title },
+        );
+      }
+      return documentBody(tx, context, result.document);
+    });
+    return { status: 200, body: document };
+  },
+});
+
 export const documentRoutes = [
   listDocumentTemplatesRoute,
   getDocumentTemplateRoute,
@@ -943,4 +1172,6 @@ export const documentRoutes = [
   expireDocumentRoute,
   setDocumentExpiryRoute,
   deleteDocumentRoute,
+  uploadDocumentRoute,
+  setDocumentShareableRoute,
 ];

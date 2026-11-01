@@ -41,6 +41,14 @@ export interface Employee {
   updatedAt: Date;
 }
 
+/** One employee's ciphertext, as `sealedValues` returns it for re-sealing. */
+export interface SealedValues {
+  id: string;
+  nationalId: string | null;
+  insuranceNumber: string | null;
+  bankAccount: string | null;
+}
+
 /** What may be written. A sealed field is `null` to clear it. */
 export interface EmployeeInput {
   userId?: string | null;
@@ -328,5 +336,61 @@ export class HrEmployeesRepository extends TenantScopedRepository {
       .returningAll()
       .executeTakeFirst();
     return row === undefined ? 'version_conflict' : toEmployee(row);
+  }
+
+  // -------------------------------------------------------------------------
+  // Re-sealing under a new key (`admin-cli hr-reseal`)
+  // -------------------------------------------------------------------------
+
+  /** Every employee's sealed values, ended ones included: ids and ciphertext only. */
+  async sealedValues(): Promise<SealedValues[]> {
+    const rows = await this.db
+      .selectFrom('hr_employees')
+      .select(['id', 'national_id_sealed', 'insurance_number_sealed', 'bank_account_sealed'])
+      .where('tenant_id', '=', this.tenantId)
+      .where((eb) =>
+        eb.or([
+          eb('national_id_sealed', 'is not', null),
+          eb('insurance_number_sealed', 'is not', null),
+          eb('bank_account_sealed', 'is not', null),
+        ]),
+      )
+      .orderBy('id')
+      .execute();
+    return rows.map((row) => ({
+      id: row.id,
+      nationalId: row.national_id_sealed,
+      insuranceNumber: row.insurance_number_sealed,
+      bankAccount: row.bank_account_sealed,
+    }));
+  }
+
+  /**
+   * Swaps one field's ciphertext for the same number sealed under another key,
+   * only if it still holds what was read: an edit made meanwhile wins, and is
+   * already sealed under the current key. Not a new version, because the
+   * number did not change. False when the value had changed.
+   */
+  async replaceSealed(
+    id: string,
+    field: 'nationalId' | 'insuranceNumber' | 'bankAccount',
+    from: string,
+    to: string,
+  ): Promise<boolean> {
+    const column = (
+      {
+        nationalId: 'national_id_sealed',
+        insuranceNumber: 'insurance_number_sealed',
+        bankAccount: 'bank_account_sealed',
+      } as const
+    )[field];
+    const result = await this.db
+      .updateTable('hr_employees')
+      .set({ [column]: to })
+      .where('tenant_id', '=', this.tenantId)
+      .where('id', '=', id)
+      .where(column, '=', from)
+      .executeTakeFirst();
+    return Number(result.numUpdatedRows) === 1;
   }
 }

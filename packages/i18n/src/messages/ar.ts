@@ -22,6 +22,7 @@
 import type { Messages } from './en.js';
 import { apiErrorsAr } from './api-errors.ar.js';
 import { legalAr } from './legal.ar.js';
+import { siteAr } from './site.ar.js';
 
 /**
  * A translation of `Messages`.
@@ -141,16 +142,26 @@ export const ar: Catalogue<Messages> = {
 
     accept: {
       title: 'انضم إلى فريقك',
-      subtitle: 'اختر اسمًا وكلمة مرور، وستكون جاهزًا للبدء.',
+      subtitle: 'اختر اسمًا وكلمة مرور للانضمام.',
       displayName: 'اسمك',
       displayNameHint: 'الاسم الذي سيظهر به في المهام والنماذج.',
       choosePassword: 'اختر كلمة مرور',
-      submit: 'قبول الدعوة وتسجيل الدخول',
+      submit: 'قبول الدعوة',
       accepting: 'جارٍ إعداد حسابك…',
       invalid:
         'لم تعد هذه الدعوة صالحة. ربما استُخدمت من قبل، أو سُحبت، أو انتهت صلاحيتها. اطلب من الشخص الذي دعاك أن يرسل دعوة جديدة.',
       missingToken: 'هذا الرابط غير مكتمل. استخدم الرابط الوارد في رسالة الدعوة تمامًا كما وصلك.',
       signInFailed: 'حسابك جاهز، لكننا لم نستطع تسجيل دخولك تلقائيًا. يُرجى تسجيل الدخول.',
+      subtitleExisting:
+        'أنت تسجّل الدخول إلى Integr8 بهذا العنوان بالفعل، فلا حاجة لاختيار كلمة مرور. أخبرنا بالاسم الذي سيراه فريقك.',
+      invitedAs: 'الدعوة مرسلة إلى {{email}}',
+      passwordHint: 'طويلة ولا يسهل تخمينها، ولا تحتوي على الجزء الأول من بريدك الإلكتروني.',
+      doneTitle: 'تم \u2014 سجّل الدخول الآن',
+      doneNew: 'أصبحت عضوًا الآن. سجّل الدخول بالعنوان {{email}} وكلمة المرور التي اخترتها للتو.',
+      doneExisting:
+        'أصبحت عضوًا الآن. سجّل الدخول بالعنوان {{email}} وكلمة المرور التي تستخدمها بالفعل.',
+      doneApps: 'العنوان وكلمة المرور نفسهما يعملان في تطبيق سطح المكتب وتطبيق الهاتف.',
+      goToSignIn: 'الانتقال إلى تسجيل الدخول',
     },
   },
 
@@ -164,28 +175,10 @@ export const ar: Catalogue<Messages> = {
       contact: 'تحدّث إلينا',
     },
     hero: {
-      title: 'أوراق عمل تُنجز نفسها',
-      subtitle:
-        'كشوف المهام وفحوصات السلامة والشهادات، تُملأ على الهاتف — حتى في قبو بلا إشارة. ويراها مكتبك لحظة عودة الإشارة إلى هاتف المهندس.',
       cta: 'ابدأ فترة تجريبية مجانية',
       note: 'أربعة عشر يومًا. دون الحاجة إلى بطاقة.',
       ctaClosed: 'تحدّث إلينا عن إعداد شركتك',
       noteClosed: 'نُعدّ شركتك معك: النماذج وأنواع المهام والتطبيقات.',
-    },
-    points: {
-      offlineTitle: 'يعمل دون إشارة',
-      offlineBody:
-        'تُملأ النماذج على الجهاز وتُرسل عند توفر الإشارة. لا يُفقد شيء في غرفة المعدات أو العلّية أو بئر المصعد.',
-      formsTitle: 'نماذجكم أنتم، لا نماذجنا',
-      formsBody:
-        'نحوّل النماذج الورقية التي تستخدمونها اليوم إلى نماذج في التطبيق، نيابةً عنكم. الإصدارات المنشورة ثابتة لا تتغيّر، فالمهمة التي مُلئت في مارس الماضي تُقرأ اليوم كما وُقّعت.',
-      evidenceTitle: 'أدلة يُعتمد عليها',
-      evidenceBody:
-        'صور وتوقيعات وطوابع زمنية مرفقة بالمهمة، تُحفظ طوال المدة التي تحددها خطتك، ويمكن تصديرها متى شئتم.',
-    },
-    features: {
-      title: 'ما الذي يفعله',
-      subtitle: 'المنتج بكامله، دون مبالغات.',
     },
     pricing: {
       title: 'الأسعار',
@@ -296,8 +289,16 @@ export const ar: Catalogue<Messages> = {
         'لقد استخدمت {{percent}}% من مساحة التخزين. احذف ما لم تعد بحاجة إليه، أو استفسر عن خطة أكبر.',
       full: 'لقد استخدمت كامل مساحة التخزين. ستُرفض عمليات التحميل الجديدة حتى تُحرّر بعض المساحة.',
       fullSoon: 'ستُرفض عمليات التحميل عند امتلاء المساحة.',
-      overage:
-        'لقد تجاوزت المساحة المخصصة لك بمقدار {{amount}}. ما زال التحميل يعمل، وتُحتسب الزيادة في الفاتورة.',
+      // Low 2: a plan that keeps accepting uploads past its allowance.
+      overPlan: {
+        title: 'تجاوزت مساحة خطتك',
+        body: 'تخزّن الآن {{used}}، أي أكثر بمقدار {{amount}} من المساحة التي تتيحها خطتك ({{allowance}}). ما زال التحميل يعمل.',
+        billing:
+          'تُضاف المساحة الزائدة عن خطتك إلى فاتورة Integr8 بمتوسط الزيادة خلال الشهر. حتى الآن هذا الشهر: {{average}} في المتوسط، و{{peak}} كحد أقصى.',
+        action: 'احذف الملفات التي لم تعد بحاجة إليها، أو اسأل Integr8 عن خطة أكبر.',
+        earlier:
+          'تجاوزت مساحة خطتك في وقت سابق من هذا الشهر. ستظهر في فاتورة هذا الشهر مساحة إضافية تقارب {{average}} في المتوسط على مدار الشهر.',
+      },
     },
     billing: {
       title: 'الفوترة',
@@ -525,7 +526,7 @@ export const ar: Catalogue<Messages> = {
         title: 'وصول موقع العملاء',
         intro:
           'اختر بيانات العملاء التي يمكن لموقع شركتك طلبها. يجب على Integr8 تفعيل كل ميزة أيضًا، ويجب أن يتحقق موقعك من هوية عملائه.',
-        files: 'الملفات والمستندات',
+        files: 'المستندات: البحث عن مستند برقمه المرجعي (المستندات التي تشاركها فقط)',
         jobs: 'حالة المهمة',
         quotes: 'عروض الأسعار',
         invoices: 'الفواتير',
@@ -615,6 +616,15 @@ export const ar: Catalogue<Messages> = {
     },
 
     impersonationBanner: 'أنت تعرض هذا الحساب بصفة {{name}}. كل ما تفعله يُسجَّل.',
+    appUpdate: {
+      available: 'الإصدار {{version}} من هذا التطبيق جاهز.',
+      windowsRestart: 'التثبيت يغلق التطبيق ثم يفتحه من جديد على الإصدار الجديد.',
+      install: 'التثبيت الآن',
+      installing: 'جارٍ التثبيت…',
+      later: 'لاحقًا',
+      installed: 'تم تثبيت الإصدار {{version}}. أغلق التطبيق وافتحه من جديد لاستخدامه.',
+      failed: 'تعذّر تثبيت الإصدار {{version}}. حاول مرة أخرى، أو ثبّته من رابط التنزيل.',
+    },
 
     announcement: {
       region: 'إعلانات من Integr8',
@@ -776,6 +786,7 @@ export const ar: Catalogue<Messages> = {
         read: 'عرض ملفات PDF المُنشأة',
         create: 'إنشاء ملفات PDF من الإرساليات',
         manage: 'إنهاء صلاحية ملفات PDF وحذفها',
+        upload: 'رفع ملفات PDF واختيار المستندات المُشارَكة',
         design: 'تصميم قوالب PDF (لفريق Integr8 فقط)',
       },
       ledger: {
@@ -831,9 +842,17 @@ export const ar: Catalogue<Messages> = {
     unexpected: 'حدث خطأ غير متوقع.',
   },
 
+  clientUpdate: {
+    needed: 'لم يعد هذا الإصدار من التطبيق مدعومًا. حدِّثه لتواصل العمل.',
+    desktopHint: 'إذا لم يُحدِّث التطبيق نفسه خلال بضع دقائق، فنزِّل الإصدار الجديد.',
+    button: 'تحديث',
+  },
+
   apiErrors: apiErrorsAr,
 
   legal: legalAr,
+
+  site: siteAr,
 
   states: {
     emptyTitle: 'لا شيء هنا بعد',
@@ -1601,7 +1620,7 @@ export const ar: Catalogue<Messages> = {
         capturedNoAccuracy: 'أُرسل من {{latitude}}، {{longitude}} في {{when}}',
         denied: 'أُرسل دون موقع: رفض الشخص السماح بالوصول إلى الموقع',
         unavailable: 'أُرسل دون موقع: لم يستطع الهاتف تحديد الموقع في الوقت المناسب',
-        openMap: 'فتح في الخريطة',
+        openMap: 'فتح في خرائط Google',
       },
       showAnswers: 'عرض الإجابات عند هذه النقطة',
       hideAnswers: 'إخفاء',
@@ -1721,10 +1740,10 @@ export const ar: Catalogue<Messages> = {
       useMyLocation: 'استخدام موقعي الحالي',
       locating: 'جارٍ تحديد موقعك…',
       locationUnavailable: 'موقعك غير متاح.',
-      openMap: 'فتح في الخريطة',
+      coordinates: 'الإحداثيات',
+      openMap: 'فتح في خرائط Google',
       pin: 'حفظ هذا الموضع',
       clearPin: 'المسح وإعادة البحث عن العنوان',
-      mapLabel: 'خريطة الموقع. انقر لنقل الدبوس.',
     },
     workOrders: {
       title: 'أوامر العمل',
@@ -1952,7 +1971,11 @@ export const ar: Catalogue<Messages> = {
         maintenance_planned: 'أنشأتها خطة الصيانة {{title}}، وتستحق في {{day}}',
         coverage_changed: 'جعلها {{actor}} {{coverage}}',
         deadline_missed: 'فاتت مهلة {{deadline}} المستحقة {{due}}',
+        form_submitted_after_close: 'أرسل {{actor}} النموذج {{title}} بعد إغلاق المهمة',
       },
+      submittedAfterClose: 'أُرسل بعد إغلاق المهمة',
+      submittedAfterCloseHint:
+        'عُبّئ على الهاتف قبل إغلاق المهمة وتمت مزامنته بعدها. راجعه قبل الفوترة أو إعداد التقارير.',
       nobodySignedEvent: 'سجّل {{actor}} أن أحدًا لم يستطع التوقيع: {{reason}}',
       recordedLater: 'سُجّل على الهاتف في {{occurred}}، وتمت مزامنته في {{recorded}}',
       notFound: 'أمر العمل هذا غير موجود، أو أنك لست ضمن طاقمه.',
@@ -2592,6 +2615,25 @@ export const ar: Catalogue<Messages> = {
         empty: 'لا توجد خطط صيانة لهذا الأصل.',
         nextDue: 'الموعد التالي',
         noneEnded: 'لا يوجد: انتهت الخطة',
+        failure: {
+          heading: 'خطط تعذّر إنشاء مهامها',
+          title: 'تعذّر إنشاء مهامها ({{when}}):',
+          retrying_zero: 'لم تفشل بعد. يُعاد المحاولة تلقائيًا كل بضع دقائق.',
+          retrying_one: 'فشلت مرة واحدة. يُعاد المحاولة تلقائيًا كل بضع دقائق.',
+          retrying_two: 'فشلت مرتين متتاليتين. يُعاد المحاولة تلقائيًا كل بضع دقائق.',
+          retrying_few: 'فشلت {{count}} مرات متتالية. يُعاد المحاولة تلقائيًا كل بضع دقائق.',
+          retrying_many: 'فشلت {{count}} مرة متتالية. يُعاد المحاولة تلقائيًا كل بضع دقائق.',
+          retrying_other: 'فشلت {{count}} مرة متتالية. يُعاد المحاولة تلقائيًا كل بضع دقائق.',
+          gaveUp_zero: 'لن تُعاد المحاولة حتى تُعدَّل الخطة.',
+          gaveUp_one: 'فشلت مرة واحدة. لن تُعاد المحاولة حتى تُعدَّل الخطة.',
+          gaveUp_two: 'فشلت مرتين متتاليتين، فلم تعد تُعاد المحاولة. عدّل الخطة لإعادة المحاولة.',
+          gaveUp_few:
+            'فشلت {{count}} مرات متتالية، فلم تعد تُعاد المحاولة. عدّل الخطة لإعادة المحاولة.',
+          gaveUp_many:
+            'فشلت {{count}} مرة متتالية، فلم تعد تُعاد المحاولة. عدّل الخطة لإعادة المحاولة.',
+          gaveUp_other:
+            'فشلت {{count}} مرة متتالية، فلم تعد تُعاد المحاولة. عدّل الخطة لإعادة المحاولة.',
+        },
         waiting: 'بعد إكمال المهمة المفتوحة',
         upcoming: 'ثم',
         last: 'الأخيرة',
@@ -3743,6 +3785,7 @@ export const ar: Catalogue<Messages> = {
       },
       conflictLine: 'طُلب {{asked}}؛ كان في {{location}} {{available}}.',
       recordedBy: '{{name}}، {{when}}',
+      recordedAfterClose: 'سُجّلت على الهاتف قبل إغلاق المهمة، وتمت مزامنتها بعده',
       returned: 'أُرجع {{quantity}}',
       return: 'إرجاع',
       returnTitle: 'إرجاع قطعة',
@@ -4014,6 +4057,14 @@ export const ar: Catalogue<Messages> = {
   },
   purchasing: {
     notEnabled: 'المشتريات غير مفعّلة لشركتك. اطلب من Integr8 تفعيلها.',
+    document: {
+      title: 'أمر شراء {{reference}}',
+      orderedOn: 'تاريخ الطلب {{date}}',
+      expectedOn: 'التسليم المتوقع {{date}}',
+      supplier: 'المورّد',
+      deliverTo: 'التسليم إلى',
+      print: 'طباعة',
+    },
     status: {
       draft: 'مسودة',
       approved: 'معتمد',
@@ -4345,6 +4396,8 @@ export const ar: Catalogue<Messages> = {
       thanksAccepted: 'شكرًا لك. ستتواصل معك {{company}} لترتيب العمل.',
       thanksRejected: 'شكرًا لإبلاغنا.',
       invalid: 'هذا الرابط غير صالح. ربما استُخدم من قبل، أو سُحب العرض أو استُبدل.',
+      unavailableTitle: 'لم يعد متاحًا على الإنترنت',
+      unavailable: 'لم يعد عرض السعر هذا متاحًا على الإنترنت. يُرجى التواصل مع {{company}}.',
       print: 'طباعة أو حفظ PDF',
       terms: 'الشروط',
       poweredBy: 'أُرسل عبر Integr8 Plus',
@@ -4507,6 +4560,7 @@ export const ar: Catalogue<Messages> = {
       },
       search: 'البحث بالرقم أو العميل',
       overdueOnly: 'المتأخرة فقط',
+      partsNotBilledOnly: 'أعمال بها قطع لم تُفوتر بعد',
       empty: 'لا توجد فواتير مطابقة.',
       emptyAll: 'لا توجد فواتير بعد. أنشئ واحدة من أمر بيع أو عمل مكتمل أو من البداية.',
       draftLabel: 'مسودة فاتورة',
@@ -4580,6 +4634,14 @@ export const ar: Catalogue<Messages> = {
       onAccount: '{{amount}} في الحساب',
       back: 'المدفوعات',
       recordedBy: 'سجّلها {{name}} في {{date}}',
+      reverse: 'عكس الدفعة',
+      reverseTitle: 'عكس {{reference}}؟',
+      reverseIntro:
+        'تبقى الدفعة البالغة {{amount}} في السجل مع علامة أنها معكوسة. تعود كل فاتورة سددتها مستحقة لذلك المبلغ، ولا يمكن تخصيصها لأي فاتورة بعد ذلك، ويسترد دفتر الأستاذ المبلغ اليوم. لا يمكن التراجع عن ذلك.',
+      reverseReason: 'السبب (شيك مرتجع، عميل خاطئ…)',
+      reverseConfirm: 'عكس الدفعة',
+      reversedLine: 'عكسها {{name}} في {{date}}: {{reason}}',
+      reversed: 'معكوسة',
       details: 'تفاصيل الدفعة',
       allocated: 'مخصص للفواتير',
       unallocated: 'في الحساب',
@@ -4611,6 +4673,10 @@ export const ar: Catalogue<Messages> = {
     job: {
       heading: 'الفوترة والتكلفة',
       invoice: 'فوترة هذا العمل',
+      invoiceFollowUp: 'فوترة القطع غير المفوترة',
+      partsNotYetBilled: 'قطع لم تُفوتر بعد',
+      partsNotYetBilledHint:
+        'وصلت قطع سُجّلت على هاتف قبل إغلاق هذا العمل بعد إصدار فاتورته. لا تشملها أي فاتورة بعد: أصدر فاتورة لاحقة لها.',
       notInvoiced: 'لم يُفوتر بعد.',
       notComplete: 'يمكن فوترة العمل بعد اكتماله.',
       costsHeading: 'تكلفة العمل',
@@ -4675,6 +4741,10 @@ export const ar: Catalogue<Messages> = {
     noJobs: 'غير مرتبط بأي عمل بعد.',
     timeline: 'السجل',
     noHistory: 'لم يُسجَّل شيء بعد.',
+    // The history a page at a time (Low 14).
+    timelinePages: {
+      showOlder: 'عرض الأقدم',
+    },
     tagCode: 'رمز الملصق',
     serialShort: 'رقم تسلسلي {{serial}}',
     warrantyUntil: 'الضمان حتى {{date}}',
@@ -4844,6 +4914,7 @@ export const ar: Catalogue<Messages> = {
       credit_note: 'إشعار دائن',
       invoice_void: 'فاتورة ملغاة',
       payment: 'دفعة',
+      payment_reversal: 'دفعة معكوسة',
       stock: 'حركة مخزون',
       expense_claim: 'مطالبة مصروفات',
       expense_payment: 'سداد مطالبة مصروفات',
@@ -7409,7 +7480,8 @@ export const ar: Catalogue<Messages> = {
   },
   documents: {
     title: 'المستندات',
-    intro: 'ملفات PDF مصنوعة من الإرساليات. ابحث فيها بحقولها، وافتحها أو نزّلها، وأوقف روابطها.',
+    intro:
+      'ملفات PDF مصنوعة من الإرساليات، وملفات PDF رفعتها شركتك. ابحث فيها بحقولها، وافتحها أو نزّلها، واختر ما يمكن مشاركته، وأوقف روابطها.',
     search: 'بحث',
     searchIn: 'البحث في',
     anyField: 'أي حقل والعنوان',
@@ -7417,7 +7489,7 @@ export const ar: Catalogue<Messages> = {
     stateFilter: 'الحالة',
     apply: 'ابحث',
     empty: 'لا توجد مستندات تطابق هذا البحث.',
-    emptyAll: 'لا توجد مستندات بعد. افتح إرسالية واختر «إنشاء PDF».',
+    emptyAll: 'لا توجد مستندات بعد. افتح إرسالية واختر «إنشاء PDF»، أو ارفع ملف PDF.',
     loadMore: 'عرض المزيد',
     back: 'كل المستندات',
     state: {
@@ -7463,6 +7535,37 @@ export const ar: Catalogue<Messages> = {
     deleteTitle: 'حذف هذا المستند؟',
     deleteBody: 'يتوقف رابطه فورًا ويُزال ملف PDF بعد مهلة الاستعادة. لا يمكن التراجع عن ذلك هنا.',
     cancel: 'إلغاء',
+    // Uploaded PDFs and sharing (0067).
+    upload: {
+      action: 'رفع ملف PDF',
+      title: 'رفع مستند PDF',
+      intro:
+        'أضف ملف PDF موجودًا لدى شركتك، مثل شهادة موقّعة على الورق. يحصل على رابط QR خاص به، مثل ملفات PDF المصنوعة من الإرساليات.',
+      file: 'ملف PDF',
+      fileHint: 'ملف PDF حجمه 20 ميجابايت على الأكثر.',
+      notPdf: 'اختر ملف PDF.',
+      tooLarge: 'حجم ملف PDF هذا أكبر من 20 ميجابايت.',
+      documentTitle: 'العنوان',
+      reference: 'الرقم المرجعي',
+      referenceHint: 'مثل رقم الشهادة. يجد موقعك المستند به.',
+      customer: 'العميل (اختياري)',
+      customerHint: 'عند اختيار عميل، يطلب موقعك اسمه أيضًا.',
+      shareNow: 'شاركه الآن، ليتمكن رابط QR وموقعك من عرضه',
+      submit: 'رفع',
+      uploading: 'جارٍ الرفع…',
+      cancel: 'إلغاء',
+      badge: 'مرفوع',
+      made: 'رُفع في {{date}} بواسطة {{name}}',
+    },
+    sharing: {
+      title: 'المشاركة',
+      on: 'مُشارَك: يمكن لرابط QR وموقع شركتك عرض هذا المستند.',
+      off: 'غير مُشارَك: يجيب رابط QR وموقع شركتك كأنه غير موجود. ما زالت شركتك تراه هنا.',
+      share: 'شاركه',
+      unshare: 'أوقف المشاركة',
+      badge: 'غير مُشارَك',
+      qr: 'رمز QR لرابط هذا المستند',
+    },
     export: {
       action: 'إنشاء PDF',
       title: 'إنشاء ملف PDF من هذه الإرسالية',
@@ -7514,6 +7617,8 @@ export const ar: Catalogue<Messages> = {
       revokeConfirm: 'إلغاء هذا المفتاح؟ يتوقف الموقع الذي يستخدمه عن إيجاد المستندات فورًا.',
       limit: 'يوجد مفتاحان فعّالان. ألغِ أحدهما قبل إنشاء مفتاح جديد.',
       managerOnly: 'وحده مسؤول Integr8 المُنشأ بأمر الطرفية يستطيع حذف مفتاح الموقع نهائيًا.',
+      managersOnly:
+        'وحده مدير فريق Integr8، أي الحساب المُنشأ بأمر الطرفية، يستطيع إنشاء مفاتيح الموقع وتفعيلها وتعطيلها وإلغاءها وحذفها.',
       secretTitle: 'انسخ هذا المفتاح الآن',
       secretBody: 'لن يظهر إلا هذه المرة. ضعه في بيئة خادم الموقع باسم INTEGR8_WEBSITE_KEY.',
       copy: 'نسخ',
@@ -7691,6 +7796,115 @@ export const ar: Catalogue<Messages> = {
       number: 'رقم',
       qrPlaceholder: 'رمز QR',
       imagePlaceholder: 'صورة',
+    },
+  },
+
+  notifications: {
+    publicQuote: {
+      unavailable: 'لم يعد عرض السعر هذا متاحًا على الإنترنت. يُرجى التواصل مع {{company}}.',
+    },
+    hrSuspension: {
+      subject: 'أُوقف {{person}} في {{company}}',
+      title: 'أُوقف شخص لديه صلاحية الموارد البشرية',
+      body: 'أوقف {{admin}} حساب {{person}}، الذي يطّلع على رواتب موظفيك وسجلاتهم الشخصية، بتاريخ {{date}}. لا يمكنه تسجيل الدخول حتى يُعاد تفعيله.',
+      next: 'أنت وحدك من يستطيع إعادة تفعيله أو تغيير دوره أو إزالته. إن لم يكن هذا متوقعًا فتحقّق من الأمر مع {{admin}}.',
+      action: 'فتح صفحة الأشخاص',
+    },
+    push: {
+      newJob: 'مهمة جديدة: {{job}}',
+      urgentCallout: 'استدعاء عاجل: {{job}}',
+      rescheduled: 'تغيّر موعدها: {{job}}',
+      dispatched: 'أُرسلت: {{job}}',
+      cancelled: 'أُلغيت: {{job}}',
+      nowUrgent: 'أصبحت عاجلة: {{job}}',
+      newVisit: 'زيارة جديدة: {{job}}',
+      urgentVisit: 'زيارة عاجلة: {{job}}',
+      visitMoved: 'تغيّر موعد الزيارة: {{job}}',
+      visitCancelled: 'أُلغيت الزيارة: {{job}}',
+      takenOffVisit: 'أُزلت من زيارة: {{job}}',
+      openForTime: 'افتح المهمة لمعرفة موعدها.',
+      openForTimeAt: '{{site}} · افتح المهمة لمعرفة موعدها.',
+      openForNewTime: 'افتح المهمة لمعرفة موعدها الجديد.',
+      openForNewTimeAt: '{{site}} · افتح المهمة لمعرفة موعدها الجديد.',
+      responseDeadlineMissed: '{{job}}: فات موعد الاستجابة',
+      responseDeadlineSoon: '{{job}}: موعد الاستجابة قريب',
+      completionDeadlineMissed: '{{job}}: فات موعد الإنجاز',
+      completionDeadlineSoon: '{{job}}: موعد الإنجاز قريب',
+      certificateExpired: 'انتهت صلاحية {{qualification}}',
+      certificateExpiring: 'تنتهي صلاحية {{qualification}} قريبًا',
+      certificateExpiredBody: 'أرسل الشهادة المجدَّدة إلى المكتب.',
+      certificateExpiringBody: 'صالحة حتى {{date}}. جدّدها في الوقت المناسب.',
+    },
+    email: {
+      pasteLink: 'أو الصق هذا الرابط في متصفحك:',
+      dunning: {
+        subjectFailed: 'تعذّر الدفع لـ {{company}}',
+        subjectReadOnly: '{{company}} للقراءة فقط — توجد دفعة مستحقة',
+        titleFailed: 'لم تتم إحدى الدفعات',
+        titleReadOnly: 'حسابك للقراءة فقط',
+        failed: 'لم تتم دفعة مستحقة على {{company}}.',
+        failedNoDeadline: 'يُرجى تحديث بطاقتك ليستمر كل شيء في العمل.',
+        failedDeadline:
+          'إذا بقيت الدفعة مستحقة في {{date}}، يصبح الحساب للقراءة فقط — تبقى بياناتك، لكن لا يمكن حفظ عمل جديد.',
+        failedFix: 'تحديث البطاقة يستغرق دقيقة ويحلّ الأمر فورًا.',
+        readOnly: 'أصبحت {{company}} للقراءة فقط لوجود دفعة مستحقة.',
+        readOnlyKept:
+          'لم يُحذف شيء ولن يُحذف. لا يزال بالإمكان قراءة كل شيء وتصديره؛ ما توقف هو حفظ العمل الجديد.',
+        readOnlyFix: 'تحديث البطاقة يعيده فورًا.',
+        action: 'حدّث بطاقتك',
+      },
+      certificates: {
+        subjectExpired: 'شهادات منتهية الصلاحية — {{company}}',
+        subjectExpiring: 'شهادات تنتهي صلاحيتها قريبًا — {{company}}',
+        titleExpired: 'انتهت صلاحية شهادات',
+        titleExpiring: 'شهادات تنتهي صلاحيتها قريبًا',
+        ownExpired: 'انتهت صلاحية إحدى شهاداتك في {{company}} أو أوشكت.',
+        ownExpiring: 'أوشكت صلاحية إحدى شهاداتك في {{company}} على الانتهاء.',
+        team: 'انتهت صلاحية شهادات يحملها أشخاص في {{company}} أو أوشكت.',
+        expired: 'انتهت صلاحية {{qualification}} في {{date}}.',
+        expiring: 'تنتهي صلاحية {{qualification}} في {{date}}.',
+        personExpired: '{{person}}: انتهت صلاحية {{qualification}} في {{date}}.',
+        personExpiring: '{{person}}: تنتهي صلاحية {{qualification}} في {{date}}.',
+        affectedVisits: 'زيارات مخطط لها تحتاج الآن إلى شخص آخر أو إلى سبب: {{visits}}.',
+        visit: '{{job}}، {{when}}',
+        aJob: 'مهمة',
+        ownNext: 'بعد تجديدها، أرسل الشهادة الجديدة إلى المكتب ليسجّلها.',
+        teamNext: 'سجّل كل تجديد كشهادة جديدة، لتبقى القديمة في السجل.',
+        action: 'افتح الشهادات',
+      },
+      contracts: {
+        subjectEnded: 'عقود انتهت دون تجديد — {{company}}',
+        subjectEnding: 'عقود تنتهي قريبًا — {{company}}',
+        titleEnded: 'انتهت عقود',
+        titleEnding: 'عقود تنتهي قريبًا',
+        intro: 'عقود خدمة في {{company}} تنتهي أو انتهت.',
+        ended: '{{reference}} {{title}} للعميل {{customer}} انتهى في {{date}} دون تجديد.',
+        ending: '{{reference}} {{title}} للعميل {{customer}} ينتهي في {{date}}.',
+        next: 'جدّد العقد لتستمر خطط صيانته في إنشاء المهام وتبقى مهام عميله مشمولة.',
+        action: 'افتح العقود',
+      },
+      deadlines: {
+        subjectMissed: 'مواعيد نهائية فائتة — {{company}}',
+        subjectDue: 'مواعيد نهائية قريبة — {{company}}',
+        titleMissed: 'مواعيد نهائية فائتة',
+        titleDue: 'مواعيد نهائية قريبة',
+        introMissed: 'مهام في {{company}} فاتتها مواعيدها النهائية أو أوشكت.',
+        introDue: 'مهام في {{company}} أوشكت على بلوغ مواعيدها النهائية.',
+        responseMissed: '{{job}} ({{customer}}): كان موعد الاستجابة {{when}} وقد فات.',
+        responseDue: '{{job}} ({{customer}}): موعد الاستجابة {{when}}.',
+        completionMissed: '{{job}} ({{customer}}): كان موعد الإنجاز {{when}} وقد فات.',
+        completionDue: '{{job}} ({{customer}}): موعد الإنجاز {{when}}.',
+        explained: 'يُستوفى موعد الاستجابة عند إرسال المهمة، وموعد الإنجاز عند إكمالها.',
+        action: 'افتح تقرير المواعيد النهائية',
+      },
+    },
+    announcements: {
+      paymentFailed:
+        'لم تتم دفعة مستحقة على هذا الحساب. يُرجى تحديث البطاقة من صفحة الفوترة. إذا بقيت مستحقة في {{date}}، يصبح الحساب للقراءة فقط — تبقى بياناتك، لكن لا يمكن حفظ عمل جديد.',
+      paymentFailedNoDate:
+        'لم تتم دفعة مستحقة على هذا الحساب. يُرجى تحديث البطاقة من صفحة الفوترة. إذا بقيت مستحقة قريبًا، يصبح الحساب للقراءة فقط — تبقى بياناتك، لكن لا يمكن حفظ عمل جديد.',
+      readOnly:
+        'هذا الحساب للقراءة فقط لوجود دفعة مستحقة. لم يُحذف شيء ولن يُحذف: لا يزال بالإمكان قراءة كل شيء وتصديره. حدّث البطاقة من صفحة الفوترة ويعود الحفظ فورًا.',
     },
   },
 
@@ -7934,7 +8148,8 @@ export const ar: Catalogue<Messages> = {
       slugHint: 'أحرف لاتينية صغيرة وأرقام وشرطات. لا يمكن تغييره.',
       plan: 'الخطة',
       seats: 'المقاعد',
-      seatsHint: 'اتركه فارغًا لعدم تحديد حدّ.',
+      seatsHint:
+        'اتركه فارغًا لاعتماد عدد المقاعد في الخطة. أي رقم هنا يحلّ محلّ رقم الخطة، أعلى منه أو أقل.',
       billingMode: 'الفوترة',
       billingModeHint:
         'بالفاتورة: أنت من يُصدر لهم الفواتير ويحدد خطتهم هنا؛ لا فترة تجريبية ولا دفع إلكتروني. الدفع في التطبيق: يبدؤون فترة تجريبية ويشتركون ببطاقة.',
@@ -8035,6 +8250,16 @@ export const ar: Catalogue<Messages> = {
       buildApps: 'بناء تطبيقات لهذه الشركة',
       buildAppsHint:
         'عند التفعيل، يبني كل إصدار أيضًا حزم تثبيت هذه الشركة وتطبيقات هاتفها، ويقبل سير العمل «بناء تطبيقات الشركة» اسمها المختصر.',
+      rebuild: 'إعادة بناء التطبيقات',
+      rebuilding: 'جارٍ البدء…',
+      rebuildHint:
+        'يبني حزم تثبيت هذه الشركة وتطبيقات هاتفها من جديد، على الإصدار الحالي، في إصدار جديد. يستغرق من 20 إلى 40 دقيقة على GitHub.',
+      buildStarted: 'بدأ البناء على GitHub.',
+      buildWatch: 'متابعة البناء',
+      buildWatchAll: 'عرض عمليات البناء',
+      buildNotConfigured:
+        'هذا الخادم لا يبدأ عمليات البناء بنفسه (APP_BUILDS معطّل). شغّل «بناء تطبيقات الشركة» من GitHub Actions بالاسم المختصر {{slug}}.',
+      buildFailed: 'تعذّر بدء البناء: {{message}}',
       save: 'حفظ',
       saving: 'جارٍ الحفظ…',
       saved: 'تم الحفظ.',
@@ -8211,6 +8436,16 @@ export const ar: Catalogue<Messages> = {
         retrying: 'فشلت وتنتظر إعادة المحاولة',
         hint: 'لمعرفة الشركة والمهمة: افتح الشركة وانظر تحت الإخفاقات.',
       },
+      maintenance: {
+        title: 'خطط صيانة يتعذّر إنشاء مهامها',
+        empty: 'أنشأت كل خطط الصيانة مهامها في آخر تشغيل.',
+        company: 'الشركة',
+        plan: 'الخطة',
+        error: 'السبب',
+        when: 'آخر إخفاق',
+        failures: 'مرات متتالية',
+        gaveUp: 'لم تعد تُعاد المحاولة حتى تُعدَّل الخطة',
+      },
     },
     releases: {
       title: 'الإصدارات المستخدمة في الميدان',
@@ -8268,6 +8503,23 @@ export const ar: Catalogue<Messages> = {
       lastRun: 'آخر بدء',
       lastFinished: 'آخر انتهاء',
       neverFinished: 'لم تنتهِ',
+      // Low 2: companies past their allowance on a plan that allows it, for invoicing.
+      overAllowance: {
+        title: 'تجاوز المساحة المخصصة',
+        description:
+          'الشركات التي تواصل خطتها قبول التحميل بعد تجاوز المساحة المخصصة. احسب في الفاتورة متوسط التجاوز خلال الشهر بوحدة غيغابايت-شهر: البايتات الزائدة كل يوم، مجموعةً ومقسومةً على عدد أيام الشهر. يزداد الرقم مع مرور الشهر، ورقم اليوم الأخير هو المبلغ المستحق.',
+        month: 'الشهر',
+        thisMonth: 'هذا الشهر',
+        lastMonth: 'الشهر الماضي',
+        company: 'الشركة',
+        plan: 'الخطة',
+        overNow: 'التجاوز الآن',
+        backUnder: 'عادت ضمن المساحة',
+        daysOver: 'أيام التجاوز',
+        peak: 'الحد الأقصى',
+        toInvoice: 'للفاتورة (غيغابايت-شهر)',
+        none: 'لم تتجاوز أي شركة المساحة المخصصة لها في هذا الشهر.',
+      },
     },
     billingMode: {
       self_serve: 'الدفع في التطبيق',
@@ -8280,7 +8532,8 @@ export const ar: Catalogue<Messages> = {
       mode: 'الفوترة',
       plan: 'الخطة',
       seats: 'المقاعد',
-      seatsHint: 'اتركه فارغًا لعدم تحديد حدّ.',
+      seatsHint:
+        'اتركه فارغًا لاعتماد عدد المقاعد في الخطة. أي رقم هنا يحلّ محلّ رقم الخطة، أعلى منه أو أقل.',
       save: 'حفظ',
       saving: 'جارٍ الحفظ…',
       saved: 'تم الحفظ.',

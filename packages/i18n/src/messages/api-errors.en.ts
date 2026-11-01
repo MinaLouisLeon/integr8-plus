@@ -68,6 +68,8 @@ export const apiErrorsEn = {
   answers_changed:
     'These answers were changed on another device while you were offline. Choose which to keep.',
   app_icon_not_found: 'The app icon must be an image uploaded by this company. Upload it again.',
+  apps_not_enabled:
+    'This company’s apps are switched off. Tick “Build apps for this company” and save first.',
   asset_not_at_site: 'This asset is not at the job’s site. Choose one of that site’s assets.',
   asset_not_on_work_order: 'This asset is not one of the job’s assets. Link it to the job first.',
   asset_retired: 'This asset is retired. It takes no new work, condition or form.',
@@ -87,6 +89,8 @@ export const apiErrorsEn = {
     invalid_token: 'Your session has ended. Sign in again.',
     invitation_invalid:
       'This invitation is no longer valid. It may have been used, withdrawn or expired. Ask for a new one.',
+    invitation_password_required:
+      'Choose a password to accept this invitation. If this app has no box for one, update the app or accept the invitation on the web.',
     not_a_member: 'Your account is not a member of this company. Ask its owner to invite you.',
     refresh_token_reuse: 'This session was ended to keep your account safe. Sign in again.',
     session_revoked: 'You were signed out of this session. Sign in again.',
@@ -157,6 +161,7 @@ export const apiErrorsEn = {
     'Some document fields are missing or too long. Check the fields marked below.',
   document_link_unavailable:
     'Documents cannot be made yet: this server has no web address for the QR code. Ask Integr8.',
+  document_not_pdf: 'Only a PDF can be uploaded as a document. Choose a PDF file.',
   document_template_archived: 'This template is archived. Choose another one.',
   document_template_changed:
     'Someone else saved this template meanwhile. Open it again to see their changes.',
@@ -165,6 +170,7 @@ export const apiErrorsEn = {
   document_template_invalid: 'The template has problems. Each one is listed below.',
   document_template_problem: 'This part of the template needs fixing.',
   document_template_wrong_form: 'This template belongs to another form.',
+  document_too_large: 'This PDF is larger than 20 MB. Upload a smaller one.',
   double_booked: 'This person is on another job at that time.',
   draft_changed:
     'The draft was saved again since you reviewed it. Review it again before publishing.',
@@ -227,6 +233,8 @@ export const apiErrorsEn = {
   form_unknown: 'Choose a published form.',
   form_version_unavailable:
     'This version of the form is no longer available. Fill it again on the current version.',
+  hr_access_owner_only:
+    'Only the owner can do this for somebody who has, or would have, HR access. You can suspend them in an emergency; the owner is told.',
   hr_key_missing:
     'ID, insurance and bank numbers cannot be stored or shown until the HR data key is set on the server. Ask Integr8 to set it.',
   idempotency_key_in_progress:
@@ -368,6 +376,8 @@ export const apiErrorsEn = {
   part_missing: 'Part of this file has not arrived.',
   part_out_of_range: 'This file does not have that many parts. Upload it again.',
   party_required: 'Choose a customer or a lead.',
+  payment_already_reversed: 'This payment was already reversed.',
+  payment_reversed: 'This payment was reversed, so it cannot be put against an invoice.',
   payroll_off: 'Payroll is not switched on. Pay this claim back directly.',
   period_locked: 'That month is locked. Date it in an open month.',
   period_too_long: 'Choose a period of at most two years.',
@@ -403,6 +413,8 @@ export const apiErrorsEn = {
   quote_closed: 'This quote is no longer open.',
   quote_converted: 'This quote has already become a sales order.',
   quote_empty: 'Add at least one line before issuing.',
+  quote_unavailable:
+    'This quote is no longer available online. Please contact the company that sent it.',
   quote_expired: 'This quote has expired. A new one has to be issued.',
   quote_not_accepted: 'Only an accepted quote becomes a sales order.',
   quote_not_draft: 'Only a draft quote changes. Revise this quote to edit it.',
@@ -482,6 +494,8 @@ export const apiErrorsEn = {
   submission_draft: 'A draft cannot be made into a document. Submit it first.',
   submission_id_taken:
     'This form clashed with another submission. Discard it and fill it in again.',
+  submission_job_closed:
+    'This job is closed, so this form can no longer be submitted. Reopen the job first, or discard the draft.',
   submission_limit_reached:
     'This plan’s submissions for the month are used up. They reset at the start of next month, or a larger plan lifts the limit.',
   submission_state: 'This submission cannot be changed as it is now. Reopen it first.',
@@ -531,6 +545,8 @@ export const apiErrorsEn = {
   work_order_changed:
     'This job was changed elsewhere since you loaded it. Reload it and try again.',
   work_order_closed: 'This job is closed. Reopen it before changing it.',
+  work_order_invoiced:
+    'This job is already invoiced, so a part recorded now would never be billed. Unused parts can still be returned.',
   work_order_not_customers: 'Choose one of the customer’s jobs.',
   work_order_required: 'Choose the job you are on.',
   work_order_unavailable: 'This job is no longer yours to change: it was reassigned or removed.',

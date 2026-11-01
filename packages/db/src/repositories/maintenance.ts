@@ -45,6 +45,13 @@ export interface MaintenancePlan {
   updatedAt: Date;
   endedAt: Date | null;
   endedBy: UserId | null;
+  /**
+   * Why the worker last failed to make this plan's jobs, when, and how many
+   * times in a row (0063); null and 0 once it succeeds or the plan is edited.
+   */
+  lastError: string | null;
+  lastErrorAt: Date | null;
+  failureCount: number;
 }
 
 export interface MaintenancePlanInput {
@@ -129,6 +136,8 @@ export interface PlanQuery {
   jobTypeId?: string;
   contractId?: string;
   includeEnded?: boolean;
+  /** Only plans the worker last failed on (0063). */
+  failing?: boolean;
 }
 
 export interface OccurrenceQuery {
@@ -198,6 +207,9 @@ export class MaintenanceRepository extends TenantScopedRepository {
         'p.updated_at',
         'p.ended_at',
         'p.ended_by',
+        'p.last_error',
+        'p.last_error_at',
+        'p.failure_count',
       ])
       .where('p.tenant_id', '=', this.tenantId);
   }
@@ -226,6 +238,9 @@ export class MaintenanceRepository extends TenantScopedRepository {
     }
     if (query.includeEnded !== true) {
       select = select.where('p.status', '<>', 'ended');
+    }
+    if (query.failing === true) {
+      select = select.where('p.last_error', 'is not', null);
     }
     const rows = await select.orderBy('p.next_due_on').orderBy('p.title').orderBy('p.id').execute();
     return rows.map(toPlan);
@@ -380,6 +395,49 @@ export class MaintenanceRepository extends TenantScopedRepository {
         : { outcome: 'conflict', current: latest };
     }
     return { outcome: 'written', plan: (await this.findPlan(planId))! };
+  }
+
+  /**
+   * Runs `fn` in a savepoint: when it throws, what it wrote is rolled back and
+   * the transaction stays usable, so one plan's failure is that plan's alone.
+   */
+  async isolated<T>(fn: () => Promise<T>): Promise<T> {
+    await sql`savepoint maintenance_plan`.execute(this.db);
+    try {
+      const result = await fn();
+      await sql`release savepoint maintenance_plan`.execute(this.db);
+      return result;
+    } catch (error) {
+      await sql`rollback to savepoint maintenance_plan`.execute(this.db);
+      throw error;
+    }
+  }
+
+  /** The worker could not make a plan's jobs: why, now, and one more in a row (0063). */
+  async recordFailure(planId: string, message: string): Promise<void> {
+    await this.db
+      .updateTable('maintenance_plans')
+      .set({
+        last_error: message.slice(0, 2000),
+        last_error_at: sql<Date>`now()`,
+        failure_count: sql<number>`failure_count + 1`,
+      })
+      .where('tenant_id', '=', this.tenantId)
+      .where('id', '=', planId)
+      .where('status', '<>', 'ended')
+      .execute();
+  }
+
+  /** The worker made a plan's jobs: any earlier failure is over. */
+  async clearFailure(planId: string): Promise<void> {
+    await this.db
+      .updateTable('maintenance_plans')
+      .set({ last_error: null, last_error_at: null, failure_count: 0 })
+      .where('tenant_id', '=', this.tenantId)
+      .where('id', '=', planId)
+      .where('failure_count', '>', 0)
+      .where('status', '<>', 'ended')
+      .execute();
   }
 
   /** The worker moves a plan on to its next due date. */
@@ -698,5 +756,8 @@ function toPlan(row: PlanRow): MaintenancePlan {
     updatedAt: row.updated_at,
     endedAt: row.ended_at,
     endedBy: row.ended_by === null ? null : toUserId(row.ended_by),
+    lastError: row.last_error,
+    lastErrorAt: row.last_error_at,
+    failureCount: row.failure_count,
   };
 }

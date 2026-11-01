@@ -112,46 +112,46 @@ The five company roles are `owner`, `admin`, `dispatcher`, `engineer` and `viewe
 
 ## 4. Technology stack at a glance
 
-| Layer                    | Technology                                                | Version                                |
-| ------------------------ | --------------------------------------------------------- | -------------------------------------- |
-| Language                 | TypeScript (strict)                                       | 6.0.3                                  |
-| Runtime                  | Node.js                                                   | 22 (`.nvmrc`: 22.22.2)                 |
-| Node.js type definitions | `@types/node`                                             | 26.6.4                                 |
-| Package manager          | pnpm workspaces                                           | 10.33.0                                |
-| Build orchestration      | Turborepo                                                 | 2.11.7                                 |
-| API framework            | Fastify                                                   | 5.12.3                                 |
-| Validation and schemas   | zod                                                       | 4.6.1                                  |
-| Database                 | PostgreSQL                                                | 16                                     |
-| Query builder            | Kysely                                                    | 0.28.9                                 |
-| Postgres driver          | node-postgres (`pg`)                                      | 8.16.3                                 |
-| Tokens (JWT)             | jose (EdDSA signing)                                      | 6.2.0                                  |
-| Web framework            | Next.js (App Router)                                      | 16.3.4                                 |
-| UI library               | React                                                     | 19.3.0                                 |
-| Styling                  | Tailwind CSS                                              | 4.3.3                                  |
-| Server-state caching     | TanStack Query                                            | 5.102.8                                |
-| Desktop shell            | Tauri                                                     | 2 (CLI 2.11.4, API 2.12.0)             |
-| Desktop bundler          | Vite                                                      | 8.2.2                                  |
-| Desktop routing          | React Router                                              | 8.3.1                                  |
-| Desktop native code      | Rust (edition 2021, minimum 1.77)                         | —                                      |
-| Phone framework          | Expo SDK                                                  | 58 (`expo` 58.0.14)                    |
-| Phone runtime            | React Native                                              | 0.88.0                                 |
-| Phone routing            | Expo Router                                               | 58.0.23                                |
-| Phone local database     | SQLite (`expo-sqlite`)                                    | 58.0.13                                |
-| Translation              | i18next and react-i18next                                 | 26.4.2 / 17.0.13                       |
-| Maps                     | Leaflet with OpenStreetMap tiles                          | 1.9.4                                  |
-| Image processing         | sharp                                                     | 0.35.4                                 |
-| Object storage client    | AWS SDK v3 for S3 (talking to Cloudflare R2)              | 3.1131.0                               |
-| Error reporting          | Sentry: Node and Next.js / React (desktop) / React Native | 10.74.0 / 11.1.0 / 7.11.0              |
-| Tests                    | Vitest                                                    | 5.0.3                                  |
-| Property-based tests     | fast-check                                                | 4.10.0                                 |
-| DOM tests                | Testing Library, jsdom, axe-core                          | see Appendix A                         |
-| Linting                  | ESLint, typescript-eslint, jsx-a11y, react-hooks          | 10.12.0 / 8.71.1                       |
-| Formatting               | Prettier                                                  | 3.9.9                                  |
-| Git hooks                | Husky, lint-staged, commitlint (Conventional Commits)     | 9.1.7 / 17.6.0 / 21.2.3                |
-| Containers               | Docker, Docker Compose                                    | `node:22-bookworm-slim`, `postgres:16` |
-| Reverse proxy and TLS    | Caddy                                                     | official build                         |
-| CI/CD                    | GitHub Actions; GitHub Container Registry                 | —                                      |
-| Phone builds             | Expo Application Services (EAS)                           | —                                      |
+| Layer                    | Technology                                                | Version                                     |
+| ------------------------ | --------------------------------------------------------- | ------------------------------------------- |
+| Language                 | TypeScript (strict)                                       | 6.0.3                                       |
+| Runtime                  | Node.js                                                   | 22 (`.nvmrc`: 22.22.2)                      |
+| Node.js type definitions | `@types/node`                                             | 26.6.4                                      |
+| Package manager          | pnpm workspaces                                           | 10.33.0                                     |
+| Build orchestration      | Turborepo                                                 | 2.11.7                                      |
+| API framework            | Fastify                                                   | 5.12.3                                      |
+| Validation and schemas   | zod                                                       | 4.6.1                                       |
+| Database                 | PostgreSQL                                                | 16                                          |
+| Query builder            | Kysely                                                    | 0.28.9                                      |
+| Postgres driver          | node-postgres (`pg`)                                      | 8.16.3                                      |
+| Tokens (JWT)             | jose (EdDSA signing)                                      | 6.2.0                                       |
+| Web framework            | Next.js (App Router)                                      | 16.3.4                                      |
+| UI library               | React                                                     | 19.3.0                                      |
+| Styling                  | Tailwind CSS                                              | 4.3.3                                       |
+| Server-state caching     | TanStack Query                                            | 5.102.8                                     |
+| Desktop shell            | Tauri                                                     | 2 (CLI 2.11.4, API 2.12.0)                  |
+| Desktop bundler          | Vite                                                      | 8.2.2                                       |
+| Desktop routing          | React Router                                              | 8.3.1                                       |
+| Desktop native code      | Rust (edition 2021, minimum 1.77)                         | —                                           |
+| Phone framework          | Expo SDK                                                  | 58 (`expo` 58.0.14)                         |
+| Phone runtime            | React Native                                              | 0.88.0                                      |
+| Phone routing            | Expo Router                                               | 58.0.23                                     |
+| Phone local database     | SQLite (`expo-sqlite`)                                    | 58.0.13                                     |
+| Translation              | i18next and react-i18next                                 | 26.4.2 / 17.0.13                            |
+| Maps                     | A link to Google Maps (no map drawn)                      | —                                           |
+| Image processing         | sharp                                                     | 0.35.4                                      |
+| Object storage client    | AWS SDK v3 for S3 (talking to Cloudflare R2)              | 3.1131.0                                    |
+| Error reporting          | Sentry: Node and Next.js / React (desktop) / React Native | 10.74.0 / 11.1.0 / 7.11.0                   |
+| Tests                    | Vitest                                                    | 5.0.3                                       |
+| Property-based tests     | fast-check                                                | 4.10.0                                      |
+| DOM tests                | Testing Library, jsdom, axe-core                          | see Appendix A                              |
+| Linting                  | ESLint, typescript-eslint, jsx-a11y, react-hooks          | 10.12.0 / 8.71.1                            |
+| Formatting               | Prettier                                                  | 3.9.9                                       |
+| Git hooks                | Husky, lint-staged, commitlint (Conventional Commits)     | 9.1.7 / 17.6.0 / 21.2.3                     |
+| Containers               | Docker, Docker Compose                                    | `node:22.22.2-bookworm-slim`, `postgres:16` |
+| Reverse proxy and TLS    | Caddy                                                     | official build                              |
+| CI/CD                    | GitHub Actions; GitHub Container Registry                 | —                                           |
+| Phone builds             | Expo Application Services (EAS)                           | —                                           |
 
 ---
 
@@ -333,7 +333,7 @@ integr8-plus/
 | `@integr8/form-engine`       | The form definition schema; 18 field types; conditional visibility; `requiredWhen`; dependent choices; calculated fields; expression evaluation; validation identical on client and server; decimal and date-time arithmetic; repeating groups; canonical JSON; version comparison; reporting helpers; global templates; conformance suites (including one that runs on Hermes, React Native's engine) | zod (tests: fast-check, esbuild, coverage-v8)                                                            |
 | `@integr8/form-input`        | Turns what a person types or picks into answers: text, choices, files, signatures, repeating entries, prefill and error mapping. Shared by the web, desktop and phone renderers                                                                                                                                                                                                                        | —                                                                                                        |
 | `@integr8/form-renderer-dom` | The form filler for web and desktop: widgets for every field type, repeating entries, media upload with client-side compression, answer view                                                                                                                                                                                                                                                           | React (peer), TanStack Query (peer)                                                                      |
-| `@integr8/operations-dom`    | Customers, sites, work orders, crew, access notes, site map, timesheets: the screens web and desktop share                                                                                                                                                                                                                                                                                             | leaflet                                                                                                  |
+| `@integr8/operations-dom`    | Customers, sites, work orders, crew, access notes, site location, timesheets: the screens web and desktop share                                                                                                                                                                                                                                                                                        | uqr                                                                                                      |
 | `@integr8/offline`           | The phone's SQLite database and migrations; the outbox; the sync engine; local search; eviction of old data; wipe on sign-out; tracking unsent work                                                                                                                                                                                                                                                    | —                                                                                                        |
 | `@integr8/i18n`              | English and Arabic catalogues (identical keys, checked by a parity test); locale negotiation; direction (LTR/RTL); number, currency, date, time, list and relative-time formatting                                                                                                                                                                                                                     | i18next, react-i18next                                                                                   |
 | `@integr8/tokens`            | Design tokens (palette, semantic colours for light and dark) emitted as CSS variables; turning a company's brand colour into an accessible palette                                                                                                                                                                                                                                                     | —                                                                                                        |
@@ -842,7 +842,6 @@ The worker also runs scheduled maintenance, recorded in `scheduled_task_runs`:
 | **Stripe**                              | Checkout, customer portal, invoices, webhooks                       | REST (`api.stripe.com/v1`), no SDK                | `BILLING_PROVIDER`                               |
 | **Resend**                              | Email: invitations, verification, dunning                           | REST (`api.resend.com/emails`)                    | `EMAIL_SENDER`                                   |
 | **Mapbox**                              | Geocoding addresses; map tiles                                      | Geocoding v6 REST                                 | `GEOCODER`, `MAPBOX_ACCESS_TOKEN`                |
-| **OpenStreetMap**                       | Map tiles in Leaflet                                                | Tile server                                       | —                                                |
 | **Expo Push**                           | Phone notifications                                                 | `exp.host/--/api/v2/push`                         | `PUSH_SENDER`, `EXPO_ACCESS_TOKEN`               |
 | **Expo Application Services**           | Building and updating the phone apps                                | EAS Build and EAS Update                          | GitHub secrets                                   |
 | **Sentry**                              | Errors and traces from every app, with release tags and source maps | Official SDKs                                     | `SENTRY_DSN`, `WEB_SENTRY_DSN`                   |
@@ -907,14 +906,14 @@ A full review of the codebase was done in October 2026 and its fixes were applie
 
 **Containers** (`deploy/compose.yml`)
 
-| Service     | Image                                            | Role                                     |
-| ----------- | ------------------------------------------------ | ---------------------------------------- |
-| `postgres`  | `postgres:16`                                    | The database, on a named volume          |
-| `bootstrap` | API image                                        | Creates the database roles once          |
-| `migrate`   | API image                                        | Applies migrations before the API starts |
-| `api`       | API image (`node:22-bookworm-slim`, multi-stage) | The API on port 3000                     |
-| `worker`    | API image                                        | Background jobs                          |
-| `web`       | Web image                                        | The Next.js app                          |
+| Service     | Image                                                 | Role                                     |
+| ----------- | ----------------------------------------------------- | ---------------------------------------- |
+| `postgres`  | `postgres:16`                                         | The database, on a named volume          |
+| `bootstrap` | API image                                             | Creates the database roles once          |
+| `migrate`   | API image                                             | Applies migrations before the API starts |
+| `api`       | API image (`node:22.22.2-bookworm-slim`, multi-stage) | The API on port 3000                     |
+| `worker`    | API image                                             | Background jobs                          |
+| `web`       | Web image                                             | The Next.js app                          |
 
 **Hosting options documented and supported**
 
@@ -1317,7 +1316,6 @@ Workspace packages used: `@integr8/api-client`, `@integr8/core`, `@integr8/form-
 
 | Library                       | Version | Kind        |
 | ----------------------------- | ------- | ----------- |
-| `leaflet`                     | 1.9.4   | runtime     |
 | `@testing-library/dom`        | 10.4.2  | development |
 | `@testing-library/jest-dom`   | 7.0.1   | development |
 | `@testing-library/react`      | 16.3.3  | development |
@@ -1333,7 +1331,6 @@ Workspace packages used: `@integr8/api-client`, `@integr8/core`, `@integr8/form-
 | `typescript`                  | 6.0.3   | development |
 | `vitest`                      | 5.0.3   | development |
 | `@tanstack/react-query`       | 5.102.8 | development |
-| `@types/leaflet`              | 1.9.22  | development |
 | `react`                       | >=19    | peer        |
 | `react-dom`                   | >=19    | peer        |
 | `@tanstack/react-query`       | >=5     | peer        |

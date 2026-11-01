@@ -17,7 +17,9 @@
 
 # syntax=docker/dockerfile:1.7
 
-FROM node:22-bookworm-slim AS base
+# The exact Node release in .nvmrc, in every stage: `pnpm pins:check` fails
+# when they differ, so CI, a developer's machine and the server run the same Node.
+FROM node:22.22.2-bookworm-slim AS base
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 # Husky installs git hooks on `pnpm install`; there is no repository in here.
@@ -43,7 +45,7 @@ RUN pnpm deploy --legacy --filter @integr8/api --prod /out
 # Runtime: the pruned tree, Chromium for PDFs, an unprivileged user, and
 # nothing else.
 # ---------------------------------------------------------------------------
-FROM node:22-bookworm-slim AS runtime
+FROM node:22.22.2-bookworm-slim AS runtime
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOST=0.0.0.0

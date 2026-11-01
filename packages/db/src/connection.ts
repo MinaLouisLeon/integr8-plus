@@ -6,6 +6,7 @@ import {
   loadDatabaseConfig,
   requireAdminConnectionString,
   requireAuthConnectionString,
+  requirePlatformConnectionString,
 } from './config.js';
 import { AuditLogRepository } from './repositories/audit-log.js';
 import { AuthMembershipsRepository } from './repositories/auth-memberships.js';
@@ -42,6 +43,7 @@ import {
   PublicDocumentsLookup,
   WebsiteKeysRepository,
 } from './repositories/documents.js';
+import { HousekeepingRepository } from './repositories/housekeeping.js';
 import { LedgerRepository } from './repositories/ledger.js';
 import { LedgerReportsRepository } from './repositories/ledger-reports.js';
 import { MemberGrantsRepository } from './repositories/member-grants.js';
@@ -275,7 +277,7 @@ export interface PlatformJobQueue {
   fail: (jobId: string, options: FailJobOptions) => Promise<'retrying' | 'dead' | 'lost'>;
 }
 
-/** A connection as the schema owner. RLS does not apply — see {@link getPlatformDataSource}. */
+/** The platform connection. RLS does not apply — see {@link getPlatformDataSource}. */
 export interface PlatformDataSource {
   readonly tenants: TenantsRepository;
   readonly platformUsers: PlatformUsersRepository;
@@ -312,6 +314,8 @@ export interface PlatformDataSource {
   readonly publicDocuments: PublicDocumentsLookup;
   /** Company websites' keys for the document lookup (D10, D11). */
   readonly websiteKeys: WebsiteKeysRepository;
+  /** The worker's nightly delete of spent rate-limit counters, idempotency records and old login attempts. */
+  readonly housekeeping: HousekeepingRepository;
   /** The assistant's plan policies, company overrides, help library, budget and usage report (docs/ai; ADR-0001). */
   readonly ai: AiPlatformRepository;
 }
@@ -345,6 +349,8 @@ interface DatabaseState {
   appDb?: Promise<Kysely<Database>> | undefined;
   adminPool?: pg.Pool | undefined;
   adminDb?: Kysely<Database> | undefined;
+  ownerPool?: pg.Pool | undefined;
+  ownerDb?: Kysely<Database> | undefined;
   authPool?: pg.Pool | undefined;
   authDb?: Promise<Kysely<Database>> | undefined;
   tenants: WarmLruCache<TenantId, TenantDataSource>;
@@ -558,13 +564,16 @@ async function getAppDb(): Promise<Kysely<Database>> {
 }
 
 /**
- * A connection as the schema owner, for the handful of operations that are
- * legitimately outside every tenant: creating a company, reading
- * `platform_users`, migrations, seeds.
+ * The platform connection, for the operations that are legitimately outside
+ * every tenant: creating a company, reading `platform_users`, the job queue,
+ * metering, the scheduled purge.
  *
- * RLS does not apply to the owner. Nothing that serves a tenant request may use
- * this, and P03 puts platform authentication and a mandatory audit entry in
- * front of every caller that does.
+ * In a deployment it connects as `integr8_platform` (`DATABASE_URL_PLATFORM`),
+ * which bypasses RLS but is not a superuser and owns nothing; on a laptop and
+ * in the suites it may fall back to the owner. Either way RLS does not apply.
+ * Nothing that serves a tenant request may use this, and P03 puts platform
+ * authentication and a mandatory audit entry in front of every caller that
+ * does.
  */
 export function getPlatformDataSource(): PlatformDataSource {
   const db = getPlatformDb();
@@ -587,6 +596,7 @@ export function getPlatformDataSource(): PlatformDataSource {
     publicQuotes: new PublicQuotesLookup(db),
     publicDocuments: new PublicDocumentsLookup(db),
     websiteKeys: new WebsiteKeysRepository(db),
+    housekeeping: new HousekeepingRepository(db),
     ai: new AiPlatformRepository(db),
     jobs: {
       claim: (options) => claimJobs(db, options),
@@ -597,16 +607,17 @@ export function getPlatformDataSource(): PlatformDataSource {
 }
 
 /**
- * The owner's Kysely handle. Internal: seeding and the test harness need to
- * write rows no repository offers, and neither is application code.
+ * The platform connection's Kysely handle. Internal: seeding, the readiness
+ * check and the test harness need to write or read rows no repository offers,
+ * and none of them is a tenant request.
  */
 export function getPlatformDb(): Kysely<Database> {
   const current = getState();
   current.adminDb ??= (() => {
     const pool = new Pool({
-      connectionString: requireAdminConnectionString(current.config),
-      // Deliberately small. Owner connections bypass RLS, so the fewer of them
-      // exist at once the better.
+      connectionString: requirePlatformConnectionString(current.config),
+      // Deliberately small. Platform connections bypass RLS, so the fewer of
+      // them exist at once the better.
       max: 2,
       idleTimeoutMillis: current.config.DB_POOL_IDLE_MS,
       connectionTimeoutMillis: current.config.DB_POOL_ACQUIRE_TIMEOUT_MS,
@@ -617,6 +628,30 @@ export function getPlatformDb(): Kysely<Database> {
   })();
 
   return current.adminDb;
+}
+
+/**
+ * The schema owner's Kysely handle, always `DATABASE_URL_ADMIN`.
+ *
+ * For the few things the platform role is deliberately unable to do: the
+ * development seed reset lifts an append-only trigger, which takes ownership.
+ * Never used by the API or the worker, which do not have the owner's password.
+ */
+export function getOwnerDb(): Kysely<Database> {
+  const current = getState();
+  current.ownerDb ??= (() => {
+    const pool = new Pool({
+      connectionString: requireAdminConnectionString(current.config),
+      max: 1,
+      idleTimeoutMillis: current.config.DB_POOL_IDLE_MS,
+      connectionTimeoutMillis: current.config.DB_POOL_ACQUIRE_TIMEOUT_MS,
+      application_name: 'integr8-owner',
+    });
+    current.ownerPool = pool;
+    return new Kysely<Database>({ dialect: new PostgresDialect({ pool }) });
+  })();
+
+  return current.ownerDb;
 }
 
 /**
@@ -675,6 +710,7 @@ export async function closeDatabase(): Promise<void> {
   await current.appDb?.then((db) => db.destroy()).catch(() => undefined);
   await current.authDb?.then((db) => db.destroy()).catch(() => undefined);
   await current.adminDb?.destroy().catch(() => undefined);
+  await current.ownerDb?.destroy().catch(() => undefined);
 }
 
 // ---------------------------------------------------------------------------
@@ -861,5 +897,70 @@ export async function assertAuthRoleIsNarrow(db: Kysely<Database>): Promise<void
 
   if (reasons.length > 0) {
     throw new AuthRoleTooBroadError(reasons);
+  }
+}
+
+export class PlatformRoleTooBroadError extends Error {
+  constructor(reasons: string[]) {
+    super(
+      [
+        'Refusing to start: the platform connection has more power than it needs.',
+        ...reasons.map((reason) => `  - ${reason}`),
+        '',
+        'DATABASE_URL_PLATFORM must connect as integr8_platform, which is neither a',
+        'superuser nor the owner of any table. See docs/database/README.md.',
+      ].join('\n'),
+    );
+    this.name = 'PlatformRoleTooBroadError';
+  }
+}
+
+/**
+ * Proves the platform connection is the limited role, not the owner.
+ *
+ * The API and the worker call this at start-up in production. The platform
+ * pool reads every company's rows by design, so what limits the damage of a
+ * compromised API process is that it cannot also rewrite the schema, lift a
+ * guard trigger, read files through the server or reach another database —
+ * all of which a superuser can. An env file that still names the owner would
+ * quietly give all of that back, so it is checked rather than assumed.
+ */
+export async function assertPlatformRoleIsLimited(): Promise<void> {
+  const db = getPlatformDb();
+  const reasons: string[] = [];
+
+  const identity = await sql<{ current_user: string; is_superuser: boolean }>`
+    select current_user::text as current_user, coalesce(r.rolsuper, false) as is_superuser
+    from pg_roles r
+    where r.rolname = current_user
+  `.execute(db);
+
+  const role = identity.rows[0];
+  if (role === undefined) {
+    throw new PlatformRoleTooBroadError(['could not read the current role from pg_roles']);
+  }
+  if (role.is_superuser) {
+    reasons.push(`role ${role.current_user} is a superuser`);
+  }
+
+  const owned = await sql<{ table_name: string }>`
+    select c.relname::text as table_name
+    from pg_class c
+    join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'public'
+      and c.relkind = 'r'
+      and pg_get_userbyid(c.relowner) = current_user
+    order by c.relname
+    limit 5
+  `.execute(db);
+
+  if (owned.rows.length > 0) {
+    reasons.push(
+      `role ${role.current_user} owns tables in public (${owned.rows.map((row) => row.table_name).join(', ')}, ...)`,
+    );
+  }
+
+  if (reasons.length > 0) {
+    throw new PlatformRoleTooBroadError(reasons);
   }
 }

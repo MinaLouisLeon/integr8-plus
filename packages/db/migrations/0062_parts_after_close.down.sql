@@ -1,0 +1,3 @@
+drop trigger erp_work_order_materials_job_guard on erp_work_order_materials;
+drop function guard_work_order_material_job();
+alter table erp_work_order_materials drop column recorded_after_close;

@@ -207,7 +207,7 @@ export const legalEn = {
           '- Cloudflare R2 stores files, such as photos, signatures, documents and exports, in separate storage for each company.\n' +
           '- Resend sends our emails: it receives each recipient’s address and the message.\n' +
           '- Sentry receives reports of software errors. We have switched off the sending of personal details with them, such as who was signed in, cookies and what was typed.\n' +
-          '- Mapbox turns site addresses into map positions, and may provide the maps shown in the apps.\n' +
+          '- Mapbox turns site addresses into map positions. The apps show no map of their own: “Open in Google Maps” opens Google’s site with a position, only when somebody clicks it.\n' +
           '- Expo delivers notifications to phones, through Apple and Google, and delivers updates to the phone app.\n' +
           '- Stripe takes card payments, only for companies that pay by card on the website. Card details go to Stripe directly; we never see them.\n' +
           '- An AI model provider, currently OpenAI, receives the questions put to the assistant, only for a company whose assistant answers from a model. Company records are sent with a question only if Integr8 has allowed it for that company, which it does only at the company’s request.\n' +
@@ -315,7 +315,7 @@ export const legalEn = {
           '- Cloudflare R2: storing files;\n' +
           '- Resend: sending email;\n' +
           '- Sentry: error reports, with personal details switched off;\n' +
-          '- Mapbox: turning site addresses into map positions, and maps;\n' +
+          '- Mapbox: turning site addresses into map positions;\n' +
           '- Expo: delivering notifications and app updates to phones;\n' +
           '- Stripe: card payments, only for companies that pay by card on the website;\n' +
           '- an AI model provider, currently OpenAI: only when the company’s assistant answers from a model, and with company records only if the company asked Integr8 to allow it.\n\n' +

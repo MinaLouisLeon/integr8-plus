@@ -1,6 +1,6 @@
-import { closeDatabase } from '@integr8/db';
+import { assertPlatformRoleIsLimited, closeDatabase } from '@integr8/db';
 import { buildServices } from '../composition.js';
-import { assertProductionReady, loadApiConfig } from '../config.js';
+import { assertProductionReady, loadApiConfig, startupWarnings } from '../config.js';
 import { createLogger } from '../http/logger.js';
 import { flushSentry, initialiseSentry } from '../observability/sentry.js';
 import { runMediaMaintenance } from '../media/maintenance.js';
@@ -9,11 +9,16 @@ import { runDunning } from '../billing/dunning.js';
 import { runAiReconciliation } from '../ai/reconcile.js';
 import { runSignupExpiry } from '../signup/expire.js';
 import { runQualificationExpiry } from '../qualifications/expiry.js';
-import { runDeadlineAlerts, runMaintenancePlans } from '../maintenance/tasks.js';
+import {
+  runDeadlineAlerts,
+  runMaintenancePlans,
+  runMaintenanceRetries,
+} from '../maintenance/tasks.js';
 import { purgeDueTenants } from '../platform/purge.js';
 import { runSyncMaintenance } from '../sync/maintenance.js';
 import { buildJobHandlers } from './handlers.js';
 import { runMaintenanceSteps } from './maintenance-steps.js';
+import { runTableHousekeeping } from './table-housekeeping.js';
 import { Worker } from './worker.js';
 
 /**
@@ -32,6 +37,11 @@ async function main(): Promise<void> {
   // companies could not reach their files at all.
   assertProductionReady(config);
   initialiseSentry(config);
+  // The platform connection must be integr8_platform, not the owner: an env
+  // file that still names postgres would give this process a superuser.
+  if (config.APP_ENV === 'production') {
+    await assertPlatformRoleIsLimited();
+  }
 
   const logger = createLogger({
     level: config.APP_ENV === 'test' ? 'error' : 'info',
@@ -57,6 +67,10 @@ async function main(): Promise<void> {
   // E-invoicing's settings never stop the worker either; what is wrong is said once.
   for (const problem of services.eta.problems ?? []) {
     logger.warn(`E-invoicing: ${problem}`);
+  }
+  // Metering runs here, so this is where a missing analytics token matters.
+  for (const warning of startupWarnings(config)) {
+    logger.warn(warning);
   }
 
   // Media housekeeping on a timer, alongside the queue. Several workers running
@@ -208,7 +222,10 @@ async function main(): Promise<void> {
               push: services.push,
             });
             if (
-              maintenance.occurrences + maintenance.renewalAlerts + maintenance.failures.length >
+              maintenance.occurrences +
+                maintenance.renewalAlerts +
+                maintenance.failures.length +
+                maintenance.planFailures.length >
               0
             ) {
               logger.info('Maintenance plans finished', {
@@ -218,6 +235,28 @@ async function main(): Promise<void> {
                 skipped: maintenance.skipped,
                 renewalAlerts: maintenance.renewalAlerts,
                 failures: maintenance.failures.length,
+                planFailures: maintenance.planFailures.length,
+              });
+            }
+          },
+        },
+        {
+          // A plan that failed is tried again alone on every tick, not the next
+          // day, until it succeeds or has failed five times in a row (0063).
+          name: 'Maintenance plan retries',
+          run: async () => {
+            const retried = await runMaintenanceRetries({
+              config,
+              logger,
+              workerId: worker.id,
+            });
+            if (retried.occurrences + retried.planFailures.length + retried.failures.length > 0) {
+              logger.info('Maintenance plan retries finished', {
+                companies: retried.companies,
+                jobsCreated: retried.jobsCreated,
+                occurrences: retried.occurrences,
+                planFailures: retried.planFailures.length,
+                failures: retried.failures.length,
               });
             }
           },
@@ -265,6 +304,15 @@ async function main(): Promise<void> {
                 failures: assistant.failures.length,
               });
             }
+          },
+        },
+        {
+          // Rate-limit counters, spent idempotency records and old login
+          // attempts, which nothing else deletes. Once a night, same
+          // turn-claiming; it logs only when it removed something.
+          name: 'Table housekeeping',
+          run: async () => {
+            await runTableHousekeeping({ logger, workerId: worker.id });
           },
         },
       ],

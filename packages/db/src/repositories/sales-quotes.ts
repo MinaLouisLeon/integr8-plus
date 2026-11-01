@@ -145,12 +145,17 @@ export interface QuoteSnapshot {
   contactPhone: string | null;
 }
 
-/** Each line's figures and the document's, in one SQL expression set. */
+/**
+ * Each line's figures and the document's, in one SQL expression set. Each
+ * figure is rounded to the line's own scale (0064): its currency's minor unit
+ * for lines written since, four places for those written before, so a
+ * document issued before keeps its totals exactly.
+ */
 export const LINE_MATH = sql`
-  round(l.quantity * l.unit_price, 4) as gross,
-  round(round(l.quantity * l.unit_price, 4) * l.discount_bp / 10000, 4) as discount,
-  round(round(l.quantity * l.unit_price, 4) - round(round(l.quantity * l.unit_price, 4) * l.discount_bp / 10000, 4), 4) as net,
-  round((round(l.quantity * l.unit_price, 4) - round(round(l.quantity * l.unit_price, 4) * l.discount_bp / 10000, 4)) * l.tax_rate_bp / 10000, 4) as tax
+  round(l.quantity * l.unit_price, l.money_scale) as gross,
+  round(round(l.quantity * l.unit_price, l.money_scale) * l.discount_bp / 10000, l.money_scale) as discount,
+  round(round(l.quantity * l.unit_price, l.money_scale) - round(round(l.quantity * l.unit_price, l.money_scale) * l.discount_bp / 10000, l.money_scale), l.money_scale) as net,
+  round((round(l.quantity * l.unit_price, l.money_scale) - round(round(l.quantity * l.unit_price, l.money_scale) * l.discount_bp / 10000, l.money_scale)) * l.tax_rate_bp / 10000, l.money_scale) as tax
 `;
 
 export class SalesQuotesRepository extends TenantScopedRepository {

@@ -625,6 +625,8 @@ export interface SubmissionsTable {
     SubmitLocation | null | undefined,
     SubmitLocation | null
   >;
+  /** Submitted from a phone after its job closed (0061). Written only by that submit. */
+  submitted_after_close: Generated<boolean>;
   created_at: CreatedAt;
   updated_at: UpdatedAt;
 }
@@ -666,6 +668,17 @@ export interface SubmissionValuesTable {
   value_timestamp: ColumnType<Date | null, never, never>;
   value_boolean: ColumnType<boolean | null, never, never>;
   submitted_at: ColumnType<Date, never, never>;
+}
+
+/** Where a submission names a file: its answers now, or its history (0068). */
+export type SubmissionFileUseSource = 'answers' | 'history';
+
+/** Which files each submission names (0068). Written only by trigger; the runtime role may read it. */
+export interface SubmissionFileUsesTable {
+  tenant_id: ColumnType<string, never, never>;
+  file_id: ColumnType<string, never, never>;
+  submission_id: ColumnType<string, never, never>;
+  source: ColumnType<SubmissionFileUseSource, never, never>;
 }
 
 export const MEDIA_CATEGORIES = ['image', 'video', 'document', 'other'] as const;
@@ -988,6 +1001,8 @@ export const WORK_ORDER_EVENT_KINDS = [
   'maintenance_planned',
   'coverage_changed',
   'deadline_missed',
+  // A form submitted from a phone after the job closed (0061).
+  'form_submitted_after_close',
 ] as const;
 export type WorkOrderEventKind = (typeof WORK_ORDER_EVENT_KINDS)[number];
 
@@ -1417,6 +1432,8 @@ export interface ErpWorkOrderMaterialsTable {
   asset_id: Generated<string | null>;
   /** The serial numbers or batches the part came from, as asked for (0042). */
   lots: Jsonb<MaterialLot[] | null>;
+  /** Recorded on a phone before the job closed, synced after (0062). Set at insert. */
+  recorded_after_close: Generated<boolean>;
 }
 
 /** A serial number or batch a part came from: the lot and how much of it. */
@@ -1489,6 +1506,8 @@ export interface CrmQuoteLinesTable {
   unit_price: string;
   discount_bp: Generated<number>;
   tax_rate_bp: Generated<number>;
+  /** Places each figure is rounded to: the currency's minor unit, 4 before 0064. Set by trigger. */
+  money_scale: Generated<number>;
 }
 
 export interface ErpSalesOrdersTable {
@@ -1534,6 +1553,8 @@ export interface ErpSalesOrderLinesTable {
   quantity_reserved: Generated<string>;
   reserve_location_id: string | null;
   quantity_fulfilled: Generated<string>;
+  /** Places each figure is rounded to: the currency's minor unit, 4 before 0064. Set by trigger. */
+  money_scale: Generated<number>;
 }
 
 export interface ErpSalesOrderWorkOrdersTable {
@@ -1612,6 +1633,8 @@ export interface ErpInvoiceLinesTable {
   tax_rate_bp: Generated<number>;
   sales_order_line_id: string | null;
   work_order_material_id: string | null;
+  /** Places each figure is rounded to: the currency's minor unit, 4 before 0064. Set by trigger. */
+  money_scale: Generated<number>;
 }
 
 export interface ErpCreditNotesTable {
@@ -1643,6 +1666,8 @@ export interface ErpCreditNoteLinesTable {
   unit_price: string;
   discount_bp: Generated<number>;
   tax_rate_bp: Generated<number>;
+  /** Places each figure is rounded to: the currency's minor unit, 4 before 0064. Set by trigger. */
+  money_scale: Generated<number>;
 }
 
 export interface ErpPaymentReceiptsTable {
@@ -1659,6 +1684,18 @@ export interface ErpPaymentReceiptsTable {
   notes: string | null;
   recorded_by: string;
   recorded_at: CreatedAt;
+}
+
+/** A payment receipt taken back (0064). Insert-only; one per receipt. */
+export interface ErpPaymentReversalsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  receipt_id: string;
+  reason: string;
+  /** The company's day the ledger posts it. */
+  reversed_on: string;
+  reversed_by: string;
+  reversed_at: CreatedAt;
 }
 
 export interface ErpPaymentAllocationsTable {
@@ -2545,6 +2582,10 @@ export interface MaintenancePlansTable {
   updated_at: UpdatedAt;
   ended_at: Date | null;
   ended_by: string | null;
+  /** The worker's last failure on this plan, cleared on success or an edit (0063). */
+  last_error: string | null;
+  last_error_at: Date | null;
+  failure_count: Generated<number>;
 }
 
 /** Each due date a plan produced (0053). Append-only. */
@@ -2712,6 +2753,8 @@ export interface PushDevicesTable {
   last_registered_at: Generated<Date>;
   disabled_at: Date | null;
   disabled_reason: PushDisabledReason | null;
+  /** The language the phone reads notifications in (0066); null when it has not said. */
+  locale: 'en' | 'ar' | null;
 }
 
 export interface SavedViewsTable {
@@ -3256,6 +3299,8 @@ export interface AiHelpArticlesTable {
 // ---------------------------------------------------------------------------
 
 export type DocumentStatus = 'pending' | 'ready' | 'failed';
+/** Made from a submission with a template, or a PDF a person uploaded (0067). */
+export type DocumentSource = 'generated' | 'uploaded';
 export type DocumentLookupRole = 'key' | 'confirm';
 
 export interface DocumentTemplatesTable {
@@ -3277,10 +3322,18 @@ export interface DocumentTemplatesTable {
 export interface DocumentsTable {
   id: string;
   tenant_id: string;
-  template_id: string;
-  template_revision: number;
-  submission_id: string;
-  form_id: string;
+  /** Null for an uploaded document (0067); set for every generated one. */
+  template_id: string | null;
+  template_revision: number | null;
+  submission_id: string | null;
+  form_id: string | null;
+  source: Generated<DocumentSource>;
+  /** An uploaded document's reference number (0067). */
+  reference: string | null;
+  /** The customer an uploaded document is for (0067). */
+  customer_id: string | null;
+  /** Whether its QR link and the company website may show it (0067). */
+  shareable: Generated<boolean>;
   title: string;
   /** The QR link's key (D7). */
   public_code: string;
@@ -3521,6 +3574,7 @@ export interface Database {
   submissions: SubmissionsTable;
   submission_events: SubmissionEventsTable;
   submission_values: SubmissionValuesTable;
+  submission_file_uses: SubmissionFileUsesTable;
   tenant_storage: TenantStorageTable;
   upload_intents: UploadIntentsTable;
   files: FilesTable;
@@ -3574,6 +3628,7 @@ export interface Database {
   erp_credit_note_lines: ErpCreditNoteLinesTable;
   erp_payment_receipts: ErpPaymentReceiptsTable;
   erp_payment_allocations: ErpPaymentAllocationsTable;
+  erp_payment_reversals: ErpPaymentReversalsTable;
   erp_asset_settings: ErpAssetSettingsTable;
   asset_reference_counters: AssetReferenceCountersTable;
   erp_assets: ErpAssetsTable;
@@ -3784,6 +3839,9 @@ export const SECURITY_DEFINER_FUNCTIONS = [
   // Writes submission history and reportable values, which the runtime role
   // cannot write itself; see 0008.
   'record_submission_change',
+  // Keeps which files each submission names, which the runtime role can only
+  // read; see 0068.
+  'record_submission_file_uses',
   // Keeps the storage usage rollup, which the runtime role can only read; see 0009.
   'record_file_usage',
   // Hands out work order references from a counter the runtime role cannot write; see 0010.
@@ -3804,6 +3862,8 @@ export const SECURITY_DEFINER_FUNCTIONS = [
   'record_maintenance_occurrence',
   'record_coverage_change',
   'record_deadline_miss',
+  // Writes a job's history when a phone's form arrives after the job closed; see 0061.
+  'record_submitted_after_close',
   // Write and prune the sync change log, which the runtime role can only read; see 0011.
   'touch_sync',
   'prune_sync_touches',
@@ -3826,6 +3886,9 @@ export const SECURITY_DEFINER_FUNCTIONS = [
   // decided, which the runtime role may not do itself; see 0030.
   'assign_finance_reference',
   'erp_payment_allocations_guard',
+  // Removes a reversed receipt's allocations and queues the opposite ledger
+  // entry, neither of which the runtime role may do itself; see 0064.
+  'erp_payment_reversals_apply',
   // Numbers assets from a counter the runtime role cannot write; see 0031.
   'assign_asset_reference',
   // Numbers journals when posted from a counter the runtime role cannot write; see 0033.
@@ -3893,6 +3956,7 @@ const TENANT_SCOPED: Readonly<Record<TenantScopedTable, true>> = {
   submissions: true,
   submission_events: true,
   submission_values: true,
+  submission_file_uses: true,
   tenant_storage: true,
   upload_intents: true,
   files: true,
@@ -3937,6 +4001,7 @@ const TENANT_SCOPED: Readonly<Record<TenantScopedTable, true>> = {
   erp_credit_note_lines: true,
   erp_payment_receipts: true,
   erp_payment_allocations: true,
+  erp_payment_reversals: true,
   erp_asset_settings: true,
   asset_reference_counters: true,
   erp_assets: true,

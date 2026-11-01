@@ -154,3 +154,55 @@ startup log and on the document, and every other feature runs as before.
   document's fields with it, and gives five-minute links to view and download
   the PDF besides the stable `/d/<code>` page. Keys look like `i8wk_…` and are
   limited to 60 lookups a minute each by default.
+
+## Addendum: website keys and the website data API (31 October 2026)
+
+- **D10 widened.** The same key now also reads one job, one issued quote, one
+  issued invoice or one document's links by id (`/v1/website/jobs|quotes|invoices|files/:id`),
+  never a list. Each capability needs Integr8's grant (`website_files`,
+  `website_jobs`, `website_quotes`, `website_invoices`) and the company's own
+  switch, and quotes, invoices and files their module; the document lookup needs
+  the `website_files` grant and switch too. Drafts are never shown, another
+  company's id is not found, and every route shares the key's rate limit.
+- **D11 restored.** For a while any active staff member could create, enable,
+  disable or revoke a key, and only deleting was kept for the staff manager.
+  That is undone: creating, enabling, disabling, revoking and deleting are all
+  for a staff manager (`requireStaffManager`), as this decision said. Any staff
+  member may still list keys and see their use.
+- Proven by `website-data.integration.test.ts` (every route: missing, malformed,
+  invented, disabled and revoked keys; each switch on its own; drafts; another
+  company's key; the rate limit; who may manage keys) and the website section
+  of `documents.integration.test.ts` (the file route and the lookup's switches).
+
+## Addendum: uploaded documents, sharing and the separate website switches (1 November 2026)
+
+Decided by the owner (Low item 9), built for release 1.2.4.
+
+- **Uploaded PDFs join the register.** A company's owners and admins
+  (`document.upload`, a new permission; custom roles may add it) upload a PDF
+  it already has: PDF only, checked by its bytes, at most 20 MB, with a title, a
+  reference number and optionally a customer. It is stored through the media
+  path like any upload and linked to its document. Migration 0067 makes the
+  template, revision, submission and form columns nullable for these
+  (`source = 'uploaded'`), with a check that keeps every generated document
+  exactly as it was. The reference becomes the document's lookup key field and
+  the customer's name its confirming field, so D10 needs nothing new to find
+  one. An uploaded document is ready at once; nothing is printed.
+- **D7 and D10 gain a sharing switch.** `shareable` on every document: off, the
+  QR code's link answers 404 like an unknown code and the website lookup and
+  `/v1/website/files/:id` do not find it. New documents, made or uploaded,
+  start off, so nothing becomes public by being made; existing documents stay
+  on (their codes are printed). `POST /v1/documents/:id/share`, with
+  `document.upload`, turns it, and each change is in the audit log.
+- **The lookup by reference.** `/v1/website/documents/lookup` also takes
+  `reference` and `customer`, matched against whichever field is each
+  document's key and confirming field; `key` and `confirm` keep working.
+- **The website switches stay four, each separate, all off by default** on
+  both sides (Integr8's grant and the company's switch): documents, jobs,
+  quotes and invoices. Companies that had one on keep it. The flags' own
+  descriptions now say what each opens.
+- Proven in `documents.integration.test.ts` (uploads: permission, a non-PDF by
+  content and by type, someone else's file, 20 MB, the register, the file, the
+  public page; sharing: hidden until shared, audited; the lookup by reference
+  with and without a customer, and nothing unshared) and
+  `website-data.integration.test.ts` (every switch off for a new company).

@@ -11,20 +11,32 @@ import {
   Loading,
   useRowMenu,
 } from '../ui.js';
-import { documentState, DocumentStateBadge, localized, useOpenDocument } from './document-parts.js';
+import {
+  DocumentMarks,
+  documentState,
+  DocumentStateBadge,
+  localized,
+  useDocumentAccess,
+  useOpenDocument,
+} from './document-parts.js';
+import { UploadDocumentDialog } from './document-upload.js';
 
 const STATES: readonly DocumentState[] = ['active', 'expired', 'pending', 'failed'];
 
 /**
  * The company's documents (docs/documents ADR-0001 D8): every PDF made from a
- * submission, newest first, found by any of its fields or its title, or by
- * one field, and filtered by whether its link opens.
+ * submission and every PDF uploaded (0067), newest first, found by any of its
+ * fields or its title, or by one field, and filtered by whether its link
+ * opens. Uploaded and unshared documents are marked; those who may upload see
+ * the button that does it.
  */
 export function DocumentListScreen() {
   const { t } = useTranslation();
   const { client, navigate, paths, locale } = useOperations();
   const rowMenu = useRowMenu();
   const open = useOpenDocument();
+  const access = useDocumentAccess();
+  const [uploading, setUploading] = useState(false);
   const [text, setText] = useState('');
   const [field, setField] = useState('');
   const [state, setState] = useState<DocumentState | ''>('');
@@ -75,10 +87,26 @@ export function DocumentListScreen() {
   return (
     <div className="flex flex-col gap-6 text-start">
       <DashboardBackLink />
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold text-content">{t('documents.title')}</h1>
-        <p className="text-sm text-content-muted">{t('documents.intro')}</p>
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-semibold text-content">{t('documents.title')}</h1>
+          <p className="text-sm text-content-muted">{t('documents.intro')}</p>
+        </div>
+        {access.upload ? (
+          <button type="button" className={buttonClass.primary} onClick={() => setUploading(true)}>
+            {t('documents.upload.action')}
+          </button>
+        ) : null}
       </header>
+      {uploading ? (
+        <UploadDocumentDialog
+          onClose={() => setUploading(false)}
+          onUploaded={(document) => {
+            setUploading(false);
+            navigate(paths.document(document.id));
+          }}
+        />
+      ) : null}
 
       <form
         role="search"
@@ -193,12 +221,16 @@ export function DocumentListScreen() {
                         <span dir="auto">{document.title}</span>
                       </a>
                       <DocumentStateBadge state={current} />
+                      <DocumentMarks document={document} />
                     </span>
                     <span className="truncate text-sm text-content-muted">
-                      {t('documents.made', {
-                        date: formatDateTime(document.createdAt, { locale }),
-                        name: document.createdBy.name,
-                      })}
+                      {t(
+                        document.source === 'uploaded' ? 'documents.upload.made' : 'documents.made',
+                        {
+                          date: formatDateTime(document.createdAt, { locale }),
+                          name: document.createdBy.name,
+                        },
+                      )}
                     </span>
                   </div>
                   <dl className="flex flex-wrap gap-x-4 gap-y-1 text-sm">

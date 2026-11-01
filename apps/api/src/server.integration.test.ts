@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildServices } from './composition.js';
 import { loadApiConfig } from './config.js';
+import { legacyFingerprint } from './http/idempotency.js';
 import { createLogger } from './http/logger.js';
 import { allRoutes } from './routes/index.js';
 import { buildServer } from './server.js';
@@ -200,6 +201,12 @@ describe('an out-of-date client', () => {
     // The minimum is in the details as data, so a client can act on it without
     // parsing the sentence.
     expect(body.error.details?.some((detail) => detail.message === '1.0.0')).toBe(true);
+    // And so is where to update, which the apps open from an Update button.
+    expect(body.error.details).toContainEqual({
+      field: 'update',
+      code: 'update_url',
+      message: 'https://integr8.example/download',
+    });
   });
 
   it('is told before authentication, so an expired token is not the confusing part', async () => {
@@ -272,6 +279,41 @@ describe('idempotency', () => {
     // And exactly one invitation exists.
     const pending = await withTenant(tenantId, (tx) => tx.invitations.listPending());
     expect(pending.filter((invitation) => invitation.email === email)).toHaveLength(1);
+  });
+
+  it('still replays a record the previous release fingerprinted', async () => {
+    // A retry that crosses the deploy which keyed the fingerprints: its record
+    // holds the old plain hash, and it must replay rather than be refused as a
+    // different request.
+    const token = await signIn(owner);
+    const key = randomUUID();
+    const payload = { email: unique('legacy'), role: 'viewer' };
+    await withTenant(tenantId, async (tx) => {
+      await tx.idempotency.claim({
+        idempotencyKey: key,
+        userId: owner.userId,
+        method: 'POST',
+        path: '/v1/members/invitations',
+        requestFingerprint: legacyFingerprint('POST', '/v1/members/invitations', payload),
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      });
+      await tx.idempotency.complete(key, { status: 201, body: { id: 'recorded-before' } });
+    });
+
+    const retried = await app.inject({
+      method: 'POST',
+      url: '/v1/members/invitations',
+      headers: {
+        authorization: `Bearer ${token}`,
+        'x-client-version': '1.0.0',
+        'idempotency-key': key,
+      },
+      payload,
+    });
+
+    expect(retried.statusCode, retried.body).toBe(201);
+    expect(retried.headers['idempotent-replay']).toBe('true');
+    expect(JSON.parse(retried.body)).toEqual({ id: 'recorded-before' });
   });
 
   it('creates two invitations when two different keys are used', async () => {
@@ -577,7 +619,15 @@ describe('sessions', () => {
     expect((JSON.parse(revoked.body) as { revoked: boolean }).revoked).toBe(true);
 
     // The access token is still cryptographically valid for another quarter of
-    // an hour; refreshing is what stops.
+    // an hour, and is refused anyway: its session has ended.
+    const after = await app.inject({
+      method: 'GET',
+      url: '/v1/sessions',
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(after.statusCode).toBe(401);
+    expect((JSON.parse(after.body) as { error: { code: string } }).error.code).toBe('unauthorised');
+
     const refresh = await app.inject({
       method: 'POST',
       url: '/v1/auth/refresh',

@@ -13,7 +13,9 @@
 
 # syntax=docker/dockerfile:1.7
 
-FROM node:22-bookworm-slim AS base
+# The exact Node release in .nvmrc, in every stage: `pnpm pins:check` fails
+# when they differ, so CI, a developer's machine and the server run the same Node.
+FROM node:22.22.2-bookworm-slim AS base
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 ENV HUSKY=0
@@ -42,7 +44,7 @@ RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
 # only the files it traced, which is what the runtime stage copies.
 RUN pnpm turbo run build --filter=@integr8/web...
 
-FROM node:22-bookworm-slim AS runtime
+FROM node:22.22.2-bookworm-slim AS runtime
 ENV NODE_ENV=production
 ENV PORT=3001
 ENV HOSTNAME=0.0.0.0

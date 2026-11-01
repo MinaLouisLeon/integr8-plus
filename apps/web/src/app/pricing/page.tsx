@@ -4,7 +4,8 @@ import { ApiRequestError } from '@integr8/api-client';
 import { useTranslation } from '@integr8/i18n';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-import { MarketingShell } from '~/components/marketing-shell';
+import { MarketingShell, PageIntro, pillClass } from '~/components/marketing-shell';
+import { Magnetic } from '~/components/site/motion';
 import { getStartedHref, signupMode } from '~/lib/signup';
 import { ErrorState, LoadingState } from '~/components/ui';
 import { formatBytes } from '~/lib/platform-format';
@@ -24,7 +25,20 @@ import { apiClient } from '~/lib/session';
  * A plan with no price at the provider is shown as "talk to us" rather than
  * hidden or offered: hiding it makes the page lie about what exists, and
  * offering it sends somebody to a checkout that refuses them.
+ *
+ * Worn in the Integr8 Media look (Low 3): what every plan includes and which
+ * modules are switched on per company are words, in `site.pricing.*`; the
+ * numbers stay the API's.
  */
+
+const INCLUDED = ['apps', 'offline', 'languages', 'setup', 'export'] as const;
+const PLAN_GLOW = [
+  'var(--site-violet)',
+  'var(--site-lime)',
+  'var(--site-cyan)',
+  'var(--site-pink)',
+];
+
 export default function PricingPage() {
   const { t, i18n } = useTranslation();
 
@@ -38,13 +52,14 @@ export default function PricingPage() {
 
   return (
     <MarketingShell step="pricing.viewed">
-      <header className="flex flex-col gap-2 pb-8">
-        <h1 className="text-3xl font-bold tracking-tight text-content">
-          {t('marketing.pricing.title')}
-        </h1>
-        <p className="text-content-muted">{t('marketing.pricing.subtitle')}</p>
-        <p className="text-sm text-content-muted">{t('marketing.pricing.honest')}</p>
-      </header>
+      <PageIntro
+        eyebrow={t('site.pricing.eyebrow')}
+        title={t('site.pricing.title')}
+        gradient={t('site.pricing.titleGradient')}
+        subtitle={t('marketing.pricing.subtitle')}
+      >
+        <p className="mt-3 max-w-2xl text-sm text-site-muted">{t('marketing.pricing.honest')}</p>
+      </PageIntro>
 
       {plans.isPending ? (
         <LoadingState />
@@ -54,15 +69,26 @@ export default function PricingPage() {
           onRetry={() => void plans.refetch()}
         />
       ) : (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {plans.data.items.map((plan) => (
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {plans.data.items.map((plan, index) => (
             <article
               key={plan.plan}
-              className="flex flex-col gap-4 rounded-lg border border-border-subtle bg-surface p-6"
+              className="relative flex flex-col gap-5 overflow-hidden rounded-3xl border border-site-line bg-site-soft p-7"
             >
-              <h2 className="text-lg font-semibold text-content">{planLabel(t, plan.plan)}</h2>
+              <div
+                aria-hidden="true"
+                className="site-glow size-40 opacity-20"
+                style={{
+                  background: PLAN_GLOW[index % PLAN_GLOW.length],
+                  insetBlockStart: '-3rem',
+                  insetInlineEnd: '-3rem',
+                }}
+              />
+              <h2 className="relative font-mono text-xs tracking-[0.2em] text-site-muted uppercase rtl:tracking-normal">
+                {planLabel(t, plan.plan)}
+              </h2>
 
-              <p className="text-2xl font-bold text-content">
+              <p className="relative font-display text-3xl font-semibold text-site-fg">
                 {plan.priceCents === null ? (
                   t('marketing.pricing.free')
                 ) : (
@@ -72,7 +98,7 @@ export default function PricingPage() {
                       currency: plan.currency ?? 'GBP',
                       maximumFractionDigits: 0,
                     }).format(plan.priceCents / 100)}
-                    <span className="text-sm font-normal text-content-muted">
+                    <span className="font-sans text-sm font-normal text-site-muted">
                       {' '}
                       {t('marketing.pricing.perMonth')}
                     </span>
@@ -80,7 +106,7 @@ export default function PricingPage() {
                 )}
               </p>
 
-              <ul className="flex flex-1 flex-col gap-1 text-sm text-content-muted">
+              <ul className="relative flex flex-1 flex-col gap-2 border-t border-site-line pt-5 text-sm text-site-muted">
                 <li>
                   {plan.seats === null
                     ? t('marketing.pricing.seatsUncapped')
@@ -104,19 +130,21 @@ export default function PricingPage() {
               </ul>
 
               {plan.purchasable ? (
-                <Link
-                  href={getStartedHref()}
-                  className="inline-flex justify-center rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-hover"
-                >
-                  {signupMode() === 'open'
-                    ? t('marketing.pricing.choose', { plan: plan.plan })
-                    : t('marketing.pricing.contact')}
-                </Link>
+                <Magnetic className="relative">
+                  <Link
+                    href={getStartedHref()}
+                    className={pillClass(index === 1 ? 'lime' : 'outline', 'sm')}
+                  >
+                    {signupMode() === 'open'
+                      ? t('marketing.pricing.choose', { plan: plan.plan })
+                      : t('marketing.pricing.contact')}
+                  </Link>
+                </Magnetic>
               ) : (
                 // Not hidden and not offered. Hiding it would make the page lie
                 // about what exists; offering it would send somebody to a
                 // checkout that refuses them.
-                <span className="text-sm text-content-muted">
+                <span className="relative text-sm text-site-muted">
                   {t('marketing.pricing.notPurchasable')}
                 </span>
               )}
@@ -124,6 +152,23 @@ export default function PricingPage() {
           ))}
         </div>
       )}
+
+      <section className="mt-16 grid gap-10 rounded-3xl border border-site-line p-7 sm:p-10 lg:grid-cols-[1fr_1.2fr]">
+        <div>
+          <h2 className="font-display text-2xl font-semibold">{t('site.pricing.included')}</h2>
+          <ul className="mt-6 flex flex-col gap-3">
+            {INCLUDED.map((item) => (
+              <li key={item} className="flex items-start gap-3 text-site-fg">
+                <span aria-hidden="true" className="mt-2 size-1.5 shrink-0 rounded-full bg-lime" />
+                {t(`site.pricing.includedItems.${item}`)}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <p className="self-end text-sm leading-relaxed text-site-muted">
+          {t('site.pricing.modulesNote')}
+        </p>
+      </section>
     </MarketingShell>
   );
 }

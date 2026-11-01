@@ -49,6 +49,7 @@ export const apiErrorsAr: Catalogue<typeof apiErrorsEn> = {
   already_submitted: 'أُرسل هذا النموذج من مكان آخر بينما كنت غير متصل. لم تُرسل إجاباتك.',
   answers_changed: 'تغيّرت هذه الإجابات على جهاز آخر بينما كنت غير متصل. اختر ما تحتفظ به.',
   app_icon_not_found: 'يجب أن تكون أيقونة التطبيق صورة رفعتها هذه الشركة. ارفعها من جديد.',
+  apps_not_enabled: 'تطبيقات هذه الشركة غير مفعّلة. فعّل «بناء تطبيقات لهذه الشركة» واحفظ أولًا.',
   asset_not_at_site: 'هذا الأصل ليس في موقع المهمة. اختر أحد أصول ذلك الموقع.',
   asset_not_on_work_order: 'هذا الأصل ليس من أصول المهمة. اربطه بالمهمة أولًا.',
   asset_retired: 'هذا الأصل خارج الخدمة. لا يُسجَّل له عمل جديد ولا حالة ولا نموذج.',
@@ -66,6 +67,8 @@ export const apiErrorsAr: Catalogue<typeof apiErrorsEn> = {
     invalid_token: 'انتهت جلستك. سجّل الدخول مرة أخرى.',
     invitation_invalid:
       'لم تعد هذه الدعوة صالحة؛ ربما استُخدمت أو سُحبت أو انتهت صلاحيتها. اطلب دعوة جديدة.',
+    invitation_password_required:
+      'اختر كلمة مرور لقبول هذه الدعوة. إن لم يكن في هذا التطبيق مكان لكلمة المرور فحدِّث التطبيق أو اقبل الدعوة من الموقع.',
     not_a_member: 'حسابك ليس عضوًا في هذه الشركة. اطلب من مالكها دعوتك.',
     refresh_token_reuse: 'أُنهيت هذه الجلسة حفاظًا على أمان حسابك. سجّل الدخول مرة أخرى.',
     session_revoked: 'سُجّل خروجك من هذه الجلسة. سجّل الدخول مرة أخرى.',
@@ -131,6 +134,7 @@ export const apiErrorsAr: Catalogue<typeof apiErrorsEn> = {
   document_fields_invalid: 'بعض حقول المستند ناقصة أو أطول من المسموح. راجع الحقول المحددة أدناه.',
   document_link_unavailable:
     'لا يمكن إنشاء المستندات بعد: لا يوجد لهذا الخادم عنوان ويب لرمز QR. تواصل مع Integr8.',
+  document_not_pdf: 'لا يمكن رفع مستند إلا بصيغة PDF. اختر ملف PDF.',
   document_template_archived: 'هذا القالب مؤرشف. اختر قالبًا آخر.',
   document_template_changed: 'حفظ شخص آخر هذا القالب في الأثناء. افتحه من جديد لترى تغييراته.',
   document_template_image_unusable:
@@ -138,6 +142,7 @@ export const apiErrorsAr: Catalogue<typeof apiErrorsEn> = {
   document_template_invalid: 'في القالب مشكلات، كل منها مذكور أدناه.',
   document_template_problem: 'هذا الجزء من القالب يحتاج إلى تصحيح.',
   document_template_wrong_form: 'هذا القالب يخص نموذجًا آخر.',
+  document_too_large: 'حجم ملف PDF هذا أكبر من 20 ميجابايت. ارفع ملفًا أصغر.',
   double_booked: 'هذا الشخص مكلَّف بمهمة أخرى في ذلك الوقت.',
   draft_changed: 'حُفظت المسودة مرة أخرى منذ راجعتها. راجعها من جديد قبل النشر.',
   draft_conflict:
@@ -195,6 +200,8 @@ export const apiErrorsAr: Catalogue<typeof apiErrorsEn> = {
   form_unknown: 'اختر نموذجًا منشورًا.',
   form_version_unavailable:
     'لم يعد هذا الإصدار من النموذج متاحًا. عبّئه من جديد على الإصدار الحالي.',
+  hr_access_owner_only:
+    'المالك وحده يستطيع فعل ذلك لشخص لديه صلاحية الموارد البشرية أو سيحصل عليها. يمكنك إيقافه في حالة الطوارئ، وسيُبلَّغ المالك.',
   hr_key_missing:
     'لا يمكن حفظ أرقام الهوية والتأمين والحسابات البنكية أو عرضها حتى يُضبط مفتاح بيانات الموارد البشرية على الخادم. اطلب من Integr8 ضبطه.',
   idempotency_key_in_progress: 'ما زال هذا الطلب قيد المعالجة. انتظر لحظة، ثم حاول مرة أخرى.',
@@ -329,6 +336,8 @@ export const apiErrorsAr: Catalogue<typeof apiErrorsEn> = {
   part_missing: 'لم يصل جزء من هذا الملف.',
   part_out_of_range: 'ليس لهذا الملف هذا العدد من الأجزاء. ارفعه من جديد.',
   party_required: 'اختر عميلًا أو عميلًا محتملًا.',
+  payment_already_reversed: 'هذه الدفعة معكوسة بالفعل.',
+  payment_reversed: 'هذه الدفعة معكوسة، فلا يمكن تخصيصها لأي فاتورة.',
   payroll_off: 'وحدة الرواتب غير مفعّلة. سدّد هذه المطالبة مباشرةً.',
   period_locked: 'هذا الشهر مُقفل. اختر تاريخًا في شهر مفتوح.',
   period_too_long: 'اختر فترة لا تتجاوز سنتين.',
@@ -358,6 +367,8 @@ export const apiErrorsAr: Catalogue<typeof apiErrorsEn> = {
   quote_closed: 'لم يعد عرض السعر هذا مفتوحًا.',
   quote_converted: 'أصبح عرض السعر هذا طلب بيع بالفعل.',
   quote_empty: 'أضف سطرًا واحدًا على الأقل قبل الإصدار.',
+  quote_unavailable:
+    'لم يعد عرض السعر هذا متاحًا على الإنترنت. يُرجى التواصل مع الشركة التي أرسلته.',
   quote_expired: 'انتهت صلاحية عرض السعر هذا. يجب إصدار عرض جديد.',
   quote_not_accepted: 'لا يصبح طلب بيع إلا عرض سعر مقبول.',
   quote_not_draft: 'لا يتغير إلا عرض السعر المسودة. راجع هذا العرض لتعديله.',
@@ -431,6 +442,8 @@ export const apiErrorsAr: Catalogue<typeof apiErrorsEn> = {
   submission_changed: 'تغيّر هذا الإرسال في مكان آخر منذ حمّلته. أعد تحميله وحاول مرة أخرى.',
   submission_draft: 'لا يمكن تحويل مسودة إلى مستند. أرسلها أولًا.',
   submission_id_taken: 'تعارض هذا النموذج مع إرسال آخر. تجاهله وعبّئه من جديد.',
+  submission_job_closed:
+    'هذه المهمة مغلقة، فلم يعد بالإمكان إرسال هذا النموذج. أعد فتح المهمة أولًا، أو تجاهل المسودة.',
   submission_limit_reached:
     'استُنفدت إرسالات هذه الخطة لهذا الشهر. تتجدد في بداية الشهر القادم، أو ترفع خطة أكبر هذا الحد.',
   submission_state: 'لا يمكن تغيير هذا الإرسال وهو على حاله الآن. أعد فتحه أولًا.',
@@ -472,6 +485,8 @@ export const apiErrorsAr: Catalogue<typeof apiErrorsEn> = {
   website_key_limit: 'لدى هذه الشركة مفتاحا موقع فعّالان. ألغِ أحدهما قبل إنشاء مفتاح جديد.',
   work_order_changed: 'تغيّرت هذه المهمة في مكان آخر منذ حمّلتها. أعد تحميلها وحاول مرة أخرى.',
   work_order_closed: 'هذه المهمة مغلقة. أعد فتحها قبل تغييرها.',
+  work_order_invoiced:
+    'هذه المهمة مفوترة بالفعل، فلن تُفوتر أي قطعة تُسجّل الآن. ما زال بالإمكان إرجاع القطع غير المستخدمة.',
   work_order_not_customers: 'اختر إحدى مهام العميل.',
   work_order_required: 'اختر المهمة التي تعمل عليها.',
   work_order_unavailable: 'لم يعد لك أن تغيّر هذه المهمة: أُسندت إلى غيرك أو أُزيلت.',

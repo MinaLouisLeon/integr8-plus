@@ -169,7 +169,7 @@ describe('assets', { timeout: 20_000 }, () => {
     const { client, calls } = fakeApi({
       'GET /v1/me': me(MANAGE),
       'GET /v1/assets/:id': () => ({ body: current }),
-      'GET /v1/assets/:id/timeline': () => ({ body: { entries } }),
+      'GET /v1/assets/:id/timeline': () => ({ body: { entries, nextCursor: null } }),
       'PATCH /v1/assets/:id': () => {
         current = detail({ asset: { ...detail().asset, model: 'ecoTEC plus', version: 4 } });
         return { body: current };
@@ -204,6 +204,31 @@ describe('assets', { timeout: 20_000 }, () => {
     });
   });
 
+  it('shows the newest fifty entries, then older ones on asking', async () => {
+    const user = userEvent.setup();
+    const { client, calls } = fakeApi({
+      'GET /v1/me': me(MANAGE),
+      'GET /v1/assets/:id': () => ({ body: detail() }),
+      'GET /v1/assets/:id/timeline': (call) =>
+        call.query.get('before') === null
+          ? { body: { entries: entries.slice(0, 2), nextCursor: 'page-2' } }
+          : { body: { entries: entries.slice(2), nextCursor: null } },
+    });
+    renderScreen(<AssetScreen assetId={ASSET} />, client);
+    expect(await screen.findByText('Condition recorded: Poor')).toBeInTheDocument();
+    expect(screen.queryByText('Details changed: Model, Serial number')).not.toBeInTheDocument();
+    expect(calls.find((call) => call.path.endsWith('/timeline'))?.query.get('limit')).toBe('50');
+    await user.click(screen.getByRole('button', { name: 'Show older' }));
+    expect(await screen.findByText('Details changed: Model, Serial number')).toBeInTheDocument();
+    expect(
+      calls
+        .filter((call) => call.path.endsWith('/timeline'))
+        .at(-1)
+        ?.query.get('before'),
+    ).toBe('page-2');
+    expect(screen.queryByRole('button', { name: 'Show older' })).not.toBeInTheDocument();
+  });
+
   it('records a condition, and hides office actions from an engineer', async () => {
     const user = userEvent.setup();
     const { client, calls } = fakeApi({
@@ -211,7 +236,7 @@ describe('assets', { timeout: 20_000 }, () => {
       'GET /v1/assets/:id': () => ({
         body: detail({ can: { edit: false, record: true, attach: true } }),
       }),
-      'GET /v1/assets/:id/timeline': () => ({ body: { entries: [] } }),
+      'GET /v1/assets/:id/timeline': () => ({ body: { entries: [], nextCursor: null } }),
       'POST /v1/assets/:id/condition': () => ({ body: detail() }),
     });
     renderScreen(<AssetScreen assetId={ASSET} />, client);

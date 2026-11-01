@@ -29,6 +29,11 @@ export interface ClaimIdempotencyKeyInput {
   method: string;
   path: string;
   requestFingerprint: string;
+  /**
+   * Earlier forms of the same request's fingerprint, accepted as a match for a
+   * record written before the form changed. Never stored.
+   */
+  alsoMatches?: readonly string[];
   expiresAt: Date;
 }
 
@@ -131,7 +136,10 @@ export class IdempotencyRepository extends TenantScopedRepository {
         continue;
       }
 
-      if (existing.requestFingerprint !== input.requestFingerprint) {
+      if (
+        existing.requestFingerprint !== input.requestFingerprint &&
+        !(input.alsoMatches ?? []).includes(existing.requestFingerprint)
+      ) {
         return { outcome: 'fingerprint_mismatch', record: existing };
       }
 

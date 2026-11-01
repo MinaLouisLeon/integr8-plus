@@ -26,6 +26,7 @@ key that only the terminal-created platform account can issue.
 | D     | Complete | The PDF pipeline (Chromium, backgrounds), the render job, routes for templates, documents, the public link, the website lookup and website keys.       |
 | E     | Complete | The desktop designer, the Documents register and export in the apps, the `/d/<code>` page, the dashboard's website-key panel, the phone's list.        |
 | F     | Complete | Runbook, the website developer's guide, the setup guide (every copy), full checks, the pull request.                                                   |
+| G     | Complete | 1.2.4: uploaded PDFs, the sharing switch (new documents start unshared), the lookup by reference, files readable only through their record (0067).     |
 
 ## Verification log
 

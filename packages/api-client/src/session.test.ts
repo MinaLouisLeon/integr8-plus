@@ -1,5 +1,7 @@
 import { InMemoryTokenStore, type StoredTokens } from '@integr8/core';
 import { describe, expect, it } from 'vitest';
+import type { ClientTooOldInfo } from './client-update.js';
+import { ApiRequestError } from './index.js';
 import { SessionManager, type SignOutReason } from './session.js';
 
 /**
@@ -37,7 +39,10 @@ interface Harness {
  */
 function harness(
   handler: (request: Request, call: number) => Response,
-  options: { verifyOfflineGrant?: (grant: string, now: Date) => boolean } = {},
+  options: {
+    verifyOfflineGrant?: (grant: string, now: Date) => boolean;
+    onClientTooOld?: (info: ClientTooOldInfo) => void;
+  } = {},
 ): Harness {
   const calls: string[] = [];
   const signOuts: SignOutReason[] = [];
@@ -128,6 +133,49 @@ describe('signing in', () => {
     await expect(
       manager.signInWithPassword({ email: 'dana@x.example', password: 'wrong' }),
     ).rejects.toMatchObject({ code: 'auth.invalid_credentials', requestId: 'req-1' });
+  });
+
+  it('says where to update when the build is too old to sign in', async () => {
+    const seen: ClientTooOldInfo[] = [];
+    const { manager } = harness(
+      () =>
+        new Response(
+          JSON.stringify({
+            error: {
+              code: 'client_too_old',
+              message: 'This version of the app (1.0.0) is no longer supported.',
+              details: [
+                { field: 'header.min-supported-client', code: 'minimum', message: '2.0.0' },
+                {
+                  field: 'update',
+                  code: 'update_url',
+                  message: 'https://app.example.com/download',
+                },
+              ],
+              requestId: 'req-2',
+            },
+          }),
+          {
+            status: 503,
+            headers: { 'content-type': 'application/json', 'min-supported-client': '2.0.0' },
+          },
+        ),
+      { onClientTooOld: (info) => seen.push(info) },
+    );
+
+    const failure = await manager
+      .signInWithPassword({ email: 'dana@x.example', password: 'x' })
+      .catch((error: unknown) => error);
+
+    expect(failure).toBeInstanceOf(ApiRequestError);
+    expect((failure as ApiRequestError).updateUrl).toBe('https://app.example.com/download');
+    expect(seen).toEqual([
+      {
+        minimum: '2.0.0',
+        message: 'This version of the app (1.0.0) is no longer supported.',
+        updateUrl: 'https://app.example.com/download',
+      },
+    ]);
   });
 });
 

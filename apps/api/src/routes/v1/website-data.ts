@@ -280,7 +280,7 @@ export const websiteFileRoute = defineRoute({
   operationId: 'getWebsiteFile',
   summary: 'Get short-lived links to one customer document',
   description:
-    'Server-side website key required. The document ID must already be known to the company website. Returns five-minute links; never a file listing.',
+    'Server-side website key required. The document ID must already be known to the company website. Only a document the company has made shareable, whose link has not expired. Returns five-minute links; never a file listing.',
   tags: TAGS,
   security: 'public',
   websiteKeyAuth: true,
@@ -296,7 +296,7 @@ export const websiteFileRoute = defineRoute({
   handler: async ({ params }, context: PublicRequestContext) => {
     const live = await authorize(context, 'files');
     const document = await withTenant(live.tenantId, (tx) => tx.documents.find(params.documentId));
-    const available = document?.status === 'ready' && linkOpens(document);
+    const available = document?.status === 'ready' && document.shareable && linkOpens(document);
     await getPlatformDataSource().websiteKeys.recordUse(live.id, available);
     if (!available || document === undefined) throw notFound('No available customer document.');
     const [view, download] = await Promise.all([

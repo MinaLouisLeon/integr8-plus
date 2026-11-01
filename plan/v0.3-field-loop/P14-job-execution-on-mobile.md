@@ -94,6 +94,11 @@ The design is in [the working day on the phone](../../docs/mobile/job-execution.
   previous change and now, and to at most 31 days back. Each event also keeps `recorded_at`.
 - **Photos and sign-off are enforced by the database**, like required forms. The job type sets
   the counts, and a job copies them when it is created.
+  Since migration 0060 a form's "Signature required before close" setting asks for the
+  sign-off too, when any submission of that form is on the job; it is read from the form at
+  completion. A phone that starts such a form offline learns it on sync, from the server's
+  `incomplete` conflict (`missing.signoff`), and from `execution.signatureRequired` after the
+  next pull.
 - **Every missing thing is a detail.** `completion_blocked` replaces `required_forms_missing`, and
   the sync conflict `incomplete` replaces `forms_missing`, so clients word each one themselves.
 - **Starting work prompts for before photos but never blocks.** Completion is where they are

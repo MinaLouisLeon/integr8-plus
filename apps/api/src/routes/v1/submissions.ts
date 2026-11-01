@@ -1141,7 +1141,7 @@ export const submitRoute = defineRoute({
     404: { description: 'No such submission this person may change.' },
     409: {
       description:
-        'Changed elsewhere, not in a state that can be submitted, or the plan’s submissions for the month are used up (`submission_limit_reached`).',
+        'Changed elsewhere, not in a state that can be submitted, a draft on a job that is completed, reviewed or cancelled (`submission_job_closed`), or the plan’s submissions for the month are used up (`submission_limit_reached`).',
     },
     422: { description: 'The answers were refused. Details name each question.' },
   },
@@ -1159,6 +1159,20 @@ export const submitRoute = defineRoute({
         throw unprocessable('reason_required', 'Say why this submission is being corrected.', [
           { field: 'body.reason', code: 'required', message: 'A correction needs a reason.' },
         ]);
+      }
+      // A screen is always online: a draft on a job that has since been completed,
+      // reviewed or cancelled is refused, so a closed job does not quietly gain a
+      // report. A phone that filled it on site before the job closed is told apart
+      // in sync/push. Correcting a reopened submission is the office's own act on
+      // work already submitted, and stays allowed.
+      if (submission.status === 'draft' && submission.workOrderId !== null) {
+        const job = await tx.workOrders.find(submission.workOrderId);
+        if (job !== undefined && ['complete', 'reviewed', 'cancelled'].includes(job.state)) {
+          throw conflict(
+            'submission_job_closed',
+            'This job is closed, so this form can no longer be submitted. Reopen the job first.',
+          );
+        }
       }
 
       const version = await tx.forms.findVersion(submission.formVersionId);

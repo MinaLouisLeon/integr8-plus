@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { loadMigrations } from '../migrator/files.js';
 import { MigrationChecksumError, Migrator } from '../migrator/runner.js';
 import { assertSchemaUpToDate, SchemaOutOfDateError } from '../migrator/status.js';
-import { connectAsOwner } from './harness.js';
+import { connectAsOwner, releaseTestDatabase } from './harness.js';
 
 /**
  * The migration toolchain, exercised against a real database.
@@ -28,6 +28,8 @@ afterAll(async () => {
   // Leave the schema fully applied whatever happened above.
   await migrator.up();
   await owner.end();
+  // assertSchemaUpToDate reads over the platform pool.
+  await releaseTestDatabase();
 });
 
 describe('the version table', () => {
@@ -168,7 +170,14 @@ describe('an earlier build on a newer schema (rolling back a release)', () => {
   });
 
   it('refuses when this build also has a migration the newer release never applied', async () => {
-    const [latest] = await migrator.down();
+    // The newest migration's row is taken out rather than the migration rolled
+    // back: rolling back 0058 or later would also take away the platform
+    // role's read of this table, which the readiness check uses.
+    const [latest] = (await migrator.applied()).slice(-1);
+    if (latest === undefined) {
+      throw new Error('no migration applied');
+    }
+    await owner.query('delete from schema_migrations where version = $1', [latest.version]);
     await owner.query(
       `insert into schema_migrations (version, name, checksum, execution_ms)
        values ('9999', 'from_the_future', $1, 1)`,
@@ -177,13 +186,24 @@ describe('an earlier build on a newer schema (rolling back a release)', () => {
 
     try {
       await expect(migrator.verify()).rejects.toThrow(
-        new RegExp(`${latest?.version ?? ''}_\\w+ has not been applied, yet the database`, 'u'),
+        new RegExp(`${latest.version}_\\w+ has not been applied, yet the database`, 'u'),
       );
       await expect(migrator.up()).rejects.toThrow(MigrationChecksumError);
       await expect(assertSchemaUpToDate()).rejects.toThrow(/\(pending\)/u);
     } finally {
       await owner.query(`delete from schema_migrations where version = '9999'`);
-      await migrator.up();
+      await owner.query(
+        `insert into schema_migrations (version, name, checksum, applied_at, applied_by, execution_ms)
+         values ($1, $2, $3, $4, $5, $6)`,
+        [
+          latest.version,
+          latest.name,
+          latest.checksum,
+          latest.applied_at,
+          latest.applied_by,
+          latest.execution_ms,
+        ],
+      );
     }
   });
 });

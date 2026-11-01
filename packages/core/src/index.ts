@@ -95,6 +95,12 @@ export {
   requireEnv,
   optionalEnv,
   type AppEnvironment,
+  EXAMPLE_VALUE_MARKER,
+  MIN_DATABASE_PASSWORD_LENGTH,
+  connectionPassword,
+  exampleValueProblems,
+  hasExampleAddress,
+  isExampleHost,
 } from './environment.js';
 
 export {
@@ -291,6 +297,9 @@ export {
   invoiceStatusSchema,
   type InvoiceStatus,
   invoiceStatus,
+  currencyMinorUnits,
+  minorUnit,
+  balanceSettled,
   CREDIT_NOTE_STATUSES,
   creditNoteStatusSchema,
   type CreditNoteStatus,
@@ -555,6 +564,7 @@ export {
   DEFAULT_PLAN_LEAD_DAYS,
   DEFAULT_PLAN_WINDOW_DAYS,
   MAINTENANCE_FORECAST_DAYS,
+  MAX_PLAN_FAILURES,
   type PlanInterval,
   addInterval,
   calendarDue,
@@ -637,3 +647,13 @@ export {
   LEGAL_OPERATOR,
   missingOperatorDetails,
 } from './legal.js';
+
+export {
+  MONTH_PATTERN,
+  monthBounds,
+  monthlyOverage,
+  utcMonthOf,
+  previousMonth,
+  type MonthlyOverage,
+  type OverageDay,
+} from './storage-overage.js';

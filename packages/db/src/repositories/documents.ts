@@ -4,6 +4,7 @@ import type {
   Database,
   DocumentFieldValuesTable,
   DocumentLookupRole,
+  DocumentSource,
   DocumentStatus,
   DocumentsTable,
   DocumentTemplatesTable,
@@ -162,10 +163,19 @@ export interface DocumentFieldValue {
 
 export interface DocumentRecord {
   id: string;
-  templateId: string;
-  templateRevision: number;
-  submissionId: string;
-  formId: string;
+  /** Generated from a submission, or uploaded by a person (0067). */
+  source: DocumentSource;
+  /** Null for an uploaded document; set for every generated one. */
+  templateId: string | null;
+  templateRevision: number | null;
+  submissionId: string | null;
+  formId: string | null;
+  /** An uploaded document's reference number. */
+  reference: string | null;
+  /** The customer an uploaded document is for. */
+  customerId: string | null;
+  /** Whether the QR code's link and the company website may show it (0067). */
+  shareable: boolean;
   title: string;
   publicCode: string;
   status: DocumentStatus;
@@ -184,7 +194,11 @@ export interface DocumentRecord {
   fields: DocumentFieldValue[];
 }
 
-/** Whether the document's public link opens now: ready, not expired by anyone or by date. */
+/**
+ * Whether the document's link is live now: ready, not expired by anyone or by
+ * date. Whether it may be shown outside the company at all is `shareable`,
+ * checked beside this wherever the outside asks (0067).
+ */
 export function linkOpens(document: DocumentRecord, now: Date = new Date()): boolean {
   return (
     document.status === 'ready' &&
@@ -206,6 +220,8 @@ export interface DocumentListQuery {
   formId?: string | undefined;
   templateId?: string | undefined;
   submissionId?: string | undefined;
+  /** Generated from submissions, or uploaded (0067). */
+  source?: DocumentSource | undefined;
   /** `active`: the link opens; `expired`: it does not, by a person or by date. */
   state?: 'active' | 'expired' | 'pending' | 'failed' | undefined;
   createdFrom?: Date | undefined;
@@ -252,23 +268,99 @@ export class DocumentsRepository extends TenantScopedRepository {
       })
       .returningAll()
       .executeTakeFirstOrThrow();
-    if (input.fields.length > 0) {
-      await this.db
-        .insertInto('document_field_values')
-        .values(
-          input.fields.map((field) => ({
-            tenant_id: this.tenantId,
-            document_id: input.id,
-            field_key: field.key,
-            label: JSON.stringify(field.label) as unknown as Record<string, string>,
-            value: field.value,
-            value_normalized: normalizeFieldValue(field.value),
-            lookup_role: field.lookupRole,
-          })),
-        )
-        .execute();
-    }
+    await this.#insertFields(input.id, input.fields);
     return toDocument(row, [...input.fields]);
+  }
+
+  /**
+   * Records a PDF a person uploaded (0067): ready at once, since the file is
+   * already stored, with its reference (and customer) as the fields the
+   * website lookup finds it by.
+   */
+  async createUploaded(input: {
+    id: string;
+    title: string;
+    reference: string;
+    customerId: string | null;
+    publicCode: string;
+    expiresAt: Date | null;
+    shareable: boolean;
+    by: UserId | string;
+    file: { fileId: string; byteSize: number; sha256: string; pageCount: number | null };
+    fields: readonly DocumentFieldValue[];
+  }): Promise<DocumentRecord> {
+    const row = await this.db
+      .insertInto('documents')
+      .values({
+        id: input.id,
+        tenant_id: this.tenantId,
+        source: 'uploaded',
+        template_id: null,
+        template_revision: null,
+        submission_id: null,
+        form_id: null,
+        reference: input.reference,
+        customer_id: input.customerId,
+        shareable: input.shareable,
+        title: input.title,
+        public_code: input.publicCode,
+        status: 'ready',
+        file_id: input.file.fileId,
+        byte_size: input.file.byteSize,
+        page_count: input.file.pageCount,
+        sha256: input.file.sha256,
+        rendered_at: sql<Date>`now()`,
+        expires_at: input.expiresAt,
+        created_by: toUserId(input.by),
+      })
+      .returningAll()
+      .executeTakeFirstOrThrow();
+    await this.#insertFields(input.id, input.fields);
+    return toDocument(row, [...input.fields]);
+  }
+
+  async #insertFields(documentId: string, fields: readonly DocumentFieldValue[]): Promise<void> {
+    if (fields.length === 0) {
+      return;
+    }
+    await this.db
+      .insertInto('document_field_values')
+      .values(
+        fields.map((field) => ({
+          tenant_id: this.tenantId,
+          document_id: documentId,
+          field_key: field.key,
+          label: JSON.stringify(field.label) as unknown as Record<string, string>,
+          value: field.value,
+          value_normalized: normalizeFieldValue(field.value),
+          lookup_role: field.lookupRole,
+        })),
+      )
+      .execute();
+  }
+
+  /** Whether the QR code's link and the company website may show it. */
+  async setShareable(
+    documentId: string,
+    shareable: boolean,
+  ): Promise<{ document: DocumentRecord; changed: boolean } | undefined> {
+    const current = await this.find(documentId);
+    if (current === undefined) {
+      return undefined;
+    }
+    if (current.shareable === shareable) {
+      return { document: current, changed: false };
+    }
+    const row = await this.db
+      .updateTable('documents')
+      .set({ shareable })
+      .where('tenant_id', '=', this.tenantId)
+      .where('id', '=', documentId)
+      .returningAll()
+      .executeTakeFirst();
+    return row === undefined
+      ? undefined
+      : { document: toDocument(row, current.fields), changed: true };
   }
 
   async find(documentId: string): Promise<DocumentRecord | undefined> {
@@ -303,6 +395,9 @@ export class DocumentsRepository extends TenantScopedRepository {
     }
     if (query.submissionId !== undefined) {
       select = select.where('documents.submission_id', '=', query.submissionId);
+    }
+    if (query.source !== undefined) {
+      select = select.where('documents.source', '=', query.source);
     }
     if (query.createdFrom !== undefined) {
       select = select.where('documents.created_at', '>=', query.createdFrom);
@@ -460,13 +555,16 @@ export class DocumentsRepository extends TenantScopedRepository {
   }
 
   /**
-   * The website lookup (D10): the newest document whose lookup key matches,
-   * whose second field matches too when its template asks for one, and whose
-   * link opens. Exact after normalising; never a list.
+   * The website lookup (D10): the newest shareable document whose lookup key
+   * matches, whose second field matches too when it has one, and whose link
+   * opens. Exact after normalising; never a list. Without a field name (a
+   * lookup by reference, 0067) the value is matched against whichever field
+   * is the document's key, and the second value against whichever is its
+   * confirming field.
    */
   async lookup(input: {
-    key: { field: string; value: string };
-    confirm?: { field: string; value: string } | undefined;
+    key: { field?: string | undefined; value: string };
+    confirm?: { field?: string | undefined; value: string } | undefined;
   }): Promise<DocumentRecord | undefined> {
     const keyValue = normalizeFieldValue(input.key.value);
     if (keyValue === '') {
@@ -479,8 +577,11 @@ export class DocumentsRepository extends TenantScopedRepository {
           .onRef('k.document_id', '=', 'documents.id'),
       )
       .selectAll('documents')
-      .where('k.field_key', '=', input.key.field)
+      .$if(input.key.field !== undefined, (query) =>
+        query.where('k.field_key', '=', input.key.field ?? ''),
+      )
       .where('k.lookup_role', '=', 'key')
+      .where('documents.shareable', '=', true)
       .where('k.value_normalized', '=', keyValue)
       .where('documents.status', '=', 'ready')
       .where('documents.expired_at', 'is', null)
@@ -498,13 +599,20 @@ export class DocumentsRepository extends TenantScopedRepository {
       return undefined;
     }
     const fields = await this.#fieldsFor(candidates.map((row) => row.id));
+    const seen = new Set<string>();
     for (const row of candidates) {
+      // Matched by any key field, a document can come up once per field.
+      if (seen.has(row.id)) {
+        continue;
+      }
+      seen.add(row.id);
       const own = fields.get(row.id) ?? [];
       const confirmField = own.find((field) => field.lookupRole === 'confirm');
       if (confirmField !== undefined) {
         // The template asks for a second field: it must be given, and match.
         if (
-          input.confirm?.field !== confirmField.key ||
+          input.confirm === undefined ||
+          (input.confirm.field !== undefined && input.confirm.field !== confirmField.key) ||
           normalizeFieldValue(input.confirm.value) !== normalizeFieldValue(confirmField.value)
         ) {
           continue;
@@ -547,10 +655,14 @@ function toFieldValue(row: Selectable<DocumentFieldValuesTable>): DocumentFieldV
 function toDocument(row: Selectable<DocumentsTable>, fields: DocumentFieldValue[]): DocumentRecord {
   return {
     id: row.id,
+    source: row.source,
     templateId: row.template_id,
     templateRevision: row.template_revision,
     submissionId: row.submission_id,
     formId: row.form_id,
+    reference: row.reference,
+    customerId: row.customer_id,
+    shareable: row.shareable,
     title: row.title,
     publicCode: row.public_code,
     status: row.status,

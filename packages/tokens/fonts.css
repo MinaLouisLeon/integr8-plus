@@ -1,0 +1,28 @@
+/*
+ * The Integr8 Media look's typefaces, served by the app itself.
+ *
+ * Imported once by each DOM app (the web app's root layout, the desktop app's
+ * entry point). Nothing is fetched from a font service: the product is
+ * self-hosted, and the files come from the exact-pinned @fontsource packages
+ * this package depends on, so the app's bundler copies them next to its own
+ * assets. Each face is split by script with `unicode-range`, so a browser
+ * downloads only what a page actually draws: an English page never fetches
+ * the Arabic files, and a company's workspace, which names none of these
+ * families, fetches nothing at all.
+ *
+ *   Unbounded             headings (Latin)        @fontsource-variable/unbounded
+ *   Inter                 text (Latin)            @fontsource-variable/inter
+ *   JetBrains Mono        labels, numbers         @fontsource-variable/jetbrains-mono
+ *   Alexandria            headings (Arabic)       @fontsource-variable/alexandria
+ *   IBM Plex Sans Arabic  text (Arabic)           @fontsource/ibm-plex-sans-arabic
+ *
+ * The stacks that name them are in src/site.ts (`integr8Fonts`).
+ */
+@import '@fontsource-variable/unbounded/wght.css';
+@import '@fontsource-variable/inter/wght.css';
+@import '@fontsource-variable/jetbrains-mono/wght.css';
+@import '@fontsource-variable/alexandria/wght.css';
+@import '@fontsource/ibm-plex-sans-arabic/400.css';
+@import '@fontsource/ibm-plex-sans-arabic/500.css';
+@import '@fontsource/ibm-plex-sans-arabic/600.css';
+@import '@fontsource/ibm-plex-sans-arabic/700.css';

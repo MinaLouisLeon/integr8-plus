@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { keys, useOperations, type WorkOrderState } from '../api.js';
 import { formatAmount } from '../crm/lead-parts.js';
 import { buttonClass, cardClass, Failure, InlineError } from '../ui.js';
-import { InvoiceStatusBadge, useFinanceAccess } from './finance-parts.js';
+import { InvoiceStatusBadge, PartsNotYetBilledBadge, useFinanceAccess } from './finance-parts.js';
 
 /**
  * Money on the job screen (CRM/ERP plan, phase B1; ADR-0007): the job's
@@ -54,6 +54,9 @@ export function JobFinancePanel({
   }
   const billed = (invoices.data?.items ?? []).filter((invoice) => invoice.status !== 'void');
   const complete = state === 'complete' || state === 'reviewed';
+  // Parts synced from a phone after the job was invoiced: drafting from the job
+  // again bills just those (0062).
+  const followUp = billed.some((invoice) => invoice.partsNotYetBilled);
 
   return (
     <section aria-labelledby="job-finance-heading" className={`${cardClass} flex flex-col gap-3`}>
@@ -61,18 +64,30 @@ export function JobFinancePanel({
         <h2 id="job-finance-heading" className="text-lg font-semibold text-content">
           {t('finance.job.heading')}
         </h2>
-        {access.manage && complete && invoices.isSuccess && billed.length === 0 ? (
+        {access.manage && complete && invoices.isSuccess && (billed.length === 0 || followUp) ? (
           <button
             type="button"
             className={buttonClass.primary}
             disabled={create.isPending}
             onClick={() => create.mutate()}
           >
-            {create.isPending ? t('finance.invoices.creating') : t('finance.job.invoice')}
+            {create.isPending
+              ? t('finance.invoices.creating')
+              : followUp
+                ? t('finance.job.invoiceFollowUp')
+                : t('finance.job.invoice')}
           </button>
         ) : null}
       </div>
       {create.isError ? <Failure error={create.error} /> : null}
+      {followUp ? (
+        <p
+          role="status"
+          className="rounded-md border border-warning bg-warning-subtle px-3 py-2 text-sm text-content"
+        >
+          {t('finance.job.partsNotYetBilledHint')}
+        </p>
+      ) : null}
 
       {invoices.isError ? (
         <InlineError onRetry={() => void invoices.refetch()} />
@@ -97,6 +112,7 @@ export function JobFinancePanel({
                   {invoice.reference ?? t('finance.invoices.draftLabel')}
                 </a>
                 <InvoiceStatusBadge status={invoice.status} overdue={invoice.overdue} />
+                {invoice.partsNotYetBilled ? <PartsNotYetBilledBadge /> : null}
               </span>
               <span className="text-content tabular-nums">
                 {formatAmount(invoice.amounts.total, invoice.currencyCode, locale)}

@@ -120,7 +120,11 @@ Small, and worth naming precisely so it is not rediscovered:
 3. **Push the eighty-percent warning** rather than waiting to be asked for it. The P15
    announcement channel is the cheapest honest option.
 4. **One reconciliation run against the real Cloudflare account**, which closes the first exit
-   criterion and nothing else will.
+   criterion and nothing else will. Since the pre-production audit (2026-10-31) the setup guide
+   asks for `CLOUDFLARE_API_TOKEN` (Account Analytics: Read only; Stage 0 part D, Stage 3), and
+   Stage 9 part C checks that the first night's rows say `matched`, not `unavailable`. The
+   token was in no template before, so every check on a running machine said `unavailable`;
+   with R2 in production the API and the worker now warn at start-up without it.
 
 Billing the overage is deliberately not on this list: it belongs with invoicing, not with metering.
 

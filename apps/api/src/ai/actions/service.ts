@@ -10,7 +10,7 @@ import {
   aiDisabled,
   aiToolForbidden,
 } from '../errors.js';
-import { resolveAiAccess } from '../policy.js';
+import { resolveAiAccess, sessionClientApp } from '../policy.js';
 import { approvedDataClasses } from '../providers/index.js';
 import { type AnyAiTool, defineTool, type ToolGateInput } from '../tools/registry.js';
 import { type ActionPreview, type AnyAiAction, payloadDigest } from './registry.js';
@@ -192,7 +192,7 @@ export async function confirmProposal(
   // Every gate again, with what is true now.
   const access = await resolveAiAccess({
     principal: context.principal,
-    clientApp: context.clientApp,
+    clientApp: sessionClientApp(context),
     config: context.config,
   });
   if (access.level !== 'agent') {

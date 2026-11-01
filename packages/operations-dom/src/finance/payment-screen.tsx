@@ -5,12 +5,23 @@ import { useState } from 'react';
 import { keys, type PaymentDetail, useOperations } from '../api.js';
 import { formatAmount } from '../crm/lead-parts.js';
 import { isPositiveQuantity, QUANTITY_PATTERN } from '../purchasing/purchasing-parts.js';
-import { BackLink, buttonClass, cardClass, Failure, Field, inputClass, Loading } from '../ui.js';
+import {
+  BackLink,
+  buttonClass,
+  cardClass,
+  Dialog,
+  Failure,
+  Field,
+  inputClass,
+  Loading,
+} from '../ui.js';
 
 /**
  * One payment received (CRM/ERP plan, phase B1; ADR-0007): what it was, the
  * invoices it is put against — removed allocations kept on record — what is
  * left on the customer's account, and putting that against another invoice.
+ * An owner or admin can take a payment back, with a reason (0064): it stays on
+ * record, marked reversed, and the invoices it paid owe again.
  */
 export function PaymentScreen({ paymentId }: { paymentId: string }) {
   const { t } = useTranslation();
@@ -18,6 +29,7 @@ export function PaymentScreen({ paymentId }: { paymentId: string }) {
   const queries = useQueryClient();
   const [invoiceId, setInvoiceId] = useState('');
   const [amount, setAmount] = useState('');
+  const [reversing, setReversing] = useState(false);
 
   const detail = useQuery({
     queryKey: keys.payment(paymentId),
@@ -69,7 +81,7 @@ export function PaymentScreen({ paymentId }: { paymentId: string }) {
     );
   }
 
-  const { receipt, allocations, openInvoices, can } = detail.data;
+  const { receipt, allocations, openInvoices, can, reversal } = detail.data;
   const money = (value: string) => formatAmount(value, receipt.currencyCode, locale);
   const chosen = openInvoices.find((invoice) => invoice.id === invoiceId);
   const suggested =
@@ -105,7 +117,41 @@ export function PaymentScreen({ paymentId }: { paymentId: string }) {
             date: formatDateTime(receipt.recordedAt, { locale }),
           })}
         </p>
+        {can.reverse ? (
+          <div>
+            <button
+              type="button"
+              className={buttonClass.secondary}
+              onClick={() => setReversing(true)}
+            >
+              {t('finance.payments.reverse')}
+            </button>
+          </div>
+        ) : null}
       </header>
+
+      {reversal === null ? null : (
+        <p
+          role="status"
+          className="rounded-md border border-danger bg-danger-subtle px-3 py-2 text-sm text-content"
+        >
+          {t('finance.payments.reversedLine', {
+            name: reversal.reversedBy.name,
+            date: formatDate(reversal.reversedOn, { locale }),
+            reason: reversal.reason,
+          })}
+        </p>
+      )}
+      {reversing ? (
+        <ReverseDialog
+          detail={detail.data}
+          onClose={() => setReversing(false)}
+          onDone={async (next) => {
+            setReversing(false);
+            await settle(next);
+          }}
+        />
+      ) : null}
 
       {error === undefined ? null : <Failure error={error} />}
 
@@ -302,5 +348,81 @@ export function PaymentScreen({ paymentId }: { paymentId: string }) {
         </section>
       ) : null}
     </div>
+  );
+}
+
+/** Taking a payment back: what it does, and why, before anything happens. */
+function ReverseDialog({
+  detail,
+  onClose,
+  onDone,
+}: {
+  detail: PaymentDetail;
+  onClose: () => void;
+  onDone: (next: PaymentDetail) => Promise<void>;
+}) {
+  const { t } = useTranslation();
+  const { client, locale } = useOperations();
+  const [reason, setReason] = useState('');
+  const reverse = useMutation({
+    mutationFn: async () =>
+      (
+        await client.POST('/v1/finance/payments/{receiptId}/reverse', {
+          params: { path: { receiptId: detail.receipt.id } },
+          body: { reason: reason.trim() },
+        })
+      ).data!,
+    onSuccess: onDone,
+  });
+  return (
+    <Dialog
+      title={t('finance.payments.reverseTitle', { reference: detail.receipt.reference })}
+      onClose={onClose}
+      footer={
+        <>
+          <button type="button" className={buttonClass.secondary} onClick={onClose}>
+            {t('finance.cancel')}
+          </button>
+          <button
+            type="submit"
+            form="finance-reverse-payment"
+            className={buttonClass.danger}
+            disabled={reason.trim() === '' || reverse.isPending}
+          >
+            {t('finance.payments.reverseConfirm')}
+          </button>
+        </>
+      }
+    >
+      <form
+        id="finance-reverse-payment"
+        className="flex flex-col gap-3"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (reason.trim() !== '') {
+            reverse.mutate();
+          }
+        }}
+      >
+        <p className="text-sm text-content">
+          {t('finance.payments.reverseIntro', {
+            amount: formatAmount(detail.receipt.amount, detail.receipt.currencyCode, locale),
+          })}
+        </p>
+        <Field label={t('finance.payments.reverseReason')}>
+          {(id) => (
+            <input
+              id={id}
+              required
+              maxLength={2000}
+              className={inputClass}
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+            />
+          )}
+        </Field>
+        {reverse.isError ? <Failure error={reverse.error} /> : null}
+      </form>
+    </Dialog>
   );
 }

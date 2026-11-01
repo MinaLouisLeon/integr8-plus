@@ -279,6 +279,34 @@ export class CrmOpportunitiesRepository extends TenantScopedRepository {
     return Number(result.numUpdatedRows);
   }
 
+  /**
+   * Open opportunities per stage: how many, and the sum of their amounts per
+   * currency (an opportunity with no amount is counted and adds nothing).
+   * Exact, in the database, however many there are.
+   */
+  async openTotalsByStage(): Promise<
+    { stageId: string; currencyCode: string; count: number; amount: string | null }[]
+  > {
+    const rows = await this.db
+      .selectFrom('crm_opportunities')
+      .select([
+        'stage_id',
+        'currency_code',
+        sql<string>`count(*)`.as('count'),
+        sql<string | null>`sum(amount)::text`.as('amount'),
+      ])
+      .where('tenant_id', '=', this.tenantId)
+      .where('status', '=', 'open')
+      .groupBy(['stage_id', 'currency_code'])
+      .execute();
+    return rows.map((row) => ({
+      stageId: row.stage_id,
+      currencyCode: row.currency_code,
+      count: Number(row.count),
+      amount: row.amount === null ? null : trimDecimal(row.amount),
+    }));
+  }
+
   /** Newest first, a page at a time. */
   async list(query: OpportunityQuery = {}): Promise<OpportunityPage> {
     const limit = Math.min(Math.max(query.limit ?? 50, 1), 100);

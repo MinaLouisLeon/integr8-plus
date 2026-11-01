@@ -123,6 +123,7 @@ export const EXPORTED_TABLES = [
   'erp_credit_note_lines',
   'erp_payment_receipts',
   'erp_payment_allocations',
+  'erp_payment_reversals',
   // E-invoicing (0049): what the company sent the Tax Authority, every call
   // about it and the answers. The submission history is a tax record, so it
   // goes wherever the invoices go. The sealed login and the signing nonces are
@@ -254,6 +255,8 @@ export const NOT_EXPORTED_TABLES: Readonly<
   // Derived from rows that are exported.
   erp_stock_balances: 'Derived from erp_stock_movements, which is exported.',
   erp_stock_lot_balances: 'Derived from erp_stock_movements, which is exported.',
+  submission_file_uses:
+    'Which files each submission names: derived from submissions and submission_events, which are exported.',
   // Integr8's records about the company rather than the company's own.
   tenant_feature_flags: 'Which modules Integr8 switched on: the platform configuration.',
   ai_tenant_policies: "The assistant allowance Integr8 set: the platform's configuration.",

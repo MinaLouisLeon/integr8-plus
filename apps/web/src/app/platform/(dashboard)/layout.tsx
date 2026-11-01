@@ -11,9 +11,17 @@ import { readPreferences } from '~/lib/preferences';
  *
  * A server component, so the menu's remembered state reaches the shell before
  * the first paint.
+ *
+ * The dashboard is Integr8's own screen, so it wears the Integr8 Media look
+ * (Low 3): the attribute switches every token inside it, so the pages need no
+ * changes of their own.
  */
 export default async function PlatformLayout({ children }: { children: ReactNode }) {
   const { sidebar } = await readPreferences();
 
-  return <PlatformShell initialCollapsed={sidebar === 'collapsed'}>{children}</PlatformShell>;
+  return (
+    <div data-look="integr8" className="min-h-dvh">
+      <PlatformShell initialCollapsed={sidebar === 'collapsed'}>{children}</PlatformShell>
+    </div>
+  );
 }

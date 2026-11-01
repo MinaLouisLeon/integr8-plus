@@ -8,12 +8,14 @@ import {
   withTenant,
 } from '@integr8/db';
 import { z } from 'zod';
+import { hrKeySettings } from '../../config.js';
 import { ApiError, conflict, forbidden, notFound, unprocessable } from '../../http/errors.js';
 import { defineRoute, noSchema, type RequestContext } from '../../http/routes.js';
 import {
-  hrKey,
+  hrKeyring,
+  type HrKeyring,
   lastFour,
-  openField,
+  openWithKeyring,
   SEALED_FIELDS,
   type SealedFieldName,
   sealField,
@@ -100,16 +102,17 @@ const employeeParams = z.object({ employeeId: z.uuid() });
 // Helpers
 // ---------------------------------------------------------------------------
 
-function keyOrRefuse(context: RequestContext): Buffer {
-  const value = context.config.HR_DATA_KEY;
-  if (value === undefined) {
+/** The current key seals; it and the older ones open (sealed-fields.ts). */
+function keyOrRefuse(context: RequestContext): HrKeyring {
+  const keys = hrKeySettings(context.config);
+  if (keys === undefined) {
     throw new ApiError(
       503,
       'hr_key_missing',
       'ID, insurance and bank numbers cannot be stored or shown until HR_DATA_KEY is set on the server.',
     );
   }
-  return hrKey(value);
+  return hrKeyring(keys.current, keys.previous);
 }
 
 const own = (principal: Principal, employee: Employee) =>
@@ -216,7 +219,7 @@ async function toInput(
         value === null
           ? null
           : {
-              sealed: sealField(value, key, {
+              sealed: sealField(value, key.current.key, {
                 tenantId: context.principal.tenantId,
                 employeeId,
                 field,
@@ -510,11 +513,11 @@ export const revealEmployeeFieldRoute = defineRoute({
       if (sealedValue === null) {
         return null;
       }
-      const opened = openField(sealedValue.sealed, keyOrRefuse(context), {
+      const opened = openWithKeyring(sealedValue.sealed, keyOrRefuse(context), {
         tenantId: principal.tenantId,
         employeeId: employee.id,
         field,
-      });
+      }).plaintext;
       await audit(tx, context, 'hr.field_revealed', 'hr_employee', employee.id, { field });
       return opened;
     });

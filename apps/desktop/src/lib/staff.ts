@@ -1,5 +1,6 @@
 import { createClient, type Integr8Client } from '@integr8/api-client';
-import { APP_VERSION, API_BASE_URL } from './env';
+import { reportClientTooOld } from './client-update';
+import { APP_VERSION, API_BASE_URL, COMPANY_SLUG } from './env';
 import { session } from './session';
 
 /**
@@ -49,6 +50,10 @@ function platform(): Integr8Client {
     // less. A 401 here means it has gone, and the answer is to sign in again
     // rather than to refresh in the background.
     onUnauthorised: () => Promise.resolve(null),
+    // The staff app has no company slug, so its Update button opens the plain page.
+    onClientTooOld: (info) => {
+      reportClientTooOld(info, COMPANY_SLUG);
+    },
   });
   return client;
 }

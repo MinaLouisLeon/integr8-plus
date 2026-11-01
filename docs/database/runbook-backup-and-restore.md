@@ -22,9 +22,29 @@ that matters.
   Auth is needed, and none exists.
 
 Roles are not in the dump (they are cluster-wide, not per database).
-`deploy/compose.yml`'s `bootstrap` service creates all three — `integr8_app`,
-`integr8_auth` and `supabase_auth_admin` — from the env file every time the
-stack starts.
+`deploy/compose.yml`'s `bootstrap` service creates all four — `integr8_app`,
+`integr8_auth`, `integr8_platform` and `supabase_auth_admin` — from the env
+file every time the stack starts.
+
+### The keys are not in the dump, and must not travel with it
+
+Two columns hold values sealed with keys that live only in `deploy/.env`:
+employees' national ID, social insurance and bank account numbers
+(`HR_DATA_KEY`, and any older keys still listed in `HR_DATA_KEYS_PREVIOUS`),
+and each company's e-invoicing credentials (`ETA_CREDENTIALS_KEY`). **Keep each
+key in the password manager, separately from the backups.** A backup restored
+without the key it was written with restores everything else, but those
+numbers stay unreadable for good: there is no way to recover them, and each
+company would have to enter them again. Kept beside the backup — in the same
+bucket, folder or archive — the key would hand those numbers to whoever gets
+the backup.
+
+After a change of HR key, an older backup still needs the older key: keep every
+retired key in the password manager, labelled with the date it was retired,
+for as long as backups made before that date are kept (`BACKUP_REMOTE_KEEP`
+nights off the machine). A restore of such a backup puts the old key back in
+`HR_DATA_KEYS_PREVIOUS` and runs `admin-cli hr-reseal` (setup guide, Stage 11,
+"Change the HR key").
 
 | Setting       | Default                        | Meaning                                                 |
 | ------------- | ------------------------------ | ------------------------------------------------------- |

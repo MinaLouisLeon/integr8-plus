@@ -57,8 +57,10 @@ export const receiptSummarySchema = z.object({
   method: paymentMethodSchema,
   paymentReference: z.string().nullable(),
   allocated: z.string(),
-  /** Still on the customer's account. */
+  /** Still on the customer's account; nothing once reversed. */
   unallocated: z.string(),
+  /** Taken back (0064): its allocations were removed and the ledger took the money back. */
+  reversed: z.boolean(),
   recordedAt: z.iso.datetime(),
 });
 
@@ -80,11 +82,25 @@ export const allocationSchema = z.object({
 
 export const receiptDetailSchema = z.object({
   receipt: receiptSummarySchema.extend({ notes: z.string().nullable(), recordedBy: personSchema }),
+  /** Why, when and by whom the payment was taken back (0064); null while it stands. */
+  reversal: z
+    .object({
+      reason: z.string(),
+      reversedOn: z.iso.date(),
+      reversedBy: personSchema,
+      reversedAt: z.iso.datetime(),
+    })
+    .nullable(),
   /** Every allocation, removed ones included, oldest first. */
   allocations: z.array(allocationSchema),
   /** The customer's issued invoices in this currency that still owe, for allocating. */
   openInvoices: z.array(invoiceSummarySchema),
-  can: z.object({ allocate: z.boolean(), removeAllocation: z.boolean() }),
+  can: z.object({
+    allocate: z.boolean(),
+    removeAllocation: z.boolean(),
+    /** Take the payment back, with a reason: owners and admins, once (0064). */
+    reverse: z.boolean(),
+  }),
 });
 
 const accountSchema = z.object({
@@ -102,9 +118,10 @@ async function receiptSummaries(
   tx: TenantTransaction,
   receipts: readonly PaymentReceipt[],
 ): Promise<z.infer<typeof receiptSummarySchema>[]> {
-  const [customers, amounts] = await Promise.all([
+  const [customers, amounts, reversals] = await Promise.all([
     tx.customers.findMany([...new Set(receipts.map((receipt) => receipt.customerId))]),
     tx.financePayments.receiptAmounts(receipts.map((receipt) => receipt.id)),
+    tx.financePayments.reversalsFor(receipts.map((receipt) => receipt.id)),
   ]);
   const customer = new Map(customers.map((row) => [row.id, row]));
   return receipts.map((receipt) => {
@@ -124,6 +141,7 @@ async function receiptSummaries(
       paymentReference: receipt.paymentReference,
       allocated: figures.allocated,
       unallocated: figures.unallocated,
+      reversed: reversals.has(receipt.id),
       recordedAt: iso(receipt.recordedAt),
     };
   });
@@ -200,24 +218,40 @@ async function receiptDetail(
   principal: Principal,
   receipt: PaymentReceipt,
 ): Promise<z.infer<typeof receiptDetailSchema>> {
-  const [summary, allocations, names, today] = await Promise.all([
+  const [summary, allocations, names, today, reversals] = await Promise.all([
     receiptSummaries(tx, [receipt]),
     tx.financePayments.allocationsForReceipt(receipt.id),
     peopleOf(tx),
     companyToday(tx),
+    tx.financePayments.reversalsFor([receipt.id]),
   ]);
   const issue = holds(principal, 'finance.issue');
+  const reversal = reversals.get(receipt.id);
   return {
     receipt: {
       ...summary[0]!,
       notes: receipt.notes,
       recordedBy: personBody(receipt.recordedBy, names),
     },
+    reversal:
+      reversal === undefined
+        ? null
+        : {
+            reason: reversal.reason,
+            reversedOn: reversal.reversedOn,
+            reversedBy: personBody(reversal.reversedBy, names),
+            reversedAt: iso(reversal.reversedAt),
+          },
     allocations: await allocationBodies(tx, allocations),
-    openInvoices: await openInvoicesFor(tx, receipt.customerId, receipt.currencyCode, today),
+    openInvoices:
+      reversal === undefined
+        ? await openInvoicesFor(tx, receipt.customerId, receipt.currencyCode, today)
+        : [],
     can: {
-      allocate: issue && compareDecimals(summary[0]!.unallocated, '0') > 0,
-      removeAllocation: issue,
+      allocate:
+        issue && reversal === undefined && compareDecimals(summary[0]!.unallocated, '0') > 0,
+      removeAllocation: issue && reversal === undefined,
+      reverse: issue && reversal === undefined,
     },
   };
 }
@@ -239,6 +273,8 @@ function allocationRefusal(refusal: AllocationRefusal, field: string): never {
         'allocation_mismatch',
         'A payment is allocated only to the same customer’s invoices in its currency.',
       );
+    case 'receipt_reversed':
+      throw conflict('payment_reversed', 'This payment was reversed; it is not allocated again.');
   }
 }
 
@@ -512,6 +548,60 @@ export const removeAllocationRoute = defineRoute({
   },
 });
 
+export const reversePaymentRoute = defineRoute({
+  method: 'post',
+  path: '/v1/finance/payments/:receiptId/reverse',
+  operationId: 'reverseCustomerPayment',
+  summary: 'Take a payment back',
+  description:
+    'Owners and admins, with a reason: a bounced cheque, a transfer that never arrived, a payment recorded against the wrong customer. The payment is not deleted: a reversal is recorded beside it, dated today in the company’s calendar, its allocations are removed so the invoices owe again, it is never allocated again, and the ledger posts the opposite of its entry. Both stay in the history. Once only: 409 `payment_already_reversed`. Honours `Idempotency-Key`.',
+  tags: FINANCE_TAGS,
+  security: 'authenticated',
+  permission: 'finance.issue',
+  feature: FINANCE,
+  idempotent: true,
+  params: receiptParams,
+  query: noSchema,
+  body: z.object({ reason: z.string().trim().min(1).max(2000) }),
+  responses: {
+    200: { description: 'The payment, reversed.', schema: receiptDetailSchema },
+    404: { description: 'No such payment.' },
+    409: { description: 'Already reversed (`payment_already_reversed`).' },
+  },
+  handler: async ({ params, body }, context) => {
+    const { principal } = context;
+    const detail = await withTenant(principal.tenantId, async (tx) => {
+      const receipt = await tx.financePayments.findReceipt(params.receiptId);
+      if (receipt === undefined) {
+        throw notFound('This payment does not exist.');
+      }
+      const allocations = (await tx.financePayments.allocationsForReceipt(receipt.id)).filter(
+        (allocation) => allocation.removedAt === null,
+      );
+      const result = await tx.financePayments.reverseReceipt(
+        receipt.id,
+        { reason: body.reason, reversedOn: await companyToday(tx) },
+        principal.userId,
+      );
+      if (result === 'already_reversed') {
+        throw conflict('payment_already_reversed', 'This payment was already reversed.');
+      }
+      await audit(tx, context, 'payment.reversed', 'payment', receipt.id, {
+        reference: formatReceiptReference(receipt.reference),
+        amount: receipt.amount,
+        currencyCode: receipt.currencyCode,
+        reason: result.reason,
+        allocationsRemoved: allocations.map((allocation) => ({
+          invoiceId: allocation.invoiceId,
+          amount: allocation.amount,
+        })),
+      });
+      return receiptDetail(tx, principal, receipt);
+    });
+    return { status: 200, body: detail };
+  },
+});
+
 // ---------------------------------------------------------------------------
 // Routes: the customer's account
 // ---------------------------------------------------------------------------
@@ -681,6 +771,7 @@ export const paymentRoutes = [
   getPaymentRoute,
   allocatePaymentRoute,
   removeAllocationRoute,
+  reversePaymentRoute,
   customerAccountRoute,
   jobCostsRoute,
 ];

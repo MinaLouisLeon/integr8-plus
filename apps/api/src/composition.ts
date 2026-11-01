@@ -25,6 +25,7 @@ import { LocalDiskStorage } from './media/local-disk.js';
 import { FakeGeocoder, type Geocoder, MapboxGeocoder } from './geo/geocoder.js';
 import {
   type BillingProvider,
+  NoBillingProvider,
   RecordingBillingProvider,
   StripeBillingProvider,
 } from './billing/provider.js';
@@ -41,6 +42,7 @@ import { buildAiProvider } from './ai/providers/index.js';
 import { INSIGHT_TOOLS } from './ai/tools/insights.js';
 import { buildPdfPrinter, type PdfPrinter } from './documents/printer.js';
 import { buildEtaServices, type EtaServices } from './eta/services.js';
+import { fingerprintKeyFrom } from './http/idempotency.js';
 import {
   type AppBuildTrigger,
   GitHubAppBuildTrigger,
@@ -116,6 +118,12 @@ export interface Services {
    * A recording stand-in unless APP_BUILDS is `github`.
    */
   appBuilds: AppBuildTrigger;
+  /**
+   * What idempotency fingerprints are keyed with (http/idempotency.ts), so a
+   * stored fingerprint cannot be checked against guesses without the server.
+   * Derived from `PLATFORM_SECRET_KEY`.
+   */
+  requestFingerprintKey: Buffer;
 }
 
 export interface BuildServicesOptions {
@@ -161,7 +169,6 @@ export async function buildServices(options: BuildServicesOptions): Promise<Serv
     }),
     invitations: new InvitationService({
       identity,
-      sessions,
       config: authConfig,
       // The plan's seat limit, enforced at the moment a seat is taken (P17).
       // `@integr8/auth` has no idea what a plan is; this is where the two meet.
@@ -185,6 +192,7 @@ export async function buildServices(options: BuildServicesOptions): Promise<Serv
     pdf: buildPdfPrinter(options.config),
     eta: buildEtaServices(options.config),
     appBuilds: buildAppBuildTrigger(options.config),
+    requestFingerprintKey: fingerprintKeyFrom(authConfig.PLATFORM_SECRET_KEY),
   };
 }
 
@@ -212,6 +220,9 @@ export function buildAppBuildTrigger(config: ApiConfig): AppBuildTrigger {
  * this repeats the check because the two could drift.
  */
 export function buildBillingProvider(config: ApiConfig): BillingProvider {
+  if (config.BILLING_PROVIDER === 'none') {
+    return new NoBillingProvider();
+  }
   if (config.BILLING_PROVIDER !== 'stripe') {
     return new RecordingBillingProvider();
   }

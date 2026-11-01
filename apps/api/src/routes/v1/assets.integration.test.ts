@@ -279,6 +279,38 @@ describe('the register', () => {
     });
   });
 
+  it('comes a page at a time when asked, newest first, and whole when not', async () => {
+    const created = await register();
+    const id = created.asset.id;
+    for (const condition of ['good', 'fair', 'poor', 'fair', 'good', 'poor', 'good']) {
+      const recorded = await call(dispatcher, 'POST', `/v1/assets/${id}/condition`, { condition });
+      expect(recorded.statusCode, recorded.body).toBe(200);
+    }
+    const whole = json<Timeline & { nextCursor: string | null }>(
+      await call(dispatcher, 'GET', `/v1/assets/${id}/timeline`),
+    );
+    expect(whole.entries).toHaveLength(8);
+    expect(whole.nextCursor).toBeNull();
+
+    // "Show older": each page starts where the last one ended, until there is no more.
+    const pages: Timeline['entries'][] = [];
+    let before: string | null = null;
+    do {
+      const query: string = before === null ? '' : `&before=${encodeURIComponent(before)}`;
+      const page = json<Timeline & { nextCursor: string | null }>(
+        await call(dispatcher, 'GET', `/v1/assets/${id}/timeline?limit=3${query}`),
+      );
+      pages.push(page.entries);
+      before = page.nextCursor;
+    } while (before !== null);
+    expect(pages.map((page) => page.length)).toEqual([3, 3, 2]);
+    expect(pages.flat()).toEqual(whole.entries);
+
+    const refused = await call(dispatcher, 'GET', `/v1/assets/${id}/timeline?limit=3&before=nope`);
+    expect(refused.statusCode).toBe(422);
+    expect(code(refused)).toBe('invalid_cursor');
+  });
+
   it('opens from a tag code, a typed code or a scanned link; a reissued tag opens nothing', async () => {
     const created = await register();
     const { tagCode } = created.asset;

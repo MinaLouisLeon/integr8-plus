@@ -334,6 +334,92 @@ describe('the pre-authentication role', () => {
   });
 });
 
+describe('the platform role', () => {
+  // integr8_platform is what the API and the worker use outside one company
+  // (0058). It reads and writes every row, as the owner used to, and that is
+  // all: the point of it is what it cannot do.
+  async function grants(): Promise<{ table: string; privilege: string }[]> {
+    const result = await owner.query<{ table_name: string; privilege_type: string }>(
+      `select table_name::text as table_name, privilege_type::text as privilege_type
+       from information_schema.role_table_grants
+       where grantee = 'integr8_platform' and table_schema = 'public'
+       order by table_name, privilege_type`,
+    );
+    return result.rows.map((row) => ({ table: row.table_name, privilege: row.privilege_type }));
+  }
+
+  it('is not a superuser, cannot make roles or databases, and bypasses RLS', async () => {
+    const role = await owner.query<{
+      rolsuper: boolean;
+      rolbypassrls: boolean;
+      rolcreaterole: boolean;
+      rolcreatedb: boolean;
+      rolreplication: boolean;
+      member_of: number;
+    }>(
+      `select r.rolsuper, r.rolbypassrls, r.rolcreaterole, r.rolcreatedb, r.rolreplication,
+              (select count(*)::int from pg_auth_members m where m.member = r.oid) as member_of
+       from pg_roles r where r.rolname = 'integr8_platform'`,
+    );
+
+    expect(role.rows[0]).toEqual({
+      rolsuper: false,
+      rolbypassrls: true,
+      rolcreaterole: false,
+      rolcreatedb: false,
+      rolreplication: false,
+      member_of: 0,
+    });
+  });
+
+  it('owns nothing in public and cannot create anything there', async () => {
+    const owned = await owner.query(
+      `select 1 from pg_class c
+       join pg_namespace n on n.oid = c.relnamespace
+       where n.nspname = 'public' and pg_get_userbyid(c.relowner) = 'integr8_platform'
+       union all
+       select 1 from pg_proc p
+       join pg_namespace n on n.oid = p.pronamespace
+       where n.nspname = 'public' and pg_get_userbyid(p.proowner) = 'integr8_platform'`,
+    );
+    expect(owned.rowCount).toBe(0);
+
+    const create = await owner.query<{ can: boolean }>(
+      `select has_schema_privilege('integr8_platform', 'public', 'CREATE') as can`,
+    );
+    expect(create.rows[0]?.can).toBe(false);
+  });
+
+  it('may read and write every table, and only read the migration history', async () => {
+    const held = await grants();
+    const byTable = new Map<string, string[]>();
+    for (const entry of held) {
+      byTable.set(entry.table, [...(byTable.get(entry.table) ?? []), entry.privilege]);
+    }
+
+    for (const table of await publicTables()) {
+      expect(byTable.get(table), table).toEqual(
+        table === 'schema_migrations' ? ['SELECT'] : ['DELETE', 'INSERT', 'SELECT', 'UPDATE'],
+      );
+    }
+  });
+
+  it('holds no truncate, trigger or references privilege anywhere', async () => {
+    const extra = (await grants()).filter(
+      (entry) => !['SELECT', 'INSERT', 'UPDATE', 'DELETE'].includes(entry.privilege),
+    );
+    expect(extra).toEqual([]);
+  });
+
+  it('may run the purge, which is closed to every other role', async () => {
+    const result = await owner.query<{ platform: boolean; app: boolean }>(
+      `select has_function_privilege('integr8_platform', 'purge_tenant(uuid)', 'EXECUTE') as platform,
+              has_function_privilege('integr8_app', 'purge_tenant(uuid)', 'EXECUTE') as app`,
+    );
+    expect(result.rows[0]).toEqual({ platform: true, app: false });
+  });
+});
+
 describe('tenant-scoped foreign keys carry the tenant', () => {
   /**
    * `references sessions (id)` alone would let a refresh token in one company

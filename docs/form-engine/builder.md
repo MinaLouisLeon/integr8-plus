@@ -58,6 +58,14 @@ Form settings — who may fill a form and whether a signature is mandatory — t
 once and are not versioned: they describe how the company uses the form, not what it asks.
 Which job types require a form arrives with job types in P10.
 
+"Signature required before close" is enforced when a job completes (migration 0060): a job
+with any submission of the form — draft, submitted or reopened — cannot be completed until the
+customer's sign-off (a signature, or the reason nobody could sign) is recorded, whatever its
+job type says. The database refuses it for every client; the job screen on the web, desktop
+and phone lists it with the other missing things as "signature missing". The setting is read
+from the form at that moment, not from the version filled, so changing it applies to jobs
+still open and never to jobs already completed.
+
 ## The template library
 
 `form_templates` is a platform table: it belongs to no company, the runtime role may only
@@ -70,7 +78,15 @@ pnpm --filter @integr8/db db:templates
 
 It is an upsert — removing a template from the code does not remove it from the database,
 because companies may already have started from it. Run it after migrations in every
-environment; it is product content, not seed data.
+environment; it is product content, not seed data. In a deployment nobody has to: the compose
+`migrate` service runs it (`node node_modules/@integr8/db/dist/seed/templates-cli.js`, as the
+owner) straight after `db up`, on every start of the stack.
+
+It only ever writes `form_templates`, by key. A company's form made from a template is its own
+copy from the start (`forms.source_template_key` records where it came from, and its versions
+hold their own definition), so loading a changed library again never changes a company's form,
+draft or published; `form-builder.integration.test.ts` checks exactly that, and that loading
+twice changes nothing.
 
 ## In the desktop app
 

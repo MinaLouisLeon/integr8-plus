@@ -15,6 +15,13 @@ import { defineRoute, noSchema } from '../http/routes.js';
  * **Readiness** — should this container receive traffic? It checks the things
  * a request needs, so a container that is up but not yet usable is kept out of
  * the load balancer rather than serving errors.
+ *
+ * Neither is for the internet. Caddy answers 404 for both on the public
+ * address (deploy/vps/Caddyfile.example); Docker's health check and the
+ * heartbeat script (deploy/vps/heartbeat.sh) call them on the machine itself.
+ * Readiness reads the migration history over the API's own platform pool and
+ * keeps its answer for {@link READINESS_CACHE_MS}, so calling it often costs one
+ * query every ten seconds, not a connection per call.
  */
 
 const livenessSchema = z.object({
@@ -59,13 +66,28 @@ export const healthRoute = defineRoute({
     }),
 });
 
+/** How long a readiness answer is reused before the checks run again. */
+export const READINESS_CACHE_MS = 10_000;
+
+interface ReadinessAnswer {
+  status: 200 | 503;
+  body: z.infer<typeof readinessSchema>;
+}
+
+let lastReadiness: { at: number; answer: ReadinessAnswer } | undefined;
+
+/** Forgets the cached answer. For tests that change what readiness sees. */
+export function resetReadinessCache(): void {
+  lastReadiness = undefined;
+}
+
 export const readinessRoute = defineRoute({
   method: 'get',
   path: '/health/ready',
   operationId: 'getReadiness',
   summary: 'Readiness',
   description:
-    'Answers whether this container should receive traffic. Checks the database is reachable and its schema matches this build, or is ahead of it after a rollback to an earlier release.',
+    'Answers whether this container should receive traffic. Checks the database is reachable and its schema matches this build, or is ahead of it after a rollback to an earlier release. The answer is reused for ten seconds. Not served on the public address: the proxy answers 404, and it is called from the machine itself.',
   tags: ['operations'],
   security: 'public',
   params: noSchema,
@@ -76,6 +98,11 @@ export const readinessRoute = defineRoute({
     503: { description: 'Not ready.', schema: readinessSchema },
   },
   handler: async (_input, context) => {
+    const now = Date.now();
+    if (lastReadiness !== undefined && now - lastReadiness.at < READINESS_CACHE_MS) {
+      return lastReadiness.answer;
+    }
+
     const checks: { name: string; ok: boolean; detail?: string }[] = [];
 
     // A container whose build expects a table the database does not have will
@@ -112,14 +139,16 @@ export const readinessRoute = defineRoute({
 
     const ready = checks.every((check) => check.ok);
 
-    return {
+    const answer: ReadinessAnswer = {
       status: ready ? 200 : 503,
       body: {
-        status: ready ? ('ready' as const) : ('degraded' as const),
+        status: ready ? 'ready' : 'degraded',
         release: context.config.API_RELEASE,
         checks,
       },
     };
+    lastReadiness = { at: now, answer };
+    return answer;
   },
 });
 

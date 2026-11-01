@@ -75,3 +75,20 @@ updates:
     ignore:
       - dependency-name: 'postgres'
         update-types: ['version-update:semver-major']
+
+  # The Node base image of the API/worker and web images. Its tag is the exact
+  # release in .nvmrc (`pnpm pins:check` fails otherwise), so a proposed bump
+  # fails CI until the same PR moves .nvmrc too; that keeps CI, developers and
+  # the server on one Node. Node 22 is the line this release supports
+  # (package.json engines `<23`): a new major is moved by hand, everywhere.
+  - package-ecosystem: docker
+    directories:
+      - /apps/api
+      - /apps/web
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: 'chore(deps)'
+    ignore:
+      - dependency-name: 'node'
+        update-types: ['version-update:semver-major']

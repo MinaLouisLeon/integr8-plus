@@ -40,7 +40,7 @@ import {
   workOrderSummarySchema,
 } from './operations.js';
 import { isFeatureEnabled } from '../../http/features.js';
-import { materialBodies, materialSchema, seesCosts, vanBody } from './materials.js';
+import { materialBodies, materialSchema, mayTakeParts, seesCosts, vanBody } from './materials.js';
 import { deliverOnCompletion } from './sales-fulfilment.js';
 import { iso, isoOrNull } from './schemas.js';
 import { gapsForVisits } from './qualification-check.js';
@@ -100,6 +100,7 @@ const eventSchema = z.object({
     'maintenance_planned',
     'coverage_changed',
     'deadline_missed',
+    'form_submitted_after_close',
   ]),
   fromState: workOrderStateSchema.nullable(),
   toState: workOrderStateSchema.nullable(),
@@ -188,6 +189,8 @@ export const detailSchema = z.object({
           id: z.uuid(),
           status: z.enum(['draft', 'submitted', 'reopened']),
           submittedAt: z.string().nullable(),
+          /** Arrived from a phone after the job closed, from a draft started before (0061). */
+          submittedAfterClose: z.boolean(),
         })
         .nullable(),
     }),
@@ -216,6 +219,7 @@ export const detailSchema = z.object({
   execution: z.object({
     beforePhotos: z.number().int(),
     afterPhotos: z.number().int(),
+    /** The job type asks for the customer's sign-off, or a form filled on the job does. */
     signatureRequired: z.boolean(),
     signoff: signoffSchema.nullable(),
     missing: completionSchema,
@@ -226,6 +230,11 @@ export const detailSchema = z.object({
   materials: z.array(materialSchema),
   /** What the posted parts cost, net of returns; null to seats that may not see costs. */
   materialsCost: z.string().nullable(),
+  /**
+   * The job is invoiced, and parts a phone recorded before it closed arrived
+   * after: no invoice bills them yet, and the office raises a follow-up (0062).
+   */
+  partsNotYetBilled: z.boolean(),
   /** The van assigned to this person, where their parts come from. */
   van: z.object({ id: z.uuid(), name: z.string() }).nullable(),
   /** The sales orders this job delivers (CRM/ERP plan, phase S1); empty without the sales module. */
@@ -281,6 +290,7 @@ export async function detailBody(tx: TenantTransaction, principal: Principal, jo
     jobTermsOf(tx, [job.id]),
   ]);
   const missing = await tx.workOrders.completionMissing(job);
+  const signatureRequired = await tx.workOrders.signatureRequired(job);
   const contacts = site?.contactId == null ? [] : await tx.customers.findContacts([site.contactId]);
   const visiblePrevious = readAll
     ? previous
@@ -302,6 +312,9 @@ export async function detailBody(tx: TenantTransaction, principal: Principal, jo
       ? await tx.salesOrders.ordersOfWorkOrder(job.id)
       : [];
   const closed = ['complete', 'reviewed', 'cancelled'].includes(job.state);
+  const takesParts = inventory && !closed && (await mayTakeParts(tx, job)) === 'yes';
+  const partsNotYetBilled =
+    inventory && (await tx.financeInvoices.jobsWithUnbilledParts([job.id])).has(job.id);
 
   return {
     workOrder: {
@@ -383,7 +396,7 @@ export async function detailBody(tx: TenantTransaction, principal: Principal, jo
     execution: {
       beforePhotos: job.beforePhotos,
       afterPhotos: job.afterPhotos,
-      signatureRequired: job.signatureRequired,
+      signatureRequired,
       signoff:
         job.signoff === null
           ? null
@@ -400,6 +413,7 @@ export async function detailBody(tx: TenantTransaction, principal: Principal, jo
     previousAtSite: await workOrderSummaries(tx, visiblePrevious, people),
     materials: await materialBodies(tx, materials, costs, people),
     materialsCost: costs ? await tx.inventoryMaterials.costForJob(job.id) : null,
+    partsNotYetBilled,
     van: inventory ? await vanBody(tx, principal) : null,
     salesOrders: salesOrders.map((order) => ({
       id: order.id,
@@ -415,7 +429,7 @@ export async function detailBody(tx: TenantTransaction, principal: Principal, jo
       work: working,
       comment: working,
       transitions: await allowedTransitions(tx, principal, job),
-      recordParts: inventory && holds(principal, 'inventory.consume') && working && !closed,
+      recordParts: takesParts && holds(principal, 'inventory.consume') && working,
       overrideCoverage: holds(principal, 'contract.manage') && job.state !== 'cancelled',
     },
   };

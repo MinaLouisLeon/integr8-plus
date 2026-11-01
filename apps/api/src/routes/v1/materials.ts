@@ -65,6 +65,8 @@ export const materialSchema = z.object({
   cancelledBy: personSchema.nullable(),
   /** The phone's own id for the action, when it came from the phone. */
   clientActionId: z.string().nullable(),
+  /** Recorded on a phone before the job closed, and synced after it had (0062). */
+  recordedAfterClose: z.boolean(),
   version: z.number().int(),
   /**
    * The serial numbers or batches the part came from (ADR-0013): those taken
@@ -121,6 +123,7 @@ export async function materialBodies(
       occurredAt: iso(material.occurredAt),
       cancelledBy: material.cancelledBy === null ? null : personBody(material.cancelledBy, people),
       clientActionId: material.clientActionId,
+      recordedAfterClose: material.recordedAfterClose,
       version: material.version,
       lots:
         material.lots === null
@@ -153,6 +156,45 @@ export async function vanBody(tx: TenantTransaction, principal: Principal) {
 // Recording a use
 // ---------------------------------------------------------------------------
 
+const CLOSED_STATES: readonly WorkOrder['state'][] = ['complete', 'reviewed', 'cancelled'];
+
+/** Whether a job is on an invoice that is not void: a job is invoiced once. */
+export async function jobInvoiced(tx: TenantTransaction, workOrderId: string): Promise<boolean> {
+  return (await tx.financeInvoices.invoicesForWorkOrder(workOrderId)).length > 0;
+}
+
+/**
+ * Whether the office may add parts to a job (0062): not once it is completed,
+ * reviewed or cancelled, and not once it is invoiced, because a part added
+ * then would never be billed. Returning unused parts is a different act and
+ * stays allowed. The phone's rules are in `sync/push`.
+ */
+export async function mayTakeParts(
+  tx: TenantTransaction,
+  job: WorkOrder,
+): Promise<'yes' | 'closed' | 'invoiced'> {
+  if (CLOSED_STATES.includes(job.state)) {
+    return 'closed';
+  }
+  return (await jobInvoiced(tx, job.id)) ? 'invoiced' : 'yes';
+}
+
+export async function assertTakesParts(tx: TenantTransaction, job: WorkOrder): Promise<void> {
+  const verdict = await mayTakeParts(tx, job);
+  if (verdict === 'closed') {
+    throw conflict(
+      'work_order_closed',
+      'This job is closed, so no more parts can be recorded on it. Unused parts can still be returned.',
+    );
+  }
+  if (verdict === 'invoiced') {
+    throw conflict(
+      'work_order_invoiced',
+      'This job is already invoiced, so a part recorded now would never be billed.',
+    );
+  }
+}
+
 export interface UseInput {
   itemId: string;
   /** Required of a dispatcher; an engineer's is their van, named or not. */
@@ -166,6 +208,8 @@ export interface UseInput {
   lots?: readonly LotSpec[] | undefined;
   /** Use an expired batch anyway; the note says why. */
   allowExpired?: boolean | undefined;
+  /** A phone's part, recorded before the job closed, arriving after (0062). */
+  recordedAfterClose?: boolean;
 }
 
 export type UseOutcome =
@@ -244,6 +288,7 @@ export async function recordUse(
       note: input.note ?? null,
       recordedBy: principal.userId,
       ...(input.occurredAt === undefined ? {} : { occurredAt: input.occurredAt }),
+      ...(input.recordedAfterClose === true ? { recordedAfterClose: true } : {}),
     });
     await audit(tx, context, 'work_order.part_used', job.id, {
       materialId: material.id,
@@ -279,6 +324,7 @@ export async function recordUse(
       note: input.note ?? null,
       recordedBy: principal.userId,
       ...(input.occurredAt === undefined ? {} : { occurredAt: input.occurredAt }),
+      ...(input.recordedAfterClose === true ? { recordedAfterClose: true } : {}),
       lots: lots.lots,
     });
   } catch (error) {

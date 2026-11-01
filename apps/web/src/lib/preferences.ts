@@ -2,12 +2,10 @@ import { cookies } from 'next/headers';
 import {
   DEFAULT_LOCALE,
   isLocale,
-  negotiateLocale,
   resolveDirection,
   type Direction,
   type Locale,
 } from '@integr8/i18n/core';
-import { headers } from 'next/headers';
 import { LOCALE_COOKIE, SIDEBAR_COOKIE, THEME_COOKIE } from './cookies';
 
 /**
@@ -21,6 +19,13 @@ import { LOCALE_COOKIE, SIDEBAR_COOKIE, THEME_COOKIE } from './cookies';
  *
  * Direction follows the locale and nothing else. The theme is the company's,
  * written to its cookie by the shell once `/v1/me` says what it is.
+ *
+ * **English first, always** (Low 3). The language is English unless the
+ * person chose Arabic, with the switch on the public pages or the language
+ * menu in the workspace and the dashboard; that choice is the locale cookie,
+ * and it is remembered. The browser's `Accept-Language` is not consulted any
+ * more: a visitor whose system happens to be Arabic still opens the site in
+ * English, the way the owner wants it introduced, one click away from Arabic.
  */
 
 export { LOCALE_COOKIE, SIDEBAR_COOKIE, THEME_COOKIE } from './cookies';
@@ -37,35 +42,17 @@ export interface Preferences {
 
 export async function readPreferences(): Promise<Preferences> {
   const cookieStore = await cookies();
-  const headerStore = await headers();
 
-  const chosen = cookieStore.get(LOCALE_COOKIE)?.value;
-  const locale =
-    chosen !== undefined && isLocale(chosen)
-      ? chosen
-      : negotiateLocale(acceptedLanguages(headerStore.get('accept-language')), DEFAULT_LOCALE);
-
+  const locale = resolveLocale(cookieStore.get(LOCALE_COOKIE)?.value);
   const theme = readTheme(cookieStore.get(THEME_COOKIE)?.value);
   const sidebar = readSidebar(cookieStore.get(SIDEBAR_COOKIE)?.value);
 
   return { locale, direction: resolveDirection(locale), theme, sidebar };
 }
 
-/** `en-GB,en;q=0.9,ar;q=0.8` → `['en-GB', 'en', 'ar']`, best first. */
-export function acceptedLanguages(header: string | null): string[] {
-  if (header === null) {
-    return [];
-  }
-
-  return header
-    .split(',')
-    .map((part) => {
-      const [tag, quality] = part.trim().split(';q=');
-      return { tag: tag?.trim() ?? '', quality: Number.parseFloat(quality ?? '1') };
-    })
-    .filter((entry) => entry.tag !== '')
-    .sort((a, b) => b.quality - a.quality)
-    .map((entry) => entry.tag);
+/** The remembered choice when there is a valid one, otherwise English. */
+export function resolveLocale(chosen: string | undefined): Locale {
+  return chosen !== undefined && isLocale(chosen) ? chosen : DEFAULT_LOCALE;
 }
 
 function readTheme(value: string | undefined): ThemePreference {

@@ -1,7 +1,12 @@
+import { refuseJobsTitled } from '@integr8/db/testing';
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createLogger } from '../../http/logger.js';
-import { runDeadlineAlerts, runMaintenancePlans } from '../../maintenance/tasks.js';
+import {
+  runDeadlineAlerts,
+  runMaintenancePlans,
+  runMaintenanceRetries,
+} from '../../maintenance/tasks.js';
 import {
   type ApiHarness,
   type Member,
@@ -376,5 +381,126 @@ describe('maintenance plans', () => {
       422,
     );
     expect(refused.error.code).toBe('contract_not_customers');
+  });
+});
+
+describe('a maintenance plan that fails (0063)', () => {
+  interface PlanBody {
+    id: string;
+    version: number;
+    failure: { message: string; count: number; gaveUp: boolean } | null;
+  }
+  const run = () =>
+    runMaintenancePlans({ config: api.config, logger, workerId: 'test', force: true });
+  const retry = () =>
+    runMaintenanceRetries({ config: api.config, logger, workerId: 'test', force: true });
+  const failing = async () =>
+    (await call<{ items: PlanBody[] }>(dispatcher, 'GET', '/v1/maintenance-plans?failing=true'))
+      .items;
+
+  it('is rolled back alone, warned about, retried until it gives up, and tried again once edited', async () => {
+    // A site of its own, so other suites' plans do not join these jobs.
+    const yard = (
+      await call<{ id: string }>(
+        dispatcher,
+        'POST',
+        `/v1/customers/${customerId}/sites`,
+        { name: 'Yard', address: { line1: '3 River Road' } },
+        201,
+      )
+    ).id;
+    const asset = async (name: string) =>
+      (
+        await call<{ asset: { id: string } }>(
+          dispatcher,
+          'POST',
+          '/v1/assets',
+          { name, siteId: yard },
+          201,
+        )
+      ).asset.id;
+    const plan = async (assetId: string, title: string, canShare: boolean) =>
+      call<PlanBody>(
+        dispatcher,
+        'POST',
+        '/v1/maintenance-plans',
+        {
+          assetId,
+          jobTypeId,
+          title,
+          intervalCount: 1,
+          intervalUnit: 'year',
+          counting: 'calendar',
+          startsOn: daysFromToday(5),
+          leadDays: 30,
+          canShare,
+        },
+        201,
+      );
+    // Two good plans share a job; a third good one and the bad one have their own.
+    const sharing = await plan(await asset('Pump 1'), 'Pump service', true);
+    const sharingToo = await plan(await asset('Pump 2'), 'Valve service', true);
+    const bad = await plan(await asset('Pump 3'), 'Broken pump service', false);
+    const alone = await plan(await asset('Pump 4'), 'Tank service', false);
+
+    const restore = await refuseJobsTitled('Broken');
+    try {
+      const first = await run();
+      expect(first.failures).toEqual([]);
+      expect(first.planFailures).toEqual([
+        expect.objectContaining({ planId: bad.id, failureCount: 1 }),
+      ]);
+      const made = await call<{
+        items: { plan: { id: string }; workOrder: { id: string } | null }[];
+      }>(dispatcher, 'GET', `/v1/maintenance?siteId=${yard}`);
+      const withJob = new Set(
+        made.items.filter((item) => item.workOrder !== null).map((item) => item.plan.id),
+      );
+      expect(withJob).toEqual(new Set([sharing.id, sharingToo.id, alone.id]));
+      expect(first.jobsCreated).toBe(2);
+
+      const listed = await failing();
+      expect(listed.map((plan) => [plan.id, plan.version])).toEqual([[bad.id, bad.version]]);
+      expect(listed[0]?.failure).toEqual({
+        message: 'test: this job is refused',
+        at: expect.any(String) as unknown,
+        count: 1,
+        gaveUp: false,
+      });
+      const health = JSON.parse(
+        (
+          await api.call(admin.accessToken, {
+            method: 'GET',
+            url: '/v1/platform/health',
+          })
+        ).body,
+      ) as { maintenance: { items: { planId: string; failureCount: number }[] } };
+      expect(health.maintenance.items).toContainEqual(
+        expect.objectContaining({ planId: bad.id, failureCount: 1 }),
+      );
+
+      // Retried alone each cycle, until the fifth failure in a row.
+      for (let attempt = 2; attempt <= 5; attempt += 1) {
+        const again = await retry();
+        expect(again.planFailures.map((failure) => failure.planId)).toEqual([bad.id]);
+        expect(again.jobsCreated).toBe(0);
+      }
+      expect((await failing())[0]?.failure).toMatchObject({ count: 5, gaveUp: true });
+      expect((await retry()).planFailures).toEqual([]);
+      expect((await run()).planFailures).toEqual([]);
+    } finally {
+      await restore();
+    }
+
+    // Fixed, and edited: the warning goes and the next run makes its job.
+    const edited = await call<PlanBody>(dispatcher, 'PATCH', `/v1/maintenance-plans/${bad.id}`, {
+      expectedVersion: bad.version,
+      title: 'Pump service, second pump',
+    });
+    expect(edited.failure).toBeNull();
+    expect(await failing()).toEqual([]);
+    const fixed = await run();
+    expect(fixed.planFailures).toEqual([]);
+    expect(fixed.occurrences).toBe(1);
   });
 });

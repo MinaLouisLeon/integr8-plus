@@ -31,9 +31,10 @@ import {
   withTenant,
 } from '@integr8/db';
 import { z } from 'zod';
+import { hrKeySettings } from '../../config.js';
 import { ApiError, conflict, forbidden, notFound, unprocessable } from '../../http/errors.js';
 import { defineRoute, noSchema, type RequestContext } from '../../http/routes.js';
-import { hrKey, openField } from '../../hr/sealed-fields.js';
+import { hrKeyring, type HrKeyring, openWithKeyring } from '../../hr/sealed-fields.js';
 import { crmAudit as audit, versionConflict } from './crm-shared.js';
 import { companyName } from './finance-invoices.js';
 import { type People, peopleOf, personBody, personSchema } from './operations.js';
@@ -536,16 +537,16 @@ async function runDetail(
   };
 }
 
-function keyOrRefuse(context: RequestContext): Buffer {
-  const value = context.config.HR_DATA_KEY;
-  if (value === undefined) {
+function keyOrRefuse(context: RequestContext): HrKeyring {
+  const keys = hrKeySettings(context.config);
+  if (keys === undefined) {
     throw new ApiError(
       503,
       'hr_key_missing',
       'Bank and insurance numbers cannot be read until HR_DATA_KEY is set on the server.',
     );
   }
-  return hrKey(value);
+  return hrKeyring(keys.current, keys.previous);
 }
 
 // ---------------------------------------------------------------------------
@@ -1542,11 +1543,11 @@ export const insuranceReportRoute = defineRoute({
           employee?.employeeNumber ?? null,
           sealed === null || sealed === undefined
             ? null
-            : openField(sealed.sealed, key, {
+            : openWithKeyring(sealed.sealed, key, {
                 tenantId: principal.tenantId,
                 employeeId: line.employeeId,
                 field: 'insuranceNumber',
-              }),
+              }).plaintext,
           line.insurableWage,
           line.socialInsuranceEmployee,
           line.socialInsuranceEmployer,
@@ -1627,11 +1628,11 @@ export const bankFileRoute = defineRoute({
           employee?.bankName ?? null,
           sealed === null || sealed === undefined
             ? null
-            : openField(sealed.sealed, key, {
+            : openWithKeyring(sealed.sealed, key, {
                 tenantId: principal.tenantId,
                 employeeId: line.employeeId,
                 field: 'bankAccount',
-              }),
+              }).plaintext,
           line.net,
           run.currency,
           reference,

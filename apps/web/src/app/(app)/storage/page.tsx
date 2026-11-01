@@ -17,6 +17,10 @@ import { apiClient } from '~/lib/session';
  * The warning is the point. A company told at eighty percent can delete
  * something or ask for a bigger plan; a company told at a hundred has already
  * had an engineer fail to upload a photo from a roof.
+ *
+ * On a plan that keeps accepting uploads past the line (Standard), being over
+ * costs money instead: the "Over your plan" notice says by how much, and what
+ * this month's invoice will carry for it so far (Low 2).
  */
 export default function StoragePage() {
   const { t } = useTranslation();
@@ -45,19 +49,56 @@ export default function StoragePage() {
   const data = usage.data;
   const quota = data.quota;
   const percent = quota.percentUsed ?? 0;
+  const month = data.overageThisMonth;
+  const overPlan = quota.state === 'over' && quota.overage === 'allow';
 
   return (
     <main className="flex flex-col gap-6">
       <h1 className="text-2xl font-semibold text-content">{t('workspace.storage.title')}</h1>
 
-      {quota.state === 'over' ? (
+      {quota.state === 'over' && quota.overage === 'block' ? (
         <p
           role="status"
           className="rounded-md bg-danger-subtle px-3 py-2 text-sm font-medium text-danger"
         >
-          {quota.overage === 'block'
-            ? t('workspace.storage.full')
-            : t('workspace.storage.overage', { amount: formatBytes(quota.overageBytes) })}
+          {t('workspace.storage.full')}
+        </p>
+      ) : null}
+
+      {overPlan ? (
+        <section
+          role="status"
+          aria-labelledby="over-plan-title"
+          className="flex flex-col gap-1 rounded-md bg-danger-subtle px-3 py-2 text-sm text-danger"
+        >
+          <h2 id="over-plan-title" className="font-semibold">
+            {t('workspace.storage.overPlan.title')}
+          </h2>
+          <p>
+            {t('workspace.storage.overPlan.body', {
+              used: formatBytes(data.totalBytes),
+              amount: formatBytes(quota.overageBytes),
+              allowance: formatBytes(quota.allowanceBytes ?? 0),
+            })}
+          </p>
+          {month.averageBytes > 0 ? (
+            <p>
+              {t('workspace.storage.overPlan.billing', {
+                average: formatBytes(month.averageBytes),
+                peak: formatBytes(month.peakBytes),
+              })}
+            </p>
+          ) : null}
+          <p>{t('workspace.storage.overPlan.action')}</p>
+        </section>
+      ) : null}
+
+      {!overPlan && month.averageBytes > 0 ? (
+        <p
+          role="status"
+          className="rounded-md bg-warning-subtle px-3 py-2 text-sm font-medium text-warning"
+        >
+          {t('workspace.storage.overPlan.earlier', { average: formatBytes(month.averageBytes) })}
         </p>
       ) : null}
 

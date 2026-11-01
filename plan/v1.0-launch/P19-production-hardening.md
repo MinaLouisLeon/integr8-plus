@@ -75,6 +75,41 @@ Five marks need explaining, and one open box:
   v1.2.1 predate it; part Q has the workaround for going back to v1.2.1. Nobody other than
   the author has followed the procedure yet, so the exit criterion stays open.
 
+Hardening from the pre-production audit's Medium items (2026-10-31):
+
+- **The API and the worker no longer run as a superuser.** Their connection outside one
+  company is `integr8_platform` (migration 0058, created by the migrator's bootstrap with
+  BYPASSRLS): rows in every table and `purge_tenant()`, and nothing else; it owns nothing
+  and cannot alter, truncate, lift a trigger or create a role. `deploy/compose.yml` names
+  the settings each service gets, so the API and the worker hold neither
+  `POSTGRES_PASSWORD`, `DATABASE_URL_ADMIN` nor `SUPABASE_AUTH_JWT_SECRET`; a unit test keeps
+  the list and the settings the code reads in step. Production refuses to start them with
+  the owner's connection or without the platform one, and checks the role at start-up. CI
+  runs every suite with the platform role; the schema-invariant suite pins its grants and
+  `platform-role.integration.test.ts` tries what it must not do.
+- **Health checks are off the internet, and the machine reports in.** Caddy answers 404
+  for `/health` and `/health/ready` on the API's public name; they named the release and
+  what was failing. Readiness reuses the API's platform pool instead of opening an owner
+  connection per call, and keeps its answer for ten seconds (unit test). The public uptime
+  check is replaced by `deploy/vps/heartbeat.sh`, run from root's cron every five minutes:
+  it asks `127.0.0.1:3000/health/ready` and pings `HEALTH_PING_URL`, or `<url>/fail` when
+  not ready. Tested with stand-in servers; the monitor itself is the owner's to create
+  (setup guide, Stage 9 part C).
+- **Browser security headers.** Caddy sends HSTS (`max-age=31536000`, no subdomains, no
+  preload) for both names, and `nosniff`, `no-referrer` and `DENY` for the API. The web
+  app ships a full content-security policy as `Content-Security-Policy-Report-Only`, with
+  reports to Sentry's CSP endpoint when a DSN is set, beside the enforced
+  `frame-ancestors 'none'`; enforcing the full policy waits for two quiet weeks of
+  reports. The desktop app's Tauri policy lists only what it loads (no map tiles). Caddy
+  could not be run here, so the Caddyfile is checked by reading only; the web build's
+  headers were checked in its routes manifest.
+- **The HR data key is required in production and can be changed.** `HR_DATA_KEY` seals,
+  older keys in `HR_DATA_KEYS_PREVIOUS` still open, and `admin-cli hr-reseal` moves every
+  company's sealed fields under the current key (tenant transaction per company, counts and
+  key fingerprints printed, unreadable fields listed and kept). The backup runbook says to keep
+  the key, and every retired key, in the password manager apart from the backups. Unit and
+  integration tests (`reseal.integration.test.ts`); setup guide Stage 11 part Z.
+
 ## Exit criteria
 
 - [ ] A restore from backup has been performed end to end, and the time it took is written down

@@ -47,7 +47,10 @@ another's data even if somebody signs in with the wrong address.
    use the product's own icon when the company has none.
 3. On the company's page in the platform dashboard, tick **Build apps for
    this company** and save. The company now appears in
-   `GET /v1/build/companies`.
+   `GET /v1/build/companies`, and with `APP_BUILDS=github` its first build
+   starts at once: the panel says "Build started on GitHub" with a link to
+   the run. With `APP_BUILDS=off` (the default) it says to start the build by
+   hand, below.
 4. When its forms, job types, look and apps are ready, invite the owner: the
    company's page → **Invitations** → **Send invitation** (or **Copy a new
    link** to send it yourself). Onboarding does not email the owner unless you
@@ -55,7 +58,15 @@ another's data even if somebody signs in with the wrong address.
 
 ## Building
 
-- **One company, now**: Actions → _Build company apps_ → _Run workflow_. Enter
+- **From the dashboard**: with `APP_BUILDS=github`, ticking **Build apps**
+  starts the company's first build, and **Rebuild apps** on its page starts
+  another (after its look changed, or for a version released before it was
+  switched on). The API needs `GITHUB_BUILD_TOKEN`, a fine-grained GitHub
+  token for this repository only with **Actions: read and write** (it can run
+  any workflow there, so it is a secret), and `GITHUB_BUILD_REPOSITORY`; it
+  refuses to start with `github` and either missing. `GITHUB_BUILD_REF`
+  (default `main`) is the branch whose workflow and version are built.
+- **One company, by hand**: Actions → _Build company apps_ → _Run workflow_. Enter
   the short name and leave the rest empty (version from `package.json`, API
   from `PUBLIC_API_URL`, platforms from the release variables). Type `all` to
   rebuild every company.
@@ -68,6 +79,16 @@ Each company's run produces one release tagged `company-<slug>-v<version>`
 holding the Windows, macOS and Linux installers, the Android app, and links to
 the builds on Expo. The desktop download links are those release assets;
 rehost them wherever you like. The phone apps are also kept on Expo.
+
+The web app's public **download page** lists them: `/download?company=<slug>`
+shows the company's newest release with installers (Windows, macOS, Linux and the
+Android `.apk`), found through the same cached release list as the desktop update
+feed (`GITHUB_RELEASES_REPOSITORY`, and `GITHUB_RELEASES_TOKEN` for a private
+repository, when the files are passed through `/desktop-updates/<slug>/download/…`).
+`/download` alone lists the staff desktop app. A short name with no release, or no
+company, gets a sentence asking the reader to check with their administrator; a
+release with no `.apk` (store builds, or phone builds switched off) says the company
+sends the phone app. Send people that link rather than GitHub's.
 
 What a company run needs on GitHub (see `docs/contributing/branching.md`):
 `PUBLIC_API_URL`, `EXPO_TOKEN`, `EAS_BUILDS=enabled`, and for `all` the
@@ -108,9 +129,59 @@ companies on every release need a paid plan.
 
 ## Updates
 
-Desktop installers ask their own updater feed, `<updater base>/<slug>/…`, so
-a company is never offered the staff build or another company's. Phone apps
-receive over-the-air updates on their own channel, `production-<slug>`.
+Desktop apps update themselves. Each build asks its own feed, stamped in by
+`stamp.mjs`: `https://app.integr8-media.com/desktop-updates/<slug>/…` for a
+company (`/staff/…` for the staff app; the base is the `DESKTOP_UPDATES_URL`
+repository variable). The web app answers with the `latest.json` of that app's
+newest release, `company-<slug>-v<version>`, so a company is never offered the
+staff build or another company's. When one is waiting, the app shows a strip
+under its top bar; **Install now** downloads it, checks its signature against
+the public key the app carries, and installs it (on Windows the app closes and
+the installer opens the new version; on macOS and Linux it starts on the next
+launch). This needs the `TAURI_SIGNING_PRIVATE_KEY` secret when the release is
+built and `GITHUB_RELEASES_REPOSITORY` on the web server; it does not need any
+operating-system certificate. Apps installed before this feed existed asked a
+placeholder address and must be reinstalled once.
+
+Phone apps receive over-the-air updates on their own channel,
+`production-<slug>`.
+
+When a release raises `API_MIN_SUPPORTED_CLIENT` past an app's build, the API
+refuses it with `client_too_old` and the address of the web app's download page
+(`API_UPDATE_URL`, by default `WEB_APP_URL` + `/download`). The phone shows a
+strip along the bottom of every screen, and the desktop app one across the top
+of the window, sign-in included, saying the version is no longer supported,
+with an **Update** button. It opens `/download?company=<slug>` in a company's
+own build, so the page lists that company's installers and phone app, and the
+plain `/download` in the staff and generic apps. Desktop apps normally update
+themselves before it comes to that; the button is the way out when one has not
+(an app installed before the feed existed, a feed that cannot be reached).
+Work saved on a phone stays on it and is sent once the new version is signed in.
+
+## Installing an unsigned desktop app
+
+Until the operating-system code-signing secrets exist (setup guide, Stage 6,
+"Code signing, when you buy certificates"), the installers are not
+code-signed. They work, but each system warns
+the first time. Tell the company's people what they will see:
+
+- **Windows**: "Windows protected your PC" (SmartScreen). Click **More info**,
+  then **Run anyway**. On Windows 11 with **Smart App Control** switched on,
+  an unsigned app may be blocked outright, with no way past it; that person
+  needs a signed build, or to switch Smart App Control off in Windows
+  Security (a decision for whoever looks after that PC). Company-managed PCs may block unsigned
+  installers by policy; their IT department has to allow it.
+- **macOS**: the first open is refused ("cannot be opened because Apple cannot
+  check it for malicious software", or "Not Opened"). Open **System Settings →
+  Privacy & Security**, scroll to Security, and click **Open Anyway** beside
+  the app's name, then confirm. Right-click → Open no longer gets past this on
+  recent macOS. This is needed once per install.
+- **Linux**: no warning; make the `.AppImage` executable, or install the `.deb`.
+
+Use the Windows `-setup.exe` (rather than the `.msi`) unless an IT department
+asks for an MSI: it updates in place and reopens the app afterwards.
+Updates themselves raise no warning: they are checked against the app's own
+key, not the operating system's.
 
 ## Changing a company's look later
 

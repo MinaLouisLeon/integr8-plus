@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 import pg from 'pg';
 import { loadDatabaseConfig, requireAdminConnectionString } from '../config.js';
+import { exampleValueVerdict } from './example-values.js';
 import { defaultMigrationsDir, loadMigrations } from './files.js';
 import { listMigrations, migrationProblems, Migrator } from './runner.js';
 
@@ -19,8 +20,9 @@ Commands
   down [--steps N]       Roll back the most recent N migrations (default 1)
   down --to NNNN         Roll back everything above NNNN
   new <slug>             Scaffold the next up/down pair
-  bootstrap              Create the integr8_app and integr8_auth roles
-                         (needs INTEGR8_APP_PASSWORD and INTEGR8_AUTH_PASSWORD),
+  bootstrap              Create the integr8_app, integr8_auth and
+                         integr8_platform roles (needs INTEGR8_APP_PASSWORD,
+                         INTEGR8_AUTH_PASSWORD and INTEGR8_PLATFORM_PASSWORD),
                          and Supabase Auth's role and schema when
                          SUPABASE_AUTH_DB_PASSWORD is set
   deploy                 bootstrap, then up: the one command a hosting
@@ -28,6 +30,9 @@ Commands
                          takes traffic
 
 All commands except "new" connect as DATABASE_URL_ADMIN, the schema owner.
+With APP_ENV=production, bootstrap, deploy, up and down refuse to run while a
+password or address still holds an example value (change-me, a .example or
+.local host) or a database password is shorter than 16 characters.
 `.trim();
 
 async function main(): Promise<number> {
@@ -49,6 +54,17 @@ async function main(): Promise<number> {
 
   if (command === 'new') {
     return scaffold(positionals[1]);
+  }
+
+  // Before connecting: a production database is never touched with the
+  // template's passwords, and bootstrap never makes them the roles' own.
+  const verdict = exampleValueVerdict(process.env, command);
+  for (const line of verdict.warn) {
+    console.warn(line);
+  }
+  if (verdict.refuse.length > 0) {
+    console.error(verdict.refuse.join('\n'));
+    return 1;
   }
 
   const config = loadDatabaseConfig();
@@ -179,7 +195,7 @@ function report(
 }
 
 /**
- * Creates the two login roles, and the self-hosted Auth's when asked for.
+ * Creates the three login roles, and the self-hosted Auth's when asked for.
  *
  * Roles are cluster-level, not schema-level, so they cannot live in a migration
  * — a migration is per-database and a password has no business in git. This
@@ -188,9 +204,17 @@ function report(
  * Passwords reach Postgres through a GUC rather than string interpolation, so a
  * password containing a quote cannot become SQL.
  *
- * Neither role is granted anything here. Table privileges come from the
- * migrations, so a table added later is invisible to both until somebody writes
- * its grant.
+ * No role is granted anything here. Table privileges come from the
+ * migrations, so a table added later is invisible to the first two until
+ * somebody writes its grant; the platform role's come from 0058.
+ *
+ * The one role attribute set here is BYPASSRLS on `integr8_platform`, the
+ * cross-company role the API and worker use for staff work, provisioning and
+ * the job queue. It reads past RLS as the owner used to, without the owner's
+ * other powers. Only a superuser can give that attribute, which is why it is
+ * here rather than in a migration. Every role is also told, each run, that it
+ * is not a superuser and cannot create roles or databases, so a password reset
+ * is also an attribute reset.
  */
 async function bootstrap(
   client: pg.Client,
@@ -206,6 +230,12 @@ async function bootstrap(
       name: 'integr8_auth',
       variable: 'INTEGR8_AUTH_PASSWORD',
       purpose: 'the pre-authentication role: lockout and membership lookup only',
+    },
+    {
+      name: 'integr8_platform',
+      variable: 'INTEGR8_PLATFORM_PASSWORD',
+      purpose: "the API and worker's cross-company role: not a superuser, owns nothing",
+      bypassRls: true,
     },
   ] as const;
 
@@ -228,11 +258,16 @@ async function bootstrap(
       process.env[role.variable],
     ]);
     await client.query('select set_config($1, $2, false)', ['integr8.bootstrap_role', role.name]);
+    await client.query('select set_config($1, $2, false)', [
+      'integr8.bootstrap_bypassrls',
+      'bypassRls' in role ? 'bypassrls' : 'nobypassrls',
+    ]);
     await client.query(`
       do $$
       declare
         secret    text := current_setting('integr8.bootstrap_password');
         role_name text := current_setting('integr8.bootstrap_role');
+        rls       text := current_setting('integr8.bootstrap_bypassrls');
       begin
         if exists (select 1 from pg_roles where rolname = role_name) then
           execute format('alter role %I login password %L', role_name, secret);
@@ -241,6 +276,10 @@ async function bootstrap(
           execute format('create role %I login password %L', role_name, secret);
           raise notice '% created', role_name;
         end if;
+
+        -- rls is one of two literals set above, never input.
+        execute format(
+          'alter role %I nosuperuser nocreatedb nocreaterole noreplication ' || rls, role_name);
 
         -- Role-level defaults survive Supavisor's transaction pooling, where a
         -- session-level SET would not.
@@ -255,6 +294,7 @@ async function bootstrap(
 
   await client.query('select set_config($1, $2, false)', ['integr8.bootstrap_password', '']);
   await client.query('select set_config($1, $2, false)', ['integr8.bootstrap_role', '']);
+  await client.query('select set_config($1, $2, false)', ['integr8.bootstrap_bypassrls', '']);
 
   await bootstrapSupabaseAuth(client);
 

@@ -74,21 +74,8 @@ export class RateLimitRepository {
     };
   }
 
-  /**
-   * Removes counters whose window has passed.
-   *
-   * The only table in this schema that deletes. A rate-limit counter has no
-   * evidentiary value once its window is over — unlike a login attempt, which
-   * is kept precisely because somebody may need to reconstruct an attack.
-   */
-  async sweep(olderThan: Date): Promise<number> {
-    const result = await this.db
-      .deleteFrom('rate_limit_buckets')
-      .where('window_started_at', '<', olderThan)
-      .executeTakeFirst();
-
-    return Number(result.numDeletedRows ?? 0n);
-  }
+  // Counters whose window has passed are deleted by the worker's nightly
+  // housekeeping, as the schema owner (HousekeepingRepository), not here.
 }
 
 /**

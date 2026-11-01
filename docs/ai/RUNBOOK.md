@@ -238,17 +238,17 @@ dollars on screens. A cost is an estimate when the model was not in
 
 ## 5. When something goes wrong
 
-| Symptom                                       | Where to look                                       | What to do                                                                                                                                                                                         |
-| --------------------------------------------- | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Members see "not included"                    | capabilities `blockedBy`                            | `global_off` → §2 step 1; `plan_off`/`custom_off` → step 2; `channel_off` → company switches; `member_off` → People; `no_share` → step 4                                                           |
-| Members see "temporarily unavailable"         | API log `ai.request.failed`                         | The provider refused the call that was being answered. The next questions get help-library answers while a billing pause lasts (§2.1).                                                             |
-| Answers are help articles, not conversation   | Company page → AI assistant → Answers come from now | `policy`: the plan or company says library; `no_provider`: `AI_PROVIDER=none`; `provider_unconfigured`: a key or model is missing, or the fake provider in production (Provider panel `problems`). |
-| Every answer is 503 `ai_provider_unavailable` | API log `ai.request.failed`, health screen          | Key or model wrong, or the provider is rate-limiting (`rate_limited`). Fix the env, or wait out `retry-after`.                                                                                     |
-| Log says `ai.provider.credit_exhausted`       | Provider panel credit pause                         | The provider account's prepaid credit is spent (§2.1). Top it up; calls resume after the pause or a restart.                                                                                       |
-| Members told their allowance is used up       | Members panel, company usage                        | `ai_*_token_quota_exceeded`: the company's or the member's token share is spent; raise the limit or the share. `ai_member_budget_exceeded`: the member's dollar cap.                               |
-| 503 `ai_budget_unavailable`                   | health → budget                                     | The deployment's month is spent. Raise `AI_GLOBAL_MONTHLY_BUDGET_MICROUSD` and restart, or wait for the month.                                                                                     |
-| Counters look stuck (reserved > 0)            | health → stale reservations                         | The worker's reconciler settles them after `AI_RESERVATION_TTL_SECONDS`; check the worker is running.                                                                                              |
-| A company's spend is unexpectedly high        | usage report, `ai_provider_calls`                   | Lower the company's cost ceiling or message limits; check `AI_MODEL_PRICES` matches the provider's current rates.                                                                                  |
+| Symptom                                       | Where to look                                       | What to do                                                                                                                                                                                                                                             |
+| --------------------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Members see "not included"                    | capabilities `blockedBy`                            | `global_off` → §2 step 1; `plan_off`/`custom_off` → step 2; `channel_off` → company switches, for the app the person **signed in** with (capabilities `channel`; staff acting as the company count as web); `member_off` → People; `no_share` → step 4 |
+| Members see "temporarily unavailable"         | API log `ai.request.failed`                         | The provider refused the call that was being answered. The next questions get help-library answers while a billing pause lasts (§2.1).                                                                                                                 |
+| Answers are help articles, not conversation   | Company page → AI assistant → Answers come from now | `policy`: the plan or company says library; `no_provider`: `AI_PROVIDER=none`; `provider_unconfigured`: a key or model is missing, or the fake provider in production (Provider panel `problems`).                                                     |
+| Every answer is 503 `ai_provider_unavailable` | API log `ai.request.failed`, health screen          | Key or model wrong, or the provider is rate-limiting (`rate_limited`). Fix the env, or wait out `retry-after`.                                                                                                                                         |
+| Log says `ai.provider.credit_exhausted`       | Provider panel credit pause                         | The provider account's prepaid credit is spent (§2.1). Top it up; calls resume after the pause or a restart.                                                                                                                                           |
+| Members told their allowance is used up       | Members panel, company usage                        | `ai_*_token_quota_exceeded`: the company's or the member's token share is spent; raise the limit or the share. `ai_member_budget_exceeded`: the member's dollar cap.                                                                                   |
+| 503 `ai_budget_unavailable`                   | health → budget                                     | The deployment's month is spent. Raise `AI_GLOBAL_MONTHLY_BUDGET_MICROUSD` and restart, or wait for the month.                                                                                                                                         |
+| Counters look stuck (reserved > 0)            | health → stale reservations                         | The worker's reconciler settles them after `AI_RESERVATION_TTL_SECONDS`; check the worker is running.                                                                                                                                                  |
+| A company's spend is unexpectedly high        | usage report, `ai_provider_calls`                   | Lower the company's cost ceiling or message limits; check `AI_MODEL_PRICES` matches the provider's current rates.                                                                                                                                      |
 
 The worker's maintenance tick runs the reconciler every `MEDIA_MAINTENANCE_INTERVAL_SECONDS`
 and the retention sweep once a day (`scheduled_task_runs.task = 'ai.retention'`).
@@ -269,6 +269,18 @@ company's own records. That needs two approvals, both off by default:
 Until both are true, a company on Insights or Agent gets Help answers and a
 note saying company data is not enabled.
 
+**The figures are exact.** Every count and total an insight tool returns is
+counted and summed in the database over all the company's records the member may
+see (`apps/api/src/ai/tools/insights.ts`): unpaid and overdue invoices and what
+is owed per currency (partly paid invoices included), the customers owing most
+and the overdue invoices longest past due (`receivablesSummary`), customers and
+assets by status, the open pipeline per stage, items below their reorder level.
+Until 2026-10-31 some were worked out from a page of rows: the newest hundred
+invoices, at most two hundred customers or assets, five hundred opportunities.
+A list is still short; the total beside it (`customersOwing`, `overdue`,
+`totalMatches`, `totalWarrantyEndingSoon`, `totalBelowMinimum`) says how many
+exist, and the system prompt tells the model to say so ("the 10 oldest of 37").
+
 ## 7. Exports and deletion
 
 A member's conversations, the actions prepared for them and the message and
@@ -281,10 +293,33 @@ rest after the policy's retention window.
 
 ## 8. The help library
 
-The assistant answers from `apps/api/src/ai/help/articles.ts`, in English and
-Arabic. Editing an article and deploying re-seeds it by content hash on API
-start; an article removed from the file is disabled, never cited again. No
-company data is ever indexed.
+The assistant answers from `packages/i18n/src/help/articles.ts`
+(`@integr8/i18n/help`), in English and Arabic: 39 articles since 1.2.4. Editing
+an article and deploying re-seeds it by content hash on API start; an article
+removed from the file is disabled, never cited again. No company data is ever
+indexed.
+
+The same library is the web app's public Help centre (`/help`): an article
+with a `public` placement (a category and the question it answers, in both
+languages) is shown there, its body split into plain paragraphs; one with
+`public: null` stays in the app (today only e-invoicing, which is not yet
+validated with the tax authority). `apps/web/src/lib/help-articles.ts`
+exposes it as `helpArticlesFor(locale)`.
+
+Keeping it true:
+
+- **A feature that changes what a screen does updates its article**, English
+  and Arabic, in the same change. Name buttons and screens as the
+  `@integr8/i18n` catalogues do, and write plain text: paragraphs separated by
+  a blank line, no Markdown.
+- `packages/i18n/src/help/help.test.ts` checks keys, both languages (the same
+  number of paragraphs in each), the database's length limit, plain text and
+  the public view.
+- `apps/api/src/ai/help/articles.test.ts` checks every module a company can
+  have switched on (`MODULE_FEATURES`) has at least one article (by `feature`,
+  or `covers` for an article about several, such as the website's four
+  switches), and that every `feature`, `minPermission` and `appRoute` names
+  one that exists. A new module fails it until its article is written.
 
 ## 9. Voice
 

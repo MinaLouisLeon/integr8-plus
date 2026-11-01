@@ -9,12 +9,31 @@ import {
   USAGE_CATEGORIES,
   type UsageCategory,
 } from '../schema.js';
+import { type AttachmentOwner, toAttachment } from './attachments.js';
 import { TenantScopedRepository, type TenantScope } from './tenant-scope.js';
 
 /** What a PDF template's images are linked to; retention leaves these alone. */
 export const TEMPLATE_ASSET_ENTITY = 'document_template';
 /** What a generated PDF is linked to. */
 export const DOCUMENT_FILE_ENTITY = 'document';
+
+/**
+ * A record that uses a file, and so decides who may read it (docs/media):
+ * whoever may see the record. A file nothing uses yet is its uploader's.
+ */
+export type FileUse =
+  /** Named in a submission's answers, now or in its history (0068). */
+  | { kind: 'submission'; submissionId: string }
+  /** On a customer, site, job, asset, claim, item, purchase or certificate. */
+  | { kind: 'attachment'; attachmentId: string; owner: AttachmentOwner }
+  /** The customer's signature on a job's sign-off. */
+  | { kind: 'signoff'; workOrderId: string }
+  /** A document's PDF, generated or uploaded. */
+  | { kind: 'document'; documentId: string }
+  /** A picture in a PDF template. */
+  | { kind: 'document_template'; templateId: string }
+  /** The company's logo or app icon. */
+  | { kind: 'branding' };
 
 export interface UploadIntent {
   id: string;
@@ -296,7 +315,11 @@ export class FilesRepository extends TenantScopedRepository {
     ).map(toFile);
   }
 
-  /** Whether any submission, or any entry in any submission's history, names this file. */
+  /**
+   * Whether any submission, or any entry in any submission's history, names
+   * this file, or it is attached to anything. Read from the file-use index
+   * (0068), which the database keeps from every save of a submission.
+   */
   async isReferenced(fileId: string): Promise<boolean> {
     const found = await this.db
       .selectNoFrom((eb) =>
@@ -304,10 +327,10 @@ export class FilesRepository extends TenantScopedRepository {
           .or([
             eb.exists(
               eb
-                .selectFrom('submissions')
+                .selectFrom('submission_file_uses')
                 .select(sql`1`.as('one'))
-                .where('submissions.tenant_id', '=', this.tenantId)
-                .where(sql<boolean>`strpos(submissions.answers::text, ${fileId}) > 0`),
+                .where('submission_file_uses.tenant_id', '=', this.tenantId)
+                .where('submission_file_uses.file_id', '=', fileId),
             ),
             eb.exists(
               eb
@@ -317,18 +340,96 @@ export class FilesRepository extends TenantScopedRepository {
                 .where('attachments.file_id', '=', fileId)
                 .where('attachments.removed_at', 'is', null),
             ),
-            eb.exists(
-              eb
-                .selectFrom('submission_events')
-                .select(sql`1`.as('one'))
-                .where('submission_events.tenant_id', '=', this.tenantId)
-                .where(sql<boolean>`strpos(submission_events.answers::text, ${fileId}) > 0`),
-            ),
           ])
           .as('referenced'),
       )
       .executeTakeFirstOrThrow();
     return found.referenced === true;
+  }
+
+  /** The submissions that name this file, in their answers now or in their history. */
+  async submissionsNaming(fileId: string): Promise<string[]> {
+    const rows = await this.db
+      .selectFrom('submission_file_uses')
+      .select('submission_id')
+      .distinct()
+      .where('tenant_id', '=', this.tenantId)
+      .where('file_id', '=', fileId)
+      .orderBy('submission_id')
+      .limit(100)
+      .execute();
+    return rows.map((row) => row.submission_id);
+  }
+
+  /**
+   * Every record that uses this file (docs/media): what decides who may read
+   * it. Empty for a file nothing uses yet. Removed attachments no longer count.
+   */
+  async uses(
+    file: Pick<FileRecord, 'id' | 'linkedEntityType' | 'linkedEntityId'>,
+  ): Promise<FileUse[]> {
+    const uses: FileUse[] = [];
+    if (file.linkedEntityType === TEMPLATE_ASSET_ENTITY && file.linkedEntityId !== null) {
+      uses.push({ kind: 'document_template', templateId: file.linkedEntityId });
+    }
+    const [documents, attachments, signoffs, branding, submissions] = await Promise.all([
+      this.db
+        .selectFrom('documents')
+        .select('id')
+        .where('tenant_id', '=', this.tenantId)
+        .where((eb) =>
+          eb.or([
+            eb('file_id', '=', file.id),
+            ...(file.linkedEntityType === DOCUMENT_FILE_ENTITY && file.linkedEntityId !== null
+              ? [eb('id', '=', file.linkedEntityId)]
+              : []),
+          ]),
+        )
+        .execute(),
+      this.db
+        .selectFrom('attachments')
+        .selectAll()
+        .where('tenant_id', '=', this.tenantId)
+        .where('file_id', '=', file.id)
+        .where('removed_at', 'is', null)
+        .orderBy('created_at')
+        .limit(100)
+        .execute(),
+      this.db
+        .selectFrom('work_orders')
+        .select('id')
+        .where('tenant_id', '=', this.tenantId)
+        .where('signoff_file_id', '=', file.id)
+        .execute(),
+      this.db
+        .selectFrom('tenant_settings')
+        .select(sql`1`.as('one'))
+        .where('tenant_id', '=', this.tenantId)
+        .where((eb) =>
+          eb.or([eb('logo_media_id', '=', file.id), eb('app_icon_media_id', '=', file.id)]),
+        )
+        .execute(),
+      this.submissionsNaming(file.id),
+    ]);
+    uses.push(...documents.map((row) => ({ kind: 'document' as const, documentId: row.id })));
+    uses.push(
+      ...attachments.map((row) => {
+        const attachment = toAttachment(row);
+        return {
+          kind: 'attachment' as const,
+          attachmentId: attachment.id,
+          owner: attachment.owner,
+        };
+      }),
+    );
+    uses.push(...signoffs.map((row) => ({ kind: 'signoff' as const, workOrderId: row.id })));
+    if (branding.length > 0) {
+      uses.push({ kind: 'branding' });
+    }
+    uses.push(
+      ...submissions.map((submissionId) => ({ kind: 'submission' as const, submissionId })),
+    );
+    return uses;
   }
 
   /** Starts the restore window. The object stays in storage until it ends. */

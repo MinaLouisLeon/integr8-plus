@@ -21,7 +21,7 @@ Current project state and known gotchas: `MEMORY.md`.
 
 ## Workspace
 
-pnpm 10 workspaces + Turborepo, Node 22 (`.nvmrc`), TypeScript 6.0.3 (pinned on purpose —
+pnpm 10 workspaces + Turborepo, Node 22.22.1 or newer 22.x (22.22.2 recommended, see `.nvmrc`), TypeScript 6.0.3 (pinned on purpose —
 see `CONTRIBUTING.md`), Vitest, ESLint (type-aware, flat config), Prettier. Every dependency
 is pinned to an exact version.
 
@@ -52,6 +52,7 @@ pnpm build | lint | typecheck | test     # whole workspace; none need a database
 pnpm test:integration                    # needs a disposable Postgres (see README "Everyday commands")
 pnpm format:check                        # what CI runs; `pnpm format` writes
 pnpm guide:check                         # setup checklist MD/HTML parity (see below)
+pnpm pins:check                          # exact dependency versions; one Node release everywhere
 pnpm --filter @integr8/<name> <script>   # scope anything to one package
 pnpm --filter @integr8/api openapi && pnpm --filter @integr8/api-client generate   # after any API schema change
 pnpm --filter @integr8/db db new <slug>  # scaffold a migration up/down pair
@@ -81,7 +82,8 @@ refuses pushes to `main`/`staging`/`dev`, then runs `pnpm typecheck` and `pnpm t
   (a parity test checks keys, placeholders and Arabic's six plural forms).
 - **Logical directions only** for RTL: `ms-`/`pe-`/`start-`/`text-start`, never
   `ml-`/`left-`/`text-left`; `textAlign: 'auto'` on native. ESLint rejects physical forms.
-- **New permission** must be decided for every role in `packages/core/src/permissions.ts`.
+- **New permission** must be decided for every role in `packages/core/src/permissions.ts`,
+  and given its row (`yes`/`no` per role, and Staff only) in `packages/core/src/permissions.table.md`.
 - **Plan limits are enforced by the API**, not by screens.
 
 ## Conventions

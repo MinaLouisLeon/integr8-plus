@@ -1,6 +1,7 @@
 import { SessionManager } from '@integr8/api-client';
 import { createTokenStore } from './platform';
-import { APP_VERSION, API_BASE_URL } from './env';
+import { reportClientTooOld } from './client-update';
+import { APP_VERSION, API_BASE_URL, COMPANY_SLUG } from './env';
 
 /**
  * The desktop session.
@@ -24,10 +25,11 @@ export function session(): SessionManager {
     onSignedOut: () => {
       onSignedOut?.();
     },
-    onClientTooOld: ({ message }) => {
-      // The updater plugin handles the actual update; this is what the person
-      // sees in the meantime.
-      console.warn(message);
+    onClientTooOld: (info) => {
+      // The updater plugin handles the actual update; the strip at the top of
+      // the window (with its Update button) is what the person sees meanwhile.
+      console.warn(info.message);
+      reportClientTooOld(info, COMPANY_SLUG);
     },
   });
 

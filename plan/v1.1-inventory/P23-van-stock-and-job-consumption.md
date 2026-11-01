@@ -35,3 +35,7 @@ The mobile side of inventory, and the link between parts and jobs.
 
 - Offline stock movements are the one place where the append-only ledger genuinely saves you.
   Two engineers consuming the same part offline is not a conflict; it is two ledger entries.
+- Parts and the job's state (pre-production audit, 2026-10-31; migration 0062): the office
+  records no part on a closed, cancelled or invoiced job; a phone's part recorded before the
+  job closed is accepted and marked, and on an invoiced job shows as "parts not yet billed"
+  for a follow-up invoice; a cancelled job takes none. `docs/crm-erp/07-finance-and-inventory-invariants.md`.

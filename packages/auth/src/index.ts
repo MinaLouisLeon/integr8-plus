@@ -19,7 +19,14 @@
  *   public key, so the app opens in a basement.
  */
 
-export { authConfigSchema, loadAuthConfig, ttlMs, type AuthConfig } from './config.js';
+export {
+  authConfigSchema,
+  DEVELOPMENT_ISSUER,
+  loadAuthConfig,
+  productionIssuerProblems,
+  ttlMs,
+  type AuthConfig,
+} from './config.js';
 
 export {
   ALGORITHM,
@@ -91,6 +98,7 @@ export {
   InvalidCredentialsError,
   InvalidTokenError,
   InvitationInvalidError,
+  InvitationPasswordRequiredError,
   NotAMemberError,
   RateLimitedError,
   RefreshTokenReuseError,
@@ -99,10 +107,13 @@ export {
 } from './errors.js';
 
 export {
+  SESSION_LIVENESS_MAX_ENTRIES,
+  SESSION_LIVENESS_TTL_MS,
   SessionService,
   type IssuedOfflineGrant,
   type IssuedSession,
   type IssueSessionInput,
+  type LiveSession,
   type SessionServiceDeps,
 } from './services/session-service.js';
 
@@ -134,6 +145,7 @@ export {
   type AcceptInvitationResult,
   type CreateInvitationResult,
   type InvitationServiceDeps,
+  type InvitationSummary,
 } from './services/invitation-service.js';
 
 export {

@@ -171,11 +171,29 @@ interface FormBody {
 export async function seedForms(ctx: DemoContext): Promise<void> {
   const forms: Record<string, string> = {};
 
-  // Two forms from the library, published as they are.
+  // Two forms from the library, published as they are. The library is loaded
+  // by the migrate service on every deploy; a machine where that has not run
+  // has none, and the seed says so by name rather than leaving two forms out
+  // with only a 404 in the warnings to show for it.
+  const library = await ctx.call<{ items: { key: string }[] }>(
+    'staff',
+    'GET',
+    '/v1/form-templates',
+  );
+  const available = new Set(library.items.map((template) => template.key));
   for (const [key, title] of [
     ['site_risk_assessment', 'Site risk assessment'],
     ['emergency_callout', 'Emergency call-out report'],
   ] as const) {
+    if (!available.has(key)) {
+      ctx.warn(
+        `The form template library has no "${key}", so the demo company has no "${title}" form. ` +
+          (available.size === 0
+            ? 'The library is empty: the migrate service loads it on each deploy (docker compose … up -d), or load it now with docker compose … run --rm migrate node node_modules/@integr8/db/dist/seed/templates-cli.js.'
+            : 'This build ships a template the database lacks: restart the stack so the migrate service loads the library.'),
+      );
+      continue;
+    }
     const cloned = await ctx.attempt<FormBody>('staff', 'POST', `/v1/form-templates/${key}/clone`, {
       title,
     });
@@ -272,7 +290,7 @@ export async function seedDocuments(ctx: DemoContext): Promise<void> {
       .slice(0, 2)
       .entries()) {
       try {
-        const document = await ctx.attempt<unknown>(
+        const document = await ctx.attempt<{ id: string }>(
           'owner',
           'POST',
           `/v1/submissions/${submission.id}/documents`,
@@ -283,6 +301,13 @@ export async function seedDocuments(ctx: DemoContext): Promise<void> {
         );
         if (document !== undefined) {
           documents += 1;
+          // New documents start not shared (0067): share the first, so its QR
+          // code opens, and leave the second to show the switch.
+          if (index === 0) {
+            await ctx.attempt('owner', 'POST', `/v1/documents/${document.id}/share`, {
+              shareable: true,
+            });
+          }
         }
       } catch (error) {
         // 503 when the server cannot make PDFs (no WEB_APP_URL, say): the rest stands.

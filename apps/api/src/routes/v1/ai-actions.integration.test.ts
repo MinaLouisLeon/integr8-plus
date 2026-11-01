@@ -374,6 +374,31 @@ describe('insight tools', () => {
     expect(ownerTurn?.content).toContain('"open":2');
   });
 
+  it('report exact counts past a page of rows, with the total beside a short list', async () => {
+    const before = await withTenant(api.tenantId, (tx) => tx.customers.countByStatus());
+    await withTenant(api.tenantId, async (tx) => {
+      for (let i = 0; i < 210; i += 1) {
+        await tx.customers.create({ name: `Bulk Figures ${String(i)}` }, owner.userId);
+      }
+    });
+
+    const ownerToken = await api.signIn(owner);
+    const conversationId = await conversation(ownerToken);
+    provider.reset();
+    const asked = await ask(
+      ownerToken,
+      conversationId,
+      '/tool get_customer_summary {"search":"Bulk Figures","limit":5}',
+    );
+    expect(asked.statusCode, asked.body).toBe(200);
+    const toolTurn = provider.calls[1]?.input.messages.find((turn) => turn.role === 'tool');
+    // Two hundred used to be the most it could count to.
+    expect(toolTurn?.content).toContain(`"active":${String(before.active + 210)}`);
+    expect(toolTurn?.content).toContain('"totalMatches":210');
+    const result = JSON.parse(toolTurn?.content ?? '{}') as { matches?: unknown[] };
+    expect(result.matches ?? []).toHaveLength(5);
+  });
+
   it('refuses a tool the seat was not offered without running it', async () => {
     const viewerToken = await api.signIn(viewer);
     const conversationId = await conversation(viewerToken);

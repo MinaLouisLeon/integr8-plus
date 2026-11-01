@@ -97,7 +97,6 @@ import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { useContextMenu } from '~/components/context-menu';
 import { EtaSigningQueue } from '~/features/e-invoicing/signing-queue';
 import { useCustomerChrome, useSiteChrome, useWorkOrderChrome } from '~/components/record-chrome';
-import { MAP_TILES } from '~/lib/env';
 import { session } from '~/lib/session';
 import { desktopVoiceInput } from '~/lib/voice';
 
@@ -218,7 +217,6 @@ function OperationsScreens({ children }: { children: ReactNode }) {
         myPayslips: '/hr/payslips',
       },
       download: saveFile,
-      ...(MAP_TILES === undefined ? {} : { mapTiles: MAP_TILES }),
       // In the Tauri window a spoken question comes from the operating
       // system's dictation; a browser tab keeps the browser's recogniser.
       ...(VOICE_INPUT === undefined ? {} : { voiceInput: VOICE_INPUT }),

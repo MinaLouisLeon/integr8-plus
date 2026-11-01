@@ -42,11 +42,12 @@ staff from the platform dashboard; there is no public sign-up by default.
 ## Commands
 
 ```bash
-pnpm install                     # Node >= 22.22.1 (lint-staged's engine); add --config.engine-strict=false on 22.22.0
+pnpm install                     # Node 22.22.1 or newer 22.x (22.22.2 recommended, see .nvmrc)
 pnpm build | lint | typecheck | test     # whole workspace; add --filter @integr8/<pkg>
 pnpm test:integration            # needs a disposable Postgres (see below)
 pnpm format:check                # Prettier, what CI runs
 pnpm guide:check                 # setup guide: Markdown and HTML must agree
+pnpm pins:check                  # exact dependency versions; .nvmrc, Dockerfiles and engines agree
 pnpm --filter @integr8/api openapi && pnpm --filter @integr8/api-client generate   # after changing a route
 pnpm --filter @integr8/db db up | status | deploy   # migrations (deploy = bootstrap roles + up)
 pnpm --filter @integr8/db db:templates               # sync the form template library
@@ -60,13 +61,14 @@ pushes to `main`/`staging`/`dev` and runs `pnpm typecheck` and `pnpm test`
 
 ## Local development database
 
-Integration suites and the CLIs need Postgres 16 and three connection strings:
+Integration suites and the CLIs need Postgres 16 and three connection strings (a fourth is optional):
 
 ```bash
 DATABASE_URL_ADMIN=postgres://postgres:postgres@localhost:5432/integr8_dev     # owner: migrations, platform data
 DATABASE_URL=postgres://integr8_app:PASSWORD@localhost:5432/integr8_dev        # tenant runtime role, RLS applies
 DATABASE_URL_AUTH=postgres://integr8_auth:PASSWORD@localhost:5432/integr8_dev  # pre-auth role: sign-in only
-INTEGR8_APP_PASSWORD=… INTEGR8_AUTH_PASSWORD=…   # used by `db bootstrap` to create the two roles
+DATABASE_URL_PLATFORM=postgres://integr8_platform:PASSWORD@localhost:5432/integr8_dev  # optional locally: staff/platform work; falls back to the admin URL, required in production
+INTEGR8_APP_PASSWORD=… INTEGR8_AUTH_PASSWORD=… INTEGR8_PLATFORM_PASSWORD=…   # used by `db bootstrap` to create the roles
 ```
 
 Put them in `packages/db/.env` and `apps/api/.env` (both git-ignored; templates
@@ -89,7 +91,8 @@ pointed at a separate database: they truncate tables.
   what `integr8_auth` may reach; update it on purpose.
 - **Migrations** are numbered `NNNN_name.up.sql` + `.down.sql`, never edited
   after release; the test setup rolls every migration down and up again.
-- **Permissions** live in `packages/core/src/permissions.ts`. Some are
+- **Permissions** live in `packages/core/src/permissions.ts`, with a row per permission
+  in `permissions.table.md` next to it (a test keeps the two equal). Some are
   staff-only (`STAFF_ONLY_PERMISSIONS`: forms, job types, branding, document
   design, the ETA switch): a company's own owner cannot do them; staff act as
   the company through an audited impersonation grant.
@@ -109,8 +112,11 @@ pointed at a separate database: they truncate tables.
 - Writes that must not repeat need an `Idempotency-Key` header.
 - Every request needs `x-client-version` and `x-client-app` headers.
 - Some routes answer `204` with no body.
-- Work-order transitions need `expectedRevision`; closed jobs refuse new forms
-  and submissions; INSPECT and INSTALL job types require certificates.
+- Work-order transitions need `expectedRevision`. A completed, reviewed or
+  cancelled job refuses starting a form, and the submit route refuses a draft on
+  it (`submission_job_closed`); phone sync accepts a draft the phone started
+  before the job closed, marked `submittedAfterClose` with a history entry, and
+  refuses one started after. INSPECT and INSTALL job types require certificates.
 - Company `workingDays` are ISO numbers 1–7 (Monday = 1).
 - Passwords must not contain the email's local part (`AUTH_MIN_PASSWORD_LENGTH`
   and policy in `packages/auth/src/password-policy.ts`).

@@ -43,6 +43,11 @@ jobs:
       - name: Dependency licences
         run: pnpm licences:check
 
+      # Exact dependency versions, and one Node release in .nvmrc, the
+      # Dockerfiles and package.json engines (scripts/pins/check.mjs).
+      - name: Exact versions
+        run: pnpm pins:check
+
       # The setup guide is kept as Markdown and as HTML, CSS and JavaScript;
       # they must say the same thing (AGENTS.md, "The setup guide").
       - name: Setup guide copies agree
@@ -190,11 +195,15 @@ jobs:
       # Throwaway credentials for a database that is deleted with the runner.
       INTEGR8_APP_PASSWORD: ci-app-password
       INTEGR8_AUTH_PASSWORD: ci-auth-password
+      # The API and worker's cross-company role (0058). Set for every suite, so
+      # the platform paths run as the limited role, as they do on the server.
+      INTEGR8_PLATFORM_PASSWORD: ci-platform-password
       # Supabase Auth's own role and schema, created by bootstrap (P36).
       SUPABASE_AUTH_DB_PASSWORD: ci-supabase-auth-password
       DATABASE_URL_ADMIN: postgres://postgres:postgres@localhost:5432/integr8_test
       DATABASE_URL: postgres://integr8_app:ci-app-password@localhost:5432/integr8_test
       DATABASE_URL_AUTH: postgres://integr8_auth:ci-auth-password@localhost:5432/integr8_test
+      DATABASE_URL_PLATFORM: postgres://integr8_platform:ci-platform-password@localhost:5432/integr8_test
       AUTH_ISSUER: https://api.ci.integr8.example
     steps:
       - uses: actions/checkout@v7
@@ -216,7 +225,7 @@ jobs:
 
       # The same command deploy/compose.yml runs, so what the suites prove
       # about the roles holds on the server.
-      - name: Create the runtime, auth and Supabase Auth roles
+      - name: Create the runtime, auth, platform and Supabase Auth roles
         run: pnpm --filter @integr8/db db bootstrap
 
       # Rolls the schema all the way down and back up before the suites run, so

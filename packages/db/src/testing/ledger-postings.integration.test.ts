@@ -117,7 +117,7 @@ async function invoice(
 
 async function journalOf(
   tenant: TenantFixture,
-  kind: 'invoice' | 'credit_note' | 'invoice_void' | 'payment' | 'stock',
+  kind: 'invoice' | 'credit_note' | 'invoice_void' | 'payment' | 'payment_reversal' | 'stock',
   id: string,
 ) {
   const posting = await repos(tenant, (tx) => tx.ledger.postingBySource(kind, id));
@@ -256,6 +256,99 @@ describe('sales', () => {
       ['1110', '100', '0', null],
       ['1200', '0', '100', riverside.id],
     ]);
+  });
+
+  it('reverses a payment: its allocations go, the invoice owes again, the bank entry is undone (0064)', async () => {
+    const riverside = await customer(northwind, 'Bounced Ltd');
+    const issued = await invoice(northwind, riverside.id);
+    const paid = await repos(northwind, (tx) =>
+      tx.financePayments.recordReceipt(
+        {
+          customerId: riverside.id,
+          receivedOn: '2026-10-13',
+          amount: '255.2',
+          currencyCode: 'EGP',
+          method: 'bank_transfer',
+          paymentReference: 'CHQ-17',
+        },
+        USER,
+      ),
+    );
+    const allocated = await repos(northwind, (tx) =>
+      tx.financePayments.allocate(paid.id, issued.id, '255.2', USER),
+    );
+    expect(typeof allocated).not.toBe('string');
+    expect(
+      (await repos(northwind, (tx) => tx.financeInvoices.invoiceAmounts([issued.id]))).get(
+        issued.id,
+      )?.balance,
+    ).toBe('0');
+
+    const reversed = await repos(northwind, (tx) =>
+      tx.financePayments.reverseReceipt(
+        paid.id,
+        { reason: 'Cheque bounced', reversedOn: '2026-10-20' },
+        USER,
+      ),
+    );
+    expect(reversed).toMatchObject({
+      receiptId: paid.id,
+      reason: 'Cheque bounced',
+      reversedOn: '2026-10-20',
+    });
+
+    // The allocation is removed, kept on record; the invoice owes again.
+    const allocations = await repos(northwind, (tx) =>
+      tx.financePayments.allocationsForReceipt(paid.id),
+    );
+    expect(allocations).toEqual([expect.objectContaining({ removedBy: USER })]);
+    expect(
+      (await repos(northwind, (tx) => tx.financeInvoices.invoiceAmounts([issued.id]))).get(
+        issued.id,
+      )?.balance,
+    ).toBe('255.2');
+    expect(
+      (await repos(northwind, (tx) => tx.financePayments.receiptAmounts([paid.id]))).get(paid.id),
+    ).toEqual({
+      amount: '255.2',
+      allocated: '0',
+      unallocated: '0',
+    });
+
+    // The ledger takes the money back out of the bank, on the reversal's day.
+    const back = await journalOf(northwind, 'payment_reversal', paid.id);
+    expect(back.posting?.status).toBe('posted');
+    expect(back.journal?.entryDate).toBe('2026-10-20');
+    expect(back.journal?.memo).toMatch(/^RC-\d{6} reversed$/u);
+    expect(back.lines).toEqual([
+      ['1200', '255.2', '0', riverside.id],
+      ['1110', '0', '255.2', null],
+    ]);
+
+    // Once only, and never allocated again.
+    expect(
+      await repos(northwind, (tx) =>
+        tx.financePayments.reverseReceipt(
+          paid.id,
+          { reason: 'Again', reversedOn: '2026-10-21' },
+          USER,
+        ),
+      ),
+    ).toBe('already_reversed');
+    expect(
+      await repos(northwind, (tx) => tx.financePayments.allocate(paid.id, issued.id, '1', USER)),
+    ).toBe('receipt_reversed');
+    // A reversal is never changed or taken back.
+    const app = await connectAsApp();
+    try {
+      await expect(
+        asTenant(app, northwind.id, () =>
+          app.query(`delete from erp_payment_reversals where receipt_id = $1`, [paid.id]),
+        ),
+      ).rejects.toThrow(/permission denied/u);
+    } finally {
+      await app.end();
+    }
   });
 
   it('waits when switched off or in another currency; a credit note waits for its invoice', async () => {

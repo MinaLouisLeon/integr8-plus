@@ -20,7 +20,7 @@ import {
   inputClass,
   Loading,
 } from '../ui.js';
-import { PlanStatusBadge, useIntervalText } from './maintenance-parts.js';
+import { PlanFailureNotice, PlanStatusBadge, useIntervalText } from './maintenance-parts.js';
 
 /** What the plans section needs to know about its asset. */
 type PlanAsset = Pick<AssetDetail['asset'], 'id' | 'status' | 'customer'>;
@@ -104,6 +104,7 @@ export function AssetPlansSection({ asset }: { asset: PlanAsset }) {
                 </div>
                 <PlanStatusBadge status={plan.status} />
               </div>
+              <PlanFailureNotice failure={plan.failure} />
               <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                 <div className="flex flex-col">
                   <dt className="text-content-muted">

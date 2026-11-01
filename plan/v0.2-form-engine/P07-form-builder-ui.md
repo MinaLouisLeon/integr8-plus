@@ -84,6 +84,11 @@ now enforce the limits it knows about, so an admin should not meet one, but
 `compileDefinition`'s `invalid_structure` messages are developer English and belong in
 P06's message catalogue before P30 lets AI generation produce definitions.
 
+Pre-production audit, Medium (2026-10-31): the template library is now loaded on every deploy.
+The compose `migrate` service runs the sync after the migrations, so a fresh server no longer
+has an empty Templates page; a test proves reloading a changed library leaves a company's copied
+form alone, and the demo seeder names a missing template instead of skipping it quietly.
+
 ## Decisions taken during implementation
 
 - **The draft is a row, not a copy in the browser.** `form_versions` holds at most one
@@ -95,6 +100,10 @@ P06's message catalogue before P30 lets AI generation produce definitions.
   draft, so what the admin reviews is what `publish` decides.
 - **Settings are not versioned.** Who may fill a form and whether a signature is required
   change how the company uses the form, not what it asks, and take effect immediately.
+  "Signature required before close" was stored but not enforced until migration 0060
+  (pre-production audit, 2026-10-31): a job with any submission of such a form now needs the
+  customer's sign-off before it completes, read from the form at completion
+  (`docs/form-engine/builder.md`).
 - **Templates are a platform table, copied not referenced.** A company that starts from a
   template gets its own form with `source_template_key` recorded; changing the library
   never changes a company's form.

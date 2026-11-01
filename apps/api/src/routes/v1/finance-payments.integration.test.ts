@@ -429,3 +429,79 @@ describe('a job’s cost', () => {
     expect(after).toMatchObject({ invoiced: { net: '80', invoices: 1 }, profit: '55' });
   });
 });
+
+describe('reversing a payment (0064)', () => {
+  it('is for owners and admins with a reason, once; the invoice owes again and the payment stays on record', async () => {
+    const invoice = await issuedInvoice();
+    const paid = await pay({
+      amount: '114',
+      allocations: [{ invoiceId: invoice.invoice.id, amount: '114' }],
+    });
+    expect(paid.statusCode, paid.body).toBe(201);
+    const receipt = json<ReceiptDetail>(paid);
+    const settled = json<InvoiceDetail>(
+      await call(owner, 'GET', `/v1/finance/invoices/${invoice.invoice.id}`),
+    );
+    expect(settled.invoice.status).toBe('paid');
+
+    const url = `/v1/finance/payments/${receipt.receipt.id}/reverse`;
+    expect((await call(dispatcher, 'POST', url, { reason: 'Bounced' })).statusCode).toBe(403);
+    expect((await call(owner, 'POST', url, { reason: '  ' })).statusCode).toBe(422);
+
+    const reversed = await call(owner, 'POST', url, { reason: 'Cheque bounced' });
+    expect(reversed.statusCode, reversed.body).toBe(200);
+    const after = json<
+      ReceiptDetail & {
+        receipt: { reversed: boolean };
+        reversal: { reason: string; reversedOn: string } | null;
+      }
+    >(reversed);
+    expect(after.receipt).toMatchObject({ amount: '114', unallocated: '0', reversed: true });
+    expect(after.reversal).toMatchObject({ reason: 'Cheque bounced', reversedOn: today() });
+    expect(after.allocations.map((allocation) => allocation.removedAt === null)).toEqual([false]);
+    expect(after.can).toMatchObject({ allocate: false, reverse: false });
+
+    const owing = json<InvoiceDetail>(
+      await call(owner, 'GET', `/v1/finance/invoices/${invoice.invoice.id}`),
+    );
+    expect(owing.invoice).toMatchObject({
+      status: 'issued',
+      amounts: { allocated: '0', balance: '114' },
+    });
+
+    const again = await call(owner, 'POST', url, { reason: 'Twice' });
+    expect(again.statusCode).toBe(409);
+    expect(code(again)).toBe('payment_already_reversed');
+    const allocate = await call(
+      owner,
+      'POST',
+      `/v1/finance/payments/${receipt.receipt.id}/allocations`,
+      {
+        invoiceId: invoice.invoice.id,
+        amount: '1',
+      },
+    );
+    expect(allocate.statusCode).toBe(409);
+    expect(code(allocate)).toBe('payment_reversed');
+
+    // Nothing of it stays on the customer's account.
+    const listed = json<{ items: { id: string; reversed: boolean }[] }>(
+      await call(owner, 'GET', '/v1/finance/payments?unallocated=true'),
+    );
+    expect(listed.items.map((item) => item.id)).not.toContain(receipt.receipt.id);
+  });
+
+  it('marks paid an older invoice left owing less than a piastre (0064)', async () => {
+    const invoice = await issuedInvoice();
+    // 114 less 113.995 leaves 0.005: no payment can carry it.
+    const paid = await pay({
+      amount: '113.995',
+      allocations: [{ invoiceId: invoice.invoice.id, amount: '113.995' }],
+    });
+    expect(paid.statusCode, paid.body).toBe(201);
+    const detail = json<InvoiceDetail>(
+      await call(owner, 'GET', `/v1/finance/invoices/${invoice.invoice.id}`),
+    );
+    expect(detail.invoice).toMatchObject({ status: 'paid', amounts: { balance: '0.005' } });
+  });
+});

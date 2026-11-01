@@ -118,7 +118,7 @@ export async function buildServices(identities: FakeIdentity[] = []): Promise<Te
     sessions,
     identity,
     signIn: new SignInService({ identity, sessions, config, now: clock }),
-    invitations: new InvitationService({ identity, sessions, config, now: clock }),
+    invitations: new InvitationService({ identity, config, now: clock }),
     impersonation: new ImpersonationService({ sessions, config, now: clock }),
     platform: new PlatformSessionService({ tokens, config, now: clock }),
     passwords: new PasswordService({

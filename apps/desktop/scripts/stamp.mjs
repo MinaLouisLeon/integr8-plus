@@ -19,7 +19,18 @@
  *
  *   node apps/desktop/scripts/stamp.mjs \
  *     --version 0.2.0 --api-url https://api.example.com \
- *     --flavor company --brand brand.json [--updater-base https://releases.example.com/desktop]
+ *     --flavor company --brand brand.json \
+ *     [--updater-base https://app.example.com/desktop-updates] [--updater-artifacts] \
+ *     [--windows-certificate-thumbprint ABC…] [--windows-sign-command 'tool … %1']
+ *
+ * The last three are the release's signing. `--updater-artifacts` makes Tauri
+ * produce the signed update bundles the feed offers; it is passed only when
+ * the build has TAURI_SIGNING_PRIVATE_KEY, because without the key Tauri
+ * refuses to build at all once asked for them. The Windows options sign the
+ * installers with a code-signing certificate (imported into the machine's
+ * store) or with a command such as Azure Artifact Signing's; neither is
+ * passed when the deployment has no certificate, and the installer is then
+ * unsigned, as before.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -27,6 +38,10 @@ import { fileURLToPath } from 'node:url';
 const PLACEHOLDER_API = 'https://api.integr8.example';
 const PLACEHOLDER_UPDATER = 'https://releases.integr8.example/desktop';
 const BASE_IDENTIFIER = 'com.integr8.plus';
+
+function flag(name) {
+  return process.argv.includes(`--${name}`);
+}
 
 function arg(name, fallback) {
   const index = process.argv.indexOf(`--${name}`);
@@ -41,6 +56,9 @@ const version = arg('version');
 const apiUrl = arg('api-url');
 const flavor = arg('flavor');
 const updaterBase = arg('updater-base', PLACEHOLDER_UPDATER).replace(/\/+$/u, '');
+const updaterArtifacts = flag('updater-artifacts');
+const certificateThumbprint = arg('windows-certificate-thumbprint', '');
+const signCommand = arg('windows-sign-command', '');
 
 if (!/^\d+\.\d+\.\d+$/u.test(version)) {
   throw new Error(`--version must be plain X.Y.Z (MSI refuses anything else), got ${version}`);
@@ -50,6 +68,12 @@ if (!apiUrl.startsWith('https://')) {
 }
 if (flavor !== 'staff' && flavor !== 'company') {
   throw new Error(`--flavor must be staff or company, got ${flavor}`);
+}
+if (!updaterBase.startsWith('https://')) {
+  throw new Error(`--updater-base must start with https://, got ${updaterBase}`);
+}
+if (certificateThumbprint !== '' && signCommand !== '') {
+  throw new Error('Pass --windows-certificate-thumbprint or --windows-sign-command, not both');
 }
 
 /** @type {{ slug: string; name: string } | undefined} */
@@ -99,6 +123,24 @@ if (updater?.endpoints) {
   );
 }
 
+// Signed update bundles (`.sig` beside each installer, and the macOS
+// `.app.tar.gz`), which the release turns into the feed's latest.json.
+config.bundle.createUpdaterArtifacts = updaterArtifacts;
+
+// Windows code signing, when the deployment has a certificate. SHA-256 and a
+// timestamp, so a signature stays valid after the certificate expires.
+if (certificateThumbprint !== '') {
+  config.bundle.windows = {
+    ...config.bundle.windows,
+    certificateThumbprint,
+    digestAlgorithm: 'sha256',
+    timestampUrl: 'http://timestamp.digicert.com',
+  };
+}
+if (signCommand !== '') {
+  config.bundle.windows = { ...config.bundle.windows, signCommand };
+}
+
 writeFileSync(path, `${JSON.stringify(config, null, 2)}\n`);
 
 console.log(`stamped ${path}`);
@@ -108,3 +150,7 @@ console.log(`  identifier:  ${config.identifier}`);
 console.log(`  version:     ${config.version}`);
 console.log(`  csp:         ${config.app.security.csp}`);
 if (updater?.endpoints) console.log(`  updater:     ${updater.endpoints.join(', ')}`);
+console.log(`  update bundles: ${updaterArtifacts ? 'signed' : 'none (no updater key)'}`);
+console.log(
+  `  windows signing: ${certificateThumbprint !== '' ? 'certificate' : signCommand !== '' ? 'sign command' : 'none'}`,
+);

@@ -1,7 +1,15 @@
-import { toPlatformUserId, toTenantId } from '@integr8/core';
+import {
+  MONTH_PATTERN,
+  monthBounds,
+  monthlyOverage,
+  toPlatformUserId,
+  toTenantId,
+  utcMonthOf,
+} from '@integr8/core';
 import {
   getPlatformDataSource,
   OVERAGE_POLICIES,
+  type OverageSample,
   type Reconciliation,
   type StorageSample,
   TENANT_PLANS,
@@ -49,6 +57,33 @@ const reconciliationSchema = z.object({
   driftBytes: z.number().int().nullable(),
   status: z.enum(['matched', 'drifted', 'unavailable']),
   note: z.string().nullable(),
+});
+
+/**
+ * A company over its storage allowance, for the staff dashboard's "Over
+ * allowance" list and the invoice (Low 2). Plans with overage `allow` keep
+ * taking uploads past the line; this is what Integr8 bills for it.
+ */
+const overAllowanceSchema = z.object({
+  tenantId: z.uuid(),
+  name: z.string(),
+  slug: z.string(),
+  plan: z.enum(TENANT_PLANS),
+  /** The latest sample: what the company stores, and what its plan allowed that day. */
+  usedBytes: z.number().int(),
+  allowanceBytes: z.number().int().nullable(),
+  /** How far over the company is on the latest sample; 0 when it is back under. */
+  overNowBytes: z.number().int(),
+  /** Days in the month with a sample over the allowance. */
+  daysOver: z.number().int(),
+  /** The most it was over on any day of the month. */
+  peakBytes: z.number().int(),
+  /**
+   * The month's daily overage, summed and divided by the days in the month:
+   * byte-months, so a thousand million of them is the GB-month to invoice.
+   * Accrues as the month goes on; the figure on its last day is the bill.
+   */
+  averageBytes: z.number().int(),
 });
 
 const allowanceSchema = z.object({
@@ -146,7 +181,10 @@ export const storageOverviewRoute = defineRoute({
   tags: ['platform'],
   security: 'platform',
   params: noSchema,
-  query: noSchema,
+  query: z.object({
+    /** The month the "Over allowance" list covers, `YYYY-MM`. This month (UTC) when absent. */
+    month: z.string().regex(MONTH_PATTERN).optional(),
+  }),
   body: noSchema,
   responses: {
     200: {
@@ -163,6 +201,16 @@ export const storageOverviewRoute = defineRoute({
           total: z.number(),
         }),
         drifted: z.array(reconciliationSchema),
+        /**
+         * Companies over their allowance in the month asked for (this month by
+         * default): every company with a day over in it, and, for this month,
+         * any company over on its latest sample. Most over first.
+         */
+        overAllowance: z.object({
+          month: z.string(),
+          daysInMonth: z.number().int(),
+          companies: z.array(overAllowanceSchema),
+        }),
         tasks: z.array(
           z.object({
             task: z.string(),
@@ -174,9 +222,10 @@ export const storageOverviewRoute = defineRoute({
       }),
     },
   },
-  handler: async (_input, context) => {
+  handler: async ({ query }, context) => {
     void context;
-    const metering = getPlatformDataSource().metering;
+    const platform = getPlatformDataSource();
+    const metering = platform.metering;
     const samples = await metering.latestSamples();
 
     const totalBytes = samples.reduce((sum, sample) => sum + sample.bytes, 0);
@@ -196,6 +245,7 @@ export const storageOverviewRoute = defineRoute({
         companies: samples.length,
         projectedMonthlyCost: projectCost({ bytes: totalBytes, classA, classB }),
         drifted: drifted.map(toReconciliationBody),
+        overAllowance: await overAllowance(query.month, samples),
         tasks: (await metering.taskRuns()).map((run) => ({
           task: run.task,
           lastRunAt: iso(run.lastRunAt),
@@ -321,6 +371,84 @@ export function projectCost(input: { bytes: number; classA: number; classB: numb
     classB: round(classB),
     total: round(storage + classA + classB),
   };
+}
+
+/**
+ * The "Over allowance" list for a month: each company's days over, added up the
+ * way it is invoiced ({@link monthlyOverage}), beside where it stands now.
+ */
+async function overAllowance(
+  requested: string | undefined,
+  latest: readonly StorageSample[],
+): Promise<{
+  month: string;
+  daysInMonth: number;
+  companies: z.infer<typeof overAllowanceSchema>[];
+}> {
+  const thisMonth = utcMonthOf(new Date());
+  const month = requested ?? thisMonth;
+  const { first, last, days } = monthBounds(month);
+  const platform = getPlatformDataSource();
+
+  const byTenant = new Map<string, OverageSample[]>();
+  for (const day of await platform.metering.overageBetween(first, last)) {
+    byTenant.set(day.tenantId, [...(byTenant.get(day.tenantId) ?? []), day]);
+  }
+  const latestByTenant = new Map(latest.map((sample) => [sample.tenantId, sample]));
+
+  const companies: z.infer<typeof overAllowanceSchema>[] = [];
+  for (const [tenantId, rows] of byTenant) {
+    const company = rows[0];
+    if (company === undefined) {
+      continue;
+    }
+    const now = latestByTenant.get(tenantId);
+    const total = monthlyOverage(
+      rows.map((row) => ({ day: row.sampledOn, overageBytes: row.overageBytes })),
+      month,
+    );
+    companies.push({
+      tenantId,
+      name: company.tenantName,
+      slug: company.tenantSlug,
+      plan: company.plan,
+      usedBytes: now?.bytes ?? rows.at(-1)?.bytes ?? 0,
+      allowanceBytes: now?.allowanceBytes ?? company.allowanceBytes,
+      overNowBytes: now?.overageBytes ?? 0,
+      daysOver: total.daysOver,
+      peakBytes: total.peakBytes,
+      averageBytes: total.averageBytes,
+    });
+  }
+
+  // On the first of the month, before the sampler has run, a company over
+  // yesterday has no day in this month yet; it is still over, so it is listed.
+  if (month === thisMonth) {
+    for (const sample of latest) {
+      if ((sample.overageBytes ?? 0) <= 0 || byTenant.has(sample.tenantId)) {
+        continue;
+      }
+      const tenant = await platform.tenants.findById(sample.tenantId);
+      if (tenant === undefined) {
+        continue;
+      }
+      companies.push({
+        tenantId: tenant.id,
+        name: tenant.name,
+        slug: tenant.slug,
+        plan: tenant.plan,
+        usedBytes: sample.bytes,
+        allowanceBytes: sample.allowanceBytes,
+        overNowBytes: sample.overageBytes ?? 0,
+        daysOver: 0,
+        peakBytes: 0,
+        averageBytes: 0,
+      });
+    }
+  }
+
+  companies.sort((a, b) => b.averageBytes - a.averageBytes || b.overNowBytes - a.overNowBytes);
+  return { month, daysInMonth: days, companies };
 }
 
 function toSampleBody(sample: StorageSample): z.infer<typeof sampleSchema> {

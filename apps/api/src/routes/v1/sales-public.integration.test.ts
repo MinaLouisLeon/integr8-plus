@@ -211,3 +211,90 @@ describe('the customer’s link', () => {
     expect(malformed.statusCode).toBe(422);
   });
 });
+
+describe('with the sales module switched off (Low 13)', () => {
+  async function sales(enabled: boolean) {
+    const flag = await api.call(admin.accessToken, {
+      method: 'PUT',
+      url: `/v1/platform/companies/${api.tenantId}/flags/sales`,
+      payload: { enabled },
+    });
+    expect(flag.statusCode, flag.body).toBe(200);
+  }
+
+  it('says the quote is no longer online, naming the company, and restores it when on', async () => {
+    const open = await issuedQuote();
+    const expired = await issuedQuote({ validUntil: '2020-01-01' });
+    const withdrawn = await issuedQuote();
+    const cancelled = await call(owner, 'POST', `/v1/sales/quotes/${withdrawn.quote.id}/cancel`, {
+      expectedVersion: withdrawn.quote.version,
+    });
+    expect(cancelled.statusCode, cancelled.body).toBe(200);
+    const company = json<PublicQuote>(
+      await anonymous('GET', `/v1/public/quotes/${open.acceptToken}`),
+    ).company.name;
+
+    await sales(false);
+    try {
+      const seen = await anonymous('GET', `/v1/public/quotes/${open.acceptToken}`);
+      expect(seen.statusCode).toBe(410);
+      const error = json<{
+        error: { code: string; message: string; details: { params: { company: string } }[] };
+      }>(seen).error;
+      expect(error.code).toBe('quote_unavailable');
+      expect(error.message).toBe(
+        `This quote is no longer available online. Please contact ${company}.`,
+      );
+      expect(error.details[0]?.params.company).toBe(company);
+      expect(seen.body).not.toContain('Boiler service');
+
+      // In Arabic for a reader whose browser prefers it.
+      const arabic = await api.app.inject({
+        method: 'GET',
+        url: `/v1/public/quotes/${open.acceptToken}`,
+        headers: {
+          'x-client-version': '1.0.0',
+          'x-client-app': 'web',
+          'accept-language': 'ar-EG,ar;q=0.9,en;q=0.8',
+        },
+      });
+      expect(arabic.statusCode).toBe(410);
+      expect(json<{ error: { message: string } }>(arabic).error.message).toContain(company);
+      expect(json<{ error: { message: string } }>(arabic).error.message).toContain(
+        '\u064a\u064f\u0631\u062c\u0649',
+      );
+
+      // Nor can it be answered, and an expired one says the same.
+      const answer = await anonymous('POST', `/v1/public/quotes/${open.acceptToken}/answer`, {
+        status: 'accepted',
+        name: 'While off',
+      });
+      expect(answer.statusCode).toBe(410);
+      expect(code(answer)).toBe('quote_unavailable');
+      expect((await anonymous('GET', `/v1/public/quotes/${expired.acceptToken}`)).statusCode).toBe(
+        410,
+      );
+
+      // A withdrawn link stays a 404 that names nobody.
+      const gone = await anonymous('GET', `/v1/public/quotes/${withdrawn.acceptToken}`);
+      expect(gone.statusCode).toBe(404);
+      expect(gone.body).not.toContain(company);
+    } finally {
+      await sales(true);
+    }
+
+    // Back on: the link opens as before; the expired one is still expired.
+    const again = json<PublicQuote>(
+      await anonymous('GET', `/v1/public/quotes/${open.acceptToken}`),
+    );
+    expect(again.canAnswer).toBe(true);
+    const stillExpired = json<PublicQuote>(
+      await anonymous('GET', `/v1/public/quotes/${expired.acceptToken}`),
+    );
+    expect(stillExpired.quote.expired).toBe(true);
+    expect(stillExpired.canAnswer).toBe(false);
+    expect((await anonymous('GET', `/v1/public/quotes/${withdrawn.acceptToken}`)).statusCode).toBe(
+      404,
+    );
+  });
+});

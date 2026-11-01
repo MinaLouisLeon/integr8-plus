@@ -169,6 +169,16 @@ fixed, and the first two have regression tests.
   `tenant-data-export.integration.test.ts` compares both lists with every table whose
   `tenant_id` references `tenants`.
 
+- **Company app builds from the dashboard were half-built (finished 2026-10-31).**
+  `apps/api/src/platform/app-builds.ts` could dispatch `build-company-apps.yml`, but no route
+  called it. Saving a company's settings with **Build apps** newly on now starts its first build,
+  **Rebuild apps** (`POST /v1/platform/companies/:tenantId/app-builds`) starts another, and the
+  panel links the run (GitHub's `return_run_details`) or the workflow's runs. Both are audited as
+  `tenant.app_build_requested`. `APP_BUILDS=off` stays the default and keeps building manual;
+  `github` with no token or repository refuses to start. Covered by
+  `app-builds.test.ts` (a stand-in GitHub) and `app-builds.integration.test.ts` (the recording
+  trigger).
+
 ## Worth fixing next, found here but not P15's
 
 - **`claimJobs` has the same two-clock bug** (`packages/db/src/repositories/jobs.ts:176`):

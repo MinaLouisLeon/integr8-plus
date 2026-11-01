@@ -5,7 +5,7 @@ import {
   parseFinanceReference,
   toUserId,
 } from '@integr8/core';
-import { type Selectable, sql } from 'kysely';
+import { type RawBuilder, type Selectable, sql } from 'kysely';
 import type { ErpCreditNotesTable, ErpFinanceSettingsTable, ErpInvoicesTable } from '../schema.js';
 import { toDayString, trimDecimal } from './crm-leads.js';
 import type { Address } from './customers.js';
@@ -142,6 +142,8 @@ export interface InvoiceQuery {
   workOrderId?: string;
   /** Issued, still owing, and past its due date as of `today`. */
   overdue?: { today: string };
+  /** Made from a job that has parts no invoice bills yet (0062): a follow-up is due. */
+  partsNotBilled?: boolean;
   after?: { createdAt: Date; id: string };
   limit?: number;
 }
@@ -149,6 +151,33 @@ export interface InvoiceQuery {
 export interface InvoicePage {
   items: Invoice[];
   next: { createdAt: Date; id: string } | undefined;
+}
+
+export interface ReceivablesSummary {
+  /** Issued invoices with something still owing, partly paid ones included. */
+  unpaid: number;
+  /** Of those, past their due date. */
+  overdue: number;
+  /** What is owed, and what of it is overdue, per currency. */
+  owing: { currency: string; amount: string; overdue: string }[];
+  /** How many customers owe anything. */
+  customersOwing: number;
+  /** The customers owing most, per currency, largest first. */
+  byCustomer: {
+    customerId: string;
+    customer: string;
+    currency: string;
+    invoices: number;
+    amount: string;
+  }[];
+  /** The overdue invoices longest past their due date, oldest first. */
+  oldestOverdue: {
+    reference: number | null;
+    customer: string;
+    dueDate: string;
+    currency: string;
+    balance: string;
+  }[];
 }
 
 export type InvoiceRefusal = 'not_found' | 'version_conflict';
@@ -188,12 +217,34 @@ interface CreditNoteLineRow extends LineRow {
   invoice_line_id: string | null;
 }
 
+/**
+ * Less than this is nothing left to pay: one of the currency's minor units
+ * (0.01 EGP). Lines written before 0064 kept four places, so an invoice
+ * issued then can be left owing a fraction no payment can carry.
+ */
+const SETTLED_BELOW = sql`power(10::numeric, -erp_currency_minor_unit(i.currency_code))`;
+
 /** The SQL that derives an invoice's status from its stored status and amounts. */
 const DERIVED_STATUS = sql<string>`case
   when i.status <> 'issued' then i.status
-  when a.balance <= 0 then case when a.allocated > 0 then 'paid' else 'credited' end
+  when a.balance < ${SETTLED_BELOW} then case when a.allocated > 0 then 'paid' else 'credited' end
   when a.allocated > 0 then 'partially_paid'
   else 'issued' end`;
+
+/**
+ * Parts on the job an invoice was made from that no invoice bills: posted, not
+ * all returned, and on no invoice line that is not void. A job is invoiced
+ * once, so these are parts a phone recorded before the job closed and synced
+ * after it was invoiced (0062).
+ */
+const UNBILLED_PARTS = (jobId: RawBuilder<unknown>) => sql<boolean>`exists (
+  select 1 from erp_work_order_materials m
+   where m.tenant_id = i.tenant_id and m.work_order_id = ${jobId}
+     and m.status = 'posted' and m.quantity > m.returned_quantity
+     and not exists (select 1 from erp_invoice_lines bl
+                       join erp_invoices bi on bi.tenant_id = bl.tenant_id and bi.id = bl.invoice_id
+                      where bl.tenant_id = m.tenant_id and bl.work_order_material_id = m.id
+                        and bi.status <> 'void'))`;
 
 /** Each invoice's amounts, as a lateral subquery over `i`. */
 const AMOUNTS = sql`lateral (
@@ -371,7 +422,12 @@ export class FinanceInvoicesRepository extends TenantScopedRepository {
     }
     if (query.overdue !== undefined) {
       filters.push(
-        sql`i.status = 'issued' and a.balance > 0 and i.due_date < ${query.overdue.today}::date`,
+        sql`i.status = 'issued' and a.balance >= ${SETTLED_BELOW} and i.due_date < ${query.overdue.today}::date`,
+      );
+    }
+    if (query.partsNotBilled === true) {
+      filters.push(
+        sql`i.status <> 'void' and i.work_order_id is not null and ${UNBILLED_PARTS(sql`i.work_order_id`)}`,
       );
     }
     if (query.after !== undefined) {
@@ -413,6 +469,112 @@ export class FinanceInvoicesRepository extends TenantScopedRepository {
 
   async invoiceTotals(invoiceId: string): Promise<DocumentTotals> {
     return documentTotals(this.db, 'erp_invoice_lines', 'invoice_id', this.tenantId, invoiceId);
+  }
+
+  /**
+   * What customers owe, exactly: counted and summed in the database over every
+   * issued invoice with a balance, however many there are. The assistant's
+   * figures come from here; a page of the newest invoices would leave out the
+   * old debts, which are the ones that matter.
+   */
+  async receivablesSummary(query: {
+    today: string;
+    customerId?: string;
+    customersLimit?: number;
+    oldestLimit?: number;
+  }): Promise<ReceivablesSummary> {
+    const customerLimit = Math.min(Math.max(query.customersLimit ?? 10, 1), 50);
+    const oldestLimit = Math.min(Math.max(query.oldestLimit ?? 10, 1), 50);
+    const filters = [sql`i.tenant_id = ${this.tenantId}`, sql`i.status = 'issued'`];
+    if (query.customerId !== undefined) {
+      filters.push(sql`i.customer_id = ${query.customerId}::uuid`);
+    }
+    // Written as text with the tenant predicate in it, as the other balance
+    // queries are: the tenant guard reads Kysely nodes.
+    const owed = sql`owed as (
+      select i.id, i.reference, i.customer_id, i.currency_code,
+             coalesce(i.customer_name, '') as customer_name,
+             i.due_date, a.balance,
+             (i.due_date is not null and i.due_date < ${query.today}::date) as is_overdue
+        from erp_invoices i, ${AMOUNTS}
+       where ${sql.join(filters, sql` and `)} and a.balance > 0
+    )`;
+
+    const { rows: totals } = await sql<{
+      currency: string;
+      unpaid: string;
+      overdue: string;
+      amount: string;
+      overdue_amount: string;
+    }>`
+      with ${owed}
+      select currency_code as currency, count(*)::text as unpaid,
+             count(*) filter (where is_overdue)::text as overdue,
+             sum(balance)::text as amount,
+             coalesce(sum(balance) filter (where is_overdue), 0)::text as overdue_amount
+        from owed
+       group by currency_code
+       order by currency_code
+    `.execute(this.db);
+
+    const { rows: customers } = await sql<{
+      customer_id: string;
+      customer: string;
+      currency: string;
+      invoices: string;
+      amount: string;
+      owing_customers: string;
+    }>`
+      with ${owed}
+      select customer_id, max(customer_name) as customer, currency_code as currency,
+             count(*)::text as invoices, sum(balance)::text as amount,
+             (select count(distinct customer_id) from owed)::text as owing_customers
+        from owed
+       group by customer_id, currency_code
+       order by sum(balance) desc, customer_id
+       limit ${customerLimit}
+    `.execute(this.db);
+
+    const { rows: oldest } = await sql<{
+      reference: number | null;
+      customer: string;
+      due_date: string;
+      currency: string;
+      balance: string;
+    }>`
+      with ${owed}
+      select reference, customer_name as customer, to_char(due_date, 'YYYY-MM-DD') as due_date,
+             currency_code as currency, balance::text as balance
+        from owed
+       where is_overdue
+       order by due_date, reference nulls last, id
+       limit ${oldestLimit}
+    `.execute(this.db);
+
+    return {
+      unpaid: totals.reduce((sum, row) => sum + Number(row.unpaid), 0),
+      overdue: totals.reduce((sum, row) => sum + Number(row.overdue), 0),
+      owing: totals.map((row) => ({
+        currency: row.currency,
+        amount: trimDecimal(row.amount),
+        overdue: trimDecimal(row.overdue_amount),
+      })),
+      customersOwing: Number(customers[0]?.owing_customers ?? 0),
+      byCustomer: customers.map((row) => ({
+        customerId: row.customer_id,
+        customer: row.customer,
+        currency: row.currency,
+        invoices: Number(row.invoices),
+        amount: trimDecimal(row.amount),
+      })),
+      oldestOverdue: oldest.map((row) => ({
+        reference: row.reference,
+        customer: row.customer,
+        dueDate: row.due_date,
+        currency: row.currency,
+        balance: trimDecimal(row.balance),
+      })),
+    };
   }
 
   /** Each invoice's total, what was allocated and credited, and what it still owes. */
@@ -631,6 +793,26 @@ export class FinanceInvoicesRepository extends TenantScopedRepository {
          ${excludingInvoiceId === undefined ? sql`` : sql`and i.id <> ${excludingInvoiceId}::uuid`}
     `.execute(this.db);
     return new Set(rows.map((row) => row.material_id));
+  }
+
+  /**
+   * The jobs among these that are invoiced and still have parts no invoice
+   * bills (0062): the office owes the customer a follow-up invoice for them.
+   */
+  async jobsWithUnbilledParts(workOrderIds: readonly string[]): Promise<Set<string>> {
+    if (workOrderIds.length === 0) {
+      return new Set();
+    }
+    const ids = [...new Set(workOrderIds)];
+    const { rows } = await sql<{ work_order_id: string }>`
+      select distinct i.work_order_id
+        from erp_invoices i
+       where i.tenant_id = ${this.tenantId}
+         and i.status <> 'void'
+         and i.work_order_id in (${sql.join(ids.map((id) => sql`${id}::uuid`))})
+         and ${UNBILLED_PARTS(sql`i.work_order_id`)}
+    `.execute(this.db);
+    return new Set(rows.map((row) => row.work_order_id));
   }
 
   /** The invoices, not void, made from this job: a job is invoiced once. */

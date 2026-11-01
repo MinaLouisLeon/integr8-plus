@@ -4,6 +4,7 @@ import {
   buildTenantTransaction,
   closeDatabase,
   configureDatabase,
+  getOwnerDb,
   getPlatformDb,
   type TenantTransaction,
 } from '../connection.js';
@@ -34,8 +35,9 @@ export class TestDatabaseUnavailableError extends Error {
         `  INTEGR8_TEST_DATABASE=${DISPOSABLE_ACKNOWLEDGEMENT}`,
         '  DATABASE_URL=postgres://integr8_app....      (runtime role)',
         '  DATABASE_URL_ADMIN=postgres://postgres....   (owner role)',
+        '  DATABASE_URL_PLATFORM=postgres://integr8_platform....   (platform role)',
         '',
-        'docs/database/README.md ("Two roles") walks through creating them.',
+        'docs/database/README.md ("The roles") walks through creating them.',
       ].join('\n'),
     );
     this.name = 'TestDatabaseUnavailableError';
@@ -78,6 +80,25 @@ export async function connectAsOwner(): Promise<pg.Client> {
 export async function connectAsApp(): Promise<pg.Client> {
   const { appUrl } = requireDisposableDatabase();
   const client = new Client({ connectionString: appUrl, application_name: 'integr8-tests-app' });
+  await client.connect();
+  return client;
+}
+
+/**
+ * A `pg.Client` as `integr8_platform`, the role the API and the worker use
+ * outside one company (0058). Needs `DATABASE_URL_PLATFORM`: the suites that
+ * call this prove what that role can and cannot do, and the owner standing in
+ * for it would prove nothing.
+ */
+export async function connectAsPlatform(): Promise<pg.Client> {
+  requireDisposableDatabase();
+  const url = process.env.DATABASE_URL_PLATFORM ?? '';
+  if (url.trim() === '') {
+    throw new TestDatabaseUnavailableError(
+      'DATABASE_URL_PLATFORM is not set (postgres://integr8_platform:...)',
+    );
+  }
+  const client = new Client({ connectionString: url, application_name: 'integr8-tests-platform' });
   await client.connect();
   return client;
 }
@@ -180,7 +201,7 @@ export async function withUnprotectedRepositories<T>(
   tenantId: TenantId,
   fn: (tx: TenantTransaction) => Promise<T>,
 ): Promise<T> {
-  return getPlatformDb()
+  return getOwnerDb()
     .transaction()
     .execute(async (trx) => fn(buildTenantTransaction({ tenantId, trx })));
 }

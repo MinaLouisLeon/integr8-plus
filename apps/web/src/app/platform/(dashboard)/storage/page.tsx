@@ -1,12 +1,14 @@
 'use client';
 
 import { ApiRequestError } from '@integr8/api-client';
+import { previousMonth, utcMonthOf } from '@integr8/core';
 import { formatCurrency, useTranslation } from '@integr8/i18n';
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
+import { useState } from 'react';
 import { Badge, Panel } from '~/components/platform-bits';
 import { EmptyState, ErrorState, LoadingState } from '~/components/ui';
-import { formatBytes, formatWhen } from '~/lib/platform-format';
+import { formatBytes, formatGbMonths, formatWhen } from '~/lib/platform-format';
 import { platformClient } from '~/lib/platform-session';
 
 /**
@@ -20,13 +22,22 @@ import { platformClient } from '~/lib/platform-session';
 export default function StoragePage() {
   const { t, i18n } = useTranslation();
   const money = (value: number) => formatCurrency(value, 'USD', { locale: i18n.language });
+  // The "Over allowance" list covers this month or the last one: the one being
+  // invoiced is usually last month, once it is over.
+  const [whichMonth, setWhichMonth] = useState<'this' | 'last'>('this');
+  const thisMonth = utcMonthOf(new Date());
+  const month = whichMonth === 'this' ? thisMonth : previousMonth(thisMonth);
 
   const overview = useQuery({
-    queryKey: ['platform', 'storage'],
+    queryKey: ['platform', 'storage', month],
     queryFn: async () => {
-      const { data } = await platformClient().GET('/v1/platform/storage');
+      const { data } = await platformClient().GET('/v1/platform/storage', {
+        params: { query: { month } },
+      });
       return data;
     },
+    // Switching month keeps the rest of the screen in place while it loads.
+    placeholderData: keepPreviousData,
   });
 
   if (overview.isPending) {
@@ -71,6 +82,91 @@ export default function StoragePage() {
           <Fact label={t('platform.storage.classB')} value={money(cost.classB)} />
           <Fact label={t('platform.storage.totalCost')} value={money(cost.total)} />
         </dl>
+      </Panel>
+
+      <Panel
+        title={t('platform.storage.overAllowance.title')}
+        description={t('platform.storage.overAllowance.description')}
+        actions={
+          <label className="flex items-center gap-2 text-sm">
+            <span className="text-content-muted">{t('platform.storage.overAllowance.month')}</span>
+            <select
+              value={whichMonth}
+              onChange={(event) => setWhichMonth(event.target.value === 'last' ? 'last' : 'this')}
+              className="rounded-md border border-border-subtle bg-surface px-2 py-1 text-content"
+            >
+              <option value="this">
+                {t('platform.storage.overAllowance.thisMonth')} ({thisMonth})
+              </option>
+              <option value="last">
+                {t('platform.storage.overAllowance.lastMonth')} ({previousMonth(thisMonth)})
+              </option>
+            </select>
+          </label>
+        }
+      >
+        {data.overAllowance.companies.length === 0 ? (
+          <p className="text-sm text-success">{t('platform.storage.overAllowance.none')}</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-border-subtle text-content-muted">
+                  <th scope="col" className="py-1 text-start">
+                    {t('platform.storage.overAllowance.company')}
+                  </th>
+                  <th scope="col" className="py-1 text-start">
+                    {t('platform.storage.overAllowance.plan')}
+                  </th>
+                  <th scope="col" className="py-1 text-end">
+                    {t('platform.storage.overAllowance.overNow')}
+                  </th>
+                  <th scope="col" className="py-1 text-end">
+                    {t('platform.storage.overAllowance.daysOver')}
+                  </th>
+                  <th scope="col" className="py-1 text-end">
+                    {t('platform.storage.overAllowance.peak')}
+                  </th>
+                  <th scope="col" className="py-1 text-end">
+                    {t('platform.storage.overAllowance.toInvoice')}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.overAllowance.companies.map((row) => (
+                  <tr key={row.tenantId} className="border-b border-border-subtle">
+                    <td className="py-1">
+                      <Link
+                        href={`/platform/companies/${row.tenantId}`}
+                        className="text-content underline-offset-2 hover:underline"
+                      >
+                        {row.name}
+                      </Link>
+                      <span className="ms-2 font-mono text-xs text-content-muted">{row.slug}</span>
+                    </td>
+                    <td className="py-1">{t(`common.plan.${row.plan}`)}</td>
+                    <td className="py-1 text-end tabular-nums">
+                      {row.overNowBytes > 0 ? (
+                        <Badge tone="warning">{formatBytes(row.overNowBytes)}</Badge>
+                      ) : (
+                        <span className="text-content-muted">
+                          {t('platform.storage.overAllowance.backUnder')}
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-1 text-end tabular-nums">
+                      {row.daysOver} / {data.overAllowance.daysInMonth}
+                    </td>
+                    <td className="py-1 text-end tabular-nums">{formatBytes(row.peakBytes)}</td>
+                    <td className="py-1 text-end font-medium tabular-nums">
+                      {formatGbMonths(row.averageBytes, i18n.language)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Panel>
 
       <Panel

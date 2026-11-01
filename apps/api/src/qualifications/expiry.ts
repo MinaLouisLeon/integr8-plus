@@ -8,6 +8,7 @@ import {
 import {
   type ExpiryAlert,
   getPlatformDataSource,
+  type PushDevice,
   type TenantTransaction,
   withTenant,
 } from '@integr8/db';
@@ -18,6 +19,13 @@ import { type ExpiryItem, qualificationExpiryEmail } from '../email/messages.js'
 import type { EmailSender } from '../email/sender.js';
 import type { Logger } from '../http/logger.js';
 import type { PushMessage, PushSender } from '../push/sender.js';
+import {
+  fill,
+  type MessageLocale,
+  messageLocale,
+  momentFormatter,
+  wordsFor,
+} from '../notifications/words.js';
 
 /**
  * Certificate expiry alerts (P26).
@@ -124,7 +132,10 @@ interface Prepared {
   holders: Map<string, Person>;
   managers: Person[];
   affected: Map<string, string[]>;
-  pushTokens: Map<string, string[]>;
+  /** Each holder's phones, with the language each reads in. */
+  phones: Map<string, PushDevice[]>;
+  /** The company's language, which its emails are written in. */
+  locale: MessageLocale;
 }
 
 async function alertCompany(
@@ -173,7 +184,8 @@ async function prepare(tx: TenantTransaction, now: Date): Promise<Prepared> {
     holders: new Map(),
     managers: [],
     affected: new Map(),
-    pushTokens: new Map(),
+    phones: new Map(),
+    locale: messageLocale(settings.locale),
   };
   if (due.alerts.length === 0) {
     return empty;
@@ -236,18 +248,17 @@ async function prepare(tx: TenantTransaction, now: Date): Promise<Prepared> {
         job,
       ]),
     );
-    const when = new Intl.DateTimeFormat('en-GB', {
-      timeZone: settings.timezone,
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    });
+    const when = momentFormatter(empty.locale, settings.timezone);
+    const words = wordsFor(empty.locale).email.certificates;
     affected.set(
       alert.record.id,
       needing.map((visit) => {
         const job = jobs.get(visit.workOrderId);
         const label =
-          job === undefined ? 'a job' : `${formatWorkOrderReference(job.reference)} ${job.title}`;
-        return `${label}, ${when.format(visit.startsAt)}`;
+          job === undefined
+            ? words.aJob
+            : `${formatWorkOrderReference(job.reference)} ${job.title}`;
+        return fill(words.visit, { job: label, when: when.format(visit.startsAt) });
       }),
     );
   }
@@ -255,12 +266,12 @@ async function prepare(tx: TenantTransaction, now: Date): Promise<Prepared> {
   const devices = await tx.pushDevices.activeFor([
     ...new Set(due.alerts.map((alert) => alert.record.userId)),
   ]);
-  const pushTokens = new Map<string, string[]>();
+  const phones = new Map<string, PushDevice[]>();
   for (const device of devices) {
-    pushTokens.set(device.userId, [...(pushTokens.get(device.userId) ?? []), device.token]);
+    phones.set(device.userId, [...(phones.get(device.userId) ?? []), device]);
   }
 
-  return { ...empty, holders, managers, affected, pushTokens };
+  return { ...empty, holders, managers, affected, phones };
 }
 
 async function send(
@@ -293,6 +304,7 @@ async function send(
           items: alerts.map((alert) => item(alert, true)),
           own: false,
           url,
+          locale: prepared.locale,
         }),
         { kind: 'qualification_expiry', tenantId },
       );
@@ -316,6 +328,7 @@ async function send(
           items: own.map((alert) => item(alert, false)),
           own: true,
           url: null,
+          locale: prepared.locale,
         }),
         { kind: 'qualification_expiry', tenantId },
       );
@@ -324,20 +337,24 @@ async function send(
 
   if (options.push !== undefined) {
     const messages: PushMessage[] = alerts.flatMap((alert) =>
-      (prepared.pushTokens.get(alert.record.userId) ?? []).map((token) => ({
-        to: token,
-        title:
-          alert.stage === 'lapsed'
-            ? `${alert.typeName} has expired`
-            : `${alert.typeName} expires soon`,
-        body:
-          alert.stage === 'lapsed'
-            ? 'Send the renewed certificate to the office.'
-            : `Valid until ${alert.record.expiresOn ?? ''}. Renew it in time.`,
-        data: { kind: 'qualification_expiry', qualificationId: alert.record.id },
-        channelId: 'jobs' as const,
-        priority: 'default' as const,
-      })),
+      (prepared.phones.get(alert.record.userId) ?? []).map((device) => {
+        const words = wordsFor(messageLocale(device.locale)).push;
+        const qualification = { qualification: alert.typeName };
+        return {
+          to: device.token,
+          title: fill(
+            alert.stage === 'lapsed' ? words.certificateExpired : words.certificateExpiring,
+            qualification,
+          ),
+          body:
+            alert.stage === 'lapsed'
+              ? words.certificateExpiredBody
+              : fill(words.certificateExpiringBody, { date: alert.record.expiresOn ?? '' }),
+          data: { kind: 'qualification_expiry', qualificationId: alert.record.id },
+          channelId: 'jobs' as const,
+          priority: 'default' as const,
+        };
+      }),
     );
     if (messages.length > 0) {
       try {

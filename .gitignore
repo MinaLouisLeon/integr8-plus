@@ -20,6 +20,13 @@ coverage/
 .env.*
 !.env.example
 
+# The key generator's output, if it is ever written inside the repository: the
+# setup guide writes it to the temporary folder instead, but a stray copy holds
+# every signing key and sign-in secret in plain text.
+keys.txt
+*-keys.txt
+*.keys
+
 # native build artefacts (Tauri / Expo)
 src-tauri/target/
 .expo/

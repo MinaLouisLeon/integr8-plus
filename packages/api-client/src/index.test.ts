@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { type ApiRequestError, createClient } from './index.js';
+import {
+  type ApiRequestError,
+  type ClientTooOldInfo,
+  createClient,
+  updatePageUrl,
+  updateUrlFrom,
+} from './index.js';
 
 /**
  * The client's own behaviour: the headers it always sends, how it turns a
@@ -227,6 +233,34 @@ describe('failures', () => {
 
     expect(seen[0]).toEqual({ minimum: '2.0.0', message: 'Please update' });
   });
+
+  it('passes on where to update, when the server says', async () => {
+    const seen: ClientTooOldInfo[] = [];
+    const body = {
+      error: {
+        code: 'client_too_old',
+        message: 'Please update',
+        details: [
+          { field: 'header.x-client-version', code: 'unsupported', message: '1.0.0' },
+          { field: 'update', code: 'update_url', message: 'https://app.example.com/download' },
+        ],
+        requestId: REQUEST_ID,
+      },
+    };
+    const { client: api } = client(
+      () => jsonResponse(body, 503, { 'min-supported-client': '2.0.0' }),
+      { onClientTooOld: (info: ClientTooOldInfo) => seen.push(info) },
+    );
+
+    const failure = await api.GET('/v1/me').catch((error: unknown) => error);
+
+    expect((failure as ApiRequestError).updateUrl).toBe('https://app.example.com/download');
+    expect(seen[0]).toEqual({
+      minimum: '2.0.0',
+      message: 'Please update',
+      updateUrl: 'https://app.example.com/download',
+    });
+  });
 });
 
 describe('refreshing after a 401', () => {
@@ -352,5 +386,27 @@ describe('refreshing after a 401', () => {
 
     await expect(api.GET('/v1/me')).rejects.toMatchObject({ status: 403 });
     expect(calls).toHaveLength(1);
+  });
+});
+
+describe('the download page an out-of-date app opens', () => {
+  it('reads the address from the details, and nothing from an older server', () => {
+    expect(
+      updateUrlFrom([
+        { code: 'minimum', message: '2.0.0' },
+        { code: 'update_url', message: ' https://app.example.com/download ' },
+      ]),
+    ).toBe('https://app.example.com/download');
+    expect(updateUrlFrom([{ code: 'minimum', message: '2.0.0' }])).toBeUndefined();
+    expect(updateUrlFrom(undefined)).toBeUndefined();
+  });
+
+  it("adds a company's build to the address, and leaves the generic one alone", () => {
+    const page = 'https://app.example.com/download';
+    expect(updatePageUrl(page)).toBe(page);
+    expect(updatePageUrl(page, '')).toBe(page);
+    expect(updatePageUrl(page, 'acme')).toBe(`${page}?company=acme`);
+    expect(updatePageUrl(`${page}?lang=ar`, 'acme')).toBe(`${page}?lang=ar&company=acme`);
+    expect(updatePageUrl(`${page}#phone`, 'a b')).toBe(`${page}?company=a%20b#phone`);
   });
 });

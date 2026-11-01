@@ -15,7 +15,9 @@ import { ROLES, type Grant, type Role } from './roles.js';
  * guarding a whole surface and the wrong one for a specific capability: a
  * dispatcher outranks an engineer without needing to revoke anyone's sessions.
  * Every cell below is decided on its own, and `permissions.test.ts` fails if a
- * new permission is added without deciding it for all five roles.
+ * new permission is added without deciding it for every role, or if
+ * `permissions.table.md` (the same decisions as a yes/no table, one row per
+ * permission) disagrees with this matrix in any cell.
  */
 
 export const PERMISSIONS = [
@@ -202,8 +204,9 @@ export const PERMISSIONS = [
   /** Draft invoices (blank, from an order or from a job) and credit notes. */
   'finance.manage',
   /**
-   * Issue and void invoices, issue credit notes, record payments and allocate
-   * them, and set the invoice issuer details and labour rates. Owners and
+   * Issue and void invoices, issue credit notes, record payments, allocate
+   * them and reverse them (0064), and set the invoice issuer details and
+   * labour rates. Owners and
    * admins only (product decision, 2026-10-11): money the company claims or
    * received is answered for by the people who own it.
    */
@@ -321,6 +324,14 @@ export const PERMISSIONS = [
   'document.create',
   /** Expire, renew and delete generated PDFs. */
   'document.manage',
+  /**
+   * Upload a PDF the company already has into the register, and switch any
+   * document's sharing on or off: whether its QR code's link and the company
+   * website may show it (0067). Owners and admins (product decision,
+   * 2026-11-01): what leaves the company is answered for by the people who
+   * answer for the company.
+   */
+  'document.upload',
   /**
    * Design a form's PDF templates. Staff-only (see
    * {@link STAFF_ONLY_PERMISSIONS}), like the forms themselves.
@@ -448,6 +459,7 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'document.read',
     'document.create',
     'document.manage',
+    'document.upload',
     'document.design',
     'eta.read',
     'eta.prepare',
@@ -528,6 +540,7 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'document.read',
     'document.create',
     'document.manage',
+    'document.upload',
     'document.design',
     'eta.read',
     'eta.prepare',

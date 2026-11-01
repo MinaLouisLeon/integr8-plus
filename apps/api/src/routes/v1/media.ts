@@ -1,4 +1,4 @@
-import { holds } from '@integr8/core';
+import { holds, monthlyOverage, utcMonthOf } from '@integr8/core';
 import { type FileRecord, withTenant } from '@integr8/db';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
@@ -16,6 +16,7 @@ import { getStorage, StorageNotReadyError } from '../../media/tenant-storage.js'
 import { assertUploadFits, quotaFor } from '../../media/quota.js';
 import { RESUMABLE_UPLOAD_DAYS } from '../../media/maintenance.js';
 import { THUMBNAIL_QUEUE } from '../../media/thumbnails.js';
+import { mayReadFile } from './media-access.js';
 import { iso } from './schemas.js';
 
 /**
@@ -89,8 +90,9 @@ export const createMediaRoute = defineRoute({
     'Returns where to send the bytes, with the headers to send. The link is signed for exactly this type and size and expires in fifteen minutes. Honours `Idempotency-Key`.',
   tags: TAGS,
   security: 'authenticated',
-  // Forms, receipts for an expense claim (ADR-0010), and item images (ADR-0012).
-  anyPermission: ['submission.fill', 'expense.submit', 'inventory.manage'],
+  // Forms, receipts for an expense claim (ADR-0010), item images (ADR-0012),
+  // and PDFs uploaded into the documents register (0067).
+  anyPermission: ['submission.fill', 'expense.submit', 'inventory.manage', 'document.upload'],
   idempotent: true,
   params: noSchema,
   query: noSchema,
@@ -197,8 +199,9 @@ export const completeMediaRoute = defineRoute({
     'Reads the object back from storage. If it is exactly the type and size declared, the file is recorded with the size and ETag storage reports, and can be named in a submission. If something else arrived, it is deleted and nothing is recorded. Confirming twice returns the same file.',
   tags: TAGS,
   security: 'authenticated',
-  // Forms, receipts for an expense claim (ADR-0010), and item images (ADR-0012).
-  anyPermission: ['submission.fill', 'expense.submit', 'inventory.manage'],
+  // Forms, receipts for an expense claim (ADR-0010), item images (ADR-0012),
+  // and PDFs uploaded into the documents register (0067).
+  anyPermission: ['submission.fill', 'expense.submit', 'inventory.manage', 'document.upload'],
   params: mediaParams,
   query: noSchema,
   body: noSchema,
@@ -276,10 +279,9 @@ export const getMediaRoute = defineRoute({
   operationId: 'getMedia',
   summary: 'A link to read a stored file',
   description:
-    'Anyone in the company may read a file they have the id of: ids are unguessable and are only handed out inside submissions the reader can already see. Links expire in five minutes; `thumbnailUrl` is set once a thumbnail has been made.',
+    'A file follows the record that uses it: whoever may see the submission, job, customer, expense claim, document, item, asset or certificate it belongs to may read it; the company’s logo and app icon every member; a file nothing uses yet only whoever uploaded it. Anyone else is answered 404, as for a file that does not exist. Links expire in five minutes; `thumbnailUrl` is set once a thumbnail has been made.',
   tags: TAGS,
   security: 'authenticated',
-  permission: 'form.read',
   params: mediaParams,
   query: noSchema,
   body: noSchema,
@@ -292,13 +294,19 @@ export const getMediaRoute = defineRoute({
         expiresAt: z.string(),
       }),
     },
-    404: { description: 'No such stored file, or it was deleted.' },
+    404: {
+      description: 'No such stored file, it was deleted, or this person may not see what uses it.',
+    },
   },
   handler: async ({ params }, context) => {
-    const file = await withTenant(context.principal.tenantId, (tx) =>
-      tx.files.find(params.mediaId),
-    );
-    if (file?.deletedAt !== null) {
+    const { principal } = context;
+    const file = await withTenant(principal.tenantId, async (tx) => {
+      const found = await tx.files.find(params.mediaId);
+      return found?.deletedAt === null && (await mayReadFile(tx, principal, found))
+        ? found
+        : undefined;
+    });
+    if (file === undefined) {
       throw notFound('This file does not exist.');
     }
     const store = await storageFor(context);
@@ -488,6 +496,19 @@ export const storageUsageRoute = defineRoute({
             objects: z.number().int(),
           }),
         ),
+        /**
+         * This month (UTC) over the plan's allowance, as Integr8 invoices it
+         * (Low 2): days over, the peak, and the daily overage averaged over
+         * the month's days (byte-months; 10⁹ is one GB-month). All zero when
+         * the company stayed under.
+         */
+        overageThisMonth: z.object({
+          month: z.string(),
+          daysInMonth: z.number().int(),
+          daysOver: z.number().int(),
+          peakBytes: z.number().int(),
+          averageBytes: z.number().int(),
+        }),
       }),
     },
   },
@@ -517,6 +538,10 @@ export const storageUsageRoute = defineRoute({
           bytes: sample.bytes,
           objects: sample.objects,
         })),
+        overageThisMonth: monthlyOverage(
+          trend.map((sample) => ({ day: sample.sampledOn, overageBytes: sample.overageBytes })),
+          utcMonthOf(new Date()),
+        ),
       },
     };
   },
@@ -605,8 +630,9 @@ export const prepareMediaRoute = defineRoute({
     'For a phone that names a file in its answers before it has signal (P12). The first call records the upload; every later call with the same id and the same type and size answers again — with a fresh link, or `stored` once it has been confirmed — so it can be repeated after any interruption. Files larger than 8 MiB arrive in parts (`multipart`), which can be sent over several connections and resumed. An unconfirmed upload is kept for seven days.',
   tags: TAGS,
   security: 'authenticated',
-  // Forms, receipts for an expense claim (ADR-0010), and item images (ADR-0012).
-  anyPermission: ['submission.fill', 'expense.submit', 'inventory.manage'],
+  // Forms, receipts for an expense claim (ADR-0010), item images (ADR-0012),
+  // and PDFs uploaded into the documents register (0067).
+  anyPermission: ['submission.fill', 'expense.submit', 'inventory.manage', 'document.upload'],
   params: mediaParams,
   query: noSchema,
   body: z.object({
@@ -794,8 +820,9 @@ export const createMediaPartLinksRoute = defineRoute({
     'Each link is signed for its part’s exact size and lasts fifteen minutes. Ask again for any part whose link expired.',
   tags: TAGS,
   security: 'authenticated',
-  // Forms, receipts for an expense claim (ADR-0010), and item images (ADR-0012).
-  anyPermission: ['submission.fill', 'expense.submit', 'inventory.manage'],
+  // Forms, receipts for an expense claim (ADR-0010), item images (ADR-0012),
+  // and PDFs uploaded into the documents register (0067).
+  anyPermission: ['submission.fill', 'expense.submit', 'inventory.manage', 'document.upload'],
   params: mediaParams,
   query: noSchema,
   body: z.object({ partNumbers: z.array(z.number().int().min(1)).min(1).max(100) }),
@@ -866,8 +893,9 @@ export const listMediaPartsRoute = defineRoute({
     'For resuming: after an interruption, a phone asks which parts storage already holds and sends only the rest.',
   tags: TAGS,
   security: 'authenticated',
-  // Forms, receipts for an expense claim (ADR-0010), and item images (ADR-0012).
-  anyPermission: ['submission.fill', 'expense.submit', 'inventory.manage'],
+  // Forms, receipts for an expense claim (ADR-0010), item images (ADR-0012),
+  // and PDFs uploaded into the documents register (0067).
+  anyPermission: ['submission.fill', 'expense.submit', 'inventory.manage', 'document.upload'],
   params: mediaParams,
   query: noSchema,
   body: noSchema,

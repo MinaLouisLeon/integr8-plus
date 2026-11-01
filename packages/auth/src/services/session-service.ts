@@ -1,4 +1,4 @@
-import type { ImpersonationClaim, Role, TenantId, UserId } from '@integr8/core';
+import type { ImpersonationClaim, Principal, Role, TenantId, UserId } from '@integr8/core';
 import {
   type ClientApp,
   type OfflineGrant,
@@ -67,17 +67,162 @@ export interface SessionServiceDeps {
   tokens: TokenService;
   config: AuthConfig;
   now?: () => Date;
+  /** How long a liveness answer is trusted. Defaults to {@link SESSION_LIVENESS_TTL_MS}. */
+  livenessTtlMs?: number;
+  /** How many liveness answers are kept. Defaults to {@link SESSION_LIVENESS_MAX_ENTRIES}. */
+  livenessMaxEntries?: number;
+}
+
+/**
+ * How long the answer to "is this session still live?" is trusted.
+ *
+ * An access token lasts fifteen minutes and checking it is only a signature,
+ * so signing out everywhere, changing a password or suspending somebody used
+ * to leave their other devices working until the token lapsed. Asking the
+ * database on every request would close that gap entirely, at the price of a
+ * query on every request. Thirty seconds is the compromise: a revoked device
+ * stops within half a minute, and a busy session costs one query per half
+ * minute rather than one per request.
+ */
+export const SESSION_LIVENESS_TTL_MS = 30_000;
+
+/**
+ * The most answers kept at once. Each is a few dozen bytes; the bound is there
+ * so a flood of distinct (validly signed) sessions cannot grow the process
+ * without limit. When full, the oldest answer is dropped and simply asked again.
+ */
+export const SESSION_LIVENESS_MAX_ENTRIES = 10_000;
+
+interface LivenessAnswer {
+  live: boolean;
+  userId: UserId;
+  checkedAt: number;
+  /** What the session recorded at sign-in; carried so no request reads it again. */
+  session?: LiveSession;
+}
+
+/**
+ * What a live session recorded when it began, as {@link SessionService.assertLive}
+ * returns it. Read from the session row, never from the request: a header can
+ * say anything (Low 11, 1.2.4).
+ */
+export interface LiveSession {
+  /** The app that signed in, as the sign-in request recorded it. */
+  clientApp: ClientApp;
+  /** Integr8 staff acting as the company through an impersonation grant. */
+  impersonated: boolean;
 }
 
 export class SessionService {
   readonly #tokens: TokenService;
   readonly #config: AuthConfig;
   readonly #clock: () => Date;
+  readonly #livenessTtlMs: number;
+  readonly #livenessMaxEntries: number;
+  /** Session id → the last answer. A Map keeps insertion order, oldest first. */
+  readonly #liveness = new Map<string, LivenessAnswer>();
 
   constructor(deps: SessionServiceDeps) {
     this.#tokens = deps.tokens;
     this.#config = deps.config;
     this.#clock = deps.now ?? (() => new Date());
+    this.#livenessTtlMs = deps.livenessTtlMs ?? SESSION_LIVENESS_TTL_MS;
+    this.#livenessMaxEntries = Math.max(1, deps.livenessMaxEntries ?? SESSION_LIVENESS_MAX_ENTRIES);
+  }
+
+  /**
+   * Refuses a token whose session has ended, within {@link SESSION_LIVENESS_TTL_MS}.
+   *
+   * Called on every authenticated request, after the signature has been
+   * checked. A session is live while it has not been revoked, has not reached
+   * its maximum lifetime, and the person is still an active member of the
+   * company (an impersonation's grant stands in for the membership): sign out everywhere, Change password, a suspension and staff
+   * ending a session all fall under one of those.
+   *
+   * Throws {@link SessionRevokedError}, which the API answers with the same
+   * 401 as an expired token.
+   *
+   * Returns what the session recorded when it began — the app that signed in,
+   * and whether it is staff acting as the company — from the same row and the
+   * same cache, so a request that needs it (the assistant's per-app switch)
+   * costs no extra query.
+   */
+  async assertLive(
+    principal: Pick<Principal, 'tenantId' | 'userId' | 'sessionId'>,
+  ): Promise<LiveSession> {
+    const now = this.#clock();
+    const cached = this.#liveness.get(principal.sessionId);
+    let live: boolean;
+    let facts: LiveSession | undefined;
+
+    if (cached !== undefined && now.getTime() - cached.checkedAt < this.#livenessTtlMs) {
+      live = cached.live && cached.userId === principal.userId;
+      facts = cached.session;
+    } else {
+      const answer = await withTenant(principal.tenantId, async (tx) => {
+        const session = await tx.sessions.findById(principal.sessionId);
+        if (
+          session?.userId !== principal.userId ||
+          session.revokedAt !== null ||
+          session.expiresAt <= now
+        ) {
+          return { live: false };
+        }
+        const recorded: LiveSession = {
+          clientApp: session.clientApp,
+          impersonated: session.impersonationGrantId !== null,
+        };
+        // Staff acting as the company may hold no membership at all (a
+        // company with no members yet); their grant is checked on every
+        // request by ImpersonationService instead.
+        if (recorded.impersonated) {
+          return { live: true, session: recorded };
+        }
+        const membership = await tx.tenantUsers.findByUserId(principal.userId);
+        return { live: membership?.status === 'active', session: recorded };
+      });
+      live = answer.live;
+      facts = answer.session;
+      this.#remember(principal.sessionId, {
+        live,
+        userId: principal.userId,
+        checkedAt: now.getTime(),
+        ...(facts === undefined ? {} : { session: facts }),
+      });
+    }
+
+    if (!live || facts === undefined) {
+      throw new SessionRevokedError('Session is no longer live');
+    }
+    return facts;
+  }
+
+  #remember(sessionId: string, answer: LivenessAnswer): void {
+    // Re-inserting moves the entry to the end, so the first key is always the
+    // one answered longest ago.
+    this.#liveness.delete(sessionId);
+    this.#liveness.set(sessionId, answer);
+    while (this.#liveness.size > this.#livenessMaxEntries) {
+      const oldest = this.#liveness.keys().next().value;
+      if (oldest === undefined) {
+        break;
+      }
+      this.#liveness.delete(oldest);
+    }
+  }
+
+  /**
+   * Forgets what this process remembers about some sessions, so a revocation
+   * made here takes effect on the next request rather than within thirty
+   * seconds. Another process (a second API container) still waits out its own
+   * cache; that is the bound the TTL promises.
+   */
+  #forget(match: (sessionId: string, answer: LivenessAnswer) => boolean): void {
+    for (const [sessionId, answer] of this.#liveness) {
+      if (match(sessionId, answer)) {
+        this.#liveness.delete(sessionId);
+      }
+    }
   }
 
   /**
@@ -226,7 +371,7 @@ export class SessionService {
   ): Promise<boolean> {
     const now = this.#clock();
 
-    return withTenant(tenantId, async (tx) => {
+    const ended = await withTenant(tenantId, async (tx) => {
       const revoked = await tx.sessions.revoke(sessionId, reason, now);
       if (revoked) {
         // Without this the device would be logged out of the API and still able
@@ -236,6 +381,10 @@ export class SessionService {
       }
       return revoked;
     });
+    // After the commit: forgetting first would let a request in between
+    // remember the session as live again for another thirty seconds.
+    this.#forget((id) => id === sessionId);
+    return ended;
   }
 
   /** Ends every session for one person in one company. */
@@ -247,9 +396,9 @@ export class SessionService {
   ): Promise<number> {
     const now = this.#clock();
 
-    return withTenant(tenantId, async (tx) => {
+    const count = await withTenant(tenantId, async (tx) => {
       const sessions = await tx.sessions.list({ userId, limit: 500 }, now);
-      const count = await tx.sessions.revokeAllForUser(userId, reason, options, now);
+      const revoked = await tx.sessions.revokeAllForUser(userId, reason, options, now);
 
       for (const session of sessions) {
         if (session.id !== options.except) {
@@ -257,8 +406,10 @@ export class SessionService {
         }
       }
 
-      return count;
+      return revoked;
     });
+    this.#forget((id, answer) => answer.userId === userId && id !== options.except);
+    return count;
   }
 
   /** The device list an admin or a person sees. */

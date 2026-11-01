@@ -19,6 +19,7 @@
 
 import { apiErrorsEn } from './api-errors.en.js';
 import { legalEn } from './legal.en.js';
+import { siteEn } from './site.en.js';
 
 export const en = {
   common: {
@@ -137,11 +138,11 @@ export const en = {
     // a page that did not exist, so every invitation led to a 404.
     accept: {
       title: 'Join your team',
-      subtitle: 'Choose a name and a password, and you are in.',
+      subtitle: 'Choose a name and a password to join.',
       displayName: 'Your name',
       displayNameHint: 'How you will appear on jobs and forms.',
       choosePassword: 'Choose a password',
-      submit: 'Accept and sign in',
+      submit: 'Accept invitation',
       accepting: 'Setting up your account\u2026',
       // One message for expired, withdrawn, already-used and never-existed.
       // Telling a stranger which it was tells them the link was once real.
@@ -152,6 +153,18 @@ export const en = {
       // The account exists at this point; only the sign-in failed.
       signInFailed:
         'Your account is ready, but we could not sign you in automatically. Please sign in.',
+      // Low 5 (1.2.4): accepting signs nobody in; the page ends on "now sign in".
+      subtitleExisting:
+        'You already sign in to Integr8 with this address, so there is no password to choose. Tell us the name your team will see.',
+      invitedAs: 'Invited as {{email}}',
+      passwordHint:
+        'Long and not easy to guess. It must not contain the first part of your email address.',
+      doneTitle: 'Done \u2014 now sign in',
+      doneNew: 'You are a member now. Sign in with {{email}} and the password you just chose.',
+      doneExisting:
+        'You are a member now. Sign in with {{email}} and the password you already use.',
+      doneApps: 'The same address and password work in the desktop and phone apps.',
+      goToSignIn: 'Go to sign in',
     },
   },
 
@@ -168,31 +181,11 @@ export const en = {
       contact: 'Talk to us',
     },
     hero: {
-      title: 'Paperwork that finishes itself',
-      subtitle:
-        'Job sheets, safety checks and certificates, filled in on a phone — including in a basement with no signal. Your office sees them the moment the engineer has a bar again.',
       cta: 'Start a free trial',
       note: 'Fourteen days. No card needed.',
       // When public sign-up is off: companies are set up by Integr8.
       ctaClosed: 'Talk to us about getting set up',
       noteClosed: 'We set your company up with you: forms, job types and the apps.',
-    },
-    // Three claims, each one a thing the product actually does. If a line here
-    // stops being true, it is a bug in the product or a lie on the page.
-    points: {
-      offlineTitle: 'Works with no signal',
-      offlineBody:
-        'Forms are filled in on the device and sent when there is signal. Nothing is lost in a plant room, a loft or a lift shaft.',
-      formsTitle: 'Your forms, not ours',
-      formsBody:
-        'We turn the forms you already use on paper into the app, for you. Published versions are frozen, so a job filled in last March still reads the way it was signed.',
-      evidenceTitle: 'Evidence that stands up',
-      evidenceBody:
-        'Photos, signatures and timestamps attached to the job, kept for as long as your plan says, and exportable whenever you ask.',
-    },
-    features: {
-      title: 'What it does',
-      subtitle: 'The whole product, without the adjectives.',
     },
     pricing: {
       title: 'Pricing',
@@ -312,8 +305,16 @@ export const en = {
         'You have used {{percent}}% of your storage. Delete what you no longer need, or ask about a larger plan.',
       full: 'You have used all of your storage. New uploads will be refused until you free some space.',
       fullSoon: 'Uploads will be refused once this is full.',
-      overage:
-        'You are over your allowance by {{amount}}. Uploads still work, and the extra is billed.',
+      // Low 2: a plan that keeps accepting uploads past its allowance.
+      overPlan: {
+        title: 'Over your plan',
+        body: 'You are storing {{used}}, which is {{amount}} more than your plan’s {{allowance}}. Uploads keep working.',
+        billing:
+          'Storage over your plan is added to your Integr8 invoice as the average amount over during the month. So far this month: {{average}} on average, {{peak}} at most.',
+        action: 'Delete files you no longer need, or ask Integr8 about a larger plan.',
+        earlier:
+          'You went over your plan’s storage earlier this month. About {{average}} of extra storage, averaged over the month, will be on this month’s invoice.',
+      },
     },
     billing: {
       title: 'Billing',
@@ -545,7 +546,7 @@ export const en = {
         title: 'Customer website access',
         intro:
           'Choose which customer data your company website may request. Integr8 must also enable each capability, and your website must authenticate its own customers.',
-        files: 'Files and documents',
+        files: 'Documents: find one by its reference (only documents you share)',
         jobs: 'Job status',
         quotes: 'Quotes',
         invoices: 'Invoices',
@@ -643,6 +644,18 @@ export const en = {
     },
 
     impersonationBanner: 'You are viewing this account as {{name}}. Everything you do is recorded.',
+    // The desktop app's strip when a newer version is ready (P20). Windows closes
+    // the app to install it and the installer opens the new version.
+    appUpdate: {
+      available: 'Version {{version}} of this app is ready.',
+      windowsRestart: 'Installing closes the app and opens it again on the new version.',
+      install: 'Install now',
+      installing: 'Installing…',
+      later: 'Later',
+      installed: 'Version {{version}} is installed. Close the app and open it again to use it.',
+      failed:
+        'Version {{version}} could not be installed. Try again, or install it from the download link.',
+    },
 
     // Banners Integr8 posts from the platform dashboard, payment reminders
     // included (P15). The severity is a word as well as a colour.
@@ -810,6 +823,7 @@ export const en = {
         read: 'See generated PDFs',
         create: 'Make PDFs from submissions',
         manage: 'Expire and delete PDFs',
+        upload: 'Upload PDFs and choose which documents are shared',
         design: 'Design PDF templates (Integr8 only)',
       },
       ledger: {
@@ -870,6 +884,15 @@ export const en = {
     unexpected: 'An unexpected error occurred.',
   },
 
+  // The phone and desktop apps when the server no longer serves this build:
+  // a strip with an Update button that opens the web app's download page,
+  // with the company filled in for a company's own app (Low 6, 1.2.4).
+  clientUpdate: {
+    needed: 'This version of the app is no longer supported. Update it to keep working.',
+    desktopHint: 'If the app does not update itself in a few minutes, download the new version.',
+    button: 'Update',
+  },
+
   // One message per error code the API can return (ADR-0012), in their own
   // file because there are so many. `API_ERROR_CODES` is the contract.
   apiErrors: apiErrorsEn,
@@ -877,6 +900,10 @@ export const en = {
   // The terms of service, privacy policy and data processing terms, in their
   // own file because they are long. Pages under /legal on the website.
   legal: legalEn,
+
+  // The public site in the Integr8 Media look (Low 3): home, features,
+  // pricing, help, download, and the frame around them. In its own file.
+  site: siteEn,
 
   states: {
     emptyTitle: 'Nothing here yet',
@@ -1656,7 +1683,7 @@ export const en = {
         capturedNoAccuracy: 'Submitted from {{latitude}}, {{longitude}} at {{when}}',
         denied: 'Submitted without a location: the person refused location access',
         unavailable: 'Submitted without a location: the phone could not find one in time',
-        openMap: 'Open in a map',
+        openMap: 'Open in Google Maps',
       },
       showAnswers: 'Show the answers at this point',
       hideAnswers: 'Hide',
@@ -1772,10 +1799,10 @@ export const en = {
       useMyLocation: 'Use my current location',
       locating: 'Finding your location…',
       locationUnavailable: 'Your location is not available.',
-      openMap: 'Open in a map',
+      coordinates: 'Coordinates',
+      openMap: 'Open in Google Maps',
       pin: 'Save this position',
       clearPin: 'Clear and look up the address again',
-      mapLabel: 'Map of the site. Click to move the pin.',
     },
     workOrders: {
       title: 'Work orders',
@@ -1981,7 +2008,11 @@ export const en = {
         maintenance_planned: 'Created by maintenance plan {{title}}, due {{day}}',
         coverage_changed: '{{actor}} marked it {{coverage}}',
         deadline_missed: '{{deadline}} deadline of {{due}} missed',
+        form_submitted_after_close: '{{actor}} submitted {{title}} after the job was closed',
       },
+      submittedAfterClose: 'Submitted after the job closed',
+      submittedAfterCloseHint:
+        'Filled on the phone before the job closed and synced afterwards. Check it before invoicing or reporting.',
       nobodySignedEvent: '{{actor}} recorded that nobody could sign: {{reason}}',
       recordedLater: 'Recorded on the phone at {{occurred}}, synced at {{recorded}}',
       notFound: 'This work order does not exist, or you are not on it.',
@@ -2604,6 +2635,16 @@ export const en = {
         empty: 'No maintenance plans for this asset.',
         nextDue: 'Next due',
         noneEnded: 'None: the plan has ended',
+        failure: {
+          heading: 'Plans whose jobs could not be made',
+          title: 'Its jobs could not be made ({{when}}):',
+          retrying_one: 'Failed once. It is tried again automatically every few minutes.',
+          retrying_other:
+            'Failed {{count}} times in a row. It is tried again automatically every few minutes.',
+          gaveUp_one: 'Failed once. It will not be tried again until the plan is edited.',
+          gaveUp_other:
+            'Failed {{count}} times in a row, so it is no longer retried. Edit the plan to try again.',
+        },
         waiting: 'After the open job is completed',
         upcoming: 'Then',
         last: 'Last',
@@ -3728,6 +3769,7 @@ export const en = {
       },
       conflictLine: 'Asked for {{asked}}; {{location}} held {{available}}.',
       recordedBy: '{{name}}, {{when}}',
+      recordedAfterClose: 'Recorded on the phone before the job closed; synced after',
       returned: '{{quantity}} returned',
       return: 'Return',
       returnTitle: 'Return a part',
@@ -3989,6 +4031,14 @@ export const en = {
   },
   purchasing: {
     notEnabled: 'Purchasing is not switched on for your company. Ask Integr8 to turn it on.',
+    document: {
+      title: 'Purchase order {{reference}}',
+      orderedOn: 'Ordered on {{date}}',
+      expectedOn: 'Expected on {{date}}',
+      supplier: 'Supplier',
+      deliverTo: 'Deliver to',
+      print: 'Print',
+    },
     status: {
       draft: 'Draft',
       approved: 'Approved',
@@ -4311,6 +4361,8 @@ export const en = {
       thanksRejected: 'Thank you for letting us know.',
       invalid:
         'This link is not valid. It may have been used already, or the quote may have been withdrawn or replaced.',
+      unavailableTitle: 'No longer available online',
+      unavailable: 'This quote is no longer available online. Please contact {{company}}.',
       print: 'Print or save as PDF',
       terms: 'Terms',
       poweredBy: 'Sent with Integr8 Plus',
@@ -4475,6 +4527,7 @@ export const en = {
       },
       search: 'Find by reference or customer',
       overdueOnly: 'Overdue only',
+      partsNotBilledOnly: 'Jobs with parts not yet billed',
       empty: 'No invoices match.',
       emptyAll: 'No invoices yet. Draft one from a sales order, a completed job, or from scratch.',
       draftLabel: 'Draft invoice',
@@ -4552,6 +4605,14 @@ export const en = {
       onAccount: '{{amount}} on account',
       back: 'Payments',
       recordedBy: 'Recorded by {{name}} on {{date}}',
+      reverse: 'Reverse payment',
+      reverseTitle: 'Reverse {{reference}}?',
+      reverseIntro:
+        'The payment of {{amount}} stays on record, marked reversed. Every invoice it paid owes that amount again, it can no longer be put against an invoice, and the ledger takes the money back today. This cannot be undone.',
+      reverseReason: 'Why (a bounced cheque, the wrong customer…)',
+      reverseConfirm: 'Reverse payment',
+      reversedLine: 'Reversed by {{name}} on {{date}}: {{reason}}',
+      reversed: 'Reversed',
       details: 'Payment details',
       allocated: 'Put against invoices',
       unallocated: 'On account',
@@ -4584,6 +4645,10 @@ export const en = {
     job: {
       heading: 'Invoicing and cost',
       invoice: 'Invoice this job',
+      invoiceFollowUp: 'Invoice the parts not yet billed',
+      partsNotYetBilled: 'Parts not yet billed',
+      partsNotYetBilledHint:
+        'Parts recorded on a phone before this job closed arrived after it was invoiced. No invoice bills them yet: raise a follow-up invoice for them.',
       notInvoiced: 'Not invoiced yet.',
       notComplete: 'The job can be invoiced once it is complete.',
       costsHeading: 'What the job cost',
@@ -4651,6 +4716,10 @@ export const en = {
     noJobs: 'Not linked to any job yet.',
     timeline: 'History',
     noHistory: 'Nothing recorded yet.',
+    // The history a page at a time (Low 14).
+    timelinePages: {
+      showOlder: 'Show older',
+    },
     tagCode: 'Tag code',
     serialShort: 'S/N {{serial}}',
     warrantyUntil: 'Warranty until {{date}}',
@@ -4809,6 +4878,7 @@ export const en = {
       credit_note: 'Credit note',
       invoice_void: 'Voided invoice',
       payment: 'Payment',
+      payment_reversal: 'Reversed payment',
       stock: 'Stock movement',
       expense_claim: 'Expense claim',
       expense_payment: 'Expense claim paid back',
@@ -7351,7 +7421,7 @@ export const en = {
   documents: {
     title: 'Documents',
     intro:
-      'PDFs made from submissions. Search them by their fields, open or download them, and stop their links.',
+      'PDFs made from submissions, and PDFs your company uploaded. Search them by their fields, open or download them, choose which may be shared, and stop their links.',
     search: 'Search',
     searchIn: 'Search in',
     anyField: 'Any field and the title',
@@ -7359,7 +7429,7 @@ export const en = {
     stateFilter: 'State',
     apply: 'Search',
     empty: 'No documents match this search.',
-    emptyAll: 'No documents yet. Open a submission and choose Make PDF.',
+    emptyAll: 'No documents yet. Open a submission and choose Make PDF, or upload a PDF.',
     loadMore: 'Show more',
     back: 'All documents',
     state: {
@@ -7407,6 +7477,37 @@ export const en = {
     deleteBody:
       'Its link stops at once and its PDF is removed after the restore window. This cannot be undone here.',
     cancel: 'Cancel',
+    // Uploaded PDFs and sharing (0067).
+    upload: {
+      action: 'Upload a PDF',
+      title: 'Upload a PDF document',
+      intro:
+        'Add a PDF your company already has, such as a certificate signed on paper. It gets its own QR code link, like the PDFs made from submissions.',
+      file: 'PDF file',
+      fileHint: 'A PDF of at most 20 MB.',
+      notPdf: 'Choose a PDF file.',
+      tooLarge: 'This PDF is larger than 20 MB.',
+      documentTitle: 'Title',
+      reference: 'Reference number',
+      referenceHint: 'Such as a certificate number. Your website finds the document by it.',
+      customer: 'Customer (optional)',
+      customerHint: 'When a customer is chosen, your website also asks for their name.',
+      shareNow: 'Share it now, so the QR code link and your website can show it',
+      submit: 'Upload',
+      uploading: 'Uploading…',
+      cancel: 'Cancel',
+      badge: 'Uploaded',
+      made: 'Uploaded {{date}} by {{name}}',
+    },
+    sharing: {
+      title: 'Sharing',
+      on: 'Shared: the QR code link and your company website can show this document.',
+      off: 'Not shared: the QR code link and your company website answer as if it did not exist. Your company still sees it here.',
+      share: 'Share it',
+      unshare: 'Stop sharing',
+      badge: 'Not shared',
+      qr: 'QR code for this document’s link',
+    },
     export: {
       action: 'Make PDF',
       title: 'Make a PDF from this submission',
@@ -7459,6 +7560,8 @@ export const en = {
       revokeConfirm: 'Revoke this key? The website using it stops finding documents at once.',
       limit: 'Two keys are live. Revoke one before making another.',
       managerOnly: 'Only the terminal-created staff admin can permanently delete a website key.',
+      managersOnly:
+        'Only a staff manager, an account made with the terminal command, can make, enable, disable, revoke or delete website keys.',
       secretTitle: 'Copy this key now',
       secretBody:
         'It is shown only this once. Put it in the website server’s environment as INTEGR8_WEBSITE_KEY.',
@@ -7641,6 +7744,124 @@ export const en = {
       number: 'No.',
       qrPlaceholder: 'QR code',
       imagePlaceholder: 'Image',
+    },
+  },
+
+  // What the server writes to people on its own: push notifications, in the
+  // phone's language, and reminder emails and banners, in the company's.
+  // Read by the API through `@integr8/i18n/core`; `{{…}}` is filled there.
+  notifications: {
+    // Low 13 (1.2.4): a quote link while the company's sales module is off.
+    publicQuote: {
+      unavailable: 'This quote is no longer available online. Please contact {{company}}.',
+    },
+    // Low 10 (1.2.4): the owner is told when an admin suspends somebody with HR access.
+    hrSuspension: {
+      subject: '{{person}} was suspended at {{company}}',
+      title: 'Somebody with HR access was suspended',
+      body: '{{admin}} suspended {{person}}, who can see your people\u2019s salaries and personal records, on {{date}}. They cannot sign in until they are let back in.',
+      next: 'Only you can let them back in, change their role or remove them. If this was not expected, check with {{admin}}.',
+      action: 'Open People',
+    },
+    push: {
+      newJob: 'New job: {{job}}',
+      urgentCallout: 'Urgent callout: {{job}}',
+      rescheduled: 'Rescheduled: {{job}}',
+      dispatched: 'Dispatched: {{job}}',
+      cancelled: 'Cancelled: {{job}}',
+      nowUrgent: 'Now urgent: {{job}}',
+      newVisit: 'New visit: {{job}}',
+      urgentVisit: 'Urgent visit: {{job}}',
+      visitMoved: 'Visit moved: {{job}}',
+      visitCancelled: 'Visit cancelled: {{job}}',
+      takenOffVisit: 'Taken off a visit: {{job}}',
+      openForTime: 'Open the job for its time.',
+      openForTimeAt: '{{site}} · open the job for its time.',
+      openForNewTime: 'Open the job for its new time.',
+      openForNewTimeAt: '{{site}} · open the job for its new time.',
+      responseDeadlineMissed: '{{job}}: response deadline missed',
+      responseDeadlineSoon: '{{job}}: response deadline soon',
+      completionDeadlineMissed: '{{job}}: completion deadline missed',
+      completionDeadlineSoon: '{{job}}: completion deadline soon',
+      certificateExpired: '{{qualification}} has expired',
+      certificateExpiring: '{{qualification}} expires soon',
+      certificateExpiredBody: 'Send the renewed certificate to the office.',
+      certificateExpiringBody: 'Valid until {{date}}. Renew it in time.',
+    },
+    email: {
+      pasteLink: 'Or paste this into your browser:',
+      dunning: {
+        subjectFailed: 'Payment failed for {{company}}',
+        subjectReadOnly: '{{company}} is read-only — payment outstanding',
+        titleFailed: 'A payment did not go through',
+        titleReadOnly: 'Your account is read-only',
+        failed: 'A payment for {{company}} has not gone through.',
+        failedNoDeadline: 'Please update your card to keep everything working.',
+        failedDeadline:
+          'If it is still outstanding on {{date}}, the account becomes read-only — your data stays, but new work cannot be saved.',
+        failedFix: 'Updating your card takes a minute and fixes it immediately.',
+        readOnly: '{{company}} is now read-only because a payment is outstanding.',
+        readOnlyKept:
+          'Nothing has been deleted and nothing will be. Everything can still be read and exported; what has stopped is saving new work.',
+        readOnlyFix: 'Updating your card restores it straight away.',
+        action: 'Update your card',
+      },
+      certificates: {
+        subjectExpired: 'Certificates expired — {{company}}',
+        subjectExpiring: 'Certificates expiring soon — {{company}}',
+        titleExpired: 'Certificates have expired',
+        titleExpiring: 'Certificates expiring soon',
+        ownExpired: 'A certificate of yours on {{company}} has expired or is about to.',
+        ownExpiring: 'A certificate of yours on {{company}} is about to expire.',
+        team: 'Certificates held by people at {{company}} have expired or are about to.',
+        expired: '{{qualification}} expired on {{date}}.',
+        expiring: '{{qualification}} expires on {{date}}.',
+        personExpired: '{{person}}: {{qualification}} expired on {{date}}.',
+        personExpiring: '{{person}}: {{qualification}} expires on {{date}}.',
+        affectedVisits: 'Planned visits that now need someone else, or a reason: {{visits}}.',
+        visit: '{{job}}, {{when}}',
+        aJob: 'a job',
+        ownNext:
+          'Once it is renewed, send the new certificate to the office so they can record it.',
+        teamNext: 'Record each renewal as a new certificate, so the old one stays in the history.',
+        action: 'Open qualifications',
+      },
+      contracts: {
+        subjectEnded: 'Contracts ended without renewal — {{company}}',
+        subjectEnding: 'Contracts ending soon — {{company}}',
+        titleEnded: 'Contracts have ended',
+        titleEnding: 'Contracts ending soon',
+        intro: 'Service contracts at {{company}} are ending or have ended.',
+        ended: '{{reference}} {{title}} for {{customer}} ended on {{date}} without being renewed.',
+        ending: '{{reference}} {{title}} for {{customer}} ends on {{date}}.',
+        next: 'Renew a contract to keep its maintenance plans making jobs and its customer’s jobs covered.',
+        action: 'Open contracts',
+      },
+      deadlines: {
+        subjectMissed: 'Deadlines missed — {{company}}',
+        subjectDue: 'Deadlines due soon — {{company}}',
+        titleMissed: 'Deadlines missed',
+        titleDue: 'Deadlines due soon',
+        introMissed: 'Jobs at {{company}} have missed their deadlines, or are about to.',
+        introDue: 'Jobs at {{company}} are about to reach their deadlines.',
+        responseMissed:
+          '{{job}} ({{customer}}): the response deadline was due at {{when}} and was missed.',
+        responseDue: '{{job}} ({{customer}}): the response deadline is due at {{when}}.',
+        completionMissed:
+          '{{job}} ({{customer}}): the completion deadline was due at {{when}} and was missed.',
+        completionDue: '{{job}} ({{customer}}): the completion deadline is due at {{when}}.',
+        explained:
+          'A response deadline is met when the job is dispatched; a completion deadline when it is completed.',
+        action: 'Open the deadlines report',
+      },
+    },
+    announcements: {
+      paymentFailed:
+        'A payment for this account has not gone through. Please update the card in Billing. If it is still outstanding on {{date}}, the account becomes read-only — your data stays, but new work cannot be saved.',
+      paymentFailedNoDate:
+        'A payment for this account has not gone through. Please update the card in Billing. If it is still outstanding shortly, the account becomes read-only — your data stays, but new work cannot be saved.',
+      readOnly:
+        'This account is read-only because a payment is outstanding. Nothing has been deleted and nothing will be: everything can still be read and exported. Update the card in Billing and writing is restored straight away.',
     },
   },
 
@@ -7887,7 +8108,8 @@ export const en = {
       slugHint: 'Lower case letters, digits and hyphens. It cannot be changed.',
       plan: 'Plan',
       seats: 'Seats',
-      seatsHint: 'Leave empty for no limit.',
+      seatsHint:
+        'Leave empty to use the plan’s number of seats. A number here replaces the plan’s, higher or lower.',
       billingMode: 'Billing',
       billingModeHint:
         'Invoiced: you bill them and set their plan here; no trial, no checkout. Pays in the app: they start a trial and subscribe with a card.',
@@ -7989,6 +8211,18 @@ export const en = {
       buildApps: 'Build apps for this company',
       buildAppsHint:
         'When on, every release also builds this company’s installers and phone apps, and the “Build company apps” workflow accepts its short name.',
+      // Starting a build from here (APP_BUILDS=github): when apps are switched
+      // on, and by hand with "Rebuild apps" for a later version or a new look.
+      rebuild: 'Rebuild apps',
+      rebuilding: 'Starting…',
+      rebuildHint:
+        'Builds this company’s installers and phone apps again, at the current version, as a new release. Takes 20 to 40 minutes on GitHub.',
+      buildStarted: 'Build started on GitHub.',
+      buildWatch: 'Watch the build',
+      buildWatchAll: 'See the builds',
+      buildNotConfigured:
+        'This server does not start builds itself (APP_BUILDS is off). Run “Build company apps” from GitHub Actions with the short name {{slug}}.',
+      buildFailed: 'The build could not be started: {{message}}',
       save: 'Save',
       saving: 'Saving...',
       saved: 'Saved.',
@@ -8163,6 +8397,16 @@ export const en = {
         retrying: 'Failed and waiting to retry',
         hint: 'Which company and which job: open the company and look under errors.',
       },
+      maintenance: {
+        title: 'Maintenance plans that cannot make their jobs',
+        empty: 'Every maintenance plan made its jobs on its last run.',
+        company: 'Company',
+        plan: 'Plan',
+        error: 'Why',
+        when: 'Last failed',
+        failures: 'In a row',
+        gaveUp: 'No longer retried until the plan is edited',
+      },
     },
     releases: {
       title: 'Releases in the field',
@@ -8221,6 +8465,23 @@ export const en = {
       lastRun: 'Last started',
       lastFinished: 'Last finished',
       neverFinished: 'Did not finish',
+      // Low 2: companies past their allowance on a plan that allows it, for invoicing.
+      overAllowance: {
+        title: 'Over allowance',
+        description:
+          'Companies whose plan keeps accepting uploads past its allowance. Invoice the month’s average overage in GB-months: the bytes over the line each day, added up and divided by the days in the month. It grows through the month; the figure on the last day is the bill.',
+        month: 'Month',
+        thisMonth: 'This month',
+        lastMonth: 'Last month',
+        company: 'Company',
+        plan: 'Plan',
+        overNow: 'Over now',
+        backUnder: 'Back under',
+        daysOver: 'Days over',
+        peak: 'Peak',
+        toInvoice: 'To invoice (GB-months)',
+        none: 'No company went over its allowance in this month.',
+      },
     },
     billingMode: {
       self_serve: 'Pays in the app',
@@ -8233,7 +8494,8 @@ export const en = {
       mode: 'Billing',
       plan: 'Plan',
       seats: 'Seats',
-      seatsHint: 'Leave empty for no limit.',
+      seatsHint:
+        'Leave empty to use the plan’s number of seats. A number here replaces the plan’s, higher or lower.',
       save: 'Save',
       saving: 'Saving\u2026',
       saved: 'Saved.',

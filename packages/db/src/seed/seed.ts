@@ -1,6 +1,6 @@
 import { appEnvironmentSchema, isProductionLike, optionalEnv } from '@integr8/core';
 import { sql } from 'kysely';
-import { getPlatformDataSource, getPlatformDb, withTenant } from '../connection.js';
+import { getOwnerDb, getPlatformDataSource, getPlatformDb, withTenant } from '../connection.js';
 import {
   DEMO_AUDIT_ACTIONS,
   DEMO_PLATFORM_USER,
@@ -116,7 +116,9 @@ async function seedTenant(demo: DemoTenant): Promise<void> {
 async function resetDemoData(): Promise<void> {
   const ids = DEMO_TENANTS.map((demo) => demo.id);
 
-  await getPlatformDb()
+  // As the owner: lifting the trigger takes ownership of the table, which the
+  // platform role deliberately does not have.
+  await getOwnerDb()
     .transaction()
     .execute(async (trx) => {
       await sql`alter table audit_log disable trigger audit_log_no_delete`.execute(trx);

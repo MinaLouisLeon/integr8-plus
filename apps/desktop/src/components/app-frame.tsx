@@ -9,10 +9,12 @@ import { useContextMenu } from '~/components/context-menu';
 import { ImpersonationBanner } from '~/components/impersonation-banner';
 import { ChromeIconGlyph, NavIconGlyph } from '~/components/nav-icon';
 import { RefreshButton } from '~/components/refresh-button';
+import { UpdateBanner } from '~/components/update-banner';
 import { useShellChromeOverride } from '~/components/shell-chrome';
 import { assistantShown, type Me, useAiCapabilities, useMe } from '~/features/forms/api';
 import { desktopNavigation, routeChrome, type DesktopNavGroup } from '~/lib/navigation';
 import { readStorage, writeStorage } from '~/lib/preferences';
+import { integr8Look } from '~/lib/look';
 import { session } from '~/lib/session';
 
 /**
@@ -26,6 +28,9 @@ import { session } from '~/lib/session';
  *
  * Only logical properties here — `start`, `end`, `ms`, `pe` — so the whole
  * frame mirrors in Arabic without a second set of classes.
+ *
+ * In the staff build the menu and the top bar wear the Integr8 Media look
+ * (`integr8Look`); the screen between them keeps the company's brand.
  */
 
 const SIDEBAR_KEY = 'integr8.sidebar';
@@ -123,6 +128,7 @@ export function AppFrame({
           onOpenDrawer={() => setDrawerRoute(location.pathname)}
         />
         <ImpersonationBanner />
+        <UpdateBanner />
         {/* Integr8's announcements and payment reminders, outside the scrolling screen so they stay in view. */}
         <AnnouncementBanners announcements={me.data?.announcements} className="px-6 pt-4" />
         {/* The builder fills the window, so the page itself never scrolls; each screen scrolls its own content. */}
@@ -187,6 +193,7 @@ function Sidebar({
 
   return (
     <aside
+      {...integr8Look()}
       id={id}
       aria-label={t('nav.menu')}
       className={[
@@ -389,7 +396,10 @@ function TopBar({
   }, [title, me?.company.name]);
 
   return (
-    <header className="flex min-h-14 items-center gap-3 border-b border-shell-border bg-shell px-4 py-2 text-shell-text print:hidden">
+    <header
+      {...integr8Look()}
+      className="flex min-h-14 items-center gap-3 border-b border-shell-border bg-shell px-4 py-2 text-shell-text print:hidden"
+    >
       <button
         ref={menuButton}
         type="button"

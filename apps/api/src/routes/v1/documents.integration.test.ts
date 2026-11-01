@@ -20,7 +20,9 @@ import {
  * a submission with typed and taken fields; the worker printing it into the
  * company's bucket and ledger; the register's search, expiry and deletion;
  * the QR code's public link; website-key lifecycle controls;
- * and the website lookup that finds one document or none.
+ * and the website lookup that finds one document or none. Uploaded PDFs and
+ * the sharing switch (0067): new documents are not shown outside the company
+ * until someone with `document.upload` shares them.
  */
 
 const WEB = 'https://app.test.integr8';
@@ -38,6 +40,9 @@ let submissionId: string;
 let draftId: string;
 let templateId: string;
 let backgroundId: string;
+let admin2: Member;
+let customerId: string;
+let uploaded: DocumentBody;
 
 const json = <T>(response: { body: string }) => JSON.parse(response.body) as T;
 const code = (response: { body: string }) => json<{ error: { code: string } }>(response).error.code;
@@ -216,6 +221,12 @@ async function submission(answers: Record<string, unknown>, finish = true) {
 interface DocumentBody {
   id: string;
   title: string;
+  source: 'generated' | 'uploaded';
+  shareable: boolean;
+  reference: string | null;
+  customer: { id: string; name: string } | null;
+  submissionId: string | null;
+  templateId: string | null;
   status: 'pending' | 'ready' | 'failed';
   failureCode: string | null;
   linkOpens: boolean;
@@ -273,7 +284,11 @@ beforeAll(async () => {
   owner = await api.member('owner', 'owner');
   engineer = await api.member('engineer', 'engineer');
   viewer = await api.member('viewer', 'viewer');
+  admin2 = await api.member('admin', 'admin');
   builder = await api.staff(owner);
+  const customer = await as(owner, 'POST', '/v1/customers', { name: 'Delta Mills' });
+  expect(customer.statusCode, customer.body).toBe(201);
+  customerId = json<{ id: string }>(customer).id;
   formId = await publishForm();
   const photoBytes = await picture(900, 600);
   const photo = await upload(engineer, photoBytes, 'image/png');
@@ -398,6 +413,7 @@ describe('making a document', () => {
     expect(made.statusCode, made.body).toBe(202);
     document = json<DocumentBody>(made);
     expect(document.status).toBe('pending');
+    expect(document).toMatchObject({ source: 'generated', shareable: false, reference: null });
     expect(document.title).toBe('Gas certificate · GS-2026-0042');
     expect(document.publicCode).toMatch(/^[A-Za-z0-9_-]{22}$/u);
     expect(document.link).toBe(`${WEB}/d/${document.publicCode}`);
@@ -455,6 +471,38 @@ describe('the register', () => {
 });
 
 describe('the QR code’s public link', () => {
+  it('answers as for an unknown code until the document is shared', async () => {
+    const publicCall = (path = '') =>
+      api.app.inject({
+        method: 'GET',
+        url: `/v1/public/documents/${document.publicCode}${path}`,
+        remoteAddress: api.remoteAddress,
+      });
+    const unknown = await api.app.inject({
+      method: 'GET',
+      url: `/v1/public/documents/${'b'.repeat(22)}`,
+      remoteAddress: api.remoteAddress,
+    });
+    for (const hidden of [await publicCall(), await publicCall('/file')]) {
+      expect(hidden.statusCode).toBe(404);
+      expect(code(hidden)).toBe(code(unknown));
+    }
+    // Sharing is for owners and admins: an engineer who made it cannot.
+    const refused = await as(engineer, 'POST', `/v1/documents/${document.id}/share`, {
+      shareable: true,
+    });
+    expect(refused.statusCode).toBe(403);
+    const shared = await as(admin2, 'POST', `/v1/documents/${document.id}/share`, {
+      shareable: true,
+    });
+    expect(shared.statusCode, shared.body).toBe(200);
+    expect(json<DocumentBody>(shared).shareable).toBe(true);
+    const audited = await withTenant(api.tenantId, (tx) =>
+      tx.auditLog.list({ resourceType: 'document', resourceId: document.id }),
+    );
+    expect(audited.map((entry) => entry.action)).toContain('document.shared');
+  });
+
   it('opens for anyone with the code', async () => {
     const opened = await api.app.inject({
       method: 'GET',
@@ -516,6 +564,113 @@ describe('the QR code’s public link', () => {
   });
 });
 
+describe('uploading a PDF', () => {
+  const pdfBytes = (text: string) => Buffer.from(`%PDF-1.7\n% ${text}\n%%EOF\n`, 'latin1');
+  const uploadDocument = (who: Member, payload: Record<string, unknown>) =>
+    as(who, 'POST', '/v1/documents', payload, { 'idempotency-key': randomUUID() });
+
+  it('is for owners and admins, and only for a real PDF', async () => {
+    const own = await upload(engineer, pdfBytes('engineer'), 'application/pdf');
+    expect(
+      (await uploadDocument(engineer, { fileId: own, title: 'Mine', reference: 'X-1' })).statusCode,
+    ).toBe(403);
+
+    // A file declared as a PDF whose bytes are not one.
+    const fake = await upload(owner, Buffer.from('just some text, not a pdf'), 'application/pdf');
+    const notPdf = await uploadDocument(owner, { fileId: fake, title: 'Fake', reference: 'F-1' });
+    expect(notPdf.statusCode, notPdf.body).toBe(422);
+    expect(code(notPdf)).toBe('document_not_pdf');
+
+    // A PDF's bytes declared as something else.
+    const image = await upload(owner, pdfBytes('declared as png'), 'image/png');
+    expect(
+      code(await uploadDocument(owner, { fileId: image, title: 'Picture', reference: 'P-1' })),
+    ).toBe('document_not_pdf');
+
+    // Someone else's upload is not this person's to name.
+    const theirs = await upload(admin2, pdfBytes('admin'), 'application/pdf');
+    expect(
+      (await uploadDocument(owner, { fileId: theirs, title: 'Theirs', reference: 'T-1' }))
+        .statusCode,
+    ).toBe(404);
+  });
+
+  it('refuses a PDF larger than 20 MB', async () => {
+    const big = Buffer.alloc(20 * 1024 * 1024 + 1, 0x20);
+    pdfBytes('big').copy(big);
+    const fileId = await upload(owner, big, 'application/pdf');
+    const refused = await uploadDocument(owner, { fileId, title: 'Big', reference: 'B-1' });
+    expect(refused.statusCode, refused.body).toBe(422);
+    expect(code(refused)).toBe('document_too_large');
+  });
+
+  it('joins the register marked uploaded, ready, with its own link, and not shared', async () => {
+    const fileId = await upload(owner, pdfBytes('certificate'), 'application/pdf');
+    const made = await uploadDocument(owner, {
+      fileId,
+      title: 'Lift inspection certificate',
+      reference: 'LIFT-2026-17',
+      customerId,
+    });
+    expect(made.statusCode, made.body).toBe(201);
+    uploaded = json<DocumentBody>(made);
+    expect(uploaded).toMatchObject({
+      source: 'uploaded',
+      status: 'ready',
+      shareable: false,
+      linkOpens: true,
+      reference: 'LIFT-2026-17',
+      customer: { id: customerId, name: 'Delta Mills' },
+      submissionId: null,
+      templateId: null,
+      link: `${WEB}/d/${uploaded.publicCode}`,
+    });
+    expect(uploaded.fields).toHaveLength(2);
+    expect(uploaded.fields).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: 'customer', value: 'Delta Mills', lookupRole: 'confirm' }),
+        expect.objectContaining({ key: 'reference', value: 'LIFT-2026-17', lookupRole: 'key' }),
+      ]),
+    );
+
+    // The same file cannot become a second document.
+    const again = await uploadDocument(owner, { fileId, title: 'Again', reference: 'LIFT-2' });
+    expect(again.statusCode).toBe(409);
+
+    const listed = json<{ items: { id: string; source: string }[] }>(
+      await as(viewer, 'GET', '/v1/documents?source=uploaded'),
+    );
+    expect(listed.items.map((item) => item.id)).toEqual([uploaded.id]);
+    const found = json<{ items: { id: string }[] }>(
+      await as(viewer, 'GET', '/v1/documents?q=lift-2026-17'),
+    );
+    expect(found.items.map((item) => item.id)).toEqual([uploaded.id]);
+    const link = json<{ url: string }>(
+      await as(viewer, 'GET', `/v1/documents/${uploaded.id}/file?disposition=inline`),
+    );
+    const file = await fetchSigned(link.url);
+    expect(file.statusCode).toBe(200);
+    expect(file.rawPayload.subarray(0, 5).toString('latin1')).toBe('%PDF-');
+
+    const hidden = await api.app.inject({
+      method: 'GET',
+      url: `/v1/public/documents/${uploaded.publicCode}`,
+      remoteAddress: api.remoteAddress,
+    });
+    expect(hidden.statusCode).toBe(404);
+    await as(owner, 'POST', `/v1/documents/${uploaded.id}/share`, { shareable: true });
+    const opened = await api.app.inject({
+      method: 'GET',
+      url: `/v1/public/documents/${uploaded.publicCode}`,
+      remoteAddress: api.remoteAddress,
+    });
+    expect(opened.statusCode, opened.body).toBe(200);
+    expect(json<{ document: { title: string; reference: string | null } }>(opened)).toMatchObject({
+      document: { title: 'Lift inspection certificate', reference: 'LIFT-2026-17' },
+    });
+  });
+});
+
 describe('website keys and the website lookup', () => {
   let secret: string;
   let keyId: string;
@@ -528,11 +683,18 @@ describe('website keys and the website lookup', () => {
       payload: body,
     });
 
-  it('can be made by staff, and the secret is shown once', async () => {
+  it('can be made by a staff manager only, and the secret is shown once', async () => {
     await setFlag(true);
     await setWebsiteFileAccess(true);
     const url = `/v1/platform/companies/${api.tenantId}/website-keys`;
-    const first = await api.call(admin.accessToken, {
+    const refusedCreate = await api.call(admin.accessToken, {
+      method: 'POST',
+      url,
+      payload: { label: 'ops-website' },
+    });
+    expect(refusedCreate.statusCode).toBe(403);
+    expect(code(refusedCreate)).toBe('staff_manager_only');
+    const first = await api.call(manager.accessToken, {
       method: 'POST',
       url,
       payload: { label: 'ops-website' },
@@ -556,7 +718,7 @@ describe('website keys and the website lookup', () => {
       canManage: boolean;
       canDelete: boolean;
     }>(await api.call(admin.accessToken, { method: 'GET', url }));
-    expect(listed.canManage).toBe(true);
+    expect(listed.canManage).toBe(false);
     expect(listed.canDelete).toBe(false);
     expect(listed.items.map((item) => item.hint)).toEqual(
       expect.arrayContaining([secret.slice(-4), json<{ key: { hint: string } }>(first).key.hint]),
@@ -570,7 +732,7 @@ describe('website keys and the website lookup', () => {
     expect(managerListed.canManage).toBe(true);
     expect(managerListed.canDelete).toBe(true);
 
-    const third = await api.call(admin.accessToken, { method: 'POST', url, payload: {} });
+    const third = await api.call(manager.accessToken, { method: 'POST', url, payload: {} });
     expect(third.statusCode).toBe(409);
     expect(code(third)).toBe('website_key_limit');
 
@@ -624,6 +786,132 @@ describe('website keys and the website lookup', () => {
     await as(owner, 'POST', `/v1/documents/${document.id}/expire`, { expired: false });
   });
 
+  it('gives short-lived links to a document the website already knows, and to nothing else', async () => {
+    const files = (key: string | null, id: string) =>
+      api.app.inject({
+        method: 'GET',
+        url: `/v1/website/files/${id}`,
+        remoteAddress: api.remoteAddress,
+        headers: key === null ? {} : { authorization: `Bearer ${key}` },
+      });
+
+    const served = await files(secret, document.id);
+    expect(served.statusCode, served.body).toBe(200);
+    const links = json<{ viewUrl: string; downloadUrl: string }>(served);
+    expect((await fetchSigned(links.viewUrl)).statusCode).toBe(200);
+    expect((await files(secret, randomUUID())).statusCode).toBe(404);
+    for (const key of [null, `i8wk_${'x'.repeat(43)}`]) {
+      const refused = await files(key, document.id);
+      expect(refused.statusCode).toBe(401);
+      expect(code(refused)).toBe('website_key_invalid');
+    }
+
+    // An expired document is not available.
+    await as(owner, 'POST', `/v1/documents/${document.id}/expire`, { expired: true });
+    expect((await files(secret, document.id)).statusCode).toBe(404);
+    await as(owner, 'POST', `/v1/documents/${document.id}/expire`, { expired: false });
+
+    // The company's own switch, Integr8's grant and the module, each refuses on its own.
+    const company = await as(owner, 'PATCH', '/v1/settings/website-access', {
+      websiteFilesEnabled: false,
+    });
+    expect(company.statusCode, company.body).toBe(200);
+    expect(code(await files(secret, document.id))).toBe('feature_disabled');
+    expect(
+      code(
+        await lookup(secret, {
+          key: { field: 'certificate', value: 'GS-2026-0042' },
+          confirm: { field: 'customer', value: 'Nile Towers' },
+        }),
+      ),
+    ).toBe('feature_disabled');
+    await setWebsiteFileAccess(true);
+
+    const grant = await api.call(admin.accessToken, {
+      method: 'PUT',
+      url: `/v1/platform/companies/${api.tenantId}/flags/website_files`,
+      payload: { enabled: false },
+    });
+    expect(grant.statusCode, grant.body).toBe(200);
+    expect(code(await files(secret, document.id))).toBe('feature_disabled');
+    expect(
+      code(await lookup(secret, { key: { field: 'certificate', value: 'GS-2026-0042' } })),
+    ).toBe('feature_disabled');
+    await setWebsiteFileAccess(true);
+
+    await setFlag(false);
+    expect(code(await files(secret, document.id))).toBe('feature_disabled');
+    expect(
+      code(await lookup(secret, { key: { field: 'certificate', value: 'GS-2026-0042' } })),
+    ).toBe('feature_disabled');
+    await setFlag(true);
+    expect((await files(secret, document.id)).statusCode).toBe(200);
+  });
+
+  it('finds a document by its reference, with the customer’s name when it has one', async () => {
+    const byReference = await lookup(secret, {
+      reference: ' lift-2026-17 ',
+      customer: 'delta mills',
+    });
+    expect(byReference.statusCode, byReference.body).toBe(200);
+    const body = json<{ found: boolean; document: { link: string; title: string } }>(byReference);
+    expect(body.found).toBe(true);
+    expect(body.document).toMatchObject({
+      title: 'Lift inspection certificate',
+      link: `${WEB}/d/${uploaded.publicCode}`,
+    });
+    // Without the customer it has, or with another, nothing.
+    expect(
+      json<{ found: boolean }>(await lookup(secret, { reference: 'LIFT-2026-17' })).found,
+    ).toBe(false);
+    expect(
+      json<{ found: boolean }>(
+        await lookup(secret, { reference: 'LIFT-2026-17', customer: 'Nile Towers' }),
+      ).found,
+    ).toBe(false);
+    // A generated document by its reference too, whatever its key field is called.
+    expect(
+      json<{ found: boolean }>(
+        await lookup(secret, { reference: 'GS-2026-0042', customer: 'Nile Towers' }),
+      ).found,
+    ).toBe(true);
+    // One way of asking or the other, never both or neither.
+    expect(
+      (
+        await lookup(secret, {
+          reference: 'GS-2026-0042',
+          key: { field: 'certificate', value: 'GS-2026-0042' },
+        })
+      ).statusCode,
+    ).toBe(422);
+    expect((await lookup(secret, {})).statusCode).toBe(422);
+  });
+
+  it('finds nothing the company has not shared, and gives no link to it', async () => {
+    const unshared = await as(owner, 'POST', `/v1/documents/${uploaded.id}/share`, {
+      shareable: false,
+    });
+    expect(json<DocumentBody>(unshared).shareable).toBe(false);
+    expect(
+      json<{ found: boolean }>(
+        await lookup(secret, { reference: 'LIFT-2026-17', customer: 'Delta Mills' }),
+      ).found,
+    ).toBe(false);
+    const file = await api.app.inject({
+      method: 'GET',
+      url: `/v1/website/files/${uploaded.id}`,
+      remoteAddress: api.remoteAddress,
+      headers: { authorization: `Bearer ${secret}` },
+    });
+    expect(file.statusCode).toBe(404);
+    const audited = await withTenant(api.tenantId, (tx) =>
+      tx.auditLog.list({ resourceType: 'document', resourceId: uploaded.id }),
+    );
+    expect(audited.map((entry) => entry.action)).toEqual(
+      expect.arrayContaining(['document.uploaded', 'document.shared', 'document.unshared']),
+    );
+  });
+
   it('refuses no key, a made-up key and a revoked key alike', async () => {
     const body = { key: { field: 'certificate', value: 'GS-2026-0042' } };
     for (const key of [null, `i8wk_${'x'.repeat(43)}`, 'not-a-key']) {
@@ -631,7 +919,13 @@ describe('website keys and the website lookup', () => {
       expect(refused.statusCode).toBe(401);
       expect(code(refused)).toBe('website_key_invalid');
     }
-    const revoked = await api.call(admin.accessToken, {
+    const refusedRevoke = await api.call(admin.accessToken, {
+      method: 'POST',
+      url: `/v1/platform/companies/${api.tenantId}/website-keys/${keyId}/revoke`,
+      payload: {},
+    });
+    expect(refusedRevoke.statusCode).toBe(403);
+    const revoked = await api.call(manager.accessToken, {
       method: 'POST',
       url: `/v1/platform/companies/${api.tenantId}/website-keys/${keyId}/revoke`,
       payload: {},

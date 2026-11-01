@@ -1,4 +1,4 @@
-import { closeDatabase } from '@integr8/db';
+import { assertPlatformRoleIsLimited, closeDatabase } from '@integr8/db';
 import { aiConfiguration } from './ai/configuration.js';
 import { buildAppInfo } from './app-info.js';
 import { buildServices } from './composition.js';
@@ -6,6 +6,7 @@ import {
   assertProductionReady,
   corsOrigins,
   loadApiConfig,
+  startupWarnings,
   webOriginMissingFromCors,
 } from './config.js';
 import { createLogger } from './http/logger.js';
@@ -26,6 +27,11 @@ async function main(): Promise<void> {
   const config = loadApiConfig();
   assertProductionReady(config);
   initialiseSentry(config);
+  // The platform connection must be integr8_platform, not the owner: an env
+  // file that still names postgres would give this process a superuser.
+  if (config.APP_ENV === 'production') {
+    await assertPlatformRoleIsLimited();
+  }
 
   const info = buildAppInfo();
   const logger = createLogger({
@@ -65,6 +71,10 @@ async function main(): Promise<void> {
   // Nor do e-invoicing's: it stays off until Integr8 switches it on.
   for (const problem of services.eta.problems ?? []) {
     logger.warn(`E-invoicing: ${problem}`);
+  }
+
+  for (const warning of startupWarnings(config)) {
+    logger.warn(warning);
   }
 
   /**

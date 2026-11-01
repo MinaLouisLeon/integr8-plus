@@ -5,23 +5,22 @@ still open. Facts that are not obvious from the code and go stale. Update this f
 the end of any piece of work that changes one of them, and date each section.
 `CLAUDE.md` and `AGENTS.md` are the how-to; this is the state.
 
-## Snapshot (2026-10-31, after the pre-production audit)
+## Snapshot (2026-11-01, after the audit's Low fixes)
 
-- **Version:** root `package.json` is **1.2.2** on branch `ccr-4f86fb34-8uvkk9` (not
-  merged yet); `main` still says 1.2.1, the latest release (v1.2.1, 27 Oct, migrations up
-  to 0053). The root `package.json` is the only source: the phone (`app.config.ts`) and the
-  web build (`next.config.ts`) read it, and `apps/api/src/app-info.ts` has a copy a test
-  keeps equal.
-- **Migrations:** `packages/db/migrations` reaches **0057** (`0054_self_hosted_sign_in`,
-  `0055_purge_any_company`, `0056_no_default_retention`, `0057_egyptian_working_week`).
-  The next one is 0058. Main
-  briefly carried a different 0054, `0054_local_identities`, for a built-in sign-in; it
-  was never applied anywhere and was removed when PR #130 merged main (see Decisions).
+- **Version:** root `package.json` is **1.2.4** on branch `ccr-4f86fb34-8uvkk9` (not merged
+  yet); `dev` is 1.2.3 (PR #138), `main` is 1.2.2 (released 31 Oct from PR #136). The root `package.json` is the only
+  source: the phone (`app.config.ts`) and the web build (`next.config.ts`) read it, and
+  `apps/api/src/app-info.ts` has a copy a test keeps equal.
+- **Migrations:** `packages/db/migrations` reaches **0068**. **0059 was never used** (workers
+  had reserved ranges) and the migrator does not need contiguous numbers; the next one is
+  **0069**. 1.2.2 carries 0054–0057; 1.2.3 adds 0058 and 0060–0066; 1.2.4 adds 0067–0068.
 - **Pre-production audit (2026-10-31):** plans, docs and code compared area by area; the
   report is the claude.ai artifact https://claude.ai/artifact/FB7vANrUc691VfMXkR5h2U. Its
-  6 blockers and 14 High items are fixed on branch `ccr-4f86fb34-8uvkk9`, which the owner
-  is not merging yet. Its Medium and Low items are open, and so are the owner's own steps
-  under "Open items".
+  6 blockers and 14 High items shipped in 1.2.2 (PR #136). The owner then reviewed the 24
+  Medium items one by one (decisions in the report); all were fixed on branch
+  `ccr-4f86fb34-8uvkk9` for 1.2.3 (PR #138), maps by removing the map. The 15 Low items
+  were decided the same way and built for 1.2.4 on the same branch name, restarted from
+  `dev`. What is left is the owner's own steps under "Open items".
 - **Modules shipped:** field work (customers, sites, work orders, visits and the
   schedule, timesheets), forms and submissions, PDF documents, CRM, sales, finance,
   general ledger, inventory, purchasing, assets, HR, expenses, Egyptian payroll,
@@ -42,13 +41,12 @@ the end of any piece of work that changes one of them, and date each section.
   renumbered; Railway and the Supabase runbook deleted). `SUPABASE_URL` is replaced by `SUPABASE_AUTH_URL`;
   the API refuses to start with the old name. Still to do: the test-box run. The plan file's
   "Implementation notes" lists where the build differs.
-- **Half-built on `main`:** starting a company's app build from the platform dashboard
-  (`apps/api/src/platform/app-builds.ts`, `APP_BUILDS=off|github`, `GITHUB_BUILD_*`). No
-  route calls it, and it is in no `.env.example`, doc or the guide; harmless while
-  `APP_BUILDS` defaults to `off`. Wire it up or remove it.
+- **Company app builds from the dashboard** are finished in 1.2.3 (`APP_BUILDS=github`
+  with a fine-grained `GITHUB_BUILD_TOKEN`; `off` by default keeps them manual).
 - **Recently merged to `main`:** engineer qualifications (PR #125), maintenance
   contracts/deadlines (PR #126), version bump to 1.2.1 (PR #127), the demo company seeder
-  and a built-in sign-in (PR #128; replaced by P36), self-hosted sign-in (PRs #130, #135).
+  and a built-in sign-in (PR #128; replaced by P36), self-hosted sign-in (PRs #130, #135),
+  the audit's blockers and High fixes as 1.2.2 (PR #136).
 
 ## The deployment
 
@@ -63,9 +61,9 @@ the end of any piece of work that changes one of them, and date each section.
 - The home test box is Ubuntu 24.04 with Docker, Arcane, Webmin and Samba (no longer
   ZimaOS).
 - The owner keeps a published copy of the setup guide as a claude.ai artifact:
-  https://claude.ai/artifact/HCVbJdp3u9YJT28cCaRw29. On 31 Oct it matched `main`'s HTML
-  guide; the audit branch changes the guide (parts Q–S, versions, backups, Firebase), so
-  republish it from `setup-checklist.html` once the branch is merged.
+  https://claude.ai/artifact/HCVbJdp3u9YJT28cCaRw29 (the HTML with its CSS and JS as separate
+  files). On 1 Nov it was republished from branch `ccr-4f86fb34-8uvkk9` (1.2.4, PR #139);
+  republish it from `setup-checklist.html` whenever the guide changes.
 
 ## Decisions
 
@@ -95,6 +93,33 @@ the end of any piece of work that changes one of them, and date each section.
   or not with a reason, and a test fails on a new one. The migrator lets a previous release
   start on a newer schema (`ahead-of-build`). New companies start on `Africa/Cairo`,
   Sunday–Thursday. Legal pages exist but wait for a lawyer (`LEGAL_REVIEWED = false`).
+- **Medium fixes (2026-11-01, 1.2.3), as the owner chose them:** sessions re-checked per
+  request with a 30 s cache; the API and worker connect as `integr8_platform` (BYPASSRLS, not
+  superuser; `DATABASE_URL_PLATFORM`), and compose gives each service only its own settings
+  (`compose-env.test.ts` fails when the API reads a setting compose doesn't pass);
+  `/health*` is off the internet, with `deploy/vps/heartbeat.sh` reporting in; HSTS, and a
+  report-only CSP; `BILLING_PROVIDER=none` (invoiced only; Paymob later); HR key rotation
+  (`HR_DATA_KEYS_PREVIOUS`, `admin-cli hr-reseal`); versioned server images per release;
+  desktop apps update themselves through `app.integr8-media.com/desktop-updates`; the site
+  map is gone (coordinates + a Google Maps link); notifications follow the phone's or the
+  company's language; amounts round to piastres and receipts can be reversed (accountant to
+  confirm the rounding).
+- **Low fixes (2026-11-01, 1.2.4), as the owner chose them:** the public pages, `/download`
+  and the staff dashboard (and the staff desktop frame) wear the Integr8 Media website's look
+  (source: MinaLouisLeon/integr8-media-website; tokens and self-hosted fonts in
+  `packages/tokens`, `docs/brand/`), always English unless Arabic is chosen (no browser
+  negotiation); the company workspace keeps company branding. Uploaded PDF documents and a
+  per-document sharing switch (new ones start not shared, older ones stay shared; 0067);
+  files follow their owning record (`media-access.ts`, refusals are 404); a file-use index
+  (0068). Accepting an invitation creates no session, and a new sign-in must choose a
+  password. Only the owner changes, re-activates or removes somebody with HR access; an
+  admin may suspend them (audited, owners emailed). The assistant's per-app switch follows
+  the session's recorded app. Production refuses `change-me`, `.example`/public `.local`
+  addresses and database passwords under 16 characters (`deploy/vps/check-env.sh` lists
+  them). The help library lives in `@integr8/i18n/help` and feeds the public Help centre.
+  Exact versions everywhere and Node `>=22.22.1 <23` (`pnpm pins:check`); the permission
+  table `packages/core/src/permissions.table.md`; Standard storage overage listed for
+  invoicing; quote links say "no longer available online" while Sales is off.
 - **The demo seeder goes through the API**, in-process with Fastify's `inject`, as the
   company's own people (plus a staff impersonation for staff-only setup). Direct inserts
   were rejected: they skip numbering, stock, ledger postings and audit, and produce data
@@ -116,6 +141,22 @@ Update them together at each release or new migration:
 - Released versions: `gh release list`. v1.2.1 (2026-10-27) carries migrations 0051–0053.
 
 ## Open items
+
+- **Owner steps for 1.2.4 (2026-11-01):** run `sh deploy/vps/check-env.sh` and replace
+  any value it names (Stage 11 part AA), comment out `API_UPDATE_URL`; tell companies using
+  documents that new ones start not shared (part AB); the real-Auth CI suite for invitations
+  runs only in CI. Not built (no screen existed): accepting an invitation inside the
+  desktop or phone app; the email link opens the web page.
+
+- **Owner steps for 1.2.3 (2026-11-01):** run Actions → Publish images with `tag=v1.2.2`
+  once; `INTEGR8_PLATFORM_PASSWORD` and `DATABASE_URL_PLATFORM` in `deploy/.env`; copy the
+  new Caddyfile blocks; the heartbeat monitor, `HEALTH_PING_URL` and its cron line, then
+  delete the public uptime monitor; `CLOUDFLARE_API_TOKEN`; `HR_DATA_KEY` set; watch
+  Sentry's CSP reports ~2 weeks before enforcing; the Tauri updater key secrets (does anyone
+  hold the key for `updater.key.pub`?) and `GITHUB_RELEASES_REPOSITORY`; reinstall every
+  desktop app once; check each company's Seats field (it now limits them); an accountant
+  confirms the rounding. Code signing only if certificates are bought (Windows: token or
+  cloud signing; Azure may not accept Egypt). Reserve the company slug `staff`.
 
 - **Owner steps from the audit (2026-10-31):** add the `R2_TEST_*` repository secrets (a
   separate Cloudflare account) so CI proves R2; set up the off-machine backup (R2 bucket,
@@ -143,6 +184,8 @@ Update them together at each release or new migration:
   `dev → staging → main` flow.
 - CI's database job always runs (there is no `DATABASE_TESTS` switch any more). The R2
   media suite inside it skips itself unless the `R2_TEST_*` secrets exist.
+- Screen tests (`operations-dom`, `form-renderer-dom`) wait up to 5 s in `findBy…`;
+  integration suites running beside them made the 1 s default fail by chance.
 - Load `keygen`'s output into a shell line by line (`while IFS= read -r l; do export
 "$l"; done`), not with `source`: the shell strips the quotes from `AUTH_SIGNING_KEY`'s
   JSON and the auth suites then fail with "not valid JSON".
