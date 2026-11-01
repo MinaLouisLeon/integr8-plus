@@ -2126,18 +2126,18 @@ Your plan sets how many assistant messages the company, and each person, may sen
       },
     },
     en: {
-      title: 'Documents: PDFs from submissions, uploaded PDFs and the Shareable switch',
+      title: 'Documents: PDFs from submissions, uploaded PDFs and sharing',
       summary:
-        'The register of PDF documents, making a PDF from a submission, uploading a PDF made elsewhere, the QR code link, and the Shareable switch that decides whether anybody outside the company can open a document.',
+        'The register of PDF documents, making a PDF from a submission, uploading a PDF made elsewhere, the QR code link, and Sharing, which decides whether anybody outside the company can open a document.',
       body: `Documents, under Work, appears when Integr8 has switched the documents module on. It is the company’s register of PDF documents: certificates and reports made from submissions, and PDFs you upload yourself. Search by any of a document’s fields or its title, filter by state, and open, view or download the PDF.
 
 To make a PDF from a submission, open the submission and choose Make PDF, pick one of the form’s PDF templates (Integr8 designs them with you) and fill in anything the template asks for. The PDF is made in a moment, and its page updates by itself.
 
-To add a PDF made elsewhere, such as a certificate signed on paper and scanned, upload it in Documents: a PDF of up to 20 MB, a title, a reference number such as the certificate number, and optionally the customer it belongs to. An uploaded document is listed in the same register, marked Uploaded, and has its own QR code link like any other.
+To add a PDF made elsewhere, such as a certificate signed on paper and scanned, choose Upload a PDF in Documents: a PDF of up to 20 MB, a title, a reference number such as the certificate number, and optionally the customer it belongs to. An uploaded document is listed in the same register, marked Uploaded, and has its own QR code link like any other.
 
-Every document has a Shareable switch. When it is on, the document’s QR code link opens the PDF for anybody who has the link, without an account, and your company’s own website can find the document by its reference. When it is off, the link and the website lookup both stop, and the document stays in the register for your team. New documents start with Shareable off; documents made before this switch existed stay shareable. Every change of the switch is recorded in the document’s history.
+Every document has a Sharing section, with Share it and Stop sharing. While a document is shared, its QR code link opens the PDF for anybody who has the link, without an account, and your company’s own website can find the document by its reference. When it is not shared (marked Not shared in the register), the link and the website lookup both stop, and the document stays in the register for your team. New documents start not shared; documents made before sharing could be switched stay shared. Every change is recorded in the document’s history.
 
-Stop the link and Open the link again stop or restart a document’s link, and a date can stop it by itself. Delete stops the link at once and removes the PDF after the restore window. Uploading documents and changing Shareable are for owners and admins unless your company’s roles say otherwise; making a PDF also needs access to the submission.`,
+Stop the link and Open the link again stop or restart a document’s link, and a date can stop it by itself. Delete stops the link at once and removes the PDF after the restore window. Uploading documents and sharing them are for owners and admins unless your company’s roles say otherwise; making a PDF also needs access to the submission.`,
       keywords: [
         'documents',
         'pdf',
@@ -2155,18 +2155,18 @@ Stop the link and Open the link again stop or restart a document’s link, and a
       ],
     },
     ar: {
-      title: 'المستندات: ملفات PDF من الإرسالات والملفات المرفوعة ومفتاح «قابل للمشاركة»',
+      title: 'المستندات: ملفات PDF من الإرسالات والملفات المرفوعة و«المشاركة»',
       summary:
-        'سجل مستندات PDF، وإنشاء PDF من إرسال، ورفع PDF أُنشئ في مكان آخر، ورابط رمز QR، ومفتاح «قابل للمشاركة» الذي يحدد هل يستطيع أحد من خارج الشركة فتح المستند.',
+        'سجل مستندات PDF، وإنشاء PDF من إرسال، ورفع PDF أُنشئ في مكان آخر، ورابط رمز QR، وقسم «المشاركة» الذي يحدد هل يستطيع أحد من خارج الشركة فتح المستند.',
       body: `تظهر «المستندات»، تحت مجموعة العمل، عندما تفعّل Integr8 وحدة المستندات. وهي سجل الشركة لمستندات PDF: الشهادات والتقارير المنشأة من الإرسالات، وملفات PDF التي ترفعها بنفسك. ابحث بأي حقل من حقول المستند أو بعنوانه، وصفِّ بالحالة، وافتح ملف PDF أو اعرضه أو نزّله.
 
 لإنشاء PDF من إرسال، افتح الإرسال واختر «إنشاء PDF»، ثم اختر أحد قوالب PDF الخاصة بالنموذج (تصممها Integr8 معك) واملأ ما يطلبه القالب. يُنشأ الملف خلال لحظات، وتتحدّث صفحته تلقائيًا.
 
-ولإضافة PDF أُنشئ في مكان آخر، مثل شهادة موقّعة على الورق ثم مُسحت ضوئيًا، ارفعه في «المستندات»: ملف PDF حتى 20 ميغابايت، وعنوان، ورقم مرجعي مثل رقم الشهادة، والعميل الذي يخصه إن أردت. ويظهر المستند المرفوع في السجل نفسه بعلامة «مرفوع»، وله رابط رمز QR خاص به كأي مستند آخر.
+ولإضافة PDF أُنشئ في مكان آخر، مثل شهادة موقّعة على الورق ثم مُسحت ضوئيًا، اختر «رفع ملف PDF» في «المستندات»: ملف PDF حتى 20 ميغابايت، وعنوان، ورقم مرجعي مثل رقم الشهادة، والعميل الذي يخصه إن أردت. ويظهر المستند المرفوع في السجل نفسه بعلامة «مرفوع»، وله رابط رمز QR خاص به كأي مستند آخر.
 
-ولكل مستند مفتاح «قابل للمشاركة». عندما يكون مفعّلًا، يفتح رابط رمز QR الخاص بالمستند ملف PDF لكل من لديه الرابط دون حساب، ويستطيع موقع شركتك الإلكتروني العثور على المستند برقمه المرجعي. وعندما يكون متوقفًا، يتوقف الرابط والبحث من الموقع كلاهما، ويبقى المستند في السجل لفريقك. تبدأ المستندات الجديدة والمفتاح متوقف؛ أما المستندات المنشأة قبل وجود هذا المفتاح فتبقى قابلة للمشاركة. ويُسجَّل كل تغيير للمفتاح في سجل المستند.
+ولكل مستند قسم «المشاركة»، وفيه «شاركه» و«أوقف المشاركة». ما دام المستند مُشارَكًا، يفتح رابط رمز QR الخاص بالمستند ملف PDF لكل من لديه الرابط دون حساب، ويستطيع موقع شركتك الإلكتروني العثور على المستند برقمه المرجعي. وعندما يكون غير مُشارَك (وعليه علامة «غير مُشارَك» في السجل)، يتوقف الرابط والبحث من الموقع كلاهما، ويبقى المستند في السجل لفريقك. تبدأ المستندات الجديدة غير مُشارَكة؛ أما المستندات المنشأة قبل إمكانية إيقاف المشاركة فتبقى مُشارَكة. ويُسجَّل كل تغيير في سجل المستند.
 
-ويوقف «إيقاف الرابط» و«فتح الرابط مجددًا» رابط المستند أو يعيدان تشغيله، ويمكن لتاريخ أن يوقفه تلقائيًا. ويوقف «حذف» الرابط فورًا ويزيل ملف PDF بعد فترة الاستعادة. ورفع المستندات وتغيير «قابل للمشاركة» للمالكين والمسؤولين ما لم تحدد أدوار شركتك غير ذلك؛ ويحتاج إنشاء PDF أيضًا إلى صلاحية الوصول إلى الإرسال.`,
+ويوقف «إيقاف الرابط» و«فتح الرابط مجددًا» رابط المستند أو يعيدان تشغيله، ويمكن لتاريخ أن يوقفه تلقائيًا. ويوقف «حذف» الرابط فورًا ويزيل ملف PDF بعد فترة الاستعادة. ورفع المستندات ومشاركتها للمالكين والمسؤولين ما لم تحدد أدوار شركتك غير ذلك؛ ويحتاج إنشاء PDF أيضًا إلى صلاحية الوصول إلى الإرسال.`,
       keywords: [
         'المستندات',
         'PDF',
@@ -2665,7 +2665,7 @@ When a desktop or phone app is too old for the server, it says so instead of fai
 
 Each of the four is switched separately, on both sides: Integr8 grants it for your company, and an owner or admin turns it on under Website access, under Company. Both must be on for the website to see it, and all four start off. A company that already had one on keeps it.
 
-Documents are found by a reference such as a certificate number and, when the document’s template asks for it, a second field that must match too, such as the customer. Only documents whose Shareable switch is on can be found; a document with Shareable off, or with its link stopped, is not found.
+Documents are found by a reference such as a certificate number and, when the document’s template asks for it, a second field that must match too, such as the customer. Only shared documents can be found; a document marked Not shared, or with its link stopped, is not found.
 
 Website keys are created by Integr8 and shown once, to be kept in the website server’s settings and never in its pages. Ask Integr8 for a key and for the developer guide.`,
       keywords: [
@@ -2691,7 +2691,7 @@ Website keys are created by Integr8 and shown once, to be kept in the website se
 
 وتُفعَّل كل واحدة من الأربع على حدة، وعلى الجانبين: تمنحها Integr8 لشركتك، ويفعّلها المالك أو المسؤول من «وصول الموقع» تحت مجموعة الشركة. ويجب أن يكون الجانبان مفعّلين ليراها الموقع، وتبدأ الأربع متوقفة. والشركة التي كانت قد فعّلت إحداها تحتفظ بها.
 
-ويُعثر على المستندات برقم مرجعي مثل رقم الشهادة، وبحقل ثانٍ يجب أن يطابق أيضًا، مثل العميل، عندما يطلبه قالب المستند. ولا يُعثر إلا على المستندات التي مفتاح «قابل للمشاركة» فيها مفعّل؛ أما المستند الذي أُوقف فيه المفتاح أو أُوقف رابطه فلا يُعثر عليه.
+ويُعثر على المستندات برقم مرجعي مثل رقم الشهادة، وبحقل ثانٍ يجب أن يطابق أيضًا، مثل العميل، عندما يطلبه قالب المستند. ولا يُعثر إلا على المستندات المُشارَكة؛ أما المستند غير المُشارَك أو الذي أُوقف رابطه فلا يُعثر عليه.
 
 وتنشئ Integr8 مفاتيح الموقع وتعرضها مرة واحدة، لتُحفظ في إعدادات خادم الموقع لا في صفحاته أبدًا. اطلب من Integr8 مفتاحًا ودليل المطوّر.`,
       keywords: [
