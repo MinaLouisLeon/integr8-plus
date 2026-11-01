@@ -61,9 +61,9 @@ the end of any piece of work that changes one of them, and date each section.
 - The home test box is Ubuntu 24.04 with Docker, Arcane, Webmin and Samba (no longer
   ZimaOS).
 - The owner keeps a published copy of the setup guide as a claude.ai artifact:
-  https://claude.ai/artifact/HCVbJdp3u9YJT28cCaRw29. On 31 Oct it matched `main`'s HTML
-  guide; the audit branch changes the guide (parts Q–S, versions, backups, Firebase), so
-  republish it from `setup-checklist.html` once the branch is merged.
+  https://claude.ai/artifact/HCVbJdp3u9YJT28cCaRw29 (the HTML with its CSS and JS as separate
+  files). On 1 Nov it was republished from branch `ccr-4f86fb34-8uvkk9` (1.2.4, PR #139);
+  republish it from `setup-checklist.html` whenever the guide changes.
 
 ## Decisions
 
@@ -144,8 +144,7 @@ Update them together at each release or new migration:
 
 - **Owner steps for 1.2.4 (2026-11-01):** run `sh deploy/vps/check-env.sh` and replace
   any value it names (Stage 11 part AA), comment out `API_UPDATE_URL`; tell companies using
-  documents that new ones start not shared (part AB); check the winget id
-  `OpenJS.NodeJS.22` in the laptop step exists; the real-Auth CI suite for invitations
+  documents that new ones start not shared (part AB); the real-Auth CI suite for invitations
   runs only in CI. Not built (no screen existed): accepting an invitation inside the
   desktop or phone app; the email link opens the web page.
 

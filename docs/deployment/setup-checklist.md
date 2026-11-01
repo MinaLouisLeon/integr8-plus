@@ -27,6 +27,9 @@ Stage 0 creates every account and collects every key and secret before anything 
 > [!NOTE]
 > **New: backups that leave the machine, and a restore drill.** The nightly backup can copy each dump to an encrypted R2 bucket and tell a heartbeat monitor how every night went, and one command rehearses a restore in a throwaway container without touching the live database. The steps are in [Stage 9, part B](#b-the-database-and-backups), and in [Stage 11, part R](#r-backups-off-the-machine-and-the-restore-drill-included-in-v122) for a machine that is already running. Rolling back to an earlier release now starts it on the newer database instead of stopping at its migration step ([Stage 11, part I](#i-if-something-goes-wrong-rolling-back)).
 
+> [!NOTE]
+> **New in 1.2.3 and 1.2.4: a safer server and a new look.** The API and the worker connect with a limited database role, health checks are off the internet, and production refuses to start on an example password or address; `sh deploy/vps/check-env.sh` lists any that are left. Documents can be uploaded as PDFs and shared one by one (new ones start not shared), and the public pages and the staff dashboard take the Integr8 Media look, with a download page for every app. A new install gets all of it in the stages below; a machine that is already running needs [Stage 11, parts T](#t-a-limited-database-role-for-the-api-and-the-worker-included-in-v123) to [AB](#ab-uploaded-documents-sharing-and-the-new-public-site-included-in-v124), starting with [part AA](#aa-example-values-refused-and-the-update-button-included-in-v124)'s check.
+
 > [!TIP]
 > GitHub shows the boxes below but does not let you tick them in a file. To track your progress, copy a stage into an issue (checkboxes there can be ticked), or open the interactive page described in the [last section](#about-this-page).
 
