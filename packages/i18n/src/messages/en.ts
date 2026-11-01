@@ -1602,6 +1602,8 @@ export const en = {
         ruleMessage: 'Check message',
         patternMessage: 'Format message',
         entryLabel: 'What one entry is called',
+        informationHeading: 'Information heading',
+        informationBody: 'Information text',
         other: 'Text',
       },
     },

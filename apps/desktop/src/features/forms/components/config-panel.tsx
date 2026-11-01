@@ -167,16 +167,12 @@ export function ConfigPanel({
           value={container.title}
           onChange={(value) => apply(() => optional('title', value))}
         />
-        <TextInput
+        <BilingualTextInput
           label={t('forms.descriptions.label')}
           hint={t('forms.descriptions.hint')}
-          value={say(container.description, locale)}
+          value={container.description}
           multiline
-          onChange={(value) =>
-            apply((element) =>
-              optional('description', withText(element.description, locale, value)),
-            )
-          }
+          onChange={(value) => apply(() => optional('description', value))}
         />
       </Group>
       {at.kind === 'section' ? (
@@ -381,19 +377,20 @@ function InformationPanel({
       <h2 className="text-base font-semibold text-content">{t('forms.information.title')}</h2>
       <p className="text-xs text-content-muted">{t('forms.information.noAnswer')}</p>
       <Group title={t('forms.config.groups.basics')}>
-        <TextInput
+        <BilingualTextInput
           label={t('forms.information.heading')}
-          value={say(item.heading, locale)}
-          onChange={(value) => set({ heading: withText(item.heading, locale, value) })}
+          value={item.heading}
+          onChange={(value) => set({ heading: value })}
         />
-        <TextInput
+        <BilingualTextInput
           label={t('forms.information.body')}
           hint={t('forms.information.bodyHint')}
-          value={say(item.body, locale)}
+          value={item.body}
           multiline
           onChange={(value) =>
-            // The paragraph is required: emptied in this language, the others stay.
-            set({ body: withText(item.body, locale, value) ?? item.body })
+            // The paragraph is required: emptied in both languages, it stays `{}`,
+            // which the compiler names, as a question's label does.
+            set({ body: value ?? {} })
           }
         />
         <SelectInput

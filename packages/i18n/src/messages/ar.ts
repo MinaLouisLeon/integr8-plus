@@ -1538,6 +1538,8 @@ export const ar: Catalogue<Messages> = {
         ruleMessage: 'رسالة التحقق',
         patternMessage: 'رسالة الصيغة',
         entryLabel: 'اسم الإدخال الواحد',
+        informationHeading: 'عنوان كتلة المعلومات',
+        informationBody: 'نص كتلة المعلومات',
         other: 'نص',
       },
     },

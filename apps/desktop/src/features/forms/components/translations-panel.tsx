@@ -184,7 +184,10 @@ function Row({
       ? undefined
       : nameOf(definition, text.element, locale, t);
   const long =
-    text.property === 'help' || Object.values(text.text).some((value) => value.length > 80);
+    text.property === 'help' ||
+    text.property === 'description' ||
+    text.property === 'body' ||
+    Object.values(text.text).some((value) => value.length > 80);
 
   return (
     <tr className="border-b border-border-subtle align-top">
@@ -279,7 +282,9 @@ type TextKind =
   | 'option'
   | 'ruleMessage'
   | 'patternMessage'
-  | 'entryLabel';
+  | 'entryLabel'
+  | 'informationHeading'
+  | 'informationBody';
 
 const PROPERTY_KEYS: Readonly<Record<string, TextKind>> = {
   title: 'title',
@@ -290,6 +295,9 @@ const PROPERTY_KEYS: Readonly<Record<string, TextKind>> = {
   'rules.message': 'ruleMessage',
   'pattern.message': 'patternMessage',
   'repeat.entryLabel': 'entryLabel',
+  // An Information block's texts (form format 2).
+  heading: 'informationHeading',
+  body: 'informationBody',
 };
 
 const TITLE_KEYS = {

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import type { FormDefinition } from '@integr8/form-engine';
+import { type Field, type FormDefinition, isQuestion } from '@integr8/form-engine';
 import { createI18n, I18nextProvider } from '@integr8/i18n';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { useEffect, useReducer } from 'react';
@@ -50,18 +50,55 @@ const definition = (): FormDefinition => ({
 
 let latest: EditorState | undefined;
 
+/** Form format 2's texts: a page and a section description, and an Information block. */
+const withVersion2Texts = (): FormDefinition => {
+  const start = definition();
+  const page = start.pages[0]!;
+  const section = page.sections[0]!;
+  return {
+    ...start,
+    schemaVersion: 2,
+    pages: [
+      {
+        ...page,
+        description: { en: 'Before you start', ar: 'قبل أن تبدأ' },
+        sections: [
+          {
+            ...section,
+            description: { en: 'The appliance itself' },
+            fields: [
+              ...section.fields,
+              {
+                id: 'isolate',
+                type: 'information',
+                heading: { en: 'Isolate first' },
+                body: { en: 'Turn the supply off.' },
+                style: 'warning',
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+};
+
 function Harness({
   locale,
   view,
   onlyMissing = false,
+  start = definition(),
+  selected = 'result',
 }: {
   locale: 'en' | 'ar';
   view: 'translations' | 'panel';
   onlyMissing?: boolean;
+  start?: FormDefinition;
+  selected?: string;
 }) {
-  const [editor, dispatch] = useReducer(editorReducer, definition(), (start) => ({
-    ...initialEditor(start),
-    selected: 'result',
+  const [editor, dispatch] = useReducer(editorReducer, start, (first) => ({
+    ...initialEditor(first),
+    selected,
   }));
   useEffect(() => {
     latest = editor;
@@ -95,17 +132,29 @@ function Harness({
   );
 }
 
-const show = (locale: 'en' | 'ar', view: 'translations' | 'panel', onlyMissing = false) => {
+const show = (
+  locale: 'en' | 'ar',
+  view: 'translations' | 'panel',
+  onlyMissing = false,
+  options: { start?: FormDefinition; selected?: string } = {},
+) => {
   const i18n = createI18n({ locale });
   render(
     <I18nextProvider i18n={i18n}>
-      <Harness locale={locale} view={view} onlyMissing={onlyMissing} />
+      <Harness locale={locale} view={view} onlyMissing={onlyMissing} {...options} />
     </I18nextProvider>,
   );
   return i18n;
 };
 
-const field = () => latest!.definition.pages[0]!.sections[0]!.fields[0]!;
+const field = (): Field => {
+  const item = latest!.definition.pages[0]!.sections[0]!.fields[0]!;
+  if (!isQuestion(item)) {
+    throw new Error('The first item is a question');
+  }
+  return item;
+};
+const item = (index: number) => latest!.definition.pages[0]!.sections[0]!.fields[index]!;
 const optionLabel = (index: number) => {
   const current = field();
   return current.type === 'radio' ? current.options[index]?.label : undefined;
@@ -144,6 +193,59 @@ describe('the settings panel', () => {
       target: { value: '' },
     });
     expect('help' in field()).toBe(false);
+  });
+});
+
+describe('form format 2’s texts', () => {
+  it('edits a description in both languages in the settings panel', () => {
+    show('en', 'panel', false, { start: withVersion2Texts(), selected: 'appliance' });
+    const arabic = screen.getByRole('textbox', { name: 'Description (optional) · Arabic' });
+    expect(arabic.getAttribute('dir')).toBe('rtl');
+    fireEvent.change(arabic, { target: { value: 'الجهاز نفسه' } });
+    expect(latest!.definition.pages[0]!.sections[0]!.description).toEqual({
+      en: 'The appliance itself',
+      ar: 'الجهاز نفسه',
+    });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Description (optional) · English' }), {
+      target: { value: '' },
+    });
+    fireEvent.change(arabic, { target: { value: '' } });
+    expect('description' in latest!.definition.pages[0]!.sections[0]!).toBe(false);
+  });
+
+  it('edits an Information block’s heading and text in both languages', () => {
+    show('en', 'panel', false, { start: withVersion2Texts(), selected: 'isolate' });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Heading (optional) · Arabic' }), {
+      target: { value: 'اعزل أولًا' },
+    });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Text · Arabic' }), {
+      target: { value: 'أوقف الإمداد.' },
+    });
+    expect(item(1)).toMatchObject({
+      heading: { en: 'Isolate first', ar: 'اعزل أولًا' },
+      body: { en: 'Turn the supply off.', ar: 'أوقف الإمداد.' },
+    });
+  });
+
+  it('lists descriptions and Information texts in the Translations tab, and counts them', () => {
+    show('en', 'translations', false, { start: withVersion2Texts() });
+    // The three of the first form, plus the section's description and the block's two texts.
+    expect(screen.getByRole('status').textContent).toBe('6 texts have no Arabic');
+    for (const name of [
+      'Description · Inspection · English',
+      // The section has no title, so it is named by what it is.
+      'Description · Section · Arabic',
+      'Information heading · Isolate first · Arabic',
+      'Information text · Isolate first · English',
+    ]) {
+      expect(screen.getByRole('textbox', { name })).toBeDefined();
+    }
+    fireEvent.change(
+      screen.getByRole('textbox', { name: 'Information text · Isolate first · Arabic' }),
+      { target: { value: 'أوقف الإمداد.' } },
+    );
+    expect(item(1)).toMatchObject({ body: { en: 'Turn the supply off.', ar: 'أوقف الإمداد.' } });
+    expect(screen.getByRole('status').textContent).toBe('5 texts have no Arabic');
   });
 });
 
