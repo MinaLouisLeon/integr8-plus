@@ -50,6 +50,9 @@ apps/api  routes/v1/forms.ts        the only way to a published version
 | `GET /v1/forms/:id/versions[/:versionId]`  | everyone     | Published history, and any one version read-only        |
 | `GET /v1/form-templates[/:key]`            | everyone     | The global template library                             |
 | `POST /v1/form-templates/:key/clone`       | owner, admin | A new form from a template (idempotent)                 |
+| `GET /v1/forms/copy-targets`               | staff only   | Other companies a form can be copied to (1.3.0)         |
+| `POST /v1/forms/:id/copy-to-company`       | staff only   | The form in another company as a draft (1.3.0)          |
+| `POST /v1/forms/:id/library-template`      | staff only   | The form saved as a staff-made library template (1.3.0) |
 
 Every publish is written to the audit log as `form.published`, with the version number and
 how many breaking changes were acknowledged.
@@ -87,6 +90,69 @@ copy from the start (`forms.source_template_key` records where it came from, and
 hold their own definition), so loading a changed library again never changes a company's form,
 draft or published; `form-builder.integration.test.ts` checks exactly that, and that loading
 twice changes nothing.
+
+### Staff-made templates (1.3.0)
+
+Since 1.3.0 the library holds two kinds of template side by side (`form_templates.source`,
+migration 0069):
+
+- **Built in** (`builtin`): shipped in the code and kept equal to it by `db:templates`. Read-only
+  everywhere else: the dashboard and the platform routes refuse to change one
+  (`form_template_builtin`), and a key the code ships can never be taken by a staff template.
+- **Staff-made** (`staff`): saved from a company's form by Integr8 staff (see "Copying a form"
+  below), with that form's PDF templates. `db:templates` never touches one: its upsert only ever
+  updates a built-in row, so a staff template survives every deploy even if the code later ships
+  the same key. Staff rename and re-describe it (English and Arabic), replace it with the newer
+  published version of the form it came from, and retire or bring it back on the dashboard's
+  **Templates** page (`docs/platform/README.md`).
+
+A retired template leaves the companies' picker (`GET /v1/form-templates` and its clone route
+answer as if it were not there) and stays on the dashboard. Forms already made from it are
+copies and never change. Nothing is ever deleted.
+
+The picker shows both kinds; a staff-made one is marked "Made by Integr8", and one that carries
+PDF templates says so. Starting from it (`POST /v1/form-templates/:key/clone`) also creates a
+copy of each of its PDF templates for the new form, with every picture copied into the
+company's own storage — unless `includeDocumentTemplates: false` — and the response says how
+many (`documentTemplatesCopied`). The pictures count against the company's allowance, and a
+company past a blocking allowance is refused with `storage_quota_exceeded`. How the library
+keeps those PDF templates is in `docs/documents/RUNBOOK.md` ("Copying templates").
+
+## Copying a form
+
+Three ways, all copies — never a link back to the original:
+
+1. **Make a copy** (forms list, any builder): a new form in the same company, a draft of the
+   latest published version (or of the draft). Unchanged since P07.
+2. **Copy to another company** (form builder header, Integr8 staff only; decision 1A). Pick the
+   company, optionally rename the copy, choose whether its PDF templates go too, and give a
+   reason. The form's latest published version — or its draft, if it was never published —
+   arrives in the other company as a **new form with an unpublished draft**. What travels: the
+   definition exactly as it is (answer keys, both languages, rules, calculations), who may fill
+   it, and whether a signature is required. What never travels: job type links, submissions,
+   answers, documents, or anything about customers. With PDF templates, every template that is
+   not archived is copied and each picture is copied into the other company's bucket under a new
+   id, tied to its new template and counted in that company's storage (a blocking allowance
+   refuses the whole copy). The copied templates are checked against the copied definition when
+   the form is published there, like any other.
+3. **Save as library template** (form builder header, Integr8 staff only; decision 1B). A key, a
+   name and description in English and Arabic, a category, and whether to carry the PDF
+   templates. The form must be published: the library takes the latest published version.
+
+Copy to another company and Save as library template are **staff routes on the company
+session**: the staff desktop app reaches a company's forms only through the audited
+impersonation grant, and drops its platform sign-in once the company is open
+(`apps/desktop/src/lib/staff.ts`), so a platform route could not be called from the form screen.
+Both require `form.manage` (staff-only) and the impersonation claim, and carrying PDF templates
+also requires `document.design`. Every copy is audited three times: `form.copied_to_company` in
+the source company, `form.copied_in` (actor: the staff member, `platform_user`) in the target,
+and `form.copied_to_company` in the platform audit log with the grant id. Saving to the library
+writes `form.saved_to_library` in the company and `form_template.saved_from_form` in the
+platform log; renaming, replacing and retiring write `form_template.renamed`, `.refreshed`,
+`.retired` and `.restored`.
+
+Screenshots, in English and Arabic: `docs/screenshots/1.3.0/forms/` (the two dialogs) and
+`docs/screenshots/1.3.0/platform/` (the dashboard's Templates page).
 
 ## In the desktop app
 

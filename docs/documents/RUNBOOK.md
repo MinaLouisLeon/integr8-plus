@@ -163,13 +163,67 @@ a document must be shared to be found.
 Give the company's website developer
 [the website developer's guide](./WEBSITE-LOOKUP.md).
 
+## Copying templates (1.3.0)
+
+Staff copy PDF templates four ways (form builder decisions 1 and 10). Every
+copy gets its own copy of every picture, under a new id, because the ledger
+ties a picture to exactly one template (that is what access and retention
+read):
+
+- **Duplicate** (designer, beside Archive): a copy beside the original, in the
+  same form. Made from the template as last saved.
+- **Copy to another form** of the same company (designer): pick a published
+  form. Every question the template names — answer blocks, check boxes and
+  option lists, table rows, a repeating section's table and its columns,
+  pictures from photo or signature answers, document fields taken from
+  answers, and `{{answer.<key>}}` placeholders in any text — is looked for in
+  that form's latest published version: first the same answer key where the
+  question fits (a text for a text, a number for a number, a choice with the
+  options a box ticks on, a photo or signature for a picture), then the same
+  wording in English or Arabic. The dialog lists every one with what it
+  matched; anything left needs a question chosen, or **Take out what uses
+  it** (the block, or just the row of a table of fields or the column of a
+  section's table; a placeholder outside a block, such as in the footer, is
+  removed from its text). **Nothing is saved until every one is decided**: the
+  server (`POST /v1/document-templates/:id/copy`) runs the same matching and
+  refuses with `document_template_unmatched`, listing each one, otherwise. A
+  duplicate whose template names a question the form has since lost asks the
+  same way.
+- **Copy to another company**, with its form (form builder → Copy to another
+  company, _Include its PDF templates_): every template that is not archived
+  goes, pictures copied into the other company's bucket and counted there.
+- **Library templates.** Saving a form as a library template carries its
+  templates that are not archived; their pictures are copied into the
+  platform's own bucket, `<prefix>-platform-library`, recorded in
+  `form_template_files`, and the designs in `form_template_documents` (both
+  platform tables, migration 0069). A company that starts from the library
+  form gets a copy of each template for its new form, with every picture
+  copied again into its own bucket. Replacing the library template from the
+  dashboard deletes the replaced pictures from the platform bucket. No
+  built-in library form carries templates.
+
+A company past a blocking storage allowance is refused the whole copy
+(`storage_quota_exceeded`); nothing is half-made. A picture whose file was
+deleted refuses the copy with `document_template_image_missing` — upload it to
+the template again first. Copies are audited as `document_template.copied`
+(with what was renamed and what was taken out), `form.copied_in` /
+`form.copied_to_company` and `form.started_from_library`.
+Screenshots of the matching dialog, in English and Arabic:
+`docs/screenshots/1.3.0/documents/`.
+
 ## Storage
 
 A document's PDF counts towards the company's storage like any upload, and
 follows the plan's retention. Template backgrounds and pictures are tied to
-their template and the retention sweep leaves them alone.
+their template and the retention sweep leaves them alone. Copied pictures are
+new files of the company that holds the copy, and count there.
 
 ## Rolling back
+
+Leave migration `0069_library_templates` applied when going back to 1.2.x: the
+older code reads `form_templates` without its new columns and would offer
+retired staff-made templates again (their PDF templates would simply not be
+copied). Its `.down.sql` deletes every staff-made template.
 
 Leave migration `0048_documents` applied when going back to an older version:
 the older code ignores its tables. The same for `0067_document_uploads_and_sharing`:

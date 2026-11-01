@@ -206,3 +206,38 @@ Decided by the owner (Low item 9), built for release 1.2.4.
   public page; sharing: hidden until shared, audited; the lookup by reference
   with and without a customer, and nothing unshared) and
   `website-data.integration.test.ts` (every switch off for a new company).
+
+## Addendum: copying templates (1 November 2026)
+
+Decided by the owner (form builder decisions 1 and 10, Option B), built for
+release 1.3.0.
+
+- **D1 gains copies.** A template can be duplicated within its form, copied to
+  another form of the same company, travel with its form to another company,
+  and travel with a staff-made library form to every company that starts from
+  it. There are no starter templates for the built-in library forms.
+- **D5 holds for copies.** A picture belongs to one template, so a copy never
+  shares one: every picture is copied under a new id into the bucket of
+  whoever holds the copy, tied to the new template, and counted against that
+  company's allowance (a blocking allowance refuses the copy). A library
+  template's pictures are the platform's: a `platform-library` bucket beside
+  `platform-exports`, chosen over a company bucket because the library
+  outlives any company and no company should pay for it.
+- **A copy to another form is matched before it is saved.** Templates name
+  questions by answer key. The pure functions in `@integr8/document-render`
+  (`references.ts`: `designReferences`, `matchDesignReferences`,
+  `referenceCandidates`, `unresolvedReferences`, `rewriteDesignReferences`)
+  walk the design as JSON, so a reference in a part of the format added later
+  (a header slot, say) is still found; they match by answer key where the
+  question fits, then by English or Arabic wording, and rewrite the design
+  with each reference renamed or what used it taken out. The designer and the
+  server run the same functions; the server refuses until every reference is
+  decided, so a half-matched template is never stored.
+- **A template copied with its form to another company is not checked against
+  a published version there**, because the form arrives as a draft: its
+  answer keys are the ones it was designed for. Publishing the form there
+  is the first check, as for any template whose form changes.
+- Proven in `references.test.ts` (finding, matching, rewriting) and
+  `form-copy.integration.test.ts` (duplicate, copy to another form refused
+  until matched, copies to another company and through the library with their
+  pictures in the right buckets and ledgers).

@@ -13,7 +13,7 @@ apps/api/src/routes/v1/platform
   impersonation.ts  act as a user, stop, and every time anybody did
   audit.ts          the platform audit log, and the one way to write to it
   settings.ts       feature flags, announcements
-  templates.ts      the global form template library
+  templates.ts      the global form template library: built-in and staff-made (1.3.0)
   support.ts        recent failures, unlock, unstick sync, releases in the field
         │
 apps/api/src/platform
@@ -270,6 +270,39 @@ investigation.
 It has **no foreign key to `tenants`** and keeps `tenant_slug` beside `tenant_id`, so the record
 of a company outlives the company. Searching is by keyset rather than offset, so paging through
 a log that is being written to cannot repeat or skip an entry.
+
+---
+
+## The form template library (1.3.0)
+
+Dashboard → **Templates** lists every library template, built-in and staff-made, with a badge
+for each kind. A **built-in** one ships with the product and is changed only in its code; the
+page says so and offers nothing to press. A **staff-made** one was saved from a company's form
+in the staff desktop app (form builder → **Save as library template**; `docs/form-engine/
+builder.md`) and shows the company and form version it came from and how many PDF templates it
+carries. For those:
+
+- **Rename** — the name and description in English and Arabic, and the category
+  (`PATCH /v1/platform/form-templates/:key`, audited `form_template.renamed`).
+- **Replace with the newer version** — reads the source form again, in its company: its latest
+  published version and its PDF templates that are not archived replace the template's; the
+  name, description and category stay (`POST …/refresh`, `form_template.refreshed`). The
+  pictures of the version replaced are removed from the library's storage. Refused with
+  `form_template_source_gone` once that company or form no longer exists, and
+  `form_not_published` if nothing is published.
+- **Retire / Bring back** — a retired template is no longer offered to companies; forms already
+  made from it are copies and do not change (`POST …/retire`, `form_template.retired` /
+  `.restored`). **Show retired templates** lists them again.
+
+Templates are never deleted. `PUT /v1/platform/form-templates/:key` still adds or replaces a
+staff-made template from a definition (without PDF templates) and refuses any key the product
+ships (`form_template_builtin`).
+
+The library's pictures live in the platform's own bucket, `<prefix>-platform-library` (beside
+`<prefix>-platform-exports`), which the API creates on first use with the same R2 token as the
+companies' buckets. It belongs to no company: no company's purge removes it and no company's
+storage counts it. A company's purge leaves the templates saved from its forms in place
+(`form_templates.source_tenant_id` has no foreign key); they can no longer be refreshed.
 
 ---
 
