@@ -67,14 +67,27 @@ export class ChromiumPrinter implements PdfPrinter {
   readonly #path: string;
   readonly #timeoutMs: number;
   readonly #maxConcurrent: number;
+  readonly #idleCloseMs: number;
   #browser: Promise<Browser> | undefined;
   #running = 0;
   readonly #waiting: (() => void)[] = [];
+  #idleTimer: NodeJS.Timeout | undefined;
 
-  constructor(options: { executablePath: string; timeoutMs: number; maxConcurrent: number }) {
+  constructor(options: {
+    executablePath: string;
+    timeoutMs: number;
+    maxConcurrent: number;
+    /**
+     * Chromium is closed after this long with nothing to print, and started
+     * again on the next document. The API process prints only the designer's
+     * previews (1.3.0), so it should not hold a browser's memory in between.
+     */
+    idleCloseMs?: number;
+  }) {
     this.#path = options.executablePath;
     this.#timeoutMs = options.timeoutMs;
     this.#maxConcurrent = Math.max(1, options.maxConcurrent);
+    this.#idleCloseMs = options.idleCloseMs ?? IDLE_CLOSE_MS;
   }
 
   async status(): Promise<PrinterStatus> {
@@ -145,6 +158,8 @@ export class ChromiumPrinter implements PdfPrinter {
   }
 
   async close(): Promise<void> {
+    clearTimeout(this.#idleTimer);
+    this.#idleTimer = undefined;
     const browser = this.#browser;
     this.#browser = undefined;
     if (browser !== undefined) {
@@ -194,6 +209,8 @@ export class ChromiumPrinter implements PdfPrinter {
   }
 
   async #acquire(): Promise<void> {
+    clearTimeout(this.#idleTimer);
+    this.#idleTimer = undefined;
     if (this.#running < this.#maxConcurrent) {
       this.#running += 1;
       return;
@@ -207,6 +224,17 @@ export class ChromiumPrinter implements PdfPrinter {
   #release(): void {
     this.#running -= 1;
     this.#waiting.shift()?.();
+    if (this.#running === 0 && this.#waiting.length === 0) {
+      clearTimeout(this.#idleTimer);
+      this.#idleTimer = setTimeout(() => {
+        this.#idleTimer = undefined;
+        if (this.#running === 0) {
+          void this.close();
+        }
+      }, this.#idleCloseMs);
+      // An idle printer never keeps the process alive.
+      this.#idleTimer.unref();
+    }
   }
 }
 
@@ -254,6 +282,9 @@ export const A4_HEIGHT_PT = 841.89;
 
 /** Chromium's empty template: without one it prints the title and the date. */
 const EMPTY = '<span></span>';
+
+/** How long Chromium is kept open with nothing to print. */
+const IDLE_CLOSE_MS = 5 * 60 * 1000;
 
 /** The first print's first page, then the second print's other pages, as one PDF. */
 export async function firstPageFrom(first: Uint8Array, rest: Uint8Array): Promise<Uint8Array> {
