@@ -1,11 +1,5 @@
-import {
-  type Field,
-  type FieldError,
-  formatDecimal,
-  isCalculated,
-  parseDecimal,
-} from '@integr8/form-engine';
-import { type DependentChoices, errorMessage, say } from '@integr8/form-input';
+import { type Field, type FieldError, isCalculated } from '@integr8/form-engine';
+import { calculatedText, type DependentChoices, errorMessage, say } from '@integr8/form-input';
 import { useTranslation } from '@integr8/i18n';
 import { fontSize, radii, spacing } from '@integr8/tokens';
 import { type ComponentRef, forwardRef, type ReactNode } from 'react';
@@ -114,11 +108,11 @@ export const FieldBlock = forwardRef<ComponentRef<typeof View>, FieldBlockProps>
           {help}
           <View
             accessible
-            accessibilityLabel={`${label}: ${calculatedText(field, value) || '—'}`}
+            accessibilityLabel={`${label}: ${calculatedText(field, value, locale) || '—'}`}
             style={[styles.calculated, { backgroundColor: theme.surfaceMuted }]}
           >
             <Text style={[styles.calculatedValue, { color: theme.text }]}>
-              {calculatedText(field, value) || '—'}
+              {calculatedText(field, value, locale) || '—'}
               {'unit' in field && field.unit !== undefined && value !== undefined
                 ? ` ${field.unit}`
                 : ''}
@@ -194,17 +188,6 @@ function widget(props: WidgetProps): ReactNode {
     case 'gps':
       return <GpsWidget {...(props as WidgetProps<'gps'>)} />;
   }
-}
-
-function calculatedText(field: Field, value: unknown): string {
-  if (value === undefined) {
-    return '';
-  }
-  if (field.type === 'decimal' && typeof value === 'string') {
-    const parsed = parseDecimal(value);
-    return parsed === undefined ? value : formatDecimal(parsed);
-  }
-  return typeof value === 'number' || typeof value === 'string' ? String(value) : '';
 }
 
 const styles = StyleSheet.create({

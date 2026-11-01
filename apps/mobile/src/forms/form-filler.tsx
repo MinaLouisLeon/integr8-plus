@@ -1,4 +1,4 @@
-import { touchKey } from '@integr8/form-engine';
+import { isInformation, touchKey } from '@integr8/form-engine';
 import { dependentChoices, entriesOf, entryTitle, isRequiredNow, say } from '@integr8/form-input';
 import { useTranslation } from '@integr8/i18n';
 import { fontSize, radii, spacing } from '@integr8/tokens';
@@ -20,6 +20,7 @@ import { AnswerList } from './answer-list';
 import { EntryList, EntryView } from './entries';
 import { FieldBlock } from './field-block';
 import type { FillModel } from './fill-model';
+import { Description, InformationBlock } from './information';
 import { FormMediaProvider } from './media';
 import { ActionButton, Muted, Problem, TextBox } from './widgets/kit';
 import { refusalMessage } from '~/lib/refusals';
@@ -342,6 +343,7 @@ export function FormFiller(props: FormFillerProps) {
                       {say(page.title, locale) || t('fill.nav.page', { number: pageIndex + 1 })}
                     </Text>
                   ) : null}
+                  <Description text={page.description} locale={locale} />
                 </View>
 
                 {snapshot.openEntry !== undefined ? (
@@ -382,6 +384,7 @@ export function FormFiller(props: FormFillerProps) {
                           {say(section.title, locale)}
                         </Text>
                       )}
+                      <Description text={section.description} locale={locale} />
                       {section.repeat !== undefined ? (
                         <EntryList
                           model={model}
@@ -395,22 +398,26 @@ export function FormFiller(props: FormFillerProps) {
                           (field) =>
                             section.repeat === undefined && view.visible.get(field.id) === true,
                         )
-                        .map((field) => (
-                          <FieldBlock
-                            key={field.id}
-                            ref={register(field.id)}
-                            field={field}
-                            value={view.values.get(field.id) ?? snapshot.state.answers[field.id]}
-                            errors={view.shownErrors.filter((error) => error.field === field.id)}
-                            locale={locale}
-                            disabled={false}
-                            required={isRequiredNow(view, field)}
-                            choices={dependentChoices(model.form, view, field, locale)}
-                            onAnswer={(value) => model.answer(field.id, value)}
-                            onClear={() => model.clear(field.id)}
-                            onBlur={() => model.touch(field.id)}
-                          />
-                        ))}
+                        .map((field) =>
+                          isInformation(field) ? (
+                            <InformationBlock key={field.id} item={field} locale={locale} />
+                          ) : (
+                            <FieldBlock
+                              key={field.id}
+                              ref={register(field.id)}
+                              field={field}
+                              value={view.values.get(field.id) ?? snapshot.state.answers[field.id]}
+                              errors={view.shownErrors.filter((error) => error.field === field.id)}
+                              locale={locale}
+                              disabled={false}
+                              required={isRequiredNow(view, field)}
+                              choices={dependentChoices(model.form, view, field, locale)}
+                              onAnswer={(value) => model.answer(field.id, value)}
+                              onClear={() => model.clear(field.id)}
+                              onBlur={() => model.touch(field.id)}
+                            />
+                          ),
+                        )}
                     </View>
                   ))}
 

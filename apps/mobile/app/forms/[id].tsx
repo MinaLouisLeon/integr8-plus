@@ -1,4 +1,4 @@
-import { say } from '@integr8/form-input';
+import { needsNewerApp, say } from '@integr8/form-input';
 import { fillSession, type FillSession, recordAnswers } from '@integr8/offline';
 import { useTranslation } from '@integr8/i18n';
 import * as Crypto from 'expo-crypto';
@@ -74,6 +74,17 @@ function Fill() {
           <Button label={t('mobile.back')} variant="secondary" onPress={() => router.back()} />
         </View>
         <EmptyState title={t('mobile.fill.notOnPhone')} body="" />
+      </ScrollScreen>
+    );
+  }
+  if (needsNewerApp(opened.definition)) {
+    // Written for a newer app (schema version 2 and on): not broken, too new.
+    return (
+      <ScrollScreen>
+        <View style={styles.back}>
+          <Button label={t('mobile.back')} variant="secondary" onPress={() => router.back()} />
+        </View>
+        <EmptyState title={t('fill.updateApp.title')} body={t('fill.updateApp.body')} />
       </ScrollScreen>
     );
   }

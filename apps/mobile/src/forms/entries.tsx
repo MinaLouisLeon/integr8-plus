@@ -1,6 +1,8 @@
 import {
   type FieldError,
   isAnswered,
+  isInformation,
+  isQuestion,
   type Section,
   storedEntries,
   touchKey,
@@ -22,6 +24,7 @@ import type { ComponentRef } from 'react';
 import { Alert, I18nManager, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '~/components/ui';
 import { FieldBlock } from './field-block';
+import { InformationBlock } from './information';
 import type { FillModel, FillSnapshot } from './fill-model';
 import { ActionButton, Muted, Problem } from './widgets/kit';
 
@@ -204,22 +207,26 @@ export function EntryView({
       <View style={[styles.fields, { borderColor: theme.border, backgroundColor: theme.surface }]}>
         {section.fields
           .filter((field) => entry.visible.get(field.id) === true)
-          .map((field) => (
-            <FieldBlock
-              key={field.id}
-              ref={register(touchKey(field.id, entryId))}
-              field={field}
-              value={entry.values.get(field.id) ?? stored?.values[field.id]}
-              errors={errorsFor(field.id)}
-              locale={locale}
-              disabled={false}
-              required={isRequiredNow(view, field, entryId)}
-              choices={dependentChoices(model.form, view, field, locale, entryId)}
-              onAnswer={(value) => model.answer(field.id, value, entryId)}
-              onClear={() => model.clear(field.id, entryId)}
-              onBlur={() => model.touch(field.id, entryId)}
-            />
-          ))}
+          .map((field) =>
+            isInformation(field) ? (
+              <InformationBlock key={field.id} item={field} locale={locale} />
+            ) : (
+              <FieldBlock
+                key={field.id}
+                ref={register(touchKey(field.id, entryId))}
+                field={field}
+                value={entry.values.get(field.id) ?? stored?.values[field.id]}
+                errors={errorsFor(field.id)}
+                locale={locale}
+                disabled={false}
+                required={isRequiredNow(view, field, entryId)}
+                choices={dependentChoices(model.form, view, field, locale, entryId)}
+                onAnswer={(value) => model.answer(field.id, value, entryId)}
+                onClear={() => model.clear(field.id, entryId)}
+                onBlur={() => model.touch(field.id, entryId)}
+              />
+            ),
+          )}
       </View>
 
       <View style={styles.actions}>
@@ -269,7 +276,7 @@ export function entryHasAnswers(
   values: Readonly<Record<string, unknown>>,
   section: Section,
 ): boolean {
-  return section.fields.some((field) => isAnswered(field, values[field.id]));
+  return section.fields.filter(isQuestion).some((field) => isAnswered(field, values[field.id]));
 }
 
 const styles = StyleSheet.create({
