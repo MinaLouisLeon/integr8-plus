@@ -82,7 +82,8 @@ refuses pushes to `main`/`staging`/`dev`, then runs `pnpm typecheck` and `pnpm t
   (a parity test checks keys, placeholders and Arabic's six plural forms).
 - **Logical directions only** for RTL: `ms-`/`pe-`/`start-`/`text-start`, never
   `ml-`/`left-`/`text-left`; `textAlign: 'auto'` on native. ESLint rejects physical forms.
-- **New permission** must be decided for every role in `packages/core/src/permissions.ts`.
+- **New permission** must be decided for every role in `packages/core/src/permissions.ts`,
+  and given its row (`yes`/`no` per role, and Staff only) in `packages/core/src/permissions.table.md`.
 - **Plan limits are enforced by the API**, not by screens.
 
 ## Conventions

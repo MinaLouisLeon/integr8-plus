@@ -15,7 +15,9 @@ import { ROLES, type Grant, type Role } from './roles.js';
  * guarding a whole surface and the wrong one for a specific capability: a
  * dispatcher outranks an engineer without needing to revoke anyone's sessions.
  * Every cell below is decided on its own, and `permissions.test.ts` fails if a
- * new permission is added without deciding it for all five roles.
+ * new permission is added without deciding it for every role, or if
+ * `permissions.table.md` (the same decisions as a yes/no table, one row per
+ * permission) disagrees with this matrix in any cell.
  */
 
 export const PERMISSIONS = [

@@ -91,7 +91,8 @@ pointed at a separate database: they truncate tables.
   what `integr8_auth` may reach; update it on purpose.
 - **Migrations** are numbered `NNNN_name.up.sql` + `.down.sql`, never edited
   after release; the test setup rolls every migration down and up again.
-- **Permissions** live in `packages/core/src/permissions.ts`. Some are
+- **Permissions** live in `packages/core/src/permissions.ts`, with a row per permission
+  in `permissions.table.md` next to it (a test keeps the two equal). Some are
   staff-only (`STAFF_ONLY_PERMISSIONS`: forms, job types, branding, document
   design, the ETA switch): a company's own owner cannot do them; staff act as
   the company through an audited impersonation grant.
