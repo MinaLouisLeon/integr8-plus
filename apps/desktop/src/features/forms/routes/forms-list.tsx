@@ -24,6 +24,7 @@ import {
   useTemplates,
 } from '../api';
 import { Dialog } from '../components/dialog';
+import { ImportFormAction } from '../components/form-package';
 import { FormRenderer } from '../components/form-renderer';
 import { say } from '../model/text';
 
@@ -85,7 +86,10 @@ export function FormsListRoute() {
           <p className="text-sm text-content-muted">{t('forms.list.subtitle')}</p>
         </div>
         {manage ? (
-          <Button onClick={() => setCreating(true)}>{t('forms.list.newForm')}</Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <ImportFormAction />
+            <Button onClick={() => setCreating(true)}>{t('forms.list.newForm')}</Button>
+          </div>
         ) : null}
       </header>
 

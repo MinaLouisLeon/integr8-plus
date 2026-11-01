@@ -1116,6 +1116,55 @@ export const en = {
       librarySubmit: 'Save to the library',
       libraryDone: 'Saved to the library as “{{key}}”.',
     },
+    // A form with its PDF templates in one .integr8form file (decision 14, 1.3.0).
+    packageFile: {
+      export: 'Export form',
+      exportTitle: 'Export “{{name}}”',
+      exportBody:
+        'Saves one .integr8form file holding the form, its settings, its PDF templates and their pictures. Import it into another company here, or on another Integr8 Plus server.',
+      sourceLabel: 'Which version',
+      sourcePublished: 'The published version (version {{version}})',
+      sourceDraft: 'The draft, with the changes not yet published',
+      onlyPublished: 'The published version (version {{version}}) is exported.',
+      onlyDraft: 'The draft is exported: this form has not been published yet.',
+      neverIncluded:
+        'Never included: submissions, answers, customers, job type links or the company’s branding.',
+      fileName: 'File name:',
+      exportSubmit: 'Export',
+      exported: 'Saved {{file}} to your downloads.',
+      import: 'Import form',
+      importTitle: 'Import a form',
+      importBody:
+        'Choose a .integr8form file. It becomes a new, unpublished draft form in this company, with its PDF templates and their pictures. No existing form changes.',
+      chooseFile: 'File',
+      notAPackage: 'Choose a file whose name ends in .integr8form.',
+      size: '{{size}} MB',
+      importing: 'Uploading and checking the file…',
+      importSubmit: 'Import',
+      resultTitle: 'Form imported',
+      created: '“{{title}}” was created as an unpublished draft.',
+      pdfTemplates: 'PDF templates',
+      pictures: 'Pictures',
+      madeBy: 'Made by',
+      fromPublished: 'from published version {{version}}',
+      fromDraft: 'from a draft',
+      problemsTitle: 'To fix before publishing',
+      problemsNone: 'Nothing stops this form from being published.',
+      problemsBody:
+        'The draft was imported, but it cannot be published until these are fixed in the builder:',
+      warningsTitle: 'Worth a look',
+      untranslated:
+        'Texts without English or Arabic: {{number}}. The Translations tab lists them; publishing is allowed.',
+      notShown: 'And {{number}} more, shown in the builder.',
+      openDraft: 'Open the draft',
+      issue: {
+        titleMismatch: 'The file’s name for the form differs from the form’s own title.',
+        templatesNotChecked:
+          'The PDF templates were not checked against the form, because the form has problems. Fix those first.',
+        fileMissing: 'A PDF template uses a picture the file does not have.',
+        fileUnused: 'The file has a picture no PDF template uses.',
+      },
+    },
     // Copying forms and PDF templates (form builder decisions 1 and 10, 1.3.0).
     libraryPicker: {
       staffMade: 'Made by Integr8',

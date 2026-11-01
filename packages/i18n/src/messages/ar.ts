@@ -1049,6 +1049,54 @@ export const ar: Catalogue<Messages> = {
       librarySubmit: 'حفظ في المكتبة',
       libraryDone: 'حُفظ في المكتبة باسم «{{key}}».',
     },
+    // A form with its PDF templates in one .integr8form file (decision 14, 1.3.0).
+    packageFile: {
+      export: 'تصدير النموذج',
+      exportTitle: 'تصدير «{{name}}»',
+      exportBody:
+        'يحفظ ملفًا واحدًا بامتداد ‎.integr8form فيه النموذج وإعداداته وقوالب PDF الخاصة به وصورها. استورده إلى شركة أخرى هنا، أو على خادم Integr8 Plus آخر.',
+      sourceLabel: 'أي نسخة',
+      sourcePublished: 'النسخة المنشورة (النسخة {{version}})',
+      sourceDraft: 'المسودة، بالتغييرات التي لم تُنشر بعد',
+      onlyPublished: 'ستُصدَّر النسخة المنشورة (النسخة {{version}}).',
+      onlyDraft: 'ستُصدَّر المسودة: لم يُنشر هذا النموذج بعد.',
+      neverIncluded:
+        'لا يتضمن أبدًا: الإرسالات أو الإجابات أو العملاء أو روابط أنواع المهام أو هوية الشركة.',
+      fileName: 'اسم الملف:',
+      exportSubmit: 'تصدير',
+      exported: 'حُفظ {{file}} في مجلد التنزيلات.',
+      import: 'استيراد نموذج',
+      importTitle: 'استيراد نموذج',
+      importBody:
+        'اختر ملفًا بامتداد ‎.integr8form. يصبح نموذجًا جديدًا في هذه الشركة كمسودة غير منشورة، مع قوالب PDF الخاصة به وصورها. لا يتغير أي نموذج موجود.',
+      chooseFile: 'الملف',
+      notAPackage: 'اختر ملفًا ينتهي اسمه بـ ‎.integr8form.',
+      size: '{{size}} ميغابايت',
+      importing: 'جارٍ رفع الملف وفحصه…',
+      importSubmit: 'استيراد',
+      resultTitle: 'تم استيراد النموذج',
+      created: 'أُنشئ «{{title}}» كمسودة غير منشورة.',
+      pdfTemplates: 'قوالب PDF',
+      pictures: 'الصور',
+      madeBy: 'صُنع بواسطة',
+      fromPublished: 'من النسخة المنشورة {{version}}',
+      fromDraft: 'من مسودة',
+      problemsTitle: 'يجب إصلاحه قبل النشر',
+      problemsNone: 'لا شيء يمنع نشر هذا النموذج.',
+      problemsBody: 'استُوردت المسودة، لكن لا يمكن نشرها قبل إصلاح ما يلي في المُنشئ:',
+      warningsTitle: 'يستحق النظر',
+      untranslated:
+        'نصوص بلا إنجليزية أو بلا عربية: {{number}}. يعرضها تبويب الترجمات؛ والنشر مسموح.',
+      notShown: 'و{{number}} غيرها، تظهر في المُنشئ.',
+      openDraft: 'فتح المسودة',
+      issue: {
+        titleMismatch: 'اسم النموذج في الملف يختلف عن عنوان النموذج نفسه.',
+        templatesNotChecked:
+          'لم تُفحص قوالب PDF مقابل النموذج لأن في النموذج مشكلات. أصلحها أولًا.',
+        fileMissing: 'أحد قوالب PDF يستخدم صورة ليست في الملف.',
+        fileUnused: 'في الملف صورة لا يستخدمها أي قالب PDF.',
+      },
+    },
     // Copying forms and PDF templates (form builder decisions 1 and 10, 1.3.0).
     libraryPicker: {
       staffMade: 'من إعداد Integr8',

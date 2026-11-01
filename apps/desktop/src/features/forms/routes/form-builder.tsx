@@ -27,6 +27,7 @@ import {
 import { useDraftSync } from '../use-draft-sync';
 import { DocumentDesigner } from '../../documents/designer';
 import { StaffCopyActions } from '../components/staff-copy';
+import { ExportFormAction } from '../components/form-package';
 
 /**
  * The form builder.
@@ -280,6 +281,12 @@ function Builder({
                 formId={formId}
                 formTitle={detail.form.title}
                 published={live !== null}
+              />
+              <ExportFormAction
+                formId={formId}
+                formTitle={detail.form.title}
+                publishedVersion={live?.versionNumber ?? null}
+                hasDraft={sync.revision !== null}
               />
               <Button disabled={sync.status === 'conflict'} onClick={() => setPublishing(true)}>
                 {t('forms.builder.publish')}
