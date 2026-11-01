@@ -2,7 +2,8 @@ import { ar, type Catalogue, en } from '@integr8/i18n/core';
 import { escapeHtml } from '../html.js';
 import { qrSvg } from '../qr.js';
 import { fill } from '../words.js';
-import { type DocumentLook, type LookMargins, lookTemplates } from './look.js';
+import type { Margins } from '../design.js';
+import { type DocumentLook, documentLook, type PrintParts } from './look.js';
 import type {
   BusinessAddress,
   BusinessDocumentData,
@@ -31,15 +32,14 @@ type Words = Catalogue<(typeof en)['businessPdfs']['render']>;
 
 export interface RenderedBusinessDocument {
   html: string;
-  headerHtml: string;
-  footerHtml: string;
-  margins: LookMargins;
+  /** What the printer takes beside the HTML: `printer.print({ html, ...parts })`. */
+  parts: PrintParts;
   /** The page's title: what the register and the PDF's metadata call it. */
   title: string;
 }
 
 /** The page's margins, in millimetres: room for the running header and footer. */
-export const BUSINESS_MARGINS: LookMargins = { top: 22, bottom: 20, start: 16, end: 16 };
+export const BUSINESS_MARGINS: Margins = { top: 22, end: 16, bottom: 20, start: 16 };
 
 function wordsFor(locale: BusinessLocale): Words {
   return locale === 'ar' ? ar.businessPdfs.render : en.businessPdfs.render;
@@ -829,9 +829,15 @@ function bodyOf(page: Page, data: BusinessDocumentData): { title: string; body: 
   }
 }
 
-function styles(look: DocumentLook, direction: 'ltr' | 'rtl'): string {
-  const base = lookTemplates(look, { direction, margins: BUSINESS_MARGINS }).css;
+/** A colour safe to put in CSS, else Integr8's blue. */
+function brandOf(value: string | null): string {
+  const trimmed = value?.trim() ?? '';
+  return /^#(?:[0-9a-fA-F]{3}){1,2}$/u.test(trimmed) ? trimmed.toLowerCase() : '#1d4ed8';
+}
+
+function styles(base: string, look: DocumentLook): string {
   return `${base}
+    :root { --brand: ${brandOf(look.brandColour)}; }
     .nowrap { white-space: nowrap; }
     h1 { font-size: 16pt; margin: 0 0 1.5mm; color: var(--brand); line-height: 1.2; }
     h2 { font-size: 8pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--brand); margin: 0 0 1.5mm; }
@@ -903,21 +909,33 @@ export function renderBusinessDocumentHtml(input: BusinessRenderInput): Rendered
   const page = new Page(input);
   const direction = input.locale === 'ar' ? 'rtl' : 'ltr';
   const { title, body } = bodyOf(page, input.data);
+  // The company's name and the document along the top, its number and the
+  // page numbers along the bottom, unless the look says otherwise.
+  const text = (value: string) => ({
+    kind: 'text' as const,
+    text: { [input.locale]: value },
+    bold: false,
+  });
   const look: DocumentLook = {
     ...input.look,
-    header: input.look.header ?? { start: input.data.issuer.name, end: title },
+    header: input.look.header ?? {
+      start: text(input.data.issuer.name),
+      center: null,
+      end: text(title),
+      notOnFirstPage: false,
+    },
     footer: input.look.footer ?? {
-      start: input.data.reference,
-      end: wordsFor(input.locale).page,
+      start: text(input.data.reference),
+      center: null,
+      end: text(wordsFor(input.locale).page),
+      notOnFirstPage: false,
     },
   };
-  const templates = lookTemplates(look, { direction, margins: BUSINESS_MARGINS });
-  const html = `<!doctype html><html lang="${input.locale}" dir="${direction}"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>${styles(look, direction)}</style></head><body><main>${body}</main></body></html>`;
-  return {
-    html,
-    headerHtml: templates.headerHtml,
-    footerHtml: templates.footerHtml,
+  const { css, ...parts } = documentLook(look, {
+    locale: input.locale,
     margins: BUSINESS_MARGINS,
-    title,
-  };
+    ...(input.fontFaceCss === undefined ? {} : { fontFaceCss: input.fontFaceCss }),
+  });
+  const html = `<!doctype html><html lang="${input.locale}" dir="${direction}"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>${styles(css, look)}</style></head><body><main>${body}</main></body></html>`;
+  return { html, parts, title };
 }

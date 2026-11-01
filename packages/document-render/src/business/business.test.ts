@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defaultLook, DEFAULT_BRAND_COLOUR, lookTemplates, safeColour } from './look.js';
+import { type DocumentLook, documentLook } from './look.js';
 import type { BusinessDocumentKind, BusinessLocale, BusinessRenderInput } from './model.js';
 import { renderBusinessDocumentHtml } from './render.js';
 import {
@@ -18,6 +18,13 @@ import {
 
 const PNG = 'data:image/png;base64,iVBORw0KGgo=';
 
+/** The company's look, as the server makes it before the shared one carries a font choice. */
+const look = (brandColour: string | null, logo: string | null = null): DocumentLook => ({
+  brandColour,
+  fontKey: 'noto-sans',
+  logo,
+});
+
 function input(
   overrides: Partial<BusinessRenderInput> & { data: BusinessRenderInput['data'] },
 ): BusinessRenderInput {
@@ -26,7 +33,7 @@ function input(
     timeZone: 'Africa/Cairo',
     qrUrl: 'https://app.example.com/d/abcdefghijklmnopqrstuv',
     images: { logo: null, media: {} },
-    look: defaultLook({ brandColour: '#0e7490' }),
+    look: look('#0e7490'),
     ...overrides,
   };
 }
@@ -43,10 +50,10 @@ describe('every business layout', () => {
         expect(page.html).toContain(`lang="${locale}" dir="${locale === 'ar' ? 'rtl' : 'ltr'}"`);
         expect(page.html).toContain(data.reference);
         expect(page.html).toContain('<svg');
-        expect(page.footerHtml).toContain('<span class="pageNumber"></span>');
-        expect(page.footerHtml).toContain('<span class="totalPages"></span>');
-        expect(page.footerHtml).toContain(data.reference);
-        expect(page.headerHtml).toContain(data.issuer.name);
+        expect(page.parts.footerHtml).toContain('<span class="pageNumber"></span>');
+        expect(page.parts.footerHtml).toContain('<span class="totalPages"></span>');
+        expect(page.parts.footerHtml).toContain(data.reference);
+        expect(page.parts.headerHtml).toContain(data.issuer.name);
         expect(page.html).toContain('--brand: #0e7490');
         // Logical sides only, so Arabic mirrors.
         expect(page.html).not.toMatch(/text-align:\s*(left|right)/u);
@@ -152,7 +159,7 @@ describe('the invoice', () => {
     expect(page.html).toContain('dir="rtl"');
     expect(page.html).toContain('فاتورة');
     expect(page.html).toContain('الرصيد المستحق');
-    expect(page.footerHtml).toContain('صفحة');
+    expect(page.parts.footerHtml).toContain('صفحة');
     // A reference reads left to right inside Arabic.
     expect(page.html).toContain('<bdi dir="ltr" class="nowrap">INV-000317</bdi>');
   });
@@ -288,7 +295,7 @@ describe('safety', () => {
       input({
         data: sampleJobReport('en', ['p1'], null),
         images: { logo: 'https://evil.example/logo.png', media: { p1: 'javascript:alert(1)' } },
-        look: defaultLook({ brandColour: null, logo: 'https://evil.example/logo.png' }),
+        look: look(null, 'https://evil.example/logo.png'),
       }),
     );
     expect(page.html).not.toContain('evil.example');
@@ -296,32 +303,40 @@ describe('safety', () => {
   });
 
   it('takes only a colour as the brand colour', () => {
-    expect(safeColour('#ABCDEF')).toBe('#abcdef');
-    expect(safeColour('red; background: url(x)')).toBe(DEFAULT_BRAND_COLOUR);
-    expect(safeColour(null)).toBe(DEFAULT_BRAND_COLOUR);
+    const bad = renderBusinessDocumentHtml(
+      input({ data: sampleQuote('en'), look: look('red; background: url(x)') }),
+    );
+    expect(bad.html).not.toContain('url(x)');
+    expect(bad.html).toContain('--brand: #1d4ed8');
   });
 });
 
 describe('the look', () => {
   it('puts the bands in three places, page numbers included, escaped', () => {
-    const templates = lookTemplates(
+    const parts = documentLook(
       {
         brandColour: '#123456',
         fontKey: 'noto-naskh',
-        header: { start: '<Company>', centre: '{{reference}}', end: 'Page {{page}} of {{pages}}' },
+        header: {
+          start: { kind: 'text', text: { ar: '<Company>' }, bold: true },
+          center: null,
+          end: { kind: 'page' },
+          notOnFirstPage: false,
+        },
         footer: null,
       },
       {
-        direction: 'rtl',
-        margins: { top: 20, bottom: 20, start: 15, end: 15 },
-        values: { reference: 'INV-1' },
+        locale: 'ar',
+        margins: { top: 20, end: 15, bottom: 20, start: 15 },
+        pageWords: 'صفحة {{page.number}} من {{page.count}}',
       },
     );
-    expect(templates.headerHtml).toContain('&lt;Company&gt;');
-    expect(templates.headerHtml).toContain('INV-1');
-    expect(templates.headerHtml).toContain('<span class="pageNumber"></span>');
-    expect(templates.headerHtml).toContain('dir="rtl"');
-    expect(templates.footerHtml).toBe('<span></span>');
-    expect(templates.css).toContain('Noto Naskh Arabic');
+    expect(parts.headerHtml).toContain('<b>&lt;Company&gt;</b>');
+    expect(parts.headerHtml).toContain('<span class="pageNumber"></span>');
+    expect(parts.headerHtml).toContain('<span class="totalPages"></span>');
+    expect(parts.headerHtml).toContain('dir="rtl"');
+    expect(parts).toMatchObject({ hasHeader: true, hasFooter: false, landscape: false });
+    expect(parts.footerHtml).toBe('<span></span>');
+    expect(parts.css).toContain('Noto Naskh Arabic');
   });
 });

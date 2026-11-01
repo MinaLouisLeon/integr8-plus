@@ -8150,7 +8150,7 @@ export const en = {
       reply: 'If you have a question about it, reply to {{company}} directly.',
     },
     render: {
-      page: 'Page {{page}} of {{pages}}',
+      page: 'Page {{page.number}} of {{page.count}}',
       description: 'Description',
       quantity: 'Qty',
       unitPrice: 'Unit price',

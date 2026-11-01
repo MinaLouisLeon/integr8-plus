@@ -1,15 +1,5 @@
-export {
-  DEFAULT_BRAND_COLOUR,
-  type DocumentFontKey,
-  type DocumentLook,
-  type DocumentLookBand,
-  defaultLook,
-  LOOK_FONT_STACKS,
-  type LookMargins,
-  type LookTemplates,
-  lookTemplates,
-  safeColour,
-} from './look.js';
+// The document look (`./look.js`) is a temporary copy of the shared one and is
+// deliberately not exported: the shared look is.
 export {
   type BusinessAddress,
   type BusinessDocumentData,

@@ -219,4 +219,6 @@ export interface BusinessRenderInput {
   qrOpensQuote?: boolean;
   images: BusinessImages;
   look: DocumentLook;
+  /** The look's typeface as `@font-face` rules with data URIs, made by the server. */
+  fontFaceCss?: string;
 }

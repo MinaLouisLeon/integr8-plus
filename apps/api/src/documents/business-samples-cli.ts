@@ -4,7 +4,6 @@ import {
   type BusinessDocumentData,
   type BusinessDocumentKind,
   type BusinessLocale,
-  defaultLook,
   renderBusinessDocumentHtml,
   sampleDocument,
   sampleJobReport,
@@ -101,15 +100,9 @@ async function main(): Promise<void> {
               : 'https://app.integr8-media.com/d/Qm3vX8kT2pL9sN4wR7yB1c',
           qrOpensQuote: kind === 'quote',
           images: { logo: logo ?? null, media },
-          look: defaultLook({ brandColour: '#0e7490', logo: logo ?? null }),
+          look: { brandColour: '#0e7490', fontKey: 'noto-sans', logo: logo ?? null },
         });
-        const pdf = await printer.print({
-          html: rendered.html,
-          headerHtml: rendered.headerHtml,
-          footerHtml: rendered.footerHtml,
-          margins: rendered.margins,
-          hasFooter: true,
-        });
+        const pdf = await printer.print({ html: rendered.html, ...rendered.parts });
         const file = join(out, `${kind.replace('_', '-')}-${locale}.pdf`);
         await writeFile(file, pdf);
         process.stdout.write(`${file}\n`);

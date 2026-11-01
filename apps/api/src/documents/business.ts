@@ -8,7 +8,6 @@ import {
 import {
   type BusinessDocumentData,
   type BusinessLocale,
-  defaultLook,
   renderBusinessDocumentHtml,
 } from '@integr8/document-render';
 import { ApiError } from '../http/errors.js';
@@ -221,7 +220,10 @@ async function print(
     qrUrl: job.qrUrl,
     qrOpensQuote: job.qrOpensQuote,
     images: { logo, media },
-    look: defaultLook({ brandColour: input.brandColour, logo }),
+    // The company's colour and logo, in Noto Sans (both scripts). When the
+    // shared look carries a font choice, its faces go in as `fontFaceCss`
+    // (`documentFontFaces(look.fontKey)`).
+    look: { brandColour: input.brandColour, fontKey: 'noto-sans', logo },
   });
   const status = await deps.pdf.status();
   if (!status.ok) {
@@ -229,13 +231,7 @@ async function print(
   }
   let printed: Uint8Array;
   try {
-    printed = await deps.pdf.print({
-      html: rendered.html,
-      headerHtml: rendered.headerHtml,
-      footerHtml: rendered.footerHtml,
-      margins: rendered.margins,
-      hasFooter: true,
-    });
+    printed = await deps.pdf.print({ html: rendered.html, ...rendered.parts });
   } catch (error) {
     if (error instanceof PrinterUnavailableError) {
       throw new RenderFailed('renderer_unavailable', false, error.message);
