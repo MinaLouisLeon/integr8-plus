@@ -6,7 +6,7 @@ with its own forms, job types, look and apps. The company's office plans and
 dispatches work; its engineers do the work on a phone that keeps working with no
 signal; the office sees the result the moment the phone reconnects.
 
-Current version: **1.2.3**. The build plan lives in [`plan/`](./plan/README.md);
+Current version: **1.2.4**. The build plan lives in [`plan/`](./plan/README.md);
 start with [`plan/ROADMAP.md`](./plan/ROADMAP.md).
 
 ---
@@ -481,6 +481,8 @@ each with a down file, applied by `pnpm --filter @integr8/db db up` (or
 | 0064      | Amounts rounded to the currency's smallest unit; payment receipts can be reversed                     |
 | 0065      | Nightly clean-up of ever-growing tables; old password fingerprints deleted                            |
 | 0066      | Each phone's language, for its notifications                                                          |
+| 0067      | Uploaded PDF documents and a sharing switch; new documents start not shared                           |
+| 0068      | An index of the files each submission uses, for safe file clean-up                                    |
 
 See [`docs/database/migrations.md`](./docs/database/migrations.md) and the
 [backup and restore runbook](./docs/database/runbook-backup-and-restore.md).

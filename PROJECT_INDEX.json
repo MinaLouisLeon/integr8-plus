@@ -1,6 +1,6 @@
 {
   "project": "Integr8 Plus",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "summary": "Multi-tenant field operations and business platform with web, desktop, mobile and API apps.",
   "apps": {
     "api": "Fastify versioned API, OpenAPI routes, jobs and platform tooling",
