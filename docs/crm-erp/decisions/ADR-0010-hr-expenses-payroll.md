@@ -85,7 +85,9 @@ Every member sees their own profile, claims and payslips.
   and the Martyrs' Fund rate live in a rule set with an effective date. A
   company cannot run payroll until an owner confirms a rule set in force,
   recording who checked it. Rules change by adding a new dated set, never by
-  editing one that has been used.
+  editing one that has been used. A run uses the latest set in force for its
+  month, which must be confirmed and from the same calendar year (see the
+  2026-10-31 addendum).
 - **Seeded 2026 figures** (from secondary sources: payroll firms' guides and
   calculators, not the official text; to be confirmed): annual taxable income
   bands 0–40,000 at 0%, 40,000–55,000 at 10%, 55,000–70,000 at 15%,
@@ -189,3 +191,28 @@ Fund + reimbursements`). **Overtime:** shifts have no approval step, so a
 - **Ledger.** The ledger functions of 0034 delegate document kinds added
   later to `erp_ledger_proposal_more`, `erp_ledger_source_label_more` and
   `erp_ledger_backfill_more`, which each later migration replaces whole.
+
+## Addendum (2026-10-31): the rule set a run uses
+
+Found in the pre-production audit. A run took the latest **confirmed** set in
+force, so a newer set still waiting for the owner was skipped without a word,
+and nothing compared years: social insurance limits and tax bands change each
+January, and January's run would have used the previous year's figures. The
+route's own description already said a waiting set should refuse.
+
+- **The latest set in force is the one used, or none.** While it waits for the
+  owner, preparing or recalculating a run is refused (422
+  `rules_not_confirmed`); an older confirmed set is never used in its place.
+- **A run uses a set from its own year.** When the latest set in force starts
+  in an earlier calendar year, the run is refused (422
+  `rules_from_another_year`). The fix is a set from the new year, confirmed by
+  the owner, even when the figures are unchanged.
+- **Refused, not acknowledged on the run.** The considered alternative was to
+  let the preparer go ahead with an acknowledgement recorded on the run. The
+  owner's confirmation of a new year's set already is that acknowledgement,
+  with who checked the figures and against what, in the place an accountant
+  looks; a checkbox on the run would be a way round it, and would put the
+  decision with the preparer rather than the owner.
+- Runs already prepared keep the set they were made with until they are
+  recalculated, which applies the same rules. The refusal names the set in
+  force (`ruleSetId`, `effectiveFrom`) and the screens lead to the rules.

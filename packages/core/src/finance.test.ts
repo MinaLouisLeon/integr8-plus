@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   addDays,
+  balanceSettled,
+  currencyMinorUnits,
   hoursOfMs,
   invoiceStatus,
+  minorUnit,
   multiplyDecimals,
   parseFinanceReference,
 } from './finance.js';
@@ -44,5 +47,26 @@ describe('finance vocabulary', () => {
     expect(multiplyDecimals('0.0001', '0.5')).toBe('0.0001');
     expect(multiplyDecimals('0.0001', '0.4')).toBe('0');
     expect(multiplyDecimals('12345678.9', '1000')).toBe('12345678900');
+  });
+});
+
+describe('the currency minor unit (0064)', () => {
+  it('knows two places for the pound, none for the yen and three for the dinar', () => {
+    expect(currencyMinorUnits('EGP')).toBe(2);
+    expect(currencyMinorUnits('jpy')).toBe(0);
+    expect(currencyMinorUnits('KWD')).toBe(3);
+    expect(minorUnit('EGP')).toBe('0.01');
+    expect(minorUnit('JPY')).toBe('1');
+    expect(minorUnit('KWD')).toBe('0.001');
+  });
+
+  it('counts a balance under one minor unit as paid, and one of it as still owing', () => {
+    expect(invoiceStatus('issued', { balance: '0.0049', allocated: '106.37' }, 'EGP')).toBe('paid');
+    expect(invoiceStatus('issued', { balance: '0.01', allocated: '106.36' }, 'EGP')).toBe(
+      'partially_paid',
+    );
+    expect(invoiceStatus('issued', { balance: '0.0004', allocated: '0' }, 'KWD')).toBe('credited');
+    expect(balanceSettled('0.009', 'EGP')).toBe(true);
+    expect(balanceSettled('0.5', 'JPY')).toBe(true);
   });
 });

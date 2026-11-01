@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
 
 /**
  * Employees' sensitive numbers at rest (ADR-0010): AES-256-GCM under
@@ -7,6 +7,16 @@ import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
  * row, another field or another company does not open.
  *
  *   hr1.<nonce base64url>.<ciphertext+tag base64url>
+ *
+ * **Rotation.** The key that seals is `HR_DATA_KEY`; older keys stay listed in
+ * `HR_DATA_KEYS_PREVIOUS` so what they sealed still opens. A value does not
+ * say which key sealed it — the stored shape, and the check constraint that
+ * pins it (0036), stay as they are, so a rollback reads what it wrote — so
+ * opening tries the current key first and then each older one. GCM's tag makes
+ * that safe: a wrong key fails authentication, it never returns garbage. Each
+ * key is named by its fingerprint ({@link hrKeyId}) in logs and reports, never
+ * by its bytes. `admin-cli hr-reseal` re-seals everything still under an older
+ * key, after which the older key can be retired.
  */
 
 export const HR_SEALED_PREFIX = 'hr1';
@@ -28,6 +38,68 @@ function additionalData({ tenantId, employeeId, field }: SealedContext): Buffer 
 
 export function hrKey(value: string): Buffer {
   return Buffer.from(value, 'base64');
+}
+
+export interface HrKey {
+  /** The fingerprint, safe to print: the first twelve characters of its SHA-256. */
+  id: string;
+  key: Buffer;
+}
+
+/** The key that seals, and the older ones that only open. */
+export interface HrKeyring {
+  current: HrKey;
+  previous: readonly HrKey[];
+}
+
+/** Names a key without revealing it. */
+export function hrKeyId(key: Buffer): string {
+  return createHash('sha256').update(key).digest('base64url').slice(0, 12);
+}
+
+/** Builds the ring from the configured values (base64, 32 bytes each). */
+export function hrKeyring(current: string, previous: readonly string[] = []): HrKeyring {
+  const toKey = (value: string): HrKey => {
+    const key = hrKey(value);
+    return { id: hrKeyId(key), key };
+  };
+  const now = toKey(current);
+  return {
+    current: now,
+    // The current key listed again among the old ones would only be tried twice.
+    previous: previous.map(toKey).filter((old) => old.id !== now.id),
+  };
+}
+
+/** What opening found: the number, and whether the current key sealed it. */
+export interface OpenedField {
+  plaintext: string;
+  keyId: string;
+  current: boolean;
+}
+
+/**
+ * Opens with the current key, then each older one. Throws when none opens it:
+ * sealed under a key this server no longer has, or not for this employee and
+ * field.
+ */
+export function openWithKeyring(
+  sealed: string,
+  keyring: HrKeyring,
+  context: SealedContext,
+): OpenedField {
+  for (const candidate of [keyring.current, ...keyring.previous]) {
+    try {
+      return {
+        plaintext: openField(sealed, candidate.key, context),
+        keyId: candidate.id,
+        current: candidate.id === keyring.current.id,
+      };
+    } catch {
+      // The next key; a wrong one fails GCM's authentication check.
+    }
+  }
+  throw new Error('No configured HR key opens this field');
 }
 
 export function sealField(plaintext: string, key: Buffer, context: SealedContext): string {

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { crossSiteRefusal, isCrossSiteRequest, readJson } from '~/lib/api';
+import { crossSiteRefusal, forwardedClientHeaders, isCrossSiteRequest, readJson } from '~/lib/api';
 import {
   apiBaseUrl,
   PLATFORM_REFRESH_COOKIE,
@@ -38,6 +38,7 @@ export async function POST(request: Request): Promise<Response> {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
+      ...forwardedClientHeaders(request),
       'x-client-app': 'web',
       'x-client-version': process.env.NEXT_PUBLIC_APP_VERSION ?? '1.1.0',
     },

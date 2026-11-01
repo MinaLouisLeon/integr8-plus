@@ -44,6 +44,16 @@ SQLite transaction. The screen shows it at once; it cannot be lost between the t
 | Customer sign-off      | `work_order.signoff`                           | — (waits for the signature's file)        |
 | Mark a visit done      | `work_order.visit_done`                        | — (already done is agreement)             |
 
+On the phone, **Add a note** is at the end of the job's notes: for the office unless the
+engineer chooses _The customer may see it_, never edited or deleted afterwards, and refused on
+the phone when empty (`note_required`). **Correct access notes** is on the access panel of a job
+and of a site, opening `app/sites/access/[id].tsx`; it sends only the fields that changed. It is
+offered (`mayCorrectAccess`) only to the office or to someone on the crew of an open job at the
+site, the rule the server applies to the change when it arrives: an engineer whose job there is
+complete, reviewed or cancelled may no longer change the gate code, on the office's screen
+(`PUT /v1/sites/{siteId}/access`, 403) or through sync (`rejected`, `forbidden`), and the server
+checks that before looking for a conflict.
+
 Every change has a **UUIDv7** id made on the phone. Autosaves of a form that have not been sent
 are folded into one — never into a change the engine has already handed to the network, which it
 marks (`sent_at`) in the same transaction that chooses the batch, since the server may have

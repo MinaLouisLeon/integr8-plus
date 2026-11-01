@@ -60,13 +60,14 @@ pushes to `main`/`staging`/`dev` and runs `pnpm typecheck` and `pnpm test`
 
 ## Local development database
 
-Integration suites and the CLIs need Postgres 16 and three connection strings:
+Integration suites and the CLIs need Postgres 16 and three connection strings (a fourth is optional):
 
 ```bash
 DATABASE_URL_ADMIN=postgres://postgres:postgres@localhost:5432/integr8_dev     # owner: migrations, platform data
 DATABASE_URL=postgres://integr8_app:PASSWORD@localhost:5432/integr8_dev        # tenant runtime role, RLS applies
 DATABASE_URL_AUTH=postgres://integr8_auth:PASSWORD@localhost:5432/integr8_dev  # pre-auth role: sign-in only
-INTEGR8_APP_PASSWORD=… INTEGR8_AUTH_PASSWORD=…   # used by `db bootstrap` to create the two roles
+DATABASE_URL_PLATFORM=postgres://integr8_platform:PASSWORD@localhost:5432/integr8_dev  # optional locally: staff/platform work; falls back to the admin URL, required in production
+INTEGR8_APP_PASSWORD=… INTEGR8_AUTH_PASSWORD=… INTEGR8_PLATFORM_PASSWORD=…   # used by `db bootstrap` to create the roles
 ```
 
 Put them in `packages/db/.env` and `apps/api/.env` (both git-ignored; templates
@@ -109,8 +110,11 @@ pointed at a separate database: they truncate tables.
 - Writes that must not repeat need an `Idempotency-Key` header.
 - Every request needs `x-client-version` and `x-client-app` headers.
 - Some routes answer `204` with no body.
-- Work-order transitions need `expectedRevision`; closed jobs refuse new forms
-  and submissions; INSPECT and INSTALL job types require certificates.
+- Work-order transitions need `expectedRevision`. A completed, reviewed or
+  cancelled job refuses starting a form, and the submit route refuses a draft on
+  it (`submission_job_closed`); phone sync accepts a draft the phone started
+  before the job closed, marked `submittedAfterClose` with a history entry, and
+  refuses one started after. INSPECT and INSTALL job types require certificates.
 - Company `workingDays` are ISO numbers 1–7 (Monday = 1).
 - Passwords must not contain the email's local part (`AUTH_MIN_PASSWORD_LENGTH`
   and policy in `packages/auth/src/password-policy.ts`).

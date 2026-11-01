@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   assertProductionReady,
+  databaseProblems,
+  hrKeySettings,
   loadApiConfig,
+  startupWarnings,
   supabaseAuthSettings,
   webOriginMissingFromCors,
 } from './config.js';
@@ -25,13 +28,19 @@ const PRODUCTION_BASE = {
   MAPBOX_ACCESS_TOKEN: 'pk.token',
   PUSH_SENDER: 'expo',
   BILLING_PROVIDER: 'stripe',
-  STRIPE_SECRET_KEY: 'sk_test_x',
+  STRIPE_SECRET_KEY: 'sk_live_x',
   STRIPE_WEBHOOK_SECRET: 'whsec_x',
   EMAIL_SENDER: 'resend',
   RESEND_API_KEY: 're_x',
   EMAIL_FROM: 'Integr8 <hello@example.com>',
   WEB_APP_URL: 'https://app.example.com',
+  HR_DATA_KEY: Buffer.alloc(32, 1).toString('base64'),
 } as const;
+
+/** The database settings a production API or worker is given (0058). */
+const PRODUCTION_DATABASE = {
+  DATABASE_URL_PLATFORM: 'postgres://integr8_platform:x@postgres:5432/integr8',
+};
 
 describe("the web app's origin and API_CORS_ORIGINS", () => {
   it('is fine when the origin is listed, however the URL is written', () => {
@@ -60,6 +69,7 @@ describe("the web app's origin and API_CORS_ORIGINS", () => {
     expect(() =>
       assertProductionReady(
         loadApiConfig({ ...PRODUCTION_BASE, API_CORS_ORIGINS: 'https://app.your-domain.example' }),
+        PRODUCTION_DATABASE,
       ),
     ).toThrow(/API_CORS_ORIGINS does not include https:\/\/app\.example\.com/u);
 
@@ -69,6 +79,7 @@ describe("the web app's origin and API_CORS_ORIGINS", () => {
           ...PRODUCTION_BASE,
           API_CORS_ORIGINS: 'https://app.example.com,tauri://localhost',
         }),
+        PRODUCTION_DATABASE,
       ),
     ).not.toThrow();
   });
@@ -174,5 +185,138 @@ describe('the self-hosted Auth settings (P36)', () => {
       SUPABASE_SERVICE_ROLE_KEY: 'k',
     });
     expect(JSON.stringify(malformed)).toContain('not an address');
+  });
+});
+
+describe('the database connections production is given', () => {
+  // The API and the worker run as integr8_platform; the owner's password stays
+  // with the migrate service.
+  it('accepts the platform role alone', () => {
+    expect(databaseProblems(PRODUCTION_DATABASE)).toEqual([]);
+  });
+
+  it("refuses the owner's connection, and a missing platform one", () => {
+    const problems = databaseProblems({
+      DATABASE_URL_ADMIN: 'postgres://postgres:x@postgres:5432/integr8',
+    }).join(' ');
+    expect(problems).toMatch(/DATABASE_URL_ADMIN is set/u);
+    expect(problems).toMatch(/DATABASE_URL_PLATFORM is not set/u);
+  });
+
+  it('stops a production start over it', () => {
+    const config = loadApiConfig({
+      ...PRODUCTION_BASE,
+      API_CORS_ORIGINS: 'https://app.example.com',
+    });
+    expect(() =>
+      assertProductionReady(config, {
+        ...PRODUCTION_DATABASE,
+        DATABASE_URL_ADMIN: 'postgres://postgres:x@postgres:5432/integr8',
+      }),
+    ).toThrow(/DATABASE_URL_ADMIN is set/u);
+  });
+});
+
+describe('the billing provider in production', () => {
+  const ready = (overrides: Record<string, string | undefined>) => () =>
+    assertProductionReady(
+      loadApiConfig({
+        ...PRODUCTION_BASE,
+        API_CORS_ORIGINS: 'https://app.example.com',
+        ...overrides,
+      }),
+      PRODUCTION_DATABASE,
+    );
+
+  it('starts with none and no Stripe keys: Integr8 invoices every company', () => {
+    expect(
+      ready({
+        BILLING_PROVIDER: 'none',
+        STRIPE_SECRET_KEY: undefined,
+        STRIPE_WEBHOOK_SECRET: undefined,
+      }),
+    ).not.toThrow();
+  });
+
+  it('refuses Stripe test keys, which would mark companies paid with no money moving', () => {
+    expect(ready({ STRIPE_SECRET_KEY: 'sk_test_abc' })).toThrow(/test-mode key/u);
+    expect(ready({ STRIPE_SECRET_KEY: 'rk_test_abc' })).toThrow(/test-mode key/u);
+    expect(ready({ STRIPE_SECRET_KEY: 'pk_live_abc' })).toThrow(/publishable key/u);
+    expect(ready({ STRIPE_SECRET_KEY: 'sk_live_abc' })).not.toThrow();
+  });
+
+  it('still refuses recording', () => {
+    expect(ready({ BILLING_PROVIDER: 'recording' })).toThrow(/BILLING_PROVIDER is recording/u);
+  });
+
+  it('lets staging use test keys', () => {
+    expect(() =>
+      assertProductionReady(
+        loadApiConfig({ ...PRODUCTION_BASE, APP_ENV: 'staging', STRIPE_SECRET_KEY: 'sk_test_abc' }),
+      ),
+    ).not.toThrow();
+  });
+});
+
+describe('the Cloudflare analytics token', () => {
+  // Nightly metering compares the ledger with Cloudflare's bill through it.
+  // Missing, every night's check says "unavailable": worth a warning, never a
+  // refusal to start.
+  it('is warned about in production with R2, without stopping the start', () => {
+    const config = loadApiConfig({
+      ...PRODUCTION_BASE,
+      API_CORS_ORIGINS: 'https://app.example.com',
+    });
+    expect(startupWarnings(config).join(' ')).toMatch(/CLOUDFLARE_API_TOKEN is not set/u);
+    expect(() => {
+      assertProductionReady(config, PRODUCTION_DATABASE);
+    }).not.toThrow();
+  });
+
+  it('is not warned about once set, or outside production, or a blank line', () => {
+    expect(
+      startupWarnings(
+        loadApiConfig({
+          ...PRODUCTION_BASE,
+          API_CORS_ORIGINS: 'https://app.example.com',
+          CLOUDFLARE_API_TOKEN: 'cf-token',
+        }),
+      ),
+    ).toEqual([]);
+    expect(startupWarnings(loadApiConfig({ ...PRODUCTION_BASE, APP_ENV: 'staging' }))).toEqual([]);
+    expect(loadApiConfig({ CLOUDFLARE_API_TOKEN: '' }).CLOUDFLARE_API_TOKEN).toBeUndefined();
+  });
+});
+
+describe('the HR data key', () => {
+  const key = (fill: number) => Buffer.alloc(32, fill).toString('base64');
+
+  it('is required in production', () => {
+    expect(() => {
+      assertProductionReady(
+        loadApiConfig({
+          ...PRODUCTION_BASE,
+          API_CORS_ORIGINS: 'https://app.example.com',
+          HR_DATA_KEY: '',
+        }),
+        PRODUCTION_DATABASE,
+      );
+    }).toThrow(/HR_DATA_KEY is not set/u);
+  });
+
+  it('reads older keys, comma-separated, and refuses them without a current one', () => {
+    const config = loadApiConfig({
+      HR_DATA_KEY: key(2),
+      HR_DATA_KEYS_PREVIOUS: ` ${key(1)}, ${key(3)} ,`,
+    });
+    expect(hrKeySettings(config)).toEqual({ current: key(2), previous: [key(1), key(3)] });
+    expect(hrKeySettings(loadApiConfig({}))).toBeUndefined();
+    expect(loadApiConfig({ HR_DATA_KEYS_PREVIOUS: '' }).HR_DATA_KEYS_PREVIOUS).toBeUndefined();
+    expect(() => loadApiConfig({ HR_DATA_KEYS_PREVIOUS: key(1) })).toThrow(
+      /HR_DATA_KEYS_PREVIOUS is set but HR_DATA_KEY is not/u,
+    );
+    expect(() => loadApiConfig({ HR_DATA_KEY: key(2), HR_DATA_KEYS_PREVIOUS: 'short' })).toThrow(
+      /HR_DATA_KEYS_PREVIOUS/u,
+    );
   });
 });

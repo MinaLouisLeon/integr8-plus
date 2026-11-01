@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { PurchaseOrderDetail, Supplier, SupplierDetail } from '../api.js';
 import { accessibilityViolations, fakeApi, renderScreen } from '../testing/render.js';
 import { OrderListScreen } from './order-list.js';
@@ -125,6 +125,28 @@ const detail = (overrides: Partial<PurchaseOrderDetail> = {}): PurchaseOrderDeta
   order: order(),
   lines: [line()],
   receipts: [],
+  parties: {
+    buyer: {
+      name: 'Riverside Services SAE',
+      address: '5 Nile Street, Cairo',
+      taxReference: '123-456-789',
+    },
+    supplier: {
+      name: 'Delta Valves',
+      address: {
+        line1: '12 Industrial Zone',
+        line2: null,
+        city: '10th of Ramadan',
+        region: null,
+        postcode: null,
+        countryCode: 'EG',
+      },
+      contactName: 'Hany',
+      email: 'orders@delta.example',
+      phone: null,
+      taxReference: null,
+    },
+  },
   can: { edit: true, approve: false, cancel: true, receive: false },
   ...overrides,
 });
@@ -361,7 +383,8 @@ describe('purchase orders', { timeout: 20_000 }, () => {
 
     expect(await screen.findByRole('heading', { name: /PO-000007/u })).toBeInTheDocument();
     expect(screen.getByRole('cell', { name: '10 each' })).toBeInTheDocument();
-    expect(screen.getByText('14%')).toBeInTheDocument();
+    // Once on the screen, once on the printed order beneath it.
+    expect(screen.getAllByText('14%')).toHaveLength(2);
     expect(screen.getAllByText('EGP 285.00').length).toBeGreaterThan(0);
     expect(await accessibilityViolations(container)).toEqual([]);
 
@@ -478,5 +501,33 @@ describe('purchase orders', { timeout: 20_000 }, () => {
     ).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Approve' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Edit draft' })).not.toBeInTheDocument();
+  });
+});
+
+describe('the printed purchase order', { timeout: 20_000 }, () => {
+  it('names the company, the supplier, the lines and the totals, and prints from the screen', async () => {
+    const { client } = fakeApi({
+      'GET /v1/me': me(['purchasing.read', 'purchasing.manage', 'inventory.read']),
+      'GET /v1/purchasing/orders/:id': () => ({ body: detail() }),
+      'GET /v1/inventory/locations': locations,
+    });
+    const printed: string[] = [];
+    const print = vi.spyOn(window, 'print').mockImplementation(() => {
+      printed.push('print');
+    });
+    try {
+      renderScreen(<OrderScreen orderId={ORDER} />, client);
+      const document = await screen.findByRole('article', { hidden: true });
+      expect(within(document).getByText('Riverside Services SAE')).toBeInTheDocument();
+      expect(within(document).getByText('Delta Valves')).toBeInTheDocument();
+      expect(within(document).getByText(/12 Industrial Zone/u)).toBeInTheDocument();
+      expect(
+        within(document).getByRole('heading', { name: /^Purchase order PO-/u, hidden: true }),
+      ).toBeInTheDocument();
+      await userEvent.setup().click(screen.getByRole('button', { name: 'Print' }));
+      expect(printed).toEqual(['print']);
+    } finally {
+      print.mockRestore();
+    }
   });
 });

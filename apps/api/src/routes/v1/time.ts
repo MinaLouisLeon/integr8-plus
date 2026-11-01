@@ -6,6 +6,7 @@ import { defineRoute, noSchema } from '../../http/routes.js';
 import { shiftBody } from '../../sync/pull.js';
 import { peopleOf, personBody, personSchema, workOrderStateSchema } from './operations.js';
 import { submitLocationSchema } from './submissions.js';
+import { messageLocale } from '../../notifications/words.js';
 
 /**
  * Time (P14): the working day and the time spent on each job.
@@ -147,7 +148,7 @@ export const registerPushDeviceRoute = defineRoute({
   operationId: 'registerPushDevice',
   summary: 'Receive push notifications on this phone',
   description:
-    'Registers the phone’s Expo push token for the signed-in person, tied to this session: signing out, or the session being revoked, stops notifications to it. Registering a token already registered moves it to this person and session.',
+    'Registers the phone’s Expo push token for the signed-in person, tied to this session: signing out, or the session being revoked, stops notifications to it. Registering a token already registered moves it to this person and session. `locale` is the language the app is showing; notifications are written in it (Arabic for any `ar` tag, English otherwise). A phone that leaves it out keeps whatever it last said, English if nothing.',
   tags: TAGS,
   security: 'authenticated',
   permission: 'customer.read',
@@ -159,6 +160,13 @@ export const registerPushDeviceRoute = defineRoute({
       .regex(/^Expo(nent)?PushToken\[[A-Za-z0-9_-]{10,200}\]$/u, 'An Expo push token'),
     platform: z.enum(['ios', 'android']),
     deviceLabel: z.string().trim().max(200).nullable().optional(),
+    locale: z
+      .string()
+      .trim()
+      .min(2)
+      .max(35)
+      .optional()
+      .describe('The app’s language, as a BCP 47 tag such as `ar` or `en`.'),
   }),
   responses: { 204: { description: 'Registered.' } },
   handler: async ({ body }, context) => {
@@ -170,6 +178,7 @@ export const registerPushDeviceRoute = defineRoute({
         token: body.token,
         platform: body.platform,
         deviceLabel: body.deviceLabel ?? null,
+        ...(body.locale === undefined ? {} : { locale: messageLocale(body.locale) }),
       }),
     );
     return { status: 204, body: undefined };

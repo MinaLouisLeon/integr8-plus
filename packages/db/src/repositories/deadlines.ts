@@ -11,6 +11,7 @@ import {
 } from '@integr8/core';
 import { sql } from 'kysely';
 import { TenantScopedRepository, type TenantScope } from './tenant-scope.js';
+import { DEFAULT_SETTINGS } from './tenant-settings.js';
 
 /** One job's deadlines as stored (P27, migration 0053). */
 export interface JobDeadline {
@@ -128,11 +129,13 @@ export class DeadlinesRepository extends TenantScopedRepository {
       .select(['timezone', 'work_day_starts', 'work_day_ends', 'working_days'])
       .where('tenant_id', '=', this.tenantId)
       .executeTakeFirst();
+    // A company always has a settings row; the defaults only stand in for one
+    // that somehow does not, and are the same ones a new row would get.
     return {
-      timeZone: row?.timezone ?? 'UTC',
-      startsMinute: row?.work_day_starts ?? 480,
-      endsMinute: row?.work_day_ends ?? 1020,
-      days: row?.working_days ?? [1, 2, 3, 4, 5],
+      timeZone: row?.timezone ?? DEFAULT_SETTINGS.timezone,
+      startsMinute: row?.work_day_starts ?? DEFAULT_SETTINGS.workDayStarts,
+      endsMinute: row?.work_day_ends ?? DEFAULT_SETTINGS.workDayEnds,
+      days: row?.working_days ?? DEFAULT_SETTINGS.workingDays,
     };
   }
 

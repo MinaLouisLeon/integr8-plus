@@ -1,10 +1,11 @@
 import { type AppInfo, appInfoSchema, optionalEnv } from '@integr8/core';
 
 /**
- * Kept in step with package.json by the release process (P20). It is declared
- * here rather than imported because package.json sits outside `rootDir`.
+ * The product's version, as in the root package.json. Declared here rather
+ * than imported because package.json sits outside `rootDir`; app-info.test.ts
+ * fails when the two differ, so a release that bumps one has to bump both.
  */
-const VERSION = '1.1.0';
+export const VERSION = '1.2.3';
 
 /**
  * Builds this app's identity from the environment. Fails at startup rather

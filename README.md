@@ -6,7 +6,7 @@ with its own forms, job types, look and apps. The company's office plans and
 dispatches work; its engineers do the work on a phone that keeps working with no
 signal; the office sees the result the moment the phone reconnects.
 
-Current version: **1.2.1**. The build plan lives in [`plan/`](./plan/README.md);
+Current version: **1.2.3**. The build plan lives in [`plan/`](./plan/README.md);
 start with [`plan/ROADMAP.md`](./plan/ROADMAP.md).
 
 ---
@@ -470,6 +470,17 @@ each with a down file, applied by `pnpm --filter @integr8/db db up` (or
 | 0052      | Skills and certificates (qualifications) and expiry warnings                                          |
 | 0053      | Service contracts, maintenance plans and response deadlines                                           |
 | 0054      | Self-hosted sign-in: how each session began, and sign-in accounts to delete after a purge             |
+| 0055      | Closing a company: the purge removes every row with triggers and foreign-key checks suspended         |
+| 0056      | No plan deletes a company's files on its own: the seeded retention windows are cleared                |
+| 0057      | New companies start on Cairo time with a Sunday-to-Thursday working week                              |
+| 0058      | A limited database role for the API and worker (`integr8_platform`)                                   |
+| 0060      | A form's "signature required" is enforced when a job is completed                                     |
+| 0061      | Forms submitted after their job closed are marked                                                     |
+| 0062      | Parts recorded after a job closed are marked; a cancelled job refuses parts                           |
+| 0063      | A failing maintenance plan is recorded and retried on its own                                         |
+| 0064      | Amounts rounded to the currency's smallest unit; payment receipts can be reversed                     |
+| 0065      | Nightly clean-up of ever-growing tables; old password fingerprints deleted                            |
+| 0066      | Each phone's language, for its notifications                                                          |
 
 See [`docs/database/migrations.md`](./docs/database/migrations.md) and the
 [backup and restore runbook](./docs/database/runbook-backup-and-restore.md).
@@ -482,15 +493,15 @@ your branch ──▶ dev ──▶ staging ──▶ main
             test build  nightly   version release
 ```
 
-| Workflow                 | When                                    | Does                                                                                            |
-| ------------------------ | --------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `ci.yml`                 | Every pull request                      | Format, lint, typecheck, unit tests, OpenAPI drift, integration suites on Postgres, secret scan |
-| `branch-policy.yml`      | Pull requests                           | Checks which branch may merge into which                                                        |
-| `release-dev.yml`        | Merge into `dev`                        | A test build                                                                                    |
-| `release-staging.yml`    | Merge into `staging`                    | A nightly pre-release against the staging API, including a generic phone build for testers      |
-| `release-main.yml`       | Merge into `main`                       | Version release: API and web archives, the staff desktop installers, then every company's apps  |
-| `build-company-apps.yml` | By hand, or from a release              | One company's (or every company's) desktop installers and phone app, as their own release       |
-| `publish-images.yml`     | Push to `staging` or `main`, a `v*` tag | The API and web container images to GHCR (`:main`, `:staging`, per commit and tag)              |
+| Workflow                 | When                                                                 | Does                                                                                                                              |
+| ------------------------ | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `ci.yml`                 | Every pull request                                                   | Format, lint, typecheck, unit tests, OpenAPI drift, integration suites on Postgres, secret scan                                   |
+| `branch-policy.yml`      | Pull requests                                                        | Checks which branch may merge into which                                                                                          |
+| `release-dev.yml`        | Merge into `dev`                                                     | A test build                                                                                                                      |
+| `release-staging.yml`    | Merge into `staging`                                                 | A nightly pre-release against the staging API, including a generic phone build for testers                                        |
+| `release-main.yml`       | Merge into `main`                                                    | Version release: API and web archives, the staff desktop installers, then every company's apps                                    |
+| `build-company-apps.yml` | By hand, or from a release                                           | One company's (or every company's) desktop installers and phone app, as their own release                                         |
+| `publish-images.yml`     | Push to `staging` or `main`; the version release; by hand with a tag | The API and web images to GHCR: `:vX.Y.Z` and `:latest` per release (production), `:main`, `:staging` and per commit (unreleased) |
 
 The version is the root `package.json` `version` and nothing else: bump it to
 release, and a release for a version that already exists is refused. Repository

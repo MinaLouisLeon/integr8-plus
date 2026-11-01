@@ -1,6 +1,7 @@
 import { formatWorkOrderReference, type UserId } from '@integr8/core';
 import { type TenantTransaction, type WorkOrder, withTenant } from '@integr8/db';
 import type { Logger } from '../http/logger.js';
+import { fill, messageLocale, type NotificationWords, wordsFor } from '../notifications/words.js';
 import type { PushMessage, PushSender } from './sender.js';
 
 /**
@@ -21,6 +22,9 @@ import type { PushMessage, PushSender } from './sender.js';
  *   off because its job closed, or taken off someone who left the crew, is
  *   covered by the job's own message and never queued (migration 0051).
  *
+ * Each phone reads it in the language it registered with, English when it did
+ * not say (`push_devices.locale`; see notifications/words.ts).
+ *
  * Whoever made the change is not told about it. A notification names the job
  * and its site and nothing else about the customer: it can be read from a locked
  * phone. Times are left to the job screen, which shows them in the phone's own
@@ -37,10 +41,12 @@ export type NotifyOutcome =
   | { outcome: 'nobody' }
   | { outcome: 'gone' };
 
+type PushWords = NotificationWords['push'];
+
 interface Plan {
   recipients: UserId[];
-  title: string;
-  body: string;
+  /** Written per phone, in the language it registered with. */
+  text: (words: PushWords) => { title: string; body: string };
   urgent: boolean;
 }
 
@@ -52,7 +58,7 @@ async function plan(
   const crew = (await tx.workOrders.listCrew(job.id)).map((member) => member.userId);
   const others = (people: readonly UserId[]) => people.filter((person) => person !== event.actorId);
   const site = await tx.sites.find(job.siteId);
-  const label = `${formatWorkOrderReference(job.reference)} · ${job.title}`;
+  const label = { job: `${formatWorkOrderReference(job.reference)} · ${job.title}` };
   const where = site?.name ?? '';
   const urgent = job.priority === 'urgent';
   const closed = ['complete', 'reviewed', 'cancelled'].includes(job.state);
@@ -60,8 +66,12 @@ async function plan(
   const visitId = typeof event.details.visitId === 'string' ? event.details.visitId : null;
   const visit = visitId === null ? undefined : await tx.visits.find(visitId);
   const onVisit = visit?.status === 'planned' ? visit.assigneeIds : [];
-  const openJob =
-    where === '' ? 'Open the job for its time.' : `${where} · open the job for its time.`;
+  const openJob = (words: PushWords) =>
+    where === '' ? words.openForTime : fill(words.openForTimeAt, { site: where });
+  const titled =
+    (title: (words: PushWords) => string, body: (words: PushWords) => string) =>
+    (words: PushWords) => ({ title: fill(title(words), label), body: body(words) });
+  const atSite = () => where;
 
   switch (event.kind) {
     case 'assigned':
@@ -73,8 +83,7 @@ async function plan(
       }
       return {
         recipients: others([event.userId]),
-        title: urgent ? `Urgent callout: ${label}` : `New job: ${label}`,
-        body: where,
+        text: titled((words) => (urgent ? words.urgentCallout : words.newJob), atSite),
         urgent,
       };
     case 'rescheduled':
@@ -82,29 +91,39 @@ async function plan(
         ? undefined
         : {
             recipients: others(crew),
-            title: `Rescheduled: ${label}`,
-            body:
-              where === ''
-                ? 'Open the job for its new time.'
-                : `${where} · open the job for its new time.`,
+            text: titled(
+              (words) => words.rescheduled,
+              (words) =>
+                where === '' ? words.openForNewTime : fill(words.openForNewTimeAt, { site: where }),
+            ),
             urgent,
           };
     case 'transitioned':
       if (event.toState === 'dispatched' && job.state === 'dispatched') {
-        return { recipients: others(crew), title: `Dispatched: ${label}`, body: where, urgent };
+        return {
+          recipients: others(crew),
+          text: titled((words) => words.dispatched, atSite),
+          urgent,
+        };
       }
       if (event.toState === 'cancelled') {
         return {
           recipients: others(crew),
-          title: `Cancelled: ${label}`,
-          body: event.reason ?? where,
+          text: titled(
+            (words) => words.cancelled,
+            () => event.reason ?? where,
+          ),
           urgent: false,
         };
       }
       return undefined;
     case 'updated':
       return urgent && !closed
-        ? { recipients: others(crew), title: `Now urgent: ${label}`, body: where, urgent: true }
+        ? {
+            recipients: others(crew),
+            text: titled((words) => words.nowUrgent, atSite),
+            urgent: true,
+          }
         : undefined;
     case 'visit_assigned':
       if (closed || event.userId === null || !onVisit.includes(event.userId)) {
@@ -112,21 +131,26 @@ async function plan(
       }
       return {
         recipients: others([event.userId]),
-        title: urgent ? `Urgent visit: ${label}` : `New visit: ${label}`,
-        body: openJob,
+        text: titled((words) => (urgent ? words.urgentVisit : words.newVisit), openJob),
         urgent,
       };
     case 'visit_rescheduled':
       return closed || onVisit.length === 0
         ? undefined
-        : { recipients: others(onVisit), title: `Visit moved: ${label}`, body: openJob, urgent };
+        : {
+            recipients: others(onVisit),
+            text: titled((words) => words.visitMoved, openJob),
+            urgent,
+          };
     case 'visit_cancelled':
       return visit === undefined || closed
         ? undefined
         : {
             recipients: others(visit.assigneeIds),
-            title: `Visit cancelled: ${label}`,
-            body: event.reason ?? where,
+            text: titled(
+              (words) => words.visitCancelled,
+              () => event.reason ?? where,
+            ),
             urgent: false,
           };
     case 'visit_unassigned':
@@ -134,8 +158,7 @@ async function plan(
         ? undefined
         : {
             recipients: others([event.userId]),
-            title: `Taken off a visit: ${label}`,
-            body: where,
+            text: titled((words) => words.takenOffVisit, atSite),
             urgent: false,
           };
     default:
@@ -180,8 +203,7 @@ export async function notifyWorkOrderEvent(
     const devices = await tx.pushDevices.activeFor(decided.recipients);
     const messages: PushMessage[] = devices.map((device) => ({
       to: device.token,
-      title: decided.title,
-      body: decided.body,
+      ...decided.text(wordsFor(messageLocale(device.locale)).push),
       data: {
         workOrderId: job.id,
         event: event.kind,

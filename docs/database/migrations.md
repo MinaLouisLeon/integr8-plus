@@ -95,8 +95,10 @@ depends on the owner bypassing policies; see
 
 A migration and a deploy are not simultaneous. For a window measured in minutes,
 old application code is talking to the new schema — and if you roll the deploy
-back, new schema meets old code for longer. Any migration that removes or
-renames something breaks during that window.
+back, new schema meets old code for as long as the rollback lasts: the
+previous release runs on the new schema, with the new migrations left applied
+(see [Rolling back a release](#rolling-back-a-release)). Any migration that
+removes or renames something breaks during that window.
 
 So every destructive change is split in two, with a deploy between them:
 
@@ -236,6 +238,50 @@ alter table tenant_users alter column display_name set not null;
       a policy — and is in `TENANT_SCOPED_TABLES`.
 - [ ] Nothing destructive ships in the same release as the code that stopped
       using it.
+- [ ] The previous release still works with this migration applied: a
+      rollback leaves it in place.
 - [ ] `pnpm test:integration` passes against a scratch database.
 - [ ] A long-running statement on a large table is batched, or is
       `concurrently`, or the table is small and you have said so in the file.
+
+---
+
+## Rolling back a release
+
+Rolling back a release means starting the previous release's image on a
+database the newer release has already migrated. Expand/contract is what makes
+that safe; the migrator is what lets it start.
+
+The previous image has no files for the newer release's migrations. The
+migrator calls an applied migration with no file **`ahead-of-build`** when it
+is newer than every file the build has: a contiguous tail of migrations from a
+later release. On such a database:
+
+- `db up` (the `migrate` service) applies nothing, prints a warning naming the
+  migrations that are ahead, and exits 0, so the API and worker start;
+- `db status` lists them as `ahead-of-build` and exits 0;
+- the API's readiness check (`/health/ready`) passes, with a note on the
+  `schema` check naming them, so `web` starts and the uptime check stays green.
+
+Some things still fail, exactly as before, because no rollback explains them:
+
+- an applied migration with no file that is **older** than the build's newest
+  file: a gap, meaning a file was deleted or renamed;
+- an applied migration whose file has changed (a checksum mismatch);
+- a migration this build has that is still pending while newer ones are
+  applied: the newer release did not contain it, so this build is not its
+  predecessor.
+
+**Undoing a migration is a separate, deliberate step, done with the release
+that added it.** Only its image has the `.down.sql` file. With the newer
+release still running, read the down file, then run
+`db down --steps N` from that image, and only then switch to the previous one.
+The previous image refuses to roll back a migration it has no file for, and
+checks every target before touching any, so a refusal changes nothing. Most
+down files delete what their up added; on a production database, leaving the
+migration applied is almost always the right choice.
+
+Releases up to v1.2.1 predate this: their `migrate` refuses any database with
+an applied migration it has no file for, so their API and worker never start
+on a newer schema. The setup guide (Stage 11, part Q) has the way round it for
+going back from the self-hosted sign-in release to v1.2.1.

@@ -40,6 +40,8 @@ export const JOURNAL_SOURCE_KINDS = [
   'expense_payment',
   'payroll_run',
   'assembly',
+  // A payment taken back (0064); its source is the receipt.
+  'payment_reversal',
 ] as const;
 export const journalSourceKindSchema = z.enum(JOURNAL_SOURCE_KINDS);
 export type JournalSourceKind = z.infer<typeof journalSourceKindSchema>;

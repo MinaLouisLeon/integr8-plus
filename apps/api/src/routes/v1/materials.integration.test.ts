@@ -450,3 +450,162 @@ describe('from the phone', () => {
     expect(await onHand(seal.id, vanId)).toBe('1');
   });
 });
+
+describe('closed, cancelled and invoiced jobs (0062)', () => {
+  interface Transitioned {
+    workOrder: { id: string; revision: number; state: string };
+  }
+  interface Marked extends Detail {
+    materials: (MaterialBody & { recordedAfterClose: boolean })[];
+    partsNotYetBilled: boolean;
+  }
+  const move = async (
+    job: { workOrder: { id: string } },
+    path: string[],
+    reason?: string,
+    who: Member = dispatcher,
+  ) => {
+    let current = json<Transitioned>(
+      await call(dispatcher, 'GET', `/v1/work-orders/${job.workOrder.id}`),
+    );
+    for (const to of path) {
+      const response = await call(who, 'POST', `/v1/work-orders/${job.workOrder.id}/transitions`, {
+        to,
+        expectedRevision: current.workOrder.revision,
+        ...(reason === undefined ? {} : { reason }),
+      });
+      expect(response.statusCode, response.body).toBe(200);
+      current = json<Transitioned>(response);
+    }
+  };
+  const push = async (job: Detail, itemId: string, recordedAt: Date) => {
+    const response = await call(engineer, 'POST', '/v1/sync/push', {
+      sentAt: new Date().toISOString(),
+      mutations: [
+        {
+          id: randomUUID(),
+          entityId: job.workOrder.id,
+          recordedAt: recordedAt.toISOString(),
+          kind: 'work_order.material',
+          payload: { materialId: randomUUID(), itemId, quantity: '1' },
+        },
+      ],
+    });
+    return json<{ results: { outcome: string; code?: string }[] }>(response).results[0]!;
+  };
+  const seen = async (job: Detail) =>
+    json<Marked>(await call(dispatcher, 'GET', `/v1/work-orders/${job.workOrder.id}`));
+
+  it('takes a phone part recorded before the job closed, marked, and bills it on a follow-up invoice', async () => {
+    await setFlag('finance', true);
+    const gasket = await newItem({ salePrice: '30' });
+    const job = await newJob([engineer]);
+    const vanId = json<Detail>(await call(engineer, 'GET', `/v1/work-orders/${job.workOrder.id}`))
+      .van!.id;
+    await stock(gasket.id, vanId, '5');
+
+    const onSite = new Date(Date.now() - 60_000);
+    await move(job, ['dispatched', 'on_site', 'in_progress', 'complete']);
+
+    // The office's screen refuses new parts on a closed job.
+    const refused = await use(dispatcher, job, {
+      itemId: gasket.id,
+      quantity: '1',
+      locationId: vanId,
+    });
+    expect(refused.statusCode).toBe(409);
+    expect(code(refused)).toBe('work_order_closed');
+
+    // The phone's part, recorded on site before the job closed, is taken and marked.
+    expect(await push(job, gasket.id, onSite)).toMatchObject({ outcome: 'applied' });
+    // One recorded after the job closed is not.
+    expect(await push(job, gasket.id, new Date())).toMatchObject({
+      outcome: 'rejected',
+      code: 'work_order_closed',
+    });
+    let detail = await seen(job);
+    expect(detail.materials.map((row) => [row.status, row.recordedAfterClose])).toEqual([
+      ['posted', true],
+    ]);
+    expect(await onHand(gasket.id, vanId)).toBe('4');
+    expect(detail.can.recordParts).toBe(false);
+
+    // Invoiced; then another part from the phone arrives, recorded before the close.
+    const first = await call(owner, 'POST', '/v1/finance/invoices/from-job', {
+      workOrderId: job.workOrder.id,
+    });
+    expect(first.statusCode, first.body).toBe(201);
+    expect(detail.partsNotYetBilled).toBe(false);
+    expect(await push(job, gasket.id, onSite)).toMatchObject({ outcome: 'applied' });
+    detail = await seen(job);
+    expect(detail.partsNotYetBilled).toBe(true);
+    expect(detail.materialsCost).toBe('20');
+    const waiting = json<{ items: { id: string; partsNotYetBilled: boolean }[] }>(
+      await call(owner, 'GET', '/v1/finance/invoices?partsNotBilled=true'),
+    );
+    expect(waiting.items).toEqual([
+      expect.objectContaining({
+        id: json<{ invoice: { id: string } }>(first).invoice.id,
+        partsNotYetBilled: true,
+      }),
+    ]);
+
+    // The follow-up bills just the part not yet billed, and no labour again.
+    const followUp = await call(owner, 'POST', '/v1/finance/invoices/from-job', {
+      workOrderId: job.workOrder.id,
+    });
+    expect(followUp.statusCode, followUp.body).toBe(201);
+    const { lines } = json<{
+      lines: { workOrderMaterialId: string | null; quantity: string }[];
+    }>(followUp);
+    expect(lines).toEqual([
+      expect.objectContaining({ workOrderMaterialId: detail.materials[1]!.id, quantity: '1' }),
+    ]);
+    expect((await seen(job)).partsNotYetBilled).toBe(false);
+    const again = await call(owner, 'POST', '/v1/finance/invoices/from-job', {
+      workOrderId: job.workOrder.id,
+    });
+    expect(code(again)).toBe('job_already_invoiced');
+
+    // Returning an unused part stays allowed.
+    const back = await call(
+      engineer,
+      'POST',
+      `/v1/work-orders/${job.workOrder.id}/materials/${detail.materials[0]!.id}/return`,
+      { quantity: '1' },
+      randomUUID(),
+    );
+    expect(back.statusCode, back.body).toBe(201);
+  });
+
+  it('refuses parts on a cancelled job from everywhere, and on an invoiced job from the office', async () => {
+    const washer = await newItem();
+    const job = await newJob([engineer]);
+    const vanId = json<Detail>(await call(engineer, 'GET', `/v1/work-orders/${job.workOrder.id}`))
+      .van!.id;
+    await stock(washer.id, vanId, '5');
+    const before = new Date(Date.now() - 60_000);
+    await move(job, ['cancelled'], 'Customer cancelled');
+    expect(await push(job, washer.id, before)).toMatchObject({
+      outcome: 'rejected',
+      code: 'work_order_closed',
+    });
+    const refused = await use(engineer, job, { itemId: washer.id, quantity: '1' });
+    expect(code(refused)).toBe('work_order_closed');
+    expect(await onHand(washer.id, vanId)).toBe('5');
+
+    // Reopened after it was invoiced: the office cannot add parts nobody would bill.
+    const invoiced = await newJob([engineer]);
+    await use(engineer, invoiced, { itemId: washer.id, quantity: '1' });
+    await move(invoiced, ['dispatched', 'on_site', 'in_progress', 'complete']);
+    const bill = await call(owner, 'POST', '/v1/finance/invoices/from-job', {
+      workOrderId: invoiced.workOrder.id,
+    });
+    expect(bill.statusCode, bill.body).toBe(201);
+    await move(invoiced, ['in_progress'], 'One more check', owner);
+    const late = await use(engineer, invoiced, { itemId: washer.id, quantity: '1' });
+    expect(late.statusCode).toBe(409);
+    expect(code(late)).toBe('work_order_invoiced');
+    expect((await seen(invoiced)).can.recordParts).toBe(false);
+  });
+});

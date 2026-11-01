@@ -22,7 +22,7 @@ Your dashboard, inside the Next.js app on a separately authorised route.
 - [x] Platform audit log, searchable, immutable, showing every super admin action
 - [x] Per-company activity: active users, jobs per month, submissions, ~~API calls~~ recorded actions
 - [x] Feature flags per company
-- [x] Global announcement banner pushed to desktop, mobile and web
+- [x] Global announcement banner pushed to desktop, mobile and web (October 2026, see below)
 - [x] Global form template library management
 - [x] Support toolkit: recent errors for a company, resend invite, reset MFA, unlock account, clear a stuck sync queue
 - [~] Release view: which desktop and mobile versions are live in the field — mobile only; see below
@@ -42,6 +42,16 @@ the real account, like the media suite.
 
 Suspension is stricter than "read-only": every request is refused, reads included. The decision
 and its cost are written up in [docs/platform](../../docs/platform/README.md).
+
+**The announcement banner was ticked before any screen showed it.** The API delivered
+announcements in `/v1/me` and dunning posted payment reminders as announcements, but no web or
+desktop screen drew them (pre-production audit, 31 October 2026, High 12). The web company
+workspace and the desktop app frame now show them through one shared component,
+`AnnouncementBanners` in `@integr8/operations-dom`: severity in words and colour, the reader's
+language with a fallback, dismissal remembered per device, focus kept, gone when they end (see
+[docs/platform](../../docs/platform/README.md#what-the-apps-are-told)). The phone keeps the
+last announcements it heard from `/v1/me` in its local database and shows them at the top of
+Today, offline too, with the same dismissal per device.
 
 ## Notes
 
@@ -138,6 +148,36 @@ fixed, and the first two have regression tests.
   reads up to a millisecond ahead _after_ the round trip — so a banner somebody had just posted
   could be missing from the next `/v1/me`, which is the worst possible moment for the one that
   says the system is going down. It now compares against the database's clock.
+- **The purge still failed on real companies, found in the October 2026 audit.** Tried on the
+  101 companies the integration suites leave behind, 20 could not be purged: a published form
+  version refuses deletion for every role, deleting sites wrote fresh `sync_touches` after that
+  table had been emptied, a quote converted into an order and that order point at each other,
+  an approved purchase order's lines refuse to change, an `on delete set null` key blanked
+  `ai_messages.tenant_id`, and a storage counter went below zero. The bucket was already gone,
+  and the error escaped the worker's single try/catch, so deadline alerts, maintenance jobs and
+  certificate warnings stopped for every company. Migration 0055 runs the purge with triggers
+  and foreign-key checks suspended (all 101 now purge, with nothing left and no other company
+  touched), `tenant-purge.integration.test.ts` pins why that is safe, and each worker step and
+  each due company now fails on its own.
+- **The export had fallen eight migrations behind, found in the same audit.** Its hand-written
+  table list had no documents (0048), no e-invoicing (0049, including the Tax Authority
+  submission history, which is a tax record), no visits (0051) and not the company's own
+  settings. They are exported now, without the sealed values (the Tax Authority login, HR's
+  sealed numbers, signing nonces, the quote link hash), which are left out of the query itself.
+  Every company table that stays out is named with its reason in `NOT_EXPORTED_TABLES`, a
+  record typed so a missing table is a compile error, and
+  `tenant-data-export.integration.test.ts` compares both lists with every table whose
+  `tenant_id` references `tenants`.
+
+- **Company app builds from the dashboard were half-built (finished 2026-10-31).**
+  `apps/api/src/platform/app-builds.ts` could dispatch `build-company-apps.yml`, but no route
+  called it. Saving a company's settings with **Build apps** newly on now starts its first build,
+  **Rebuild apps** (`POST /v1/platform/companies/:tenantId/app-builds`) starts another, and the
+  panel links the run (GitHub's `return_run_details`) or the workflow's runs. Both are audited as
+  `tenant.app_build_requested`. `APP_BUILDS=off` stays the default and keeps building manual;
+  `github` with no token or repository refuses to start. Covered by
+  `app-builds.test.ts` (a stand-in GitHub) and `app-builds.integration.test.ts` (the recording
+  trigger).
 
 ## Worth fixing next, found here but not P15's
 

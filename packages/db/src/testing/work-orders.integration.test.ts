@@ -526,6 +526,64 @@ describe('the state machine, for every client', () => {
     });
   });
 
+  it('marks a draft submitted after its job closed, once, and writes it to the job’s history (0061)', async () => {
+    const job = await newJob([{ userId: ENGINEER, lead: true }]);
+    const draft = await inTenant((tx) =>
+      tx.submissions.startDraft({
+        formVersionId: requiredFormVersion,
+        submittedBy: ENGINEER,
+        workOrderId: job.id,
+      }),
+    );
+    const cancelled = await inTenant((tx) =>
+      tx.workOrders.transition(job.id, job.revision, 'cancelled', DISPATCHER, 'Customer cancelled'),
+    );
+    expect(cancelled.outcome).toBe('written');
+
+    const submitted = await inTenant((tx) =>
+      tx.submissions.submit(
+        draft.id,
+        { note: 'done on site' },
+        draft.revision,
+        ENGINEER,
+        undefined,
+        null,
+        {
+          afterClose: true,
+        },
+      ),
+    );
+    expect(submitted).toMatchObject({
+      outcome: 'written',
+      submission: { status: 'submitted', submittedAfterClose: true },
+    });
+    const events = await inTenant((tx) => tx.workOrders.listEvents(job.id));
+    expect(events.find((event) => event.kind === 'form_submitted_after_close')).toMatchObject({
+      actorId: ENGINEER,
+      details: { submissionId: draft.id, title: 'Gas safety record' },
+    });
+    const forms = await inTenant((tx) => tx.workOrders.listForms(job.id));
+    expect(forms.find((form) => form.formId === requiredFormId)?.submission).toMatchObject({
+      id: draft.id,
+      submittedAfterClose: true,
+    });
+
+    // Written only by that submit: never cleared, never set on anything else.
+    await expect(
+      owner.query(
+        `update submissions set submitted_after_close = false, last_actor = $1 where id = $2`,
+        [ENGINEER, draft.id],
+      ),
+    ).rejects.toThrow(/only by submitting its draft/u);
+    await expect(
+      owner.query(
+        `insert into submissions (tenant_id, form_id, form_version_id, answers, submitted_by, last_actor, submitted_after_close)
+         select tenant_id, form_id, form_version_id, '{}', submitted_by, last_actor, true from submissions where id = $1`,
+        [draft.id],
+      ),
+    ).rejects.toThrow(/cannot start as submitted after close/u);
+  });
+
   it('refuses a submission for a form that is not one of the job’s, and never moves one to another job', async () => {
     const other = await publishForm('Unrelated form');
     const job = await newJob();

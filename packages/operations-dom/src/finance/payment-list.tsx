@@ -140,9 +140,14 @@ export function PaymentListScreen() {
                 </div>
                 <div className="flex flex-wrap items-center gap-3 text-sm text-content-muted tabular-nums">
                   <span>{formatDate(payment.receivedOn, { locale })}</span>
-                  <span className="text-content">
+                  <span className={payment.reversed ? 'text-content line-through' : 'text-content'}>
                     {formatAmount(payment.amount, payment.currencyCode, locale)}
                   </span>
+                  {payment.reversed ? (
+                    <span className="inline-flex items-center rounded-full border border-danger px-2 py-0.5 text-xs font-medium text-danger">
+                      {t('finance.payments.reversed')}
+                    </span>
+                  ) : null}
                   {isZeroDecimal(payment.unallocated) ? null : (
                     <span>
                       {t('finance.payments.onAccount', {

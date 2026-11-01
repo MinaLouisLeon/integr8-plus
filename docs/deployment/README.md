@@ -36,7 +36,7 @@ with tick boxes that remember your progress: download
 | Web image              | `apps/web/Dockerfile`                       | Next.js standalone server; `NEXT_PUBLIC_*` baked in at build time       |
 | Compose stack          | `deploy/compose.yml`, `deploy/.env.example` | Postgres + bootstrap + migrate + auth + api + worker + web, one machine |
 | Machine preparation    | `deploy/vps/setup.sh`, `Caddyfile.example`  | Firewall, Docker and Caddy on a fresh Ubuntu or Oracle Linux machine    |
-| Images in the registry | `.github/workflows/publish-images.yml`      | `ghcr.io/<owner>/integr8-api` and `integr8-web`, tagged per branch/sha  |
+| Images in the registry | `.github/workflows/publish-images.yml`      | `ghcr.io/<owner>/integr8-api` and `integr8-web`: `vX.Y.Z` per release   |
 | Database runbooks      | `docs/database/`                            | Migrations, nightly backups and restore                                 |
 | Sign-in server         | `docs/auth/self-hosted-auth.md`             | The Supabase Auth container: settings, secrets, rotation                |
 | Company apps           | `docs/deployment/company-apps.md`           | Installers and phone apps built per company, and the staff desktop      |
@@ -66,7 +66,7 @@ with tick boxes that remember your progress: download
    Cloud** below for the free machine this was written against.
 2. **Configuration.** `cp deploy/.env.example deploy/.env`, then:
    - set the three addresses and `API_CORS_ORIGINS`;
-   - set three database passwords (the compose Postgres is created from them);
+   - set four database passwords (the compose Postgres is created from them);
    - run `pnpm --filter @integr8/auth keygen` once and paste what it prints:
      the four signing-key lines, and the three for the Auth container
      (`SUPABASE_AUTH_JWT_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`,
@@ -81,8 +81,9 @@ with tick boxes that remember your progress: download
    ```
    On an ARM machine the same command builds ARM images; nothing changes.
    `bootstrap` creates the roles and Auth's schema, `migrate` applies ours and
-   `auth` migrates its own, then the API answers `GET /health/ready` with
-   `status: ready` and the web app starts. `docker compose ps` shows `auth`
+   `auth` migrates its own, then the API answers `GET /health/ready` (on the
+   machine: `curl -s http://127.0.0.1:3000/health/ready`) with `status: ready`
+   and the web app starts. `docker compose ps` shows `auth`
    healthy. The API and web ports are bound to `127.0.0.1`: only the proxy on
    the same machine reaches them.
 4. **Create the first super admin.** The dashboard has no self-service signup,
@@ -158,38 +159,131 @@ company data and, in its `auth` schema, every sign-in account.
 cron and keeps the last fourteen files under `/var/backups/integr8`;
 [the backup and restore runbook](../database/runbook-backup-and-restore.md)
 has the schedule, the checks and the restore. That covers a bad migration or a
-deleted company. Losing the machine needs a copy elsewhere, and this is the
-next step before a paying customer's data exists: a boot-volume backup policy
-in the cloud console (Oracle's Always Free tier includes five), or `rclone`
-from the backup directory to an R2 bucket.
+deleted company. Losing the machine needs a copy elsewhere, set up before a
+paying customer's data exists: with `BACKUP_REMOTE` in `deploy/.env` (an rclone
+remote, recommended an R2 bucket of its own behind rclone's encrypting `crypt`
+layer), the script copies each dump there and keeps the newest
+`BACKUP_REMOTE_KEEP` (30). A copy that fails makes the run fail with an `ERROR`
+line, and `BACKUP_PING_URL` tells a heartbeat monitor about every night, good
+or bad. Without `BACKUP_REMOTE` each run says the dump is on this machine only.
+A boot-volume backup policy in the Oracle console is a useful second layer
+(check the schedule the console shows for it), but it stays in the same
+account as the machine.
+
+`deploy/vps/restore-drill.sh` proves a dump restores without going near the
+live database: it loads the newest dump, or with `--remote` the newest
+off-machine copy, into a throwaway Postgres container with no network, checks
+the migrations, row counts, policies and grants that came back, times it,
+removes the container and prints a row for the runbook's rehearsal log. Run it
+monthly; the runbook also has the six-monthly full rehearsal on the test box.
 
 Container logs are capped at 50 MB per container by the `x-logging` block in
 `deploy/compose.yml`, so a chatty week cannot fill the disk.
+
+## Security headers
+
+`deploy/vps/Caddyfile.example` sends `Strict-Transport-Security: max-age=31536000`
+for both names, deliberately without `includeSubDomains` or `preload`: other
+names under the domain (the test box behind its tunnel, mail, the MyRooms
+project) are not this file's to commit to HTTPS, and a preload entry takes
+months to undo. The API's name also gets `X-Content-Type-Options: nosniff`,
+`Referrer-Policy: no-referrer` and `X-Frame-Options: DENY`.
+
+The web app sets its own (`apps/web/src/lib/content-security-policy.ts`, read by
+`next.config.ts` at build time): the enforced `Content-Security-Policy:
+frame-ancestors 'none'`, `X-Frame-Options`, `nosniff` and a referrer policy,
+plus a full policy sent as `Content-Security-Policy-Report-Only`. It allows
+scripts and styles from the site itself (inline too: the App Router streams
+page data in inline scripts, and nonces would make every page dynamic),
+`connect-src` to the API (`NEXT_PUBLIC_API_BASE_URL`), R2
+(`*.r2.cloudflarestorage.com`, for presigned uploads and downloads) and the
+Sentry ingest host, images from the site, `data:`, `blob:`, the API and R2,
+and no plugins, foreign `<base>` or form targets. With a DSN
+(`NEXT_PUBLIC_SENTRY_DSN`), violations are reported to Sentry's CSP endpoint
+(`report-uri` and `Reporting-Endpoints`). Once the reports have been quiet for
+a couple of weeks, the policy moves to the enforced header in one change in
+that file.
+
+The desktop app's policy is in `apps/desktop/src-tauri/tauri.conf.json`, and
+Tauri enforces it: scripts from the app only, the API (stamped in per build by
+`apps/desktop/scripts/stamp.mjs`), R2 and Sentry, nothing else.
+
+Checked on the machine (setup guide, Stage 4):
+
+```bash
+curl -sI https://api.your-domain.example/health | grep -iE 'strict-transport|x-content-type|x-frame|referrer-policy'
+curl -sI https://app.your-domain.example | grep -iE 'strict-transport|content-security'
+```
+
+## Health checks and the heartbeat
+
+`/health` (the process is running) and `/health/ready` (the database answers
+and its schema fits this build) are for the machine, not the internet: they
+name the release and what is failing. `deploy/vps/Caddyfile.example` answers
+404 for both on the API's public name. Docker's health check calls
+`/health/ready` inside the container, and readiness reuses the API's platform
+pool and keeps its answer for ten seconds, so frequent calls cost one query.
+
+An outside uptime check therefore cannot use them. Instead
+`deploy/vps/heartbeat.sh` runs from root's cron every five minutes, asks
+`http://127.0.0.1:3000/health/ready` itself, and calls `HEALTH_PING_URL` (a
+heartbeat in Better Stack, healthchecks.io or UptimeRobot) when the API is
+ready, or that URL with `/fail` added when it is not (`HEALTH_PING_FAIL=off`
+for a monitor with no `/fail` address). The monitor alerts on a failure and on
+silence, which also covers the machine or cron being down. It reads
+`deploy/.env` line by line, never with `source`. Setup guide, Stage 9 part C.
+
+```bash
+# sudo crontab -e
+*/5 * * * * /opt/integr8/deploy/vps/heartbeat.sh >> /var/log/integr8-heartbeat.log 2>&1
+```
 
 ## Releasing a new version
 
 0. **Bump the version** in the root `package.json` in the pull request that
    promotes `staging` to `main`. `release-main.yml` refuses `0.0.0` and refuses
    a version that already has a release, so a merge into `main` without a bump
-   fails its release job (the images still publish). The version also stamps
-   `APP_VERSION`/`API_RELEASE` in a deployment's env file. Until signed desktop
+   fails its release job (the `:main` images still publish; no release images
+   do). The version also stamps `APP_VERSION`/`API_RELEASE` in a deployment's
+   env file. Until signed desktop
    installers are wanted (P20), set the repository variable
    `DESKTOP_BUILDS=disabled` so the release does not spend macOS and Windows
    runner minutes on unsigned builds.
 1. Merge to `staging`. `publish-images.yml` pushes `integr8-api:staging` and
-   `integr8-web:staging`.
-2. On the machine: set `API_IMAGE`/`WEB_IMAGE` in `deploy/.env` to the tags,
-   then `docker compose pull && docker compose up -d`. `migrate` runs first; the
-   API's readiness check refuses traffic until the schema matches the build.
-3. Roll back by setting the previous tag and running the same two commands.
-   Migrations are rolled back deliberately, never automatically:
-   `node node_modules/@integr8/db/dist/migrator/cli.js down --steps 1` from an
-   `api` container, after reading the migration's down file.
+   `integr8-web:staging`, which the test box runs. They, `:main` and the
+   per-commit tags move with unreleased code and are never for production.
+2. Merge to `main`. Once the release is published, `release-main.yml` calls
+   `publish-images.yml` with the release tag: `integr8-api:vX.Y.Z` and
+   `integr8-web:vX.Y.Z` for amd64 and arm64, and `latest`, which only ever
+   names the newest release. (A tag the release creates with `github.token`
+   cannot start the `v*` trigger itself, which is why it is called.) To build
+   the images of a release that already exists, run "Publish images" from the
+   Actions tab with its tag.
+3. On the machine: set `API_IMAGE`/`WEB_IMAGE` in `deploy/.env` to the new
+   release tag, then `docker compose pull && docker compose up -d`. `migrate`
+   runs first; the API's readiness check refuses traffic until the schema
+   matches the build.
+4. Roll back by setting the previous release's tag and running the same two
+   commands (release images exist from v1.2.2; an older release is gone back
+   to by checking out its tag and building). The previous image's `migrate` finds the newer release's migrations already
+   applied, applies nothing, logs that the database is ahead of its build and
+   exits cleanly; its readiness check passes with a note naming them. So the
+   API, worker and web start on the newer schema, which expand/contract
+   ([migrations.md](../database/migrations.md#rolling-back-a-release)) keeps
+   safe. Releases up to v1.2.1 predate this and stop at `migrate`: the setup
+   guide's Stage 11, part Q, has the way round it.
+5. Migrations are rolled back deliberately, never automatically, and only by
+   the release that added them, because only its image has their down files:
+   with the newer tag still set, after reading the migration's down file,
+   `docker compose run --rm api node node_modules/@integr8/db/dist/migrator/cli.js down --steps 1`,
+   then set the previous tag. The previous image refuses to roll back a
+   migration it has no file for.
 
 ## What is not here yet
 
-Copies of the nightly dumps off the machine, a rehearsed restore
-(`docs/database/runbook-backup-and-restore.md`), uptime monitoring and
-alerting, signed desktop and mobile builds (P20), and the
-rest of P19. The compose stack is a first production for testing, not the
+A restore rehearsed on the real machine (the drill script and the steps are in
+`docs/database/runbook-backup-and-restore.md`; nobody has run them there yet),
+uptime monitoring and alerting, code-signed desktop builds (P20: the
+workflows sign when the certificates' secrets exist; none have been bought
+yet), store-signed mobile builds, and the rest of P19. The compose stack is a first production for testing, not the
 final shape.

@@ -58,6 +58,23 @@ Every task is built. Four choices were made before implementation:
 
 The design is in [the working day on the phone](../../docs/mobile/job-execution.md).
 
+- **Android push and phone crash reports, set up (2026-10-31).** The pre-production audit found
+  that no build could receive a notification on Android or report a crash: Expo push on a
+  release Android build needs the Firebase project's `google-services.json` in the build, and
+  the docs said it was not needed; no profile set `EXPO_PUBLIC_SENTRY_DSN`; and a failed
+  registration was swallowed. `app.config.ts` now takes the file from the EAS file variable
+  `GOOGLE_SERVICES_JSON` when it has an app for the package (a company missing from it is built
+  without push, not refused), each `eas.json` profile names its EAS environment, a failed
+  registration goes to Sentry and the device log with the step, and the setup guide has the
+  Firebase, Sentry and EAS steps (Stage 0 parts I and J, Stage 8 part A, Stage 11 part S).
+  Checklists 4 and 5 now need a build made that way.
+- **Announcements on Today (2026-10-31).** `/v1/me` has returned the company's announcements
+  since P15, and dunning posts its payment reminders as announcements (P17), but no phone screen
+  showed them. Today now opens with them, kept on the phone with the permissions from the same
+  answer so they show offline, asked again on coming back to the app, and dismissible on the
+  phone where the announcement allows. Tested in `packages/offline/src/access.test.ts`; on a
+  phone, [checklist 4](../../docs/mobile/device-checklist.md#p14).
+
 | Claim                                                                | How it was proven so far                                                                                                                                                                                                                                                                                                                                                                                                                                                         | Still needs                       |
 | -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
 | A real engineer completes a real day using only the phone            | Every step of the day is on the phone: Today, the steps, directions, photos, checklist, forms, files, completion, sign-off, clocking out. The app bundles for Android (`expo export`, Hermes). The rules it shows (next job, the engineer's own steps, directions links, what completing needs, time) are unit tested                                                                                                                                                            | Checklist 1, observed, with notes |
@@ -77,6 +94,11 @@ The design is in [the working day on the phone](../../docs/mobile/job-execution.
   previous change and now, and to at most 31 days back. Each event also keeps `recorded_at`.
 - **Photos and sign-off are enforced by the database**, like required forms. The job type sets
   the counts, and a job copies them when it is created.
+  Since migration 0060 a form's "Signature required before close" setting asks for the
+  sign-off too, when any submission of that form is on the job; it is read from the form at
+  completion. A phone that starts such a form offline learns it on sync, from the server's
+  `incomplete` conflict (`missing.signoff`), and from `execution.signatureRequired` after the
+  next pull.
 - **Every missing thing is a detail.** `completion_blocked` replaces `required_forms_missing`, and
   the sync conflict `incomplete` replaces `forms_missing`, so clients word each one themselves.
 - **Starting work prompts for before photos but never blocks.** Completion is where they are

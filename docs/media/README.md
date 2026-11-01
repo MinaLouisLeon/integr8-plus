@@ -46,7 +46,13 @@ the API and the worker in `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` with
 `CLOUDFLARE_ACCOUNT_ID`. A client never receives it: it gets a presigned link for one
 object, one method and fifteen minutes (uploads) or five (downloads). No bucket is public.
 
-`CLOUDFLARE_API_TOKEN` (Account Analytics: Read) is only for `storage verify`.
+`CLOUDFLARE_API_TOKEN` is a second, separate Cloudflare API token with **Account Analytics:
+Read** only. The worker's nightly metering uses it to count each company's R2 operations
+(class A and B) on its daily sample and to check the ledger against the byte count Cloudflare
+bills from (below, "Checking against Cloudflare"); `storage verify` uses it as well. It is
+optional — without it every night's check is recorded as `unavailable` and no operations are
+counted — and with R2 in production the API and the worker log a warning at start-up rather
+than refuse to start.
 
 ## The upload
 
@@ -216,8 +222,15 @@ path that removes bytes rather than two.
 
 A file still referenced by a submission is taken too. That is what a retention window means —
 the record ages out — and a policy that quietly skipped anything in use would delete nothing at
-all. Every plan starts with a window, so **set them deliberately**: nothing is deleted until
-somebody does.
+all. Two kinds of file are never taken: a PDF template's images (documents ADR-0001 D5) and the
+company's logo and app icon, which are its identity rather than a record.
+
+**No plan has a window until somebody sets one.** Migration 0016 seeded 90 days on trial, 365 on
+starter and 730 on standard; new companies start on trial, so every photo, signature and issued
+PDF older than 90 days would have gone, and a correction to an old submission would have failed
+for want of its photos. Migration 0056 cleared those three seeded values (a window set on purpose
+from the dashboard was left alone). Set one only as a decision about a customer's records, and
+tell the companies on that plan first.
 
 ### There is no cron
 
@@ -252,5 +265,28 @@ refuses to start with local storage.
 - `apps/api/src/testing/media-suite.ts` — the whole pipeline through the API, run by
   `media-local.integration.test.ts` always and by `media-r2.integration.test.ts` against real
   R2 when `apps/api/.env` has credentials (it creates and deletes `integr8-test-<id>`).
+
+### Proving R2 before go-live
+
+Until the R2 suite has passed against real Cloudflare, uploads, size limits, bucket creation
+and deletion are proven on local disk only (P09's exit criteria). Two ways to run it:
+
+- **In CI, on every pull request.** Add three repository secrets — `R2_TEST_ACCOUNT_ID`,
+  `R2_TEST_ACCESS_KEY_ID`, `R2_TEST_SECRET_ACCESS_KEY` — and the database job's API step runs
+  the suite for real (`ci.yml` and `verify.yml`). Without them it skips itself, as before.
+- **Once, by hand**, from a development machine or the test box:
+
+  ```
+  CLOUDFLARE_ACCOUNT_ID=… R2_ACCESS_KEY_ID=… R2_SECRET_ACCESS_KEY=… \
+    pnpm --filter @integr8/api exec vitest run --project integration src/media/media-r2.integration.test.ts
+  ```
+
+  with the database variables of "Local development database" in `CLAUDE.md` set as for any
+  integration suite.
+
+Use a **separate Cloudflare account** (or at least a separate token) for this: the suite needs
+an account-level R2 token because it creates buckets, and such a token can delete any bucket in
+its account. Then, on the production server, `storage-cli provision --all` (setup guide, Stage 4) and `storage verify <company id>` for the first real company confirm the production account.
+
 - `apps/api/src/media/media.test.ts` and `packages/form-renderer-dom/src/compress.test.ts`
   — the pure parts.

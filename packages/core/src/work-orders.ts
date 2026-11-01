@@ -94,6 +94,15 @@ export const CLOSED_WORK_ORDER_STATES: readonly WorkOrderState[] = Object.freeze
   'cancelled',
 ]);
 
+/**
+ * States in which the job is still to be done, or being done: every state but the closed
+ * ones. What "working a job" means where a right depends on it, such as correcting a
+ * site's gate code.
+ */
+export const OPEN_WORK_ORDER_STATES: readonly WorkOrderState[] = Object.freeze(
+  WORK_ORDER_STATES.filter((state) => !CLOSED_WORK_ORDER_STATES.includes(state)),
+);
+
 /** States in which an engineer is out on the job. */
 export const ACTIVE_WORK_ORDER_STATES: readonly WorkOrderState[] = Object.freeze([
   'dispatched',

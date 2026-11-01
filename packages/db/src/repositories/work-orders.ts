@@ -99,7 +99,13 @@ export interface WorkOrderForm {
   required: boolean;
   position: number;
   /** The most recent submission of this form for this job, if anyone has started one. */
-  submission: { id: string; status: SubmissionStatus; submittedAt: Date | null } | null;
+  submission: {
+    id: string;
+    status: SubmissionStatus;
+    submittedAt: Date | null;
+    /** Arrived from a phone after the job closed (0061). */
+    submittedAfterClose: boolean;
+  } | null;
 }
 
 export interface WorkOrderComment {
@@ -711,7 +717,11 @@ export class WorkOrdersRepository extends TenantScopedRepository {
 
   /** What stands between a job and completing it, in the terms every client uses. */
   async completionMissing(job: WorkOrder): Promise<CompletionMissing> {
-    const [forms, photos] = await Promise.all([this.listForms(job.id), this.photoCounts(job.id)]);
+    const [forms, photos, signatureRequired] = await Promise.all([
+      this.listForms(job.id),
+      this.photoCounts(job.id),
+      this.signatureRequired(job),
+    ]);
     return completionMissing({
       forms: forms.map((form) => ({
         formId: form.formId,
@@ -723,8 +733,33 @@ export class WorkOrdersRepository extends TenantScopedRepository {
         before: { needed: job.beforePhotos, taken: photos.before },
         after: { needed: job.afterPhotos, taken: photos.after },
       },
-      signoff: { required: job.signatureRequired, recorded: job.signoff !== null },
+      signoff: { required: signatureRequired, recorded: job.signoff !== null },
     });
+  }
+
+  /**
+   * Whether the job needs the customer's sign-off before it completes: its job
+   * type asks for one, or a form filled on it does (0060). The form's own
+   * setting is read, not the version filled — see the migration for why.
+   */
+  async signatureRequired(job: WorkOrder): Promise<boolean> {
+    if (job.signatureRequired) {
+      return true;
+    }
+    const row = await this.db
+      .selectFrom('submissions')
+      .innerJoin('forms', (join) =>
+        join
+          .onRef('forms.tenant_id', '=', 'submissions.tenant_id')
+          .onRef('forms.id', '=', 'submissions.form_id'),
+      )
+      .select('submissions.id')
+      .where('submissions.tenant_id', '=', this.tenantId)
+      .where('submissions.work_order_id', '=', job.id)
+      .where('forms.signature_required', '=', true)
+      .limit(1)
+      .executeTakeFirst();
+    return row !== undefined;
   }
 
   /** Before and after photos on a job, not removed. */
@@ -994,7 +1029,12 @@ export class WorkOrdersRepository extends TenantScopedRepository {
         (eb) =>
           eb
             .selectFrom('submissions')
-            .select(['submissions.id', 'submissions.status', 'submissions.submitted_at'])
+            .select([
+              'submissions.id',
+              'submissions.status',
+              'submissions.submitted_at',
+              'submissions.submitted_after_close',
+            ])
             .where('submissions.tenant_id', '=', this.tenantId)
             .whereRef('submissions.work_order_id', '=', 'work_order_forms.work_order_id')
             .whereRef('submissions.form_id', '=', 'work_order_forms.form_id')
@@ -1015,6 +1055,7 @@ export class WorkOrdersRepository extends TenantScopedRepository {
         'latest.id as submission_id',
         'latest.status as submission_status',
         'latest.submitted_at as submission_submitted_at',
+        'latest.submitted_after_close as submission_after_close',
       ])
       .where('work_order_forms.tenant_id', '=', this.tenantId)
       .where('work_order_forms.work_order_id', '=', workOrderId)
@@ -1033,6 +1074,7 @@ export class WorkOrdersRepository extends TenantScopedRepository {
               id: row.submission_id,
               status: row.submission_status,
               submittedAt: row.submission_submitted_at,
+              submittedAfterClose: row.submission_after_close === true,
             },
     }));
   }

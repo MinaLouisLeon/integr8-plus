@@ -42,3 +42,32 @@ Code signing, store submission and release channels. **Start the certificate wor
   application during v0.3, not here.
 - Over-the-air updates cover JavaScript only. A native module change still needs a store
   release — plan native changes into release trains.
+
+## Progress
+
+- **Release images (2026-10-31).** The version release calls `publish-images.yml` after the
+  release is published, so every release has `integr8-api:vX.Y.Z` and `integr8-web:vX.Y.Z`
+  (amd64 + arm64), and `latest` names the newest release only. Production pins
+  `API_IMAGE`/`WEB_IMAGE` to a release tag; `:main` and `:staging` are unreleased and for the
+  test box. A tag created with `github.token` never started the `v*` trigger, which is why no
+  release image existed before; "Publish images" can be run by hand with a tag for a release
+  that already exists (v1.2.2).
+- **Desktop auto-update (2026-10-31).** Release builds (staff and company) set
+  `createUpdaterArtifacts` when `TAURI_SIGNING_PRIVATE_KEY` exists, so Tauri signs each
+  bundle; `collect-bundles.mjs` names the assets so GitHub keeps them and writes each
+  platform's part of the manifest, and `updater-manifest.mjs` attaches `latest.json` to
+  the release. The web app serves it at `/desktop-updates/<staff|slug>/{{target}}/{{arch}}/{{current_version}}`
+  (`apps/web/src/lib/desktop-updates.ts`), from the newest `v*` / `company-<slug>-v*`
+  release, cached five minutes; `GITHUB_RELEASES_TOKEN` makes it pass downloads through
+  if the repository becomes private. The app asks on start and every six hours and shows
+  an "Install now" strip (`apps/desktop/src/components/update-banner.tsx`): Tauri 2 never
+  checked by itself, and the v1 `dialog` setting did nothing, so no installed app had
+  ever been offered an update. Nightlies keep the placeholder feed. Still to do: a real
+  update from one release to the next on Windows, macOS and Linux, and a rollback test.
+- **Optional OS code signing (2026-10-31).** Both desktop workflows sign Windows
+  installers with a .pfx certificate (`WINDOWS_CERTIFICATE`) or Azure Artifact Signing
+  (`AZURE_*`), and sign and notarise macOS builds (`APPLE_CERTIFICATE`,
+  `APPLE_SIGNING_IDENTITY`, notarised with the `ASC_*` key or `APPLE_ID`), each only when
+  all of its secrets exist; otherwise unsigned as before. No certificate has been
+  bought: the exit criterion "installs without warnings" waits for them. Install notes
+  for unsigned builds are in `docs/deployment/company-apps.md`.

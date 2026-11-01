@@ -17,6 +17,13 @@ import {
  * expenses are one's own. Results are counts and short rows, never a dump,
  * and amounts stay decimal strings. An empty answer is the same whether
  * nothing matched or nothing was allowed.
+ *
+ * **Counts and totals are exact.** They are counted and summed in the
+ * database, never worked out from a page of rows: the first version read the
+ * newest hundred invoices and called that the company's debt, capped customers
+ * and assets at two hundred and the pipeline at five hundred. A list a tool
+ * returns is short on purpose, and says how many exist in total beside it
+ * (`total…` fields), so the model can say "the 10 oldest of 37".
  */
 
 const OPEN_STATES = WORK_ORDER_STATES.filter(
@@ -112,29 +119,28 @@ const workOrderSummary = defineTool({
 const customerSummary = defineTool({
   key: 'get_customer_summary',
   description:
-    'How many customers the company has by status (active, on hold, closed), and a few matching a search by name.',
+    'Exactly how many customers the company has by status (active, on hold, closed), and a few matching a search by name. `totalMatches` is how many match in all; say so when it is more than the rows returned.',
   minLevel: 'insights',
   permission: 'customer.read',
   dataClass: 'company_operational',
   inputSchema: z.object({ search: z.string().max(100).optional(), limit: boundedLimit(10) }),
   maxRows: 10,
   async execute(context, input) {
-    const counts = { active: 0, on_hold: 0, closed: 0 };
-    for (const status of ['active', 'on_hold', 'closed'] as const) {
-      const page = await context.tx.customers.list({ statuses: [status], limit: 100 });
-      counts[status] = page.items.length + (page.next === undefined ? 0 : 100);
+    const counts = await context.tx.customers.countByStatus();
+    const search = input.search?.trim() ?? '';
+    if (search === '') {
+      return { counts, matches: [], totalMatches: 0 };
     }
-    const matches =
-      input.search === undefined || input.search.trim() === ''
-        ? []
-        : (
-            await context.tx.customers.list({ text: input.search.trim(), limit: input.limit })
-          ).items.map((customer) => ({
-            name: customer.name,
-            status: customer.status,
-            city: customer.address.city ?? null,
-          }));
-    return { counts, matches };
+    const found = await context.tx.customers.list({ text: search, limit: input.limit });
+    return {
+      counts,
+      matches: found.items.map((customer) => ({
+        name: customer.name,
+        status: customer.status,
+        city: customer.address.city ?? null,
+      })),
+      totalMatches: await context.tx.customers.countMatching(search),
+    };
   },
   summarise(output, locale) {
     return locale === 'ar'
@@ -150,7 +156,7 @@ const customerSummary = defineTool({
 const pipelineSummary = defineTool({
   key: 'get_crm_pipeline_summary',
   description:
-    'Open opportunities by pipeline stage: how many, and their total amount per currency. Uses the default pipeline unless one is named.',
+    'Open opportunities by pipeline stage: exactly how many, and their total amount per currency. Uses the default pipeline unless one is named.',
   minLevel: 'insights',
   permission: 'crm.read',
   feature: 'crm',
@@ -167,31 +173,19 @@ const pipelineSummary = defineTool({
     if (pipeline === undefined) {
       return { pipeline: null, stages: [] };
     }
-    const open = await context.tx.crmOpportunities.list({ statuses: ['open'], limit: 500 });
+    // Summed in the database, in decimal: never a JavaScript float, and never
+    // a page of rows standing in for all of them.
+    const totals = await context.tx.crmOpportunities.openTotalsByStage();
     const stages = pipeline.stages
       .filter((stage) => stage.archivedAt === null)
       .map((stage) => {
-        const inStage = open.items.filter((opportunity) => opportunity.stageId === stage.id);
-        const totals = new Map<string, bigint>();
-        for (const opportunity of inStage) {
-          if (opportunity.amount === null) {
-            continue;
-          }
-          // Decimal strings summed in minor units: never a JavaScript float.
-          const [whole = '0', fraction = ''] = opportunity.amount.split('.');
-          const minor = BigInt(whole) * 100n + BigInt((fraction + '00').slice(0, 2));
-          totals.set(
-            opportunity.currencyCode,
-            (totals.get(opportunity.currencyCode) ?? 0n) + minor,
-          );
-        }
+        const inStage = totals.filter((row) => row.stageId === stage.id);
         return {
           stage: stage.label,
-          count: inStage.length,
-          totals: [...totals.entries()].map(([currency, minor]) => ({
-            currency,
-            amount: `${String(minor / 100n)}.${String(minor % 100n).padStart(2, '0')}`,
-          })),
+          count: inStage.reduce((sum, row) => sum + row.count, 0),
+          totals: inStage
+            .filter((row) => row.amount !== null)
+            .map((row) => ({ currency: row.currencyCode, amount: row.amount ?? '0' })),
         };
       });
     return { pipeline: pipeline.name, stages };
@@ -211,7 +205,7 @@ const pipelineSummary = defineTool({
 const invoiceSummary = defineTool({
   key: 'get_invoice_summary',
   description:
-    'Issued invoices still owing: how many, how much per currency, and how many are overdue. Optionally for one customer. No bank details or internal notes.',
+    'What customers owe, exactly, over every issued invoice still owing (partly paid ones included): how many are unpaid and overdue, the amount owed and overdue per currency, the customers owing most, and the overdue invoices longest past due. Optionally for one customer. `customersOwing` and `overdue` are the totals behind the short lists; say so when the lists are shorter. No bank details or internal notes.',
   minLevel: 'insights',
   permission: 'finance.read',
   feature: 'finance',
@@ -219,55 +213,31 @@ const invoiceSummary = defineTool({
   inputSchema: z.object({ customerId: z.uuid().optional(), limit: boundedLimit(10) }),
   maxRows: 10,
   async execute(context, input) {
-    const page = await context.tx.financeInvoices.listInvoices({
-      statuses: ['issued'],
+    const summary = await context.tx.financeInvoices.receivablesSummary({
+      today: day(context),
       ...(input.customerId === undefined ? {} : { customerId: input.customerId }),
-      limit: 100,
+      customersLimit: input.limit,
+      oldestLimit: input.limit,
     });
-    const amounts = await context.tx.financeInvoices.invoiceAmounts(page.items.map((i) => i.id));
-    const today = day(context);
-    const owing = new Map<string, bigint>();
-    let unpaid = 0;
-    let overdue = 0;
-    const oldest: {
-      reference: string;
-      dueDate: string | null;
-      balance: string;
-      currency: string;
-    }[] = [];
-    for (const invoice of page.items) {
-      const amount = amounts.get(invoice.id);
-      if (amount === undefined) {
-        continue;
-      }
-      const [whole = '0', fraction = ''] = amount.balance.split('.');
-      const minor = BigInt(whole) * 100n + BigInt((fraction + '00').slice(0, 2));
-      if (minor <= 0n) {
-        continue;
-      }
-      unpaid += 1;
-      owing.set(invoice.currencyCode, (owing.get(invoice.currencyCode) ?? 0n) + minor);
-      if (invoice.dueDate !== null && invoice.dueDate < today) {
-        overdue += 1;
-      }
-      if (oldest.length < input.limit) {
-        oldest.push({
-          reference:
-            invoice.reference === null ? '' : `INV-${String(invoice.reference).padStart(6, '0')}`,
-          dueDate: invoice.dueDate,
-          balance: amount.balance,
-          currency: invoice.currencyCode,
-        });
-      }
-    }
     return {
-      unpaid,
-      overdue,
-      owing: [...owing.entries()].map(([currency, minor]) => ({
-        currency,
-        amount: `${String(minor / 100n)}.${String(minor % 100n).padStart(2, '0')}`,
+      unpaid: summary.unpaid,
+      overdue: summary.overdue,
+      owing: summary.owing,
+      customersOwing: summary.customersOwing,
+      topCustomers: summary.byCustomer.map((row) => ({
+        customer: row.customer,
+        currency: row.currency,
+        invoices: row.invoices,
+        amount: row.amount,
       })),
-      oldest,
+      oldestOverdue: summary.oldestOverdue.map((invoice) => ({
+        reference:
+          invoice.reference === null ? '' : `INV-${String(invoice.reference).padStart(6, '0')}`,
+        customer: invoice.customer,
+        dueDate: invoice.dueDate,
+        balance: invoice.balance,
+        currency: invoice.currency,
+      })),
     };
   },
   summarise(output, locale) {
@@ -284,7 +254,7 @@ const invoiceSummary = defineTool({
 const inventorySummary = defineTool({
   key: 'get_inventory_summary',
   description:
-    'Items below their reorder level, with how much is on hand against the minimum, by location. Stock levels only; no costs.',
+    'Items below their reorder level, with how much is on hand against the minimum, by location. `totalBelowMinimum` is how many in all; say so when the list is shorter. Stock levels only; no costs.',
   minLevel: 'insights',
   permission: 'inventory.read',
   feature: 'inventory',
@@ -301,6 +271,7 @@ const inventorySummary = defineTool({
     ]);
     const locations = await context.tx.inventoryStock.listLocations({ includeArchived: true });
     return {
+      totalBelowMinimum: await context.tx.inventoryStock.countBelowMinimum(),
       lowStock: low.map((balance) => ({
         item: items.find((item) => item.id === balance.itemId)?.name ?? '',
         sku: items.find((item) => item.id === balance.itemId)?.sku ?? '',
@@ -311,7 +282,7 @@ const inventorySummary = defineTool({
     };
   },
   summarise(output, locale) {
-    const count = output.lowStock.length;
+    const count = output.totalBelowMinimum;
     return locale === 'ar'
       ? `${String(count)} صنف تحت حد إعادة الطلب`
       : `${String(count)} item${count === 1 ? '' : 's'} below reorder level`;
@@ -325,7 +296,7 @@ const inventorySummary = defineTool({
 const assetServiceSummary = defineTool({
   key: 'get_asset_service_summary',
   description:
-    'Assets whose warranty ends within the next days (default 30), and the count of assets by status. Engineers see assets at the sites they work.',
+    'Assets whose warranty ends within the next days (default 30), and exactly how many assets there are by status. `totalWarrantyEndingSoon` is how many in all; say so when the list is shorter. Engineers see assets at the sites they work.',
   minLevel: 'insights',
   permission: 'asset.read',
   feature: 'assets',
@@ -349,15 +320,16 @@ const assetServiceSummary = defineTool({
       warrantyEndsBy: until,
       limit: input.limit,
     });
-    const active = await context.tx.assets.list({ ...scope, statuses: ['active'], limit: 100 });
-    const retired = await context.tx.assets.list({
+    const counts = await context.tx.assets.countByStatus(scope);
+    const ending = await context.tx.assets.countByStatus({
       ...scope,
-      statuses: ['retired', 'out_of_service'],
-      limit: 100,
+      warrantyEndsFrom: today,
+      warrantyEndsBy: until,
     });
     return {
-      inService: active.items.length + (active.next === undefined ? 0 : 100),
-      retired: retired.items.length + (retired.next === undefined ? 0 : 100),
+      inService: counts.active ?? 0,
+      retired: (counts.retired ?? 0) + (counts.out_of_service ?? 0),
+      totalWarrantyEndingSoon: ending.active ?? 0,
       warrantyEndingSoon: expiring.items.map((asset) => ({
         reference: `AS-${String(asset.reference).padStart(6, '0')}`,
         name: asset.name,
@@ -366,7 +338,7 @@ const assetServiceSummary = defineTool({
     };
   },
   summarise(output, locale) {
-    const count = output.warrantyEndingSoon.length;
+    const count = output.totalWarrantyEndingSoon;
     return locale === 'ar'
       ? `${String(count)} أصل ينتهي ضمانه قريبًا`
       : `${String(count)} asset${count === 1 ? '' : 's'} with warranty ending soon`;

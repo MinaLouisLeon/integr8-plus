@@ -1,5 +1,5 @@
 import { withTenant } from '@integr8/db';
-import { createHash } from 'node:crypto';
+import { createHash, createHmac, hkdfSync } from 'node:crypto';
 import { conflict } from './errors.js';
 import type { HandlerResult, RequestContext } from './routes.js';
 
@@ -19,16 +19,100 @@ import type { HandlerResult, RequestContext } from './routes.js';
  */
 
 /**
+ * The key request fingerprints are made with, derived from `PLATFORM_SECRET_KEY`.
+ *
+ * Derived rather than a setting of its own: every deployment already holds that
+ * secret, and a fixed label makes this key useless for anything else it
+ * protects. Changing `PLATFORM_SECRET_KEY` changes every fingerprint, which
+ * costs no more than a retry within the next day being refused as reused.
+ */
+export function fingerprintKeyFrom(platformSecretKey: string): Buffer {
+  return Buffer.from(
+    hkdfSync(
+      'sha256',
+      Buffer.from(platformSecretKey, 'utf8'),
+      Buffer.alloc(0),
+      'integr8 idempotency request fingerprint v1',
+      32,
+    ),
+  );
+}
+
+/**
  * A stable fingerprint of a request.
  *
  * Object keys are serialised in sorted order, so two JSON bodies that differ
  * only in key order fingerprint the same — otherwise a client that rebuilt its
  * payload between retries would look like it had changed the request.
+ *
+ * Keyed (HMAC-SHA256) and without the body's secrets ({@link withoutSecrets}).
+ * It used to be a plain SHA-256 of the whole body, so the fingerprint stored
+ * for Change password let anybody who read `idempotency_keys` test guesses at
+ * the new password offline. Now a stored fingerprint says nothing without the
+ * server's key, and a password never reaches it at all.
  */
-export function fingerprintRequest(method: string, path: string, body: unknown): string {
-  return createHash('sha256')
-    .update([method.toUpperCase(), path, canonicalise(body)].join('\n'), 'utf8')
+export function fingerprintRequest(
+  key: Buffer,
+  method: string,
+  path: string,
+  body: unknown,
+): string {
+  return createHmac('sha256', key)
+    .update(canonicalRequest(method, path, withoutSecrets(path, body)), 'utf8')
     .digest('hex');
+}
+
+/**
+ * The fingerprint as it was made before {@link fingerprintRequest} was keyed.
+ *
+ * Only ever compared, never stored: a retry of a request first seen by the
+ * previous release still matches its record rather than being refused as a
+ * different request. Records last 24 hours and a phone's changes
+ * `SYNC_REPLAY_DAYS`; once that long has passed since the keyed release went
+ * out, this and its callers can go.
+ */
+export function legacyFingerprint(method: string, path: string, body: unknown): string {
+  return createHash('sha256')
+    .update(canonicalRequest(method, path, body), 'utf8')
+    .digest('hex');
+}
+
+function canonicalRequest(method: string, path: string, body: unknown): string {
+  return [method.toUpperCase(), path, canonicalise(body)].join('\n');
+}
+
+/** Field names that hold a password, a secret or a token, wherever they appear. */
+const SECRET_FIELD = /password|secret|token$/iu;
+
+/** Paths where `code` is a one-time sign-in code rather than, say, an item code. */
+const SIGN_IN_PATH = /^\/v1\/(auth|me)\//u;
+
+/** A one-time code's field name, on a sign-in path. */
+const CODE_FIELD = /^(code|otp)$/iu;
+
+/**
+ * The body with every secret-bearing field left out, at any depth.
+ *
+ * Leaving one out means two requests that differ only in it fingerprint the
+ * same: a retry that changed its password replays the first answer rather
+ * than being refused. That is the right way round for a secret.
+ */
+export function withoutSecrets(path: string, body: unknown): unknown {
+  const signIn = SIGN_IN_PATH.test(path);
+  const strip = (value: unknown): unknown => {
+    if (value === null || typeof value !== 'object') {
+      return value;
+    }
+    if (Array.isArray(value)) {
+      return value.map(strip);
+    }
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .filter(([name]) => !SECRET_FIELD.test(name) && !(signIn && CODE_FIELD.test(name)))
+        .map(([name, entry]) => [name, strip(entry)]),
+    );
+  };
+  return strip(body);
 }
 
 function canonicalise(value: unknown): string {
@@ -65,7 +149,12 @@ export async function withIdempotency(
     return execute();
   }
 
-  const fingerprint = fingerprintRequest(request.method, request.path, request.body);
+  const fingerprint = fingerprintRequest(
+    context.services.requestFingerprintKey,
+    request.method,
+    request.path,
+    request.body,
+  );
   const expiresAt = new Date(Date.now() + context.config.API_IDEMPOTENCY_TTL_SECONDS * 1000);
 
   const claim = await withTenant(context.principal.tenantId, (tx) =>
@@ -75,6 +164,7 @@ export async function withIdempotency(
       method: request.method,
       path: request.path,
       requestFingerprint: fingerprint,
+      alsoMatches: [legacyFingerprint(request.method, request.path, request.body)],
       expiresAt,
     }),
   );

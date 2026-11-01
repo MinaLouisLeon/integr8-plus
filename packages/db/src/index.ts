@@ -19,12 +19,14 @@
  */
 
 export {
+  assertPlatformRoleIsLimited,
   AuthRoleTooBroadError,
   closeDatabase,
   configureDatabase,
   getAuthDataSource,
   getPlatformDataSource,
   getTenantDataSource,
+  PlatformRoleTooBroadError,
   RlsNotEnforcedError,
   withTenant,
   type AuthDataSource,
@@ -39,12 +41,13 @@ export {
   loadDatabaseConfig,
   requireAdminConnectionString,
   requireAuthConnectionString,
+  requirePlatformConnectionString,
   type DatabaseConfig,
 } from './config.js';
 
 export { MissingTenantScopeError } from './tenant-guard.js';
 
-export { assertSchemaUpToDate, SchemaOutOfDateError } from './migrator/status.js';
+export { assertSchemaUpToDate, SchemaOutOfDateError, type SchemaCheck } from './migrator/status.js';
 
 export {
   CLIENT_APPS,
@@ -182,6 +185,7 @@ export type {
 } from './repositories/tenant-lifecycle.js';
 
 export type {
+  MaintenanceFailure,
   PlatformHealthRepository,
   PlatformInsightsRepository,
   RecentFailure,
@@ -204,6 +208,8 @@ export {
 export { type DemoCounts, DemoDataRepository } from './repositories/demo-data.js';
 export {
   DEFAULT_SETTINGS,
+  MONEY_RECORD_KINDS,
+  type MoneyRecordKind,
   type TenantSettings,
   TenantSettingsRepository,
   TenantSettingsWriter,
@@ -501,6 +507,13 @@ export {
   WebsiteKeysRepository,
 } from './repositories/documents.js';
 export {
+  HOUSEKEEPING_BATCH_SIZE,
+  HOUSEKEEPING_MAX_BATCHES,
+  type HousekeepingCutoffs,
+  type HousekeepingReport,
+  HousekeepingRepository,
+} from './repositories/housekeeping.js';
+export {
   DEFAULT_ETA_SETTINGS,
   EMPTY_ETA_ADDRESS,
   type EtaAddress,
@@ -543,6 +556,7 @@ export {
   type InvoiceLine,
   type InvoiceLineInput,
   type InvoicePage,
+  type ReceivablesSummary,
   type InvoiceQuery,
   type InvoiceRefusal,
   type IssuerSnapshot,
@@ -554,6 +568,7 @@ export {
   type PaymentAllocation,
   type PaymentReceipt,
   type PaymentReceiptInput,
+  type PaymentReversal,
   type ReceiptAmounts,
 } from './repositories/finance-payments.js';
 export {
@@ -600,6 +615,7 @@ export {
   type EmployeeQuery,
   type EmployeeRefusal,
   type SealedField,
+  type SealedValues,
 } from './repositories/hr-employees.js';
 export {
   HrExpensesRepository,
@@ -808,7 +824,11 @@ export {
   type Shift,
   ShiftsRepository,
 } from './repositories/shifts.js';
-export { type PushDevice, PushDevicesRepository } from './repositories/push-devices.js';
+export {
+  type PushDevice,
+  PushDevicesRepository,
+  type PushLocale,
+} from './repositories/push-devices.js';
 
 export {
   ATTACHMENT_KINDS,

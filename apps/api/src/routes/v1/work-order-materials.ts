@@ -5,6 +5,7 @@ import { notFound } from '../../http/errors.js';
 import { defineRoute, noSchema } from '../../http/routes.js';
 import { FEATURE, TAGS } from './inventory.js';
 import {
+  assertTakesParts,
   materialBodies,
   materialSchema,
   recordUse,
@@ -66,6 +67,10 @@ export const recordMaterialRoute = defineRoute({
     },
     403: { description: 'Not on this job, or not your van.' },
     404: { description: 'No such job (this person may see) or item.' },
+    409: {
+      description:
+        'The job is completed, reviewed or cancelled (`work_order_closed`), or already invoiced (`work_order_invoiced`): a part recorded now would never be billed. Returning unused parts stays allowed.',
+    },
     422: {
       description:
         'No van assigned (`no_van`), no location given by a dispatcher (`location_required`), the item is archived, or its serial numbers or batches do not fit (`serial_single_unit`, `lots_quantity_mismatch`, `lot_repeated`, `batch_expired`, `item_not_tracked`).',
@@ -75,6 +80,7 @@ export const recordMaterialRoute = defineRoute({
     const detail = await withTenant(context.principal.tenantId, async (tx) => {
       const job = await readableWorkOrder(tx, context.principal, params.workOrderId);
       await requireWork(tx, context.principal, job);
+      await assertTakesParts(tx, job);
       await recordUse(tx, context, job, {
         itemId: body.itemId,
         locationId: body.locationId ?? null,

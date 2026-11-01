@@ -17,6 +17,7 @@ import { router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
+import { Announcements } from '~/components/announcements';
 import { useBrand } from '~/components/brand';
 import { JobRow } from '~/components/job-row';
 import { LocalGate } from '~/components/local-gate';
@@ -43,7 +44,8 @@ const SECTION_ORDER = ['overdue', 'today', 'upcoming', 'unscheduled'] as const;
 /**
  * The engineer's day and jobs, from the phone.
  *
- * The day first (P14): clocked in or not, and the job to do next with its one
+ * What Integr8 has announced comes first (P15), above how current the phone is.
+ * Then the day (P14): clocked in or not, and the job to do next with its one
  * step forward. Then open jobs by when they are due, then what was closed in the last 30 days, and
  * a search over both and their customers. Every line of it is read from SQLite;
  * the banner says how current it is and never stands in front of it.
@@ -136,6 +138,8 @@ function Jobs() {
           onPress={() => router.push('/settings')}
         />
       </View>
+
+      <Announcements />
 
       <SyncBanner />
 

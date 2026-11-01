@@ -27,11 +27,21 @@ export interface Entitlements {
   submissionsPerMonth: number | null;
 }
 
-export async function entitlementsFor(plan: TenantPlan): Promise<Entitlements> {
+/**
+ * What a company is allowed.
+ *
+ * `companySeats` is the company's own `tenants.seats`: when Integr8 staff have
+ * set it, it replaces the plan's seat number, higher or lower (see
+ * {@link seatLimitFor}).
+ */
+export async function entitlementsFor(
+  plan: TenantPlan,
+  companySeats: number | null = null,
+): Promise<Entitlements> {
   const rule = await allowanceFor(plan);
   return {
     plan,
-    seats: rule.seats,
+    seats: companySeats ?? rule.seats,
     storageBytes: rule.storageBytes,
     submissionsPerMonth: rule.submissionsPerMonth,
   };
@@ -63,11 +73,27 @@ export function startOfMonth(now = new Date()): Date {
 }
 
 /**
+ * How many seats a company has: its own number when staff set one, else the plan's.
+ *
+ * `tenants.seats` is what the dashboard's seat field writes. It used to be
+ * shown and saved and read by nothing, while the plan's number was enforced.
+ * Now, when set, it **replaces** the plan's number in either direction: a
+ * company sold more seats than its plan carries gets them, and one held to
+ * fewer is held to fewer. Null means the plan's. A null on both is no limit.
+ */
+export async function seatLimitFor(tenantId: string, plan: TenantPlan): Promise<number | null> {
+  const tenant = await getPlatformDataSource().tenants.findById(tenantId);
+  const own = tenant?.seats ?? null;
+  return own ?? (await allowanceFor(plan)).seats;
+}
+
+/**
  * Refuses a seat that is not paid for.
  *
- * Checked where a seat is actually taken — inviting somebody, and accepting an
- * invitation — rather than once at the door, because an invitation sent last
- * week can be accepted after the plan has changed.
+ * Checked where a seat is actually taken — inviting somebody, accepting an
+ * invitation, and letting a suspended person back in — rather than once at the
+ * door, because an invitation sent last week can be accepted after the plan
+ * has changed, and a suspended person holds no seat until reactivated.
  *
  * A seat is an **active member**. An outstanding invitation does not hold one:
  * counting them would let a company lock itself out of its own plan with
@@ -79,16 +105,18 @@ export async function assertSeatAvailable(input: {
   plan: TenantPlan;
   /** Somebody already counted, when the caller has just read them. */
   seatsUsed?: number;
+  /** The request field the refusal names; the invitation's address unless said. */
+  field?: string;
 }): Promise<void> {
-  const rule = await allowanceFor(input.plan);
-  if (rule.seats === null) {
+  const seats = await seatLimitFor(input.tenantId, input.plan);
+  if (seats === null) {
     return;
   }
 
   const used =
     input.seatsUsed ?? (await withTenant(input.tenantId, (tx) => tx.tenantUsers.countActive()));
 
-  if (used < rule.seats) {
+  if (used < seats) {
     return;
   }
 
@@ -98,10 +126,10 @@ export async function assertSeatAvailable(input: {
     'Every seat on this plan is taken. Remove somebody, or move to a larger plan.',
     [
       {
-        field: 'body.email',
+        field: input.field ?? 'body.email',
         code: 'seat_limit_reached',
         message: 'No seats left.',
-        params: { seatsUsed: String(used), seats: String(rule.seats) },
+        params: { seatsUsed: String(used), seats: String(seats) },
       },
     ],
   );

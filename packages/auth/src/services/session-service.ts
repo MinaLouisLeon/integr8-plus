@@ -1,4 +1,4 @@
-import type { ImpersonationClaim, Role, TenantId, UserId } from '@integr8/core';
+import type { ImpersonationClaim, Principal, Role, TenantId, UserId } from '@integr8/core';
 import {
   type ClientApp,
   type OfflineGrant,
@@ -32,6 +32,19 @@ export interface IssuedSession {
   accessTokenExpiresAt: Date;
   refreshToken: string;
   refreshTokenExpiresAt: Date;
+  /**
+   * What lets the phone open with no network (docs/auth/offline-access.md).
+   * Issued with every pair for a `mobile` session, superseding the last, so it
+   * runs for seven days from the phone's last contact; absent for the desktop
+   * and web apps, and for a session Integr8 staff hold as the company.
+   */
+  offlineGrant?: IssuedOfflineGrant | undefined;
+}
+
+export interface IssuedOfflineGrant {
+  grantId: string;
+  token: string;
+  expiresAt: Date;
 }
 
 export interface IssueSessionInput {
@@ -54,17 +67,131 @@ export interface SessionServiceDeps {
   tokens: TokenService;
   config: AuthConfig;
   now?: () => Date;
+  /** How long a liveness answer is trusted. Defaults to {@link SESSION_LIVENESS_TTL_MS}. */
+  livenessTtlMs?: number;
+  /** How many liveness answers are kept. Defaults to {@link SESSION_LIVENESS_MAX_ENTRIES}. */
+  livenessMaxEntries?: number;
+}
+
+/**
+ * How long the answer to "is this session still live?" is trusted.
+ *
+ * An access token lasts fifteen minutes and checking it is only a signature,
+ * so signing out everywhere, changing a password or suspending somebody used
+ * to leave their other devices working until the token lapsed. Asking the
+ * database on every request would close that gap entirely, at the price of a
+ * query on every request. Thirty seconds is the compromise: a revoked device
+ * stops within half a minute, and a busy session costs one query per half
+ * minute rather than one per request.
+ */
+export const SESSION_LIVENESS_TTL_MS = 30_000;
+
+/**
+ * The most answers kept at once. Each is a few dozen bytes; the bound is there
+ * so a flood of distinct (validly signed) sessions cannot grow the process
+ * without limit. When full, the oldest answer is dropped and simply asked again.
+ */
+export const SESSION_LIVENESS_MAX_ENTRIES = 10_000;
+
+interface LivenessAnswer {
+  live: boolean;
+  userId: UserId;
+  checkedAt: number;
 }
 
 export class SessionService {
   readonly #tokens: TokenService;
   readonly #config: AuthConfig;
   readonly #clock: () => Date;
+  readonly #livenessTtlMs: number;
+  readonly #livenessMaxEntries: number;
+  /** Session id → the last answer. A Map keeps insertion order, oldest first. */
+  readonly #liveness = new Map<string, LivenessAnswer>();
 
   constructor(deps: SessionServiceDeps) {
     this.#tokens = deps.tokens;
     this.#config = deps.config;
     this.#clock = deps.now ?? (() => new Date());
+    this.#livenessTtlMs = deps.livenessTtlMs ?? SESSION_LIVENESS_TTL_MS;
+    this.#livenessMaxEntries = Math.max(1, deps.livenessMaxEntries ?? SESSION_LIVENESS_MAX_ENTRIES);
+  }
+
+  /**
+   * Refuses a token whose session has ended, within {@link SESSION_LIVENESS_TTL_MS}.
+   *
+   * Called on every authenticated request, after the signature has been
+   * checked. A session is live while it has not been revoked, has not reached
+   * its maximum lifetime, and the person is still an active member of the
+   * company (an impersonation's grant stands in for the membership): sign out everywhere, Change password, a suspension and staff
+   * ending a session all fall under one of those.
+   *
+   * Throws {@link SessionRevokedError}, which the API answers with the same
+   * 401 as an expired token.
+   */
+  async assertLive(principal: Pick<Principal, 'tenantId' | 'userId' | 'sessionId'>): Promise<void> {
+    const now = this.#clock();
+    const cached = this.#liveness.get(principal.sessionId);
+    let live: boolean;
+
+    if (cached !== undefined && now.getTime() - cached.checkedAt < this.#livenessTtlMs) {
+      live = cached.live && cached.userId === principal.userId;
+    } else {
+      live = await withTenant(principal.tenantId, async (tx) => {
+        const session = await tx.sessions.findById(principal.sessionId);
+        if (
+          session?.userId !== principal.userId ||
+          session.revokedAt !== null ||
+          session.expiresAt <= now
+        ) {
+          return false;
+        }
+        // Staff acting as the company may hold no membership at all (a
+        // company with no members yet); their grant is checked on every
+        // request by ImpersonationService instead.
+        if (session.impersonationGrantId !== null) {
+          return true;
+        }
+        const membership = await tx.tenantUsers.findByUserId(principal.userId);
+        return membership?.status === 'active';
+      });
+      this.#remember(principal.sessionId, {
+        live,
+        userId: principal.userId,
+        checkedAt: now.getTime(),
+      });
+    }
+
+    if (!live) {
+      throw new SessionRevokedError('Session is no longer live');
+    }
+  }
+
+  #remember(sessionId: string, answer: LivenessAnswer): void {
+    // Re-inserting moves the entry to the end, so the first key is always the
+    // one answered longest ago.
+    this.#liveness.delete(sessionId);
+    this.#liveness.set(sessionId, answer);
+    while (this.#liveness.size > this.#livenessMaxEntries) {
+      const oldest = this.#liveness.keys().next().value;
+      if (oldest === undefined) {
+        break;
+      }
+      this.#liveness.delete(oldest);
+    }
+  }
+
+  /**
+   * Forgets what this process remembers about some sessions, so a revocation
+   * made here takes effect on the next request rather than within thirty
+   * seconds. Another process (a second API container) still waits out its own
+   * cache; that is the bound the TTL promises.
+   */
+  #forget(match: (sessionId: string, answer: LivenessAnswer) => boolean): void {
+    for (const [sessionId, answer] of this.#liveness) {
+      if (match(sessionId, answer)) {
+        this.#liveness.delete(sessionId);
+      }
+    }
   }
 
   /**
@@ -91,8 +218,10 @@ export class SessionService {
       expiresAt: new Date(now.getTime() + this.#config.AUTH_SESSION_MAX_TTL_SECONDS * 1000),
     });
 
-    return (await this.#issuePair(tx, session, input.role, now, input.impersonationGrantId ?? null))
-      .session;
+    const issued = (
+      await this.#issuePair(tx, session, input.role, now, input.impersonationGrantId ?? null)
+    ).session;
+    return { ...issued, offlineGrant: await this.#grantForPhone(tx, session, input.role, now) };
   }
 
   /**
@@ -185,7 +314,12 @@ export class SessionService {
 
       await tx.sessions.touch(session.id, now);
 
-      return { kind: 'issued', session: issued.session };
+      // A phone's grant is renewed with its pair, after the claim above so the
+      // loser of a refresh race issues none: seven days from the last time the
+      // phone reached us, not from when it signed in.
+      const offlineGrant = await this.#grantForPhone(tx, session, membership.role, now);
+
+      return { kind: 'issued', session: { ...issued.session, offlineGrant } };
     });
 
     switch (outcome.kind) {
@@ -206,7 +340,7 @@ export class SessionService {
   ): Promise<boolean> {
     const now = this.#clock();
 
-    return withTenant(tenantId, async (tx) => {
+    const ended = await withTenant(tenantId, async (tx) => {
       const revoked = await tx.sessions.revoke(sessionId, reason, now);
       if (revoked) {
         // Without this the device would be logged out of the API and still able
@@ -216,6 +350,10 @@ export class SessionService {
       }
       return revoked;
     });
+    // After the commit: forgetting first would let a request in between
+    // remember the session as live again for another thirty seconds.
+    this.#forget((id) => id === sessionId);
+    return ended;
   }
 
   /** Ends every session for one person in one company. */
@@ -227,9 +365,9 @@ export class SessionService {
   ): Promise<number> {
     const now = this.#clock();
 
-    return withTenant(tenantId, async (tx) => {
+    const count = await withTenant(tenantId, async (tx) => {
       const sessions = await tx.sessions.list({ userId, limit: 500 }, now);
-      const count = await tx.sessions.revokeAllForUser(userId, reason, options, now);
+      const revoked = await tx.sessions.revokeAllForUser(userId, reason, options, now);
 
       for (const session of sessions) {
         if (session.id !== options.except) {
@@ -237,8 +375,10 @@ export class SessionService {
         }
       }
 
-      return count;
+      return revoked;
     });
+    this.#forget((id, answer) => answer.userId === userId && id !== options.except);
+    return count;
   }
 
   /** The device list an admin or a person sees. */
@@ -260,6 +400,9 @@ export class SessionService {
    * Only ever for `mobile`. The desktop and web apps have no offline story in
    * this product and handing them a week-long credential would be a liability
    * with no benefit.
+   *
+   * Signing in and refreshing issue one by themselves (`IssuedSession.offlineGrant`);
+   * this is the same thing asked for separately.
    */
   async issueOfflineGrant(input: {
     tenantId: TenantId;
@@ -282,31 +425,18 @@ export class SessionService {
         throw new SessionRevokedError('Offline grants are issued to the mobile app only');
       }
 
-      // One live grant per device: a new one supersedes the last, so a phone
-      // that has been re-registered does not leave a second usable credential
-      // behind it.
-      await tx.offlineGrants.revokeForSession(input.sessionId, 'replaced', now);
-
-      const grant = await tx.offlineGrants.create({
-        sessionId: input.sessionId,
-        userId: input.userId,
-        deviceLabel: input.deviceLabel ?? session.deviceLabel,
-        expiresAt: new Date(now.getTime() + this.#config.AUTH_OFFLINE_GRANT_TTL_SECONDS * 1000),
-      });
-
-      const minted = await this.#tokens.mintOfflineGrant({
-        userId: input.userId,
-        tenantId: input.tenantId,
-        role: input.role,
-        sessionId: input.sessionId,
-        grantId: grant.id,
-      });
-
-      return { grant, token: minted.token, expiresAt: minted.expiresAt };
+      return this.#mintGrant(tx, session, input.role, now, input.deviceLabel);
     });
   }
 
-  /** Revokes a grant — the "I have lost my phone" path. */
+  /**
+   * Revokes a grant — the "I have lost my phone" path.
+   *
+   * On its own this lasts only until the phone next refreshes, which issues a
+   * new grant. What stops a lost phone is revoking its session
+   * (`DELETE /v1/sessions/{id}`), which revokes the grant with it and refuses
+   * every refresh after.
+   */
   async revokeOfflineGrant(tenantId: TenantId, grantId: string): Promise<boolean> {
     const now = this.#clock();
     return withTenant(tenantId, (tx) => tx.offlineGrants.revoke(grantId, 'device_lost', now));
@@ -315,6 +445,64 @@ export class SessionService {
   // -------------------------------------------------------------------------
   // Internals
   // -------------------------------------------------------------------------
+
+  /**
+   * The grant to hand a phone with a new pair, or none.
+   *
+   * None for the desktop and web apps, and none for a session Integr8 staff
+   * hold as the company: an impersonation is for an hour at a desk, and a
+   * week-long credential left on a phone would outlive the grant behind it.
+   */
+  async #grantForPhone(
+    tx: TenantTransaction,
+    session: Session,
+    role: Role,
+    now: Date,
+  ): Promise<IssuedOfflineGrant | undefined> {
+    if (session.clientApp !== 'mobile' || session.impersonationGrantId !== null) {
+      return undefined;
+    }
+    const minted = await this.#mintGrant(tx, session, role, now);
+    return { grantId: minted.grant.id, token: minted.token, expiresAt: minted.expiresAt };
+  }
+
+  async #mintGrant(
+    tx: TenantTransaction,
+    session: Session,
+    role: Role,
+    now: Date,
+    deviceLabel?: string | null,
+  ): Promise<{ grant: OfflineGrant; token: string; expiresAt: Date }> {
+    // One live grant per device: a new one supersedes the last, so a phone
+    // that has been re-registered does not leave a second usable credential
+    // behind it.
+    await tx.offlineGrants.revokeForSession(session.id, 'replaced', now);
+
+    // Never past the session's own end, as a refresh token never is: a phone
+    // must not open offline on a session that can no longer be renewed.
+    const expiresAt = earlier(
+      new Date(now.getTime() + this.#config.AUTH_OFFLINE_GRANT_TTL_SECONDS * 1000),
+      session.expiresAt,
+    );
+
+    const grant = await tx.offlineGrants.create({
+      sessionId: session.id,
+      userId: session.userId,
+      deviceLabel: deviceLabel ?? session.deviceLabel,
+      expiresAt,
+    });
+
+    const minted = await this.#tokens.mintOfflineGrant({
+      userId: session.userId,
+      tenantId: session.tenantId,
+      role,
+      sessionId: session.id,
+      grantId: grant.id,
+      ttlSeconds: Math.max(1, Math.floor((expiresAt.getTime() - now.getTime()) / 1000)),
+    });
+
+    return { grant, token: minted.token, expiresAt: minted.expiresAt };
+  }
 
   async #issuePair(
     tx: TenantTransaction,

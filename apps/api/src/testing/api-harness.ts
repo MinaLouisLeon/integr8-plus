@@ -120,6 +120,14 @@ export async function startApi(
     name: 'API Test Ltd',
   });
   await provisionTenantStorage(services.media, tenant.id);
+  // The test company works on UTC, Monday to Friday, rather than the product's
+  // Cairo time and Sunday-to-Thursday week (0057). Suites work out "today"
+  // with `toISOString()`, which on Cairo time is already tomorrow for the last
+  // two or three hours of every UTC day: they would pass by day and fail at
+  // night. The defaults themselves are checked where a company is really made.
+  await withTenant(tenant.id, (tx) =>
+    tx.settings.update({ timezone: 'UTC', workingDays: [1, 2, 3, 4, 5] }),
+  );
 
   // Each harness calls from its own address. The rate limiter keeps its windows
   // in the database, so suites sharing 127.0.0.1 within a minute would spend one

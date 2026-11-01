@@ -171,6 +171,50 @@ describe('the model each level runs on (ADR-0002 D3)', () => {
     });
     forgetAiPolicy();
   });
+
+  it('is told what its level can do, and nothing it cannot', async () => {
+    const token = await api.signIn(owner);
+    const platform = getPlatformDataSource().ai;
+    const promptAt = async (level: 'help' | 'insights' | 'agent') => {
+      const current = (await platform.tenantPolicy(api.tenantId))!;
+      await platform.setTenantPolicy(api.tenantId, {
+        mode: 'custom',
+        policy: { ...AGENT, level },
+        companyDataToProvider: true,
+        reason: `prompt for ${level}`,
+        expectedVersion: current.version,
+        updatedBy: null,
+      });
+      forgetAiPolicy();
+      provider.reset();
+      const asked = await ask(token, await conversation(token), 'How do I create a work order?');
+      expect(asked.statusCode, asked.body).toBe(200);
+      return provider.calls[0]?.input.system ?? '';
+    };
+
+    // ADR-0001, 2026-10-31 addendum: the help prompt said "you cannot read
+    // company data" to calls that carried the tools that read it.
+    const help = await promptAt('help');
+    expect(help).toContain('You cannot read or change any company data');
+    const insights = await promptAt('insights');
+    expect(insights).not.toContain('cannot read');
+    expect(insights).toContain('call a tool and answer from its result');
+    expect(insights).toContain('You cannot change any company data.');
+    const agent = await promptAt('agent');
+    expect(agent).toContain('the change happens only if they confirm it there');
+    expect(agent).not.toContain('You cannot change any company data.');
+
+    const current = (await platform.tenantPolicy(api.tenantId))!;
+    await platform.setTenantPolicy(api.tenantId, {
+      mode: 'inherit',
+      policy: AGENT,
+      companyDataToProvider: true,
+      reason: null,
+      expectedVersion: current.version,
+      updatedBy: null,
+    });
+    forgetAiPolicy();
+  });
 });
 
 describe('a token allowance that runs out mid-answer (ADR-0002 D5)', () => {
@@ -328,6 +372,31 @@ describe('insight tools', () => {
     const ownerTurn = provider.calls[1]?.input.messages.find((turn) => turn.role === 'tool');
     expect(ownerTurn?.content).toContain('"scope":"company"');
     expect(ownerTurn?.content).toContain('"open":2');
+  });
+
+  it('report exact counts past a page of rows, with the total beside a short list', async () => {
+    const before = await withTenant(api.tenantId, (tx) => tx.customers.countByStatus());
+    await withTenant(api.tenantId, async (tx) => {
+      for (let i = 0; i < 210; i += 1) {
+        await tx.customers.create({ name: `Bulk Figures ${String(i)}` }, owner.userId);
+      }
+    });
+
+    const ownerToken = await api.signIn(owner);
+    const conversationId = await conversation(ownerToken);
+    provider.reset();
+    const asked = await ask(
+      ownerToken,
+      conversationId,
+      '/tool get_customer_summary {"search":"Bulk Figures","limit":5}',
+    );
+    expect(asked.statusCode, asked.body).toBe(200);
+    const toolTurn = provider.calls[1]?.input.messages.find((turn) => turn.role === 'tool');
+    // Two hundred used to be the most it could count to.
+    expect(toolTurn?.content).toContain(`"active":${String(before.active + 210)}`);
+    expect(toolTurn?.content).toContain('"totalMatches":210');
+    const result = JSON.parse(toolTurn?.content ?? '{}') as { matches?: unknown[] };
+    expect(result.matches ?? []).toHaveLength(5);
   });
 
   it('refuses a tool the seat was not offered without running it', async () => {

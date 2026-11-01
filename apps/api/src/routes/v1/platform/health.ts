@@ -1,3 +1,4 @@
+import { MAX_PLAN_FAILURES } from '@integr8/core';
 import { getPlatformDataSource } from '@integr8/db';
 import { z } from 'zod';
 import { defineRoute, noSchema } from '../../../http/routes.js';
@@ -53,6 +54,25 @@ const healthSchema = z.object({
     items: z.array(webhookEventSchema),
   }),
   jobs: z.object({ deadLettered: z.number().int(), retrying: z.number().int() }),
+  /**
+   * Maintenance plans the worker could not make jobs for (0063), latest first,
+   * whenever they failed: a plan stays here until it succeeds or is edited.
+   */
+  maintenance: z.object({
+    items: z.array(
+      z.object({
+        tenantId: z.string(),
+        companyName: z.string(),
+        planId: z.string(),
+        title: z.string(),
+        error: z.string(),
+        failedAt: z.string(),
+        failureCount: z.number().int(),
+        /** The worker has stopped retrying until someone edits the plan. */
+        gaveUp: z.boolean(),
+      }),
+    ),
+  }),
 });
 
 type WebhookOutcome = z.infer<typeof webhookEventSchema>['outcome'];
@@ -85,7 +105,7 @@ export const platformHealthRoute = defineRoute({
   operationId: 'getPlatformHealth',
   summary: 'What is failing quietly',
   description:
-    'Phones whose sync runs show trouble, billing deliveries that were recorded but not applied, and background work that gave up — over the last few days, across every company. The things that look fine from the office until a customer rings.',
+    'Phones whose sync runs show trouble, billing deliveries that were recorded but not applied, background work that gave up — over the last few days, across every company — and maintenance plans the worker currently cannot make jobs for. The things that look fine from the office until a customer rings.',
   tags: ['platform'],
   security: 'platform',
   params: noSchema,
@@ -102,10 +122,11 @@ export const platformHealthRoute = defineRoute({
     const since = new Date(Date.now() - query.days * 24 * 60 * 60 * 1000);
     const platform = getPlatformDataSource();
 
-    const [sync, jobs, events] = await Promise.all([
+    const [sync, jobs, events, plans] = await Promise.all([
       platform.health.syncTrouble(since, query.limit),
       platform.health.jobs(since),
       platform.billing.recentEvents(500),
+      platform.health.maintenanceFailures(query.limit),
     ]);
 
     const inWindow = events.filter((event) => event.receivedAt >= since);
@@ -137,6 +158,18 @@ export const platformHealthRoute = defineRoute({
           items,
         },
         jobs,
+        maintenance: {
+          items: plans.map((plan) => ({
+            tenantId: plan.tenantId,
+            companyName: plan.tenantName,
+            planId: plan.planId,
+            title: plan.title,
+            error: plan.error,
+            failedAt: iso(plan.failedAt),
+            failureCount: plan.failureCount,
+            gaveUp: plan.failureCount >= MAX_PLAN_FAILURES,
+          })),
+        },
       },
     };
   },

@@ -56,3 +56,8 @@ Agreed on 2026-10-26 (idea 2 in `new-idea.md`):
 - Watch a dispatcher work before designing this. They optimise for keystrokes and glance
   time, not for discoverability.
 - Skills and certificates are P26. Working hours and leave go to idea 6 in `new-idea.md`.
+- Found in the October 2026 audit: a new company started on UTC, Monday to Friday, so the
+  schedule shaded Egyptian companies' working week wrongly until somebody changed Settings.
+  Migration 0057 makes the defaults `Africa/Cairo` and Sunday to Thursday (`[7, 1, 2, 3, 4]`)
+  for new companies; existing ones keep what they have. The demo seeder also sent its working
+  hours as hours (8, 17) where the API takes minutes; it sends 480 and 1020 now.

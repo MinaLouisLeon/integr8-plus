@@ -3,6 +3,7 @@
 import { useTranslation } from '@integr8/i18n';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState, type FormEvent } from 'react';
+import { LegalLinks } from '~/components/legal-links';
 import { MarketingShell } from '~/components/marketing-shell';
 import { SignupClosed } from '~/components/signup-closed';
 import { Button, Field, LoadingState } from '~/components/ui';
@@ -114,10 +115,13 @@ function VerifySignupForm() {
             {...(error === undefined ? {} : { error })}
           />
 
+          {/* This button creates the company, so this is where the terms are accepted (High 10). */}
+          <p className="text-sm text-content-muted">{t('legal.agreement')}</p>
           <Button type="submit" busy={busy}>
             {busy ? t('signUp.verify.submitting') : t('signUp.verify.submit')}
           </Button>
         </form>
+        <LegalLinks />
       </div>
     </MarketingShell>
   );

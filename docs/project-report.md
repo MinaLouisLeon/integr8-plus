@@ -138,7 +138,7 @@ The five company roles are `owner`, `admin`, `dispatcher`, `engineer` and `viewe
 | Phone routing            | Expo Router                                               | 58.0.23                                |
 | Phone local database     | SQLite (`expo-sqlite`)                                    | 58.0.13                                |
 | Translation              | i18next and react-i18next                                 | 26.4.2 / 17.0.13                       |
-| Maps                     | Leaflet with OpenStreetMap tiles                          | 1.9.4                                  |
+| Maps                     | A link to Google Maps (no map drawn)                      | —                                      |
 | Image processing         | sharp                                                     | 0.35.4                                 |
 | Object storage client    | AWS SDK v3 for S3 (talking to Cloudflare R2)              | 3.1131.0                               |
 | Error reporting          | Sentry: Node and Next.js / React (desktop) / React Native | 10.74.0 / 11.1.0 / 7.11.0              |
@@ -333,7 +333,7 @@ integr8-plus/
 | `@integr8/form-engine`       | The form definition schema; 18 field types; conditional visibility; `requiredWhen`; dependent choices; calculated fields; expression evaluation; validation identical on client and server; decimal and date-time arithmetic; repeating groups; canonical JSON; version comparison; reporting helpers; global templates; conformance suites (including one that runs on Hermes, React Native's engine) | zod (tests: fast-check, esbuild, coverage-v8)                                                            |
 | `@integr8/form-input`        | Turns what a person types or picks into answers: text, choices, files, signatures, repeating entries, prefill and error mapping. Shared by the web, desktop and phone renderers                                                                                                                                                                                                                        | —                                                                                                        |
 | `@integr8/form-renderer-dom` | The form filler for web and desktop: widgets for every field type, repeating entries, media upload with client-side compression, answer view                                                                                                                                                                                                                                                           | React (peer), TanStack Query (peer)                                                                      |
-| `@integr8/operations-dom`    | Customers, sites, work orders, crew, access notes, site map, timesheets: the screens web and desktop share                                                                                                                                                                                                                                                                                             | leaflet                                                                                                  |
+| `@integr8/operations-dom`    | Customers, sites, work orders, crew, access notes, site location, timesheets: the screens web and desktop share                                                                                                                                                                                                                                                                                        | uqr                                                                                                      |
 | `@integr8/offline`           | The phone's SQLite database and migrations; the outbox; the sync engine; local search; eviction of old data; wipe on sign-out; tracking unsent work                                                                                                                                                                                                                                                    | —                                                                                                        |
 | `@integr8/i18n`              | English and Arabic catalogues (identical keys, checked by a parity test); locale negotiation; direction (LTR/RTL); number, currency, date, time, list and relative-time formatting                                                                                                                                                                                                                     | i18next, react-i18next                                                                                   |
 | `@integr8/tokens`            | Design tokens (palette, semantic colours for light and dark) emitted as CSS variables; turning a company's brand colour into an accessible palette                                                                                                                                                                                                                                                     | —                                                                                                        |
@@ -842,7 +842,6 @@ The worker also runs scheduled maintenance, recorded in `scheduled_task_runs`:
 | **Stripe**                              | Checkout, customer portal, invoices, webhooks                       | REST (`api.stripe.com/v1`), no SDK                | `BILLING_PROVIDER`                               |
 | **Resend**                              | Email: invitations, verification, dunning                           | REST (`api.resend.com/emails`)                    | `EMAIL_SENDER`                                   |
 | **Mapbox**                              | Geocoding addresses; map tiles                                      | Geocoding v6 REST                                 | `GEOCODER`, `MAPBOX_ACCESS_TOKEN`                |
-| **OpenStreetMap**                       | Map tiles in Leaflet                                                | Tile server                                       | —                                                |
 | **Expo Push**                           | Phone notifications                                                 | `exp.host/--/api/v2/push`                         | `PUSH_SENDER`, `EXPO_ACCESS_TOKEN`               |
 | **Expo Application Services**           | Building and updating the phone apps                                | EAS Build and EAS Update                          | GitHub secrets                                   |
 | **Sentry**                              | Errors and traces from every app, with release tags and source maps | Official SDKs                                     | `SENTRY_DSN`, `WEB_SENTRY_DSN`                   |
@@ -1317,7 +1316,6 @@ Workspace packages used: `@integr8/api-client`, `@integr8/core`, `@integr8/form-
 
 | Library                       | Version | Kind        |
 | ----------------------------- | ------- | ----------- |
-| `leaflet`                     | 1.9.4   | runtime     |
 | `@testing-library/dom`        | 10.4.2  | development |
 | `@testing-library/jest-dom`   | 7.0.1   | development |
 | `@testing-library/react`      | 16.3.3  | development |
@@ -1333,7 +1331,6 @@ Workspace packages used: `@integr8/api-client`, `@integr8/core`, `@integr8/form-
 | `typescript`                  | 6.0.3   | development |
 | `vitest`                      | 5.0.3   | development |
 | `@tanstack/react-query`       | 5.102.8 | development |
-| `@types/leaflet`              | 1.9.22  | development |
 | `react`                       | >=19    | peer        |
 | `react-dom`                   | >=19    | peer        |
 | `@tanstack/react-query`       | >=5     | peer        |

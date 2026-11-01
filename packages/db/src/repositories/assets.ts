@@ -384,6 +384,37 @@ export class AssetsRepository extends TenantScopedRepository {
     return row === undefined ? undefined : toAsset(row);
   }
 
+  /**
+   * How many assets have each status, exactly. `visibleTo` narrows it as
+   * {@link list} does: to the sites a person works at.
+   */
+  async countByStatus(
+    query: {
+      visibleTo?: UserId | string;
+      /** Only those whose warranty ends between these days, as {@link list} filters them. */
+      warrantyEndsFrom?: string;
+      warrantyEndsBy?: string;
+    } = {},
+  ): Promise<Record<string, number>> {
+    let select = this.db
+      .selectFrom('erp_assets')
+      .select(['erp_assets.status', sql<string>`count(*)`.as('count')])
+      .where('erp_assets.tenant_id', '=', this.tenantId);
+    if (query.warrantyEndsFrom !== undefined) {
+      select = select.where('erp_assets.warranty_expires_on', '>=', query.warrantyEndsFrom);
+    }
+    if (query.warrantyEndsBy !== undefined) {
+      select = select.where('erp_assets.warranty_expires_on', '<=', query.warrantyEndsBy);
+    }
+    if (query.visibleTo !== undefined) {
+      select = select.where(
+        sql<boolean>`erp_assets.site_id in (${this.sitesOfPerson(query.visibleTo)})`,
+      );
+    }
+    const rows = await select.groupBy('erp_assets.status').execute();
+    return Object.fromEntries(rows.map((row) => [row.status, Number(row.count)]));
+  }
+
   /** Newest first. Text matches a reference, a tag code, words of the name, make, model, serial or customer. */
   async list(query: AssetListQuery = {}): Promise<{ items: Asset[]; next: number | undefined }> {
     const limit = Math.min(Math.max(query.limit ?? 50, 1), 200);

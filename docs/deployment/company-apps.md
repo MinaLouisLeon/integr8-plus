@@ -47,7 +47,10 @@ another's data even if somebody signs in with the wrong address.
    use the product's own icon when the company has none.
 3. On the company's page in the platform dashboard, tick **Build apps for
    this company** and save. The company now appears in
-   `GET /v1/build/companies`.
+   `GET /v1/build/companies`, and with `APP_BUILDS=github` its first build
+   starts at once: the panel says "Build started on GitHub" with a link to
+   the run. With `APP_BUILDS=off` (the default) it says to start the build by
+   hand, below.
 4. When its forms, job types, look and apps are ready, invite the owner: the
    company's page → **Invitations** → **Send invitation** (or **Copy a new
    link** to send it yourself). Onboarding does not email the owner unless you
@@ -55,7 +58,15 @@ another's data even if somebody signs in with the wrong address.
 
 ## Building
 
-- **One company, now**: Actions → _Build company apps_ → _Run workflow_. Enter
+- **From the dashboard**: with `APP_BUILDS=github`, ticking **Build apps**
+  starts the company's first build, and **Rebuild apps** on its page starts
+  another (after its look changed, or for a version released before it was
+  switched on). The API needs `GITHUB_BUILD_TOKEN`, a fine-grained GitHub
+  token for this repository only with **Actions: read and write** (it can run
+  any workflow there, so it is a secret), and `GITHUB_BUILD_REPOSITORY`; it
+  refuses to start with `github` and either missing. `GITHUB_BUILD_REF`
+  (default `main`) is the branch whose workflow and version are built.
+- **One company, by hand**: Actions → _Build company apps_ → _Run workflow_. Enter
   the short name and leave the rest empty (version from `package.json`, API
   from `PUBLIC_API_URL`, platforms from the release variables). Type `all` to
   rebuild every company.
@@ -72,6 +83,17 @@ rehost them wherever you like. The phone apps are also kept on Expo.
 What a company run needs on GitHub (see `docs/contributing/branching.md`):
 `PUBLIC_API_URL`, `EXPO_TOKEN`, `EAS_BUILDS=enabled`, and for `all` the
 `BUILD_TOKEN` secret, the same value the API has in its environment.
+
+What a phone build needs on Expo, set once per EAS environment (`production`,
+and `preview` for the test box), which each profile in `apps/mobile/eas.json`
+names: `EXPO_PUBLIC_SENTRY_DSN` (crash reports), `EXPO_PUBLIC_AUTH_VERIFICATION_KEYS`
+(the deployment's `AUTH_VERIFICATION_KEYS`, for the offline grant) and the file
+`GOOGLE_SERVICES_JSON` (Android notifications), plus, per company, its Android
+app in the Firebase project and the FCM key under Credentials. GitHub passes
+none of them: EAS applies them on its own build machines. A company missing
+from `google-services.json` is built without notifications rather than not at
+all (`docs/mobile/job-execution.md`, push notifications). The setup guide has
+the steps (Stage 0, parts I and J; Stage 8, part A).
 
 ## Store submission
 
@@ -97,9 +119,47 @@ companies on every release need a paid plan.
 
 ## Updates
 
-Desktop installers ask their own updater feed, `<updater base>/<slug>/…`, so
-a company is never offered the staff build or another company's. Phone apps
-receive over-the-air updates on their own channel, `production-<slug>`.
+Desktop apps update themselves. Each build asks its own feed, stamped in by
+`stamp.mjs`: `https://app.integr8-media.com/desktop-updates/<slug>/…` for a
+company (`/staff/…` for the staff app; the base is the `DESKTOP_UPDATES_URL`
+repository variable). The web app answers with the `latest.json` of that app's
+newest release, `company-<slug>-v<version>`, so a company is never offered the
+staff build or another company's. When one is waiting, the app shows a strip
+under its top bar; **Install now** downloads it, checks its signature against
+the public key the app carries, and installs it (on Windows the app closes and
+the installer opens the new version; on macOS and Linux it starts on the next
+launch). This needs the `TAURI_SIGNING_PRIVATE_KEY` secret when the release is
+built and `GITHUB_RELEASES_REPOSITORY` on the web server; it does not need any
+operating-system certificate. Apps installed before this feed existed asked a
+placeholder address and must be reinstalled once.
+
+Phone apps receive over-the-air updates on their own channel,
+`production-<slug>`.
+
+## Installing an unsigned desktop app
+
+Until the operating-system code-signing secrets exist (setup guide, Stage 6,
+"Code signing, when you buy certificates"), the installers are not
+code-signed. They work, but each system warns
+the first time. Tell the company's people what they will see:
+
+- **Windows**: "Windows protected your PC" (SmartScreen). Click **More info**,
+  then **Run anyway**. On Windows 11 with **Smart App Control** switched on,
+  an unsigned app may be blocked outright, with no way past it; that person
+  needs a signed build, or to switch Smart App Control off in Windows
+  Security (a decision for whoever looks after that PC). Company-managed PCs may block unsigned
+  installers by policy; their IT department has to allow it.
+- **macOS**: the first open is refused ("cannot be opened because Apple cannot
+  check it for malicious software", or "Not Opened"). Open **System Settings →
+  Privacy & Security**, scroll to Security, and click **Open Anyway** beside
+  the app's name, then confirm. Right-click → Open no longer gets past this on
+  recent macOS. This is needed once per install.
+- **Linux**: no warning; make the `.AppImage` executable, or install the `.deb`.
+
+Use the Windows `-setup.exe` (rather than the `.msi`) unless an IT department
+asks for an MSI: it updates in place and reopens the app afterwards.
+Updates themselves raise no warning: they are checked against the app's own
+key, not the operating system's.
 
 ## Changing a company's look later
 

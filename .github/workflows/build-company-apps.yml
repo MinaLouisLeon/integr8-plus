@@ -159,6 +159,17 @@ jobs:
       matrix:
         company: ${{ fromJSON(needs.resolve.outputs.companies) }}
         platform: ${{ fromJSON(needs.resolve.outputs.desktop_platforms) }}
+    # Which signing this deployment has, as 'true' or 'false': a step cannot test
+    # a secret directly. Every one is optional; without it the build is what it
+    # always was (setup guide, Stage 6, "Code signing"). TAURI_SIGNING_PRIVATE_KEY signs
+    # updates, which the app checks against the public key it carries; the
+    # others are the operating systems' own code signing, which only changes
+    # what Windows and macOS say when the installer is first opened.
+    env:
+      SIGN_UPDATES: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' }}
+      SIGN_WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE != '' && secrets.WINDOWS_CERTIFICATE_PASSWORD != '' }}
+      SIGN_WINDOWS_AZURE: ${{ secrets.AZURE_CLIENT_ID != '' && secrets.AZURE_CLIENT_SECRET != '' && secrets.AZURE_TENANT_ID != '' && vars.AZURE_SIGNING_ENDPOINT != '' && vars.AZURE_SIGNING_ACCOUNT != '' && vars.AZURE_SIGNING_PROFILE != '' }}
+      SIGN_MACOS: ${{ secrets.APPLE_CERTIFICATE != '' && secrets.APPLE_CERTIFICATE_PASSWORD != '' && secrets.APPLE_SIGNING_IDENTITY != '' }}
     steps:
       - uses: actions/checkout@v7
 
@@ -191,6 +202,69 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Windows code signing with a certificate file (a code-signing
+      # certificate exported as .pfx, base64 in WINDOWS_CERTIFICATE), imported
+      # into this runner's own store so Tauri can sign with it by thumbprint.
+      - name: Import the Windows code-signing certificate
+        id: windows-certificate
+        if: runner.os == 'Windows' && env.SIGN_WINDOWS_CERTIFICATE == 'true'
+        shell: pwsh
+        env:
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          $path = Join-Path $env:RUNNER_TEMP 'certificate.pfx'
+          [IO.File]::WriteAllBytes($path, [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE))
+          $password = ConvertTo-SecureString -String $env:WINDOWS_CERTIFICATE_PASSWORD -Force -AsPlainText
+          $certificate = Import-PfxCertificate -FilePath $path -CertStoreLocation Cert:\CurrentUser\My -Password $password
+          Remove-Item $path
+          "thumbprint=$($certificate.Thumbprint)" >> $env:GITHUB_OUTPUT
+
+      # Or Azure Artifact Signing (formerly Trusted Signing): no certificate
+      # file at all; Tauri runs this command on each file it signs.
+      - name: Install the Azure Artifact Signing client
+        if: runner.os == 'Windows' && env.SIGN_WINDOWS_CERTIFICATE != 'true' && env.SIGN_WINDOWS_AZURE == 'true'
+        shell: bash
+        run: cargo install artifact-signing-cli --version 0.11.0 --locked
+
+      # macOS signing and notarisation with a Developer ID Application
+      # certificate. Written to the environment only when present: Tauri
+      # treats an empty APPLE_SIGNING_IDENTITY as an identity to sign with.
+      # Notarisation uses the App Store Connect API key the phone apps already
+      # submit with, or else an Apple ID with an app-specific password.
+      - name: Prepare macOS signing and notarisation
+        if: runner.os == 'macOS' && env.SIGN_MACOS == 'true'
+        shell: bash
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          ASC_API_KEY: ${{ secrets.ASC_API_KEY }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          put() { local end="END_$RANDOM$RANDOM"; { echo "$1<<$end"; printf '%s\n' "$2"; echo "$end"; } >> "$GITHUB_ENV"; }
+          put APPLE_CERTIFICATE "$APPLE_CERTIFICATE"
+          put APPLE_CERTIFICATE_PASSWORD "$APPLE_CERTIFICATE_PASSWORD"
+          put APPLE_SIGNING_IDENTITY "$APPLE_SIGNING_IDENTITY"
+          if [ -n "$ASC_API_KEY" ] && [ -n "$ASC_KEY_ID" ] && [ -n "$ASC_ISSUER_ID" ]; then
+            key="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+            printf '%s' "$ASC_API_KEY" > "$key"
+            put APPLE_API_ISSUER "$ASC_ISSUER_ID"
+            put APPLE_API_KEY "$ASC_KEY_ID"
+            put APPLE_API_KEY_PATH "$key"
+          elif [ -n "$APPLE_ID" ] && [ -n "$APPLE_PASSWORD" ] && [ -n "$APPLE_TEAM_ID" ]; then
+            put APPLE_ID "$APPLE_ID"
+            put APPLE_PASSWORD "$APPLE_PASSWORD"
+            put APPLE_TEAM_ID "$APPLE_TEAM_ID"
+          else
+            echo "::warning::The macOS app is signed but not notarised: set ASC_API_KEY, ASC_KEY_ID and ASC_ISSUER_ID (or APPLE_ID, APPLE_PASSWORD and APPLE_TEAM_ID). macOS still warns on first open."
+          fi
+
       # The brand: name, colours, and where the icon is. Public, so a build
       # needs no credential to know whose it is.
       - name: Fetch the company's brand and icon
@@ -214,15 +288,35 @@ jobs:
             echo "has_icon=false" >> "$GITHUB_OUTPUT"
           fi
 
+      # The updater feed is the company's own, /desktop-updates/<slug>/…,
+      # which offers the newest `company-<slug>-v*` release's latest.json.
       - name: Stamp the company into the bundle
         shell: bash
         env:
           VERSION: ${{ needs.resolve.outputs.version }}
           API_URL: ${{ needs.resolve.outputs.api_url }}
+          UPDATER_BASE: ${{ vars.DESKTOP_UPDATES_URL || 'https://app.integr8-media.com/desktop-updates' }}
+          THUMBPRINT: ${{ steps.windows-certificate.outputs.thumbprint }}
+          AZURE_SIGNING_ENDPOINT: ${{ vars.AZURE_SIGNING_ENDPOINT }}
+          AZURE_SIGNING_ACCOUNT: ${{ vars.AZURE_SIGNING_ACCOUNT }}
+          AZURE_SIGNING_PROFILE: ${{ vars.AZURE_SIGNING_PROFILE }}
         run: |
           set -euo pipefail
-          node apps/desktop/scripts/stamp.mjs \
-            --version "$VERSION" --api-url "$API_URL" --flavor company --brand company/brand.json
+          flags=(--version "$VERSION" --api-url "$API_URL" --flavor company --brand company/brand.json)
+          flags+=(--updater-base "$UPDATER_BASE")
+          if [ "$SIGN_UPDATES" = true ]; then
+            flags+=(--updater-artifacts)
+          else
+            echo "::warning::No TAURI_SIGNING_PRIVATE_KEY secret: these apps cannot be offered to installed apps as an update."
+          fi
+          if [ -n "$THUMBPRINT" ]; then
+            flags+=(--windows-certificate-thumbprint "$THUMBPRINT")
+          elif [ "$RUNNER_OS" = Windows ] && [ "$SIGN_WINDOWS_AZURE" = true ]; then
+            flags+=(--windows-sign-command "artifact-signing-cli -e $AZURE_SIGNING_ENDPOINT -a $AZURE_SIGNING_ACCOUNT -c $AZURE_SIGNING_PROFILE %1")
+          elif [ "$RUNNER_OS" = Windows ]; then
+            echo "::notice::No Windows code-signing secrets: the installer is unsigned and SmartScreen warns when it is first opened."
+          fi
+          node apps/desktop/scripts/stamp.mjs "${flags[@]}"
 
       # `tauri icon` writes every size the three platforms need from one square
       # PNG. A company without an icon keeps the product's.
@@ -246,25 +340,26 @@ jobs:
           VITE_SENTRY_DSN: ${{ vars.DESKTOP_PUBLIC_SENTRY_DSN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # Read by artifact-signing-cli, which runs only when the stamp step gave
+          # Tauri its sign command; empty otherwise, and then unused.
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
         with:
           projectPath: apps/desktop
 
+      # Named `integr8-plus-<slug>_…`: a company's name may hold spaces or be
+      # Arabic, which GitHub would rewrite in an asset's name.
       - name: Collect the installers
         shell: bash
         env:
           PATHS: ${{ steps.tauri.outputs.artifactPaths }}
+          VERSION: ${{ needs.resolve.outputs.version }}
+          SLUG: ${{ matrix.company }}
         run: |
           set -euo pipefail
-          mkdir -p collected
-          node -e '
-            const fs = require("node:fs");
-            const path = require("node:path");
-            for (const from of JSON.parse(process.env.PATHS)) {
-              if (!fs.statSync(from).isFile()) { console.log("skipped (not a file)", path.basename(from)); continue; }
-              fs.copyFileSync(from, path.join("collected", path.basename(from)));
-              console.log("collected", path.basename(from));
-            }
-          '
+          node apps/desktop/scripts/collect-bundles.mjs \
+            --paths "$PATHS" --out collected --prefix "integr8-plus-${SLUG}" --version "$VERSION"
 
       - uses: actions/upload-artifact@v7
         with:
@@ -492,7 +587,15 @@ jobs:
           if gh release view "$tag" >/dev/null 2>&1; then
             echo "::error::$tag already exists. Bump the version, or delete that release first."; exit 1
           fi
-          files=$(ls dist 2>/dev/null | sed 's#^#dist/#' | tr '\n' ' ')
-          # shellcheck disable=SC2086
-          gh release create "$tag" $files --title "${name} ${VERSION}" --notes-file notes.md --target "$GITHUB_SHA"
+          # The update manifest the company's installed desktop apps read
+          # through the web app's /desktop-updates/<slug>/ feed.
+          mkdir -p dist
+          node apps/desktop/scripts/updater-manifest.mjs --dir dist --version "$VERSION" \
+            --download-base "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/download/${tag}"
+          shopt -s nullglob
+          files=(dist/*)
+          # Never "Latest": that badge, and the Releases page's first entry,
+          # belong to the product's own `v…` release.
+          gh release create "$tag" "${files[@]}" --title "${name} ${VERSION}" --notes-file notes.md \
+            --latest=false --target "$GITHUB_SHA"
           echo "[\`$tag\`](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/tag/${tag})" >> "$GITHUB_STEP_SUMMARY"

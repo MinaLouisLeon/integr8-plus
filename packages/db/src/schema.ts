@@ -625,6 +625,8 @@ export interface SubmissionsTable {
     SubmitLocation | null | undefined,
     SubmitLocation | null
   >;
+  /** Submitted from a phone after its job closed (0061). Written only by that submit. */
+  submitted_after_close: Generated<boolean>;
   created_at: CreatedAt;
   updated_at: UpdatedAt;
 }
@@ -988,6 +990,8 @@ export const WORK_ORDER_EVENT_KINDS = [
   'maintenance_planned',
   'coverage_changed',
   'deadline_missed',
+  // A form submitted from a phone after the job closed (0061).
+  'form_submitted_after_close',
 ] as const;
 export type WorkOrderEventKind = (typeof WORK_ORDER_EVENT_KINDS)[number];
 
@@ -1417,6 +1421,8 @@ export interface ErpWorkOrderMaterialsTable {
   asset_id: Generated<string | null>;
   /** The serial numbers or batches the part came from, as asked for (0042). */
   lots: Jsonb<MaterialLot[] | null>;
+  /** Recorded on a phone before the job closed, synced after (0062). Set at insert. */
+  recorded_after_close: Generated<boolean>;
 }
 
 /** A serial number or batch a part came from: the lot and how much of it. */
@@ -1489,6 +1495,8 @@ export interface CrmQuoteLinesTable {
   unit_price: string;
   discount_bp: Generated<number>;
   tax_rate_bp: Generated<number>;
+  /** Places each figure is rounded to: the currency's minor unit, 4 before 0064. Set by trigger. */
+  money_scale: Generated<number>;
 }
 
 export interface ErpSalesOrdersTable {
@@ -1534,6 +1542,8 @@ export interface ErpSalesOrderLinesTable {
   quantity_reserved: Generated<string>;
   reserve_location_id: string | null;
   quantity_fulfilled: Generated<string>;
+  /** Places each figure is rounded to: the currency's minor unit, 4 before 0064. Set by trigger. */
+  money_scale: Generated<number>;
 }
 
 export interface ErpSalesOrderWorkOrdersTable {
@@ -1612,6 +1622,8 @@ export interface ErpInvoiceLinesTable {
   tax_rate_bp: Generated<number>;
   sales_order_line_id: string | null;
   work_order_material_id: string | null;
+  /** Places each figure is rounded to: the currency's minor unit, 4 before 0064. Set by trigger. */
+  money_scale: Generated<number>;
 }
 
 export interface ErpCreditNotesTable {
@@ -1643,6 +1655,8 @@ export interface ErpCreditNoteLinesTable {
   unit_price: string;
   discount_bp: Generated<number>;
   tax_rate_bp: Generated<number>;
+  /** Places each figure is rounded to: the currency's minor unit, 4 before 0064. Set by trigger. */
+  money_scale: Generated<number>;
 }
 
 export interface ErpPaymentReceiptsTable {
@@ -1659,6 +1673,18 @@ export interface ErpPaymentReceiptsTable {
   notes: string | null;
   recorded_by: string;
   recorded_at: CreatedAt;
+}
+
+/** A payment receipt taken back (0064). Insert-only; one per receipt. */
+export interface ErpPaymentReversalsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  receipt_id: string;
+  reason: string;
+  /** The company's day the ledger posts it. */
+  reversed_on: string;
+  reversed_by: string;
+  reversed_at: CreatedAt;
 }
 
 export interface ErpPaymentAllocationsTable {
@@ -2545,6 +2571,10 @@ export interface MaintenancePlansTable {
   updated_at: UpdatedAt;
   ended_at: Date | null;
   ended_by: string | null;
+  /** The worker's last failure on this plan, cleared on success or an edit (0063). */
+  last_error: string | null;
+  last_error_at: Date | null;
+  failure_count: Generated<number>;
 }
 
 /** Each due date a plan produced (0053). Append-only. */
@@ -2712,6 +2742,8 @@ export interface PushDevicesTable {
   last_registered_at: Generated<Date>;
   disabled_at: Date | null;
   disabled_reason: PushDisabledReason | null;
+  /** The language the phone reads notifications in (0066); null when it has not said. */
+  locale: 'en' | 'ar' | null;
 }
 
 export interface SavedViewsTable {
@@ -3574,6 +3606,7 @@ export interface Database {
   erp_credit_note_lines: ErpCreditNoteLinesTable;
   erp_payment_receipts: ErpPaymentReceiptsTable;
   erp_payment_allocations: ErpPaymentAllocationsTable;
+  erp_payment_reversals: ErpPaymentReversalsTable;
   erp_asset_settings: ErpAssetSettingsTable;
   asset_reference_counters: AssetReferenceCountersTable;
   erp_assets: ErpAssetsTable;
@@ -3804,6 +3837,8 @@ export const SECURITY_DEFINER_FUNCTIONS = [
   'record_maintenance_occurrence',
   'record_coverage_change',
   'record_deadline_miss',
+  // Writes a job's history when a phone's form arrives after the job closed; see 0061.
+  'record_submitted_after_close',
   // Write and prune the sync change log, which the runtime role can only read; see 0011.
   'touch_sync',
   'prune_sync_touches',
@@ -3826,6 +3861,9 @@ export const SECURITY_DEFINER_FUNCTIONS = [
   // decided, which the runtime role may not do itself; see 0030.
   'assign_finance_reference',
   'erp_payment_allocations_guard',
+  // Removes a reversed receipt's allocations and queues the opposite ledger
+  // entry, neither of which the runtime role may do itself; see 0064.
+  'erp_payment_reversals_apply',
   // Numbers assets from a counter the runtime role cannot write; see 0031.
   'assign_asset_reference',
   // Numbers journals when posted from a counter the runtime role cannot write; see 0033.
@@ -3937,6 +3975,7 @@ const TENANT_SCOPED: Readonly<Record<TenantScopedTable, true>> = {
   erp_credit_note_lines: true,
   erp_payment_receipts: true,
   erp_payment_allocations: true,
+  erp_payment_reversals: true,
   erp_asset_settings: true,
   asset_reference_counters: true,
   erp_assets: true,

@@ -5,6 +5,7 @@ import { useTranslation } from '@integr8/i18n';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState, useSyncExternalStore, type FormEvent } from 'react';
 import { useBrandAccent, useBrandTheme } from '~/components/company-brand';
+import { LegalLinks } from '~/components/legal-links';
 import { Button, Field } from '~/components/ui';
 import {
   parseBrand,
@@ -226,6 +227,9 @@ export default function SignInPage() {
           </div>
         </>
       )}
+
+      {/* The privacy policy, one click from where an address and password are typed (High 10). */}
+      <LegalLinks className="pt-2" />
     </main>
   );
 }

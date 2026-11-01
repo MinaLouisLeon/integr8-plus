@@ -226,7 +226,7 @@ export function WebsiteKeysPanel({ tenantId }: { tenantId: string }) {
       ) : null}
 
       {!canManage ? (
-        <p className="text-sm text-content-muted">{t('documents.keys.managerOnly')}</p>
+        <p className="text-sm text-content-muted">{t('documents.keys.managersOnly')}</p>
       ) : live >= maxLive ? (
         <p className="text-sm text-content-muted">{t('documents.keys.limit')}</p>
       ) : (

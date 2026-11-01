@@ -1,8 +1,9 @@
 # P36 — Self-hosted sign-in
 
 **Version:** v1.0 Launch
-**Status:** `IN PROGRESS` — approved and started 2026-10-31; code, tests and docs are in the
-working tree, the database and Auth suites have not yet run (CI), nor the test-box run
+**Status:** `IN PROGRESS` — merged into `main` in pull requests #130 and #135; the database,
+auth, API and real-Auth suites are green in CI (run 41208359782). Left: the test-box run and
+the checks on the real machine below. Ships in v1.2.2
 **Depends on:** P03 (authentication), P15 (platform purge)
 
 ## Goal
@@ -323,7 +324,7 @@ Read from the source of `supabase/auth` at tag `v2.197.0`, the newest stable rel
       `MEMORY.md`, env templates
 - [x] Supabase setup runbook deleted and its links fixed; backup and restore runbook rewritten for
       the self-hosted database
-- [ ] The database, auth and API integration suites and the real-Auth suite green in CI
+- [x] The database, auth and API integration suites and the real-Auth suite green in CI
 - [ ] The full run on the test box (part 10)
 
 ## Implementation notes (2026-10-31)

@@ -87,11 +87,16 @@ export function requiresSignIn(tokens: StoredTokens, now: Date = new Date()): bo
 }
 
 /**
- * True when the app may open using its offline grant.
+ * True when the app holds an offline grant whose end, as the server sent it,
+ * has not passed by this device's clock.
  *
  * Distinct from {@link requiresSignIn}: an engineer in a basement has an
  * expired access token and an unusable refresh token, and must still be able to
- * work. The grant is what says they may.
+ * work. The grant is what says they may — and only the grant: a phone with no
+ * signal never opens on its refresh token, which lasts thirty days. The phone
+ * also checks the grant's signature and its own expiry claim
+ * (`SessionManagerOptions.verifyOfflineGrant`); this is the part every client
+ * can check.
  */
 export function canOpenOffline(tokens: StoredTokens, now: Date = new Date()): boolean {
   return (

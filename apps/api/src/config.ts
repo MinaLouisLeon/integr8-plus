@@ -137,10 +137,15 @@ export const apiConfigSchema = z.object({
   /** Overrides the account endpoint, for a jurisdiction-restricted account. */
   R2_ENDPOINT: z.url().optional(),
   /**
-   * Reads R2 storage analytics (Account Analytics: Read), to check the ledger
-   * against what Cloudflare bills. Only the verification command needs it.
+   * Reads R2 storage analytics (Account Analytics: Read only). The worker's
+   * nightly metering uses it to record each company's operations and to check
+   * the storage ledger against what Cloudflare bills (`storage_reconciliations`);
+   * `storage verify` uses it too. Without it every night's check says
+   * `unavailable`. Optional, so a missing one never stops the server; with R2
+   * in production the API and the worker warn at start-up
+   * ({@link startupWarnings}).
    */
-  CLOUDFLARE_API_TOKEN: z.string().optional(),
+  CLOUDFLARE_API_TOKEN: blankIsUnset(z.string().optional()),
 
   // -------------------------------------------------------------------------
   // Geocoding
@@ -174,11 +179,14 @@ export const apiConfigSchema = z.object({
   // -------------------------------------------------------------------------
 
   /**
-   * Who takes the money. `stripe` is the real one; `recording` keeps the
-   * requests in memory so every other part of billing — entitlements, dunning,
-   * read-only — works with no account anywhere. Production refuses `recording`.
+   * Who takes the money. `none` takes no card payments: Integr8 invoices every
+   * company directly and sets its plan from the dashboard, and no provider
+   * keys are needed (the production default in deploy/.env.example). `stripe`
+   * takes cards; `recording` keeps the requests in memory so every other part
+   * of billing — entitlements, dunning, read-only — works with no account
+   * anywhere. Production refuses `recording`, and `stripe` with test keys.
    */
-  BILLING_PROVIDER: z.enum(['recording', 'stripe']).default('recording'),
+  BILLING_PROVIDER: z.enum(['none', 'recording', 'stripe']).default('recording'),
   /** Stripe's secret key. Server-side only; it can charge cards. */
   STRIPE_SECRET_KEY: z.string().optional(),
   /**
@@ -363,7 +371,8 @@ export const apiConfigSchema = z.object({
    * Encrypts employees' national ID, social insurance and bank account
    * numbers at rest (ADR-0010): 32 bytes, base64. Unset or blank means those
    * fields cannot be written or revealed (503 `hr_key_missing`); everything
-   * else in HR works. Losing it loses those fields: keep it with the backups.
+   * else in HR works. Required in production. Losing it loses those fields:
+   * keep it in the password manager, apart from the backups.
    */
   HR_DATA_KEY: blankIsUnset(
     z
@@ -371,6 +380,27 @@ export const apiConfigSchema = z.object({
       .refine(
         (value) => Buffer.from(value, 'base64').length === 32,
         'HR_DATA_KEY must be 32 bytes, base64',
+      )
+      .optional(),
+  ),
+  /**
+   * Older HR keys, comma-separated, newest first: they open what they sealed
+   * and seal nothing. Set while rotating — the old `HR_DATA_KEY` moves here,
+   * a new one takes its place, `admin-cli hr-reseal` re-seals every company's
+   * fields under it — and removed once the re-seal reports nothing left.
+   */
+  HR_DATA_KEYS_PREVIOUS: blankIsUnset(
+    z
+      .string()
+      .transform((value) =>
+        value
+          .split(',')
+          .map((key) => key.trim())
+          .filter((key) => key !== ''),
+      )
+      .refine(
+        (keys) => keys.every((key) => Buffer.from(key, 'base64').length === 32),
+        'HR_DATA_KEYS_PREVIOUS must be 32-byte base64 keys, separated by commas',
       )
       .optional(),
   ),
@@ -493,6 +523,19 @@ export const apiConfigSchema = z.object({
 
 export type ApiConfig = z.infer<typeof apiConfigSchema>;
 
+/**
+ * The HR keys as configured: the one that seals and the older ones that only
+ * open, or undefined when there is no `HR_DATA_KEY`.
+ */
+export function hrKeySettings(
+  config: ApiConfig,
+): { current: string; previous: string[] } | undefined {
+  if (config.HR_DATA_KEY === undefined) {
+    return undefined;
+  }
+  return { current: config.HR_DATA_KEY, previous: config.HR_DATA_KEYS_PREVIOUS ?? [] };
+}
+
 /** The R2 settings, or the names of the ones missing. */
 export function r2Settings(config: ApiConfig):
   | { missing: string[] }
@@ -605,6 +648,15 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
       );
     }
   }
+  if (
+    result.success &&
+    result.data.HR_DATA_KEY === undefined &&
+    (result.data.HR_DATA_KEYS_PREVIOUS ?? []).length > 0
+  ) {
+    throw new Error(
+      'Invalid API configuration:\n  HR_DATA_KEYS_PREVIOUS is set but HR_DATA_KEY is not: the older keys open, the current one seals, and there must be one.\n\nSee apps/api/.env.example for the full list.',
+    );
+  }
   if (result.success && result.data.MEDIA_STORAGE === 'r2') {
     const { missing } = r2Settings(result.data);
     if (missing.length > 0) {
@@ -622,6 +674,24 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     );
   }
   return result.data;
+}
+
+/**
+ * What a deployment should fix but can run without, said once at start-up by
+ * the API and the worker. Never a reason to stop.
+ */
+export function startupWarnings(config: ApiConfig): string[] {
+  const warnings: string[] = [];
+  if (
+    config.APP_ENV === 'production' &&
+    config.MEDIA_STORAGE === 'r2' &&
+    config.CLOUDFLARE_API_TOKEN === undefined
+  ) {
+    warnings.push(
+      "CLOUDFLARE_API_TOKEN is not set: the nightly storage check against Cloudflare's bill will say 'unavailable' for every company, and no operations are counted. Create an Account Analytics: Read token (setup guide, Stage 0 part D).",
+    );
+  }
+  return warnings;
 }
 
 /**
@@ -757,6 +827,29 @@ export function aiProblems(config: ApiConfig): string[] {
   return problems;
 }
 
+/**
+ * Stripe test keys in production: checkouts would succeed against Stripe's
+ * test mode, companies would be marked paid, and no money would move. A
+ * restricted key (`rk_`) counts as well as a secret one; a publishable key
+ * (`pk_`) cannot do the API's work at all. Webhook signing secrets look the
+ * same in both modes, so they cannot be checked here.
+ */
+export function stripeKeyProblems(config: ApiConfig): string[] {
+  if (config.BILLING_PROVIDER !== 'stripe' || config.STRIPE_SECRET_KEY === undefined) {
+    return [];
+  }
+  const key = config.STRIPE_SECRET_KEY;
+  if (/^(sk|rk)_test_/u.test(key)) {
+    return [
+      'STRIPE_SECRET_KEY is a test-mode key (sk_test_): no card would really be charged. Use the live key, or BILLING_PROVIDER=none.',
+    ];
+  }
+  if (key.startsWith('pk_')) {
+    return ['STRIPE_SECRET_KEY is a publishable key (pk_): use the secret key (sk_live_).'];
+  }
+  return [];
+}
+
 export function billingProblems(config: ApiConfig): string[] {
   if (config.BILLING_PROVIDER !== 'stripe') {
     return [];
@@ -773,12 +866,39 @@ export function billingProblems(config: ApiConfig): string[] {
     : [`BILLING_PROVIDER is stripe but ${missing.join(' and ')} not set.`];
 }
 
-export function assertProductionReady(config: ApiConfig): void {
+/**
+ * What is wrong with the database connections a production API or worker was
+ * given, if anything.
+ *
+ * Read from the environment, like the Auth settings, because `@integr8/db`
+ * owns these variables. The owner's connection is a superuser's: with it, a
+ * compromised process could rewrite the schema and reach every database on the
+ * server. The platform role does everything these processes need (0058).
+ */
+export function databaseProblems(env: NodeJS.ProcessEnv): string[] {
+  const problems: string[] = [];
+  if ((env.DATABASE_URL_ADMIN ?? '').trim() !== '') {
+    problems.push(
+      "DATABASE_URL_ADMIN is set: the API and the worker must not hold the schema owner's password. Give them DATABASE_URL_PLATFORM (integr8_platform) instead; only the migrate service uses the owner.",
+    );
+  }
+  if ((env.DATABASE_URL_PLATFORM ?? '').trim() === '') {
+    problems.push(
+      'DATABASE_URL_PLATFORM is not set: staff work, company set-up and the job queue need the integr8_platform role.',
+    );
+  }
+  return problems;
+}
+
+export function assertProductionReady(
+  config: ApiConfig,
+  env: NodeJS.ProcessEnv = process.env,
+): void {
   if (config.APP_ENV !== 'production') {
     return;
   }
 
-  const problems: string[] = [];
+  const problems: string[] = [...databaseProblems(env)];
 
   if (config.SENTRY_DSN === undefined || config.SENTRY_DSN === '') {
     problems.push('SENTRY_DSN is not set: nothing would report an unhandled error.');
@@ -795,8 +915,11 @@ export function assertProductionReady(config: ApiConfig): void {
     problems.push('PUSH_SENDER is recording: no engineer would be told about a new job.');
   }
   if (config.BILLING_PROVIDER === 'recording') {
-    problems.push('BILLING_PROVIDER is recording: nobody could pay, and nothing would be charged.');
+    problems.push(
+      'BILLING_PROVIDER is recording: nobody could pay, and nothing would be charged. Use none if Integr8 invoices every company, or stripe.',
+    );
   }
+  problems.push(...stripeKeyProblems(config));
   if (config.EMAIL_SENDER === 'recording') {
     problems.push(
       'EMAIL_SENDER is recording: no invitation, signup confirmation or payment warning would leave the building.',
@@ -814,6 +937,11 @@ export function assertProductionReady(config: ApiConfig): void {
     if (missing !== undefined) {
       problems.push(missing);
     }
+  }
+  if (config.HR_DATA_KEY === undefined) {
+    problems.push(
+      "HR_DATA_KEY is not set: employees' ID, insurance and bank numbers could not be stored or shown, and payroll's bank and insurance files could not be made.",
+    );
   }
   if (config.PDF_RENDERER === 'recording') {
     problems.push(

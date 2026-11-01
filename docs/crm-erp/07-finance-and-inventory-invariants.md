@@ -6,11 +6,12 @@ invoices and payments in B1, and the asset register in E3.
 
 ## Quantities and money
 
-| Rule                                                                                                       | Where                                              |
-| ---------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| Quantities are `numeric(20,4)` and travel as decimal strings (`"2.5"`); never JavaScript numbers           | schema, zod `decimalQuantitySchema`, UI formatting |
-| Money is `numeric(20,4)` decimal strings in the company currency; tax rates are basis points (1400 = 14 %) | schema, zod, SQL arithmetic                        |
-| Totals, tax and averages are computed in SQL `numeric` and rounded half-up to 4 places once, at the end    | repositories                                       |
+| Rule                                                                                                                                                                                                                                                                                                                                                | Where                                              |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| Quantities are `numeric(20,4)` and travel as decimal strings (`"2.5"`); never JavaScript numbers                                                                                                                                                                                                                                                    | schema, zod `decimalQuantitySchema`, UI formatting |
+| Money is `numeric(20,4)` decimal strings in the company currency; tax rates are basis points (1400 = 14 %)                                                                                                                                                                                                                                          | schema, zod, SQL arithmetic                        |
+| The company currency is fixed once the company holds a quote, sales order, invoice, credit note, payment, purchase order, journal, stock movement with a cost, expense claim or pay run: stock costs and journals carry no currency of their own and the ledger reads the company's live, so a change would relabel amounts without converting them | 409 `currency_in_use` (`PATCH /v1/settings`)       |
+| Totals, tax and averages are computed in SQL `numeric` and rounded half-up to 4 places once, at the end                                                                                                                                                                                                                                             | repositories                                       |
 
 ## Stock
 
@@ -27,13 +28,13 @@ invoices and payments in B1, and the asset register in E3.
 
 ## Cost
 
-| Rule                                                                                                                                              | Where                                                      |
-| ------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| Each stock item has one **weighted average unit cost** for the company (all locations)                                                            | `erp_items.average_unit_cost`                              |
-| Only a goods receipt changes it: `new = (on_hand × old + received × unit_cost) ÷ (on_hand + received)`, computed in SQL under the item's row lock | receipt service                                            |
-| A part used on a job records the average at that moment as its unit cost; later receipts never change it                                          | `erp_work_order_materials.unit_cost`, movement `unit_cost` |
-| Costs are shown to seats that move stock or purchase (owner, admin, dispatcher), not to engineers or viewers                                      | API bodies                                                 |
-| Purchasing is in the company currency only in E2; multi-currency purchasing waits for a conversion rule (PLAN §5 ERP-01)                          | API validation                                             |
+| Rule                                                                                                                                                                                             | Where                                                      |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------- |
+| Each stock item has one **weighted average unit cost** for the company (all locations)                                                                                                           | `erp_items.average_unit_cost`                              |
+| Only a goods receipt changes it: `new = (on_hand × old + received × unit_cost) ÷ (on_hand + received)`, computed in SQL under the item's row lock                                                | receipt service                                            |
+| A part used on a job records the average at that moment as its unit cost; later receipts never change it                                                                                         | `erp_work_order_materials.unit_cost`, movement `unit_cost` |
+| Costs are shown to seats that move stock or purchase (owner, admin, dispatcher), not to engineers or viewers                                                                                     | API bodies                                                 |
+| Purchasing is in the company currency only: an order naming another is refused, and so is a receipt against an older one (multi-currency purchasing waits for a conversion rule, PLAN §5 ERP-01) | 422 `purchase_currency_not_company`                        |
 
 ## Purchasing
 
@@ -59,6 +60,24 @@ invoices and payments in B1, and the asset register in E3.
 | Non-stock items and services can be recorded on a job without touching stock                                                                                              | `recordUse`: `location_id` null, cost = the item's default cost, no movement                                                                  |
 | A job's parts cost is the sum of posted uses net of returns at the cost when posted, summed in SQL                                                                        | `costForJob`; shown only to seats with `inventory.move` or `purchasing.manage`                                                                |
 | The phone's van stock is a forecast — the server's count less the phone's own unsent uses — and says so                                                                   | `van_stock` table on the phone, `vanStock()` in `@integr8/offline`; `vanStock` on the first pull page                                         |
+
+Parts and the job's state (migration 0062, pre-production audit 2026-10-31):
+
+- The office's screens record no part on a completed, reviewed or cancelled job
+  (409 `work_order_closed`) or on a job already on an invoice that is not void
+  (409 `work_order_invoiced`): a job invoices once, so a part added then would never be billed.
+  Returning an unused part stays allowed in every state. `assertTakesParts` in `materials.ts`;
+  `can.recordParts` says the same.
+- The phone's part recorded on site before the job closed (by its recorded time) is accepted
+  when it syncs, posted to stock and the job's cost as any other, and marked
+  `recorded_after_close`; one recorded after the job closed is refused `work_order_closed`.
+  `material()` in `sync/push.ts`.
+- A cancelled job takes no part from any client: `guard_work_order_material_job` refuses the
+  insert.
+- A job on an invoice with posted parts no invoice line bills shows `partsNotYetBilled`; so does
+  each of its invoices, and `GET /v1/finance/invoices?partsNotBilled=true` lists them.
+  `POST /v1/finance/invoices/from-job` on such a job drafts a follow-up with just those parts
+  and no labour; with nothing left unbilled it is still 409 `job_already_invoiced`.
 
 ## Quotes and sales orders (ADR-0006)
 
@@ -96,6 +115,24 @@ invoices and payments in B1, and the asset register in E3.
 | What a receipt has not allocated stays on the customer's account, per currency                                                                                                                                                                   | `customerAccount()`: owed, unallocated, net                                                                                                                                              |
 | Job cost = parts at their cost when used (net of returns) + hours on site and working × the labour cost when set; profit = invoiced net − cost. Without a labour cost the figure is parts only and says so. An estimate, not an accounting entry | `GET /v1/finance/work-orders/{id}/costs`; `hoursOfMs`, `multiplyDecimals` in `@integr8/core`                                                                                             |
 | A company with issued documents can still be purged; the application role cannot fake the purge                                                                                                                                                  | `integr8_purging()`; every B1 guard and the S1 line guards allow deletes only during `purge_tenant`                                                                                      |
+
+Added in the pre-production audit (2026-10-31, migration 0064; ADR-0007 addendum, which an
+accountant must confirm before production):
+
+- Each quote, order, invoice and credit note line rounds gross, discount, net and tax half up to
+  its `money_scale`: the currency's minor unit (2 for EGP) for lines written since 0064, 4 for
+  older ones, never recomputed. A document keeps one scale; a credit note takes its invoice's.
+  Totals are the sum of the rounded lines. `erp_assign_line_scale()`, `LINE_MATH`,
+  `erp_line_total(…, scale)`, the ledger proposal.
+- A balance under one minor unit counts as settled: `invoiceStatus(…, currency)` /
+  `balanceSettled()` in `@integr8/core`; `SETTLED_BELOW` in `finance-invoices.ts`; the
+  receivables aging.
+- A receipt is reversed once, by an owner or admin, with a reason: `erp_payment_reversals`
+  (insert-only, unique per receipt). `erp_payment_reversals_apply()` (security definer) removes
+  its allocations and queues the `payment_reversal` posting (receivables debited, cash/bank
+  credited). A reversed receipt is never allocated again
+  (`erp_payment_allocations_receipt_reversed`, 409 `payment_reversed`), has nothing on account,
+  and counts back in `receivablesAt`.
 
 ## Assets and their history (E3)
 

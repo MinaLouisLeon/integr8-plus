@@ -99,6 +99,21 @@ describe('a live key', () => {
   });
 });
 
+describe('a key recorded under an earlier fingerprint', () => {
+  it('matches when the earlier form is offered, and only then', async () => {
+    const key = randomUUID();
+    await claim(claimInput(key, { requestFingerprint: 'c'.repeat(64) }));
+    await withTenant(tenant.id, (tx) => tx.idempotency.complete(key, { status: 201, body: {} }));
+
+    const keyed = claimInput(key, { requestFingerprint: 'd'.repeat(64) });
+    expect((await claim(keyed)).outcome).toBe('fingerprint_mismatch');
+    expect((await claim({ ...keyed, alsoMatches: ['c'.repeat(64)] })).outcome).toBe('replay');
+    expect((await claim({ ...keyed, alsoMatches: ['e'.repeat(64)] })).outcome).toBe(
+      'fingerprint_mismatch',
+    );
+  });
+});
+
 describe('a released key', () => {
   it('can be claimed again straight away', async () => {
     const key = randomUUID();

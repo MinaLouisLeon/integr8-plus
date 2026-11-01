@@ -528,7 +528,23 @@ describe('the jobs that deliver an order', () => {
     expect(current.order.status).toBe('partially_fulfilled');
     expect(current.lines[1]).toMatchObject({ quantityFulfilled: '1' });
 
-    // The last valve, recorded after completion by the office, closes the order.
+    // The office cannot add a part to a completed job (0062): nobody would bill it.
+    const refused = await call(
+      dispatcher,
+      'POST',
+      `/v1/work-orders/${jobId}/materials`,
+      { itemId: valve.id, locationId: store.id, quantity: '1' },
+      randomUUID(),
+    );
+    expect(refused.statusCode).toBe(409);
+    expect(json<{ error: { code: string } }>(refused).error.code).toBe('work_order_closed');
+    // Reopened for the last valve, which closes the order.
+    const reopened = await call(owner, 'POST', `/v1/work-orders/${jobId}/transitions`, {
+      to: 'in_progress',
+      expectedRevision: job.workOrder.revision,
+      reason: 'Last valve to fit',
+    });
+    expect(reopened.statusCode, reopened.body).toBe(200);
     const last = await call(
       dispatcher,
       'POST',

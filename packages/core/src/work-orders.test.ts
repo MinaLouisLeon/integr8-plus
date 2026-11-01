@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { can } from './permissions.js';
 import { ROLES } from './roles.js';
 import {
+  CLOSED_WORK_ORDER_STATES,
   findTransition,
   formatWorkOrderReference,
   nextStates,
+  OPEN_WORK_ORDER_STATES,
   WORK_ORDER_STATES,
   WORK_ORDER_TRANSITIONS,
   type WorkOrderState,
@@ -101,5 +103,21 @@ describe('references', () => {
   it('reads as WO and six digits, growing past a million without truncating', () => {
     expect(formatWorkOrderReference(123)).toBe('WO-000123');
     expect(formatWorkOrderReference(1_234_567)).toBe('WO-1234567');
+  });
+});
+
+describe('open and closed', () => {
+  it('splits every state into exactly one of the two, scheduled counting as open', () => {
+    expect(OPEN_WORK_ORDER_STATES).toEqual([
+      'scheduled',
+      'dispatched',
+      'travelling',
+      'on_site',
+      'in_progress',
+      'awaiting_parts',
+    ]);
+    expect([...OPEN_WORK_ORDER_STATES, ...CLOSED_WORK_ORDER_STATES].sort()).toEqual(
+      [...WORK_ORDER_STATES].sort(),
+    );
   });
 });

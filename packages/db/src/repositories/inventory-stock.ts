@@ -538,6 +538,18 @@ export class InventoryStockRepository extends TenantScopedRepository {
     }));
   }
 
+  /** How many item-and-location pairs are below their reorder level, exactly. */
+  async countBelowMinimum(): Promise<number> {
+    const { rows } = await sql<{ count: string }>`
+      select count(*)::text as count
+        from (select * from erp_reorder_levels where tenant_id = ${this.tenantId}) r
+        left join (select * from erp_stock_balances where tenant_id = ${this.tenantId}) b
+          on b.item_id = r.item_id and b.location_id = r.location_id
+       where coalesce(b.on_hand, 0) < r.minimum
+    `.execute(this.db);
+    return Number(rows[0]?.count ?? 0);
+  }
+
   /** Replaces an item's reorder levels with these. */
   async setReorderLevels(
     itemId: string,

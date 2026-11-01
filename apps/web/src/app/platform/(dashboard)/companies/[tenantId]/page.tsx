@@ -24,6 +24,7 @@ import {
   type AiPolicyDraft,
   type AiPolicyFields,
 } from '~/components/ai-policy-editor';
+import { type AppBuild, AppBuildResult } from '~/components/app-build-result';
 import { Badge, Panel, StatusBadge } from '~/components/platform-bits';
 import { Button, ErrorState, Field, LoadingState } from '~/components/ui';
 import {
@@ -126,7 +127,7 @@ export default function CompanyPage() {
         billingMode={detail.billingMode}
       />
       <InvitationsPanel tenantId={tenantId} invitations={detail.invitations} />
-      <AppsPanel tenantId={tenantId} settings={detail.settings} />
+      <AppsPanel tenantId={tenantId} slug={detail.slug} settings={detail.settings} />
       <AiPanel tenantId={tenantId} />
       <WebsiteKeysPanel tenantId={tenantId} />
       <AiMembersPanel tenantId={tenantId} />
@@ -458,12 +459,18 @@ function InvitationRow({
  * desktop app while acting as the company, where it can be previewed on the
  * real screens; here it is only reported, so whoever onboards a company can see
  * whether that step has been done.
+ *
+ * Switching apps on starts the company's first build when the server can
+ * start builds (APP_BUILDS=github), and **Rebuild apps** starts another later;
+ * either way the panel says what happened, with a link to the run on GitHub.
  */
 function AppsPanel({
   tenantId,
+  slug,
   settings,
 }: {
   tenantId: string;
+  slug: string;
   settings: {
     websiteUrl: string | null;
     appsEnabled: boolean;
@@ -484,6 +491,7 @@ function AppsPanel({
   const [aiDesktop, setAiDesktop] = useState(settings.aiDesktopEnabled);
   const [aiMobile, setAiMobile] = useState(settings.aiMobileEnabled);
   const [problem, setProblem] = useState<string | undefined>(undefined);
+  const [build, setBuild] = useState<AppBuild | undefined>(undefined);
 
   const websiteOk = website.trim() === '' || /^https:\/\/\S+$/u.test(website.trim());
   const unchanged =
@@ -495,7 +503,7 @@ function AppsPanel({
 
   const save = useMutation({
     mutationFn: async () => {
-      await platformClient().PATCH('/v1/platform/companies/{tenantId}/settings', {
+      const { data } = await platformClient().PATCH('/v1/platform/companies/{tenantId}/settings', {
         params: { path: { tenantId } },
         body: {
           websiteUrl: website.trim() === '' ? null : website.trim(),
@@ -505,10 +513,32 @@ function AppsPanel({
           aiMobileEnabled: aiMobile,
         },
       });
+      return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       setProblem(undefined);
+      // Only a save that switched apps on asks for a build; any other leaves
+      // the last answer where it was.
+      if (data?.appBuild !== undefined && data.appBuild !== null) {
+        setBuild(data.appBuild);
+      }
       void queries.invalidateQueries({ queryKey: ['platform', 'company', tenantId] });
+    },
+    onError: (error) => {
+      setProblem(messageForError(error, t));
+    },
+  });
+
+  const rebuild = useMutation({
+    mutationFn: async () => {
+      const { data } = await platformClient().POST('/v1/platform/companies/{tenantId}/app-builds', {
+        params: { path: { tenantId } },
+      });
+      return data;
+    },
+    onSuccess: (data) => {
+      setProblem(undefined);
+      setBuild(data);
     },
     onError: (error) => {
       setProblem(messageForError(error, t));
@@ -593,6 +623,20 @@ function AppsPanel({
             </span>
           )}
         </div>
+        {settings.appsEnabled ? (
+          <div className="flex flex-wrap items-center gap-3 border-t border-border-subtle pt-4">
+            <Button
+              type="button"
+              variant="secondary"
+              busy={rebuild.isPending}
+              onClick={() => rebuild.mutate()}
+            >
+              {rebuild.isPending ? t('platform.apps.rebuilding') : t('platform.apps.rebuild')}
+            </Button>
+            <span className="text-xs text-content-muted">{t('platform.apps.rebuildHint')}</span>
+          </div>
+        ) : null}
+        {build === undefined ? null : <AppBuildResult build={build} slug={slug} />}
       </form>
     </Panel>
   );

@@ -10,7 +10,7 @@ import { type Submission, type TenantTransaction, type WorkOrder, withTenant } f
 import { z } from 'zod';
 import { ApiError, type ErrorDetail } from '../http/errors.js';
 import { isFeatureEnabled } from '../http/features.js';
-import { fingerprintRequest } from '../http/idempotency.js';
+import { fingerprintRequest, legacyFingerprint } from '../http/idempotency.js';
 import { freshTagCode, readableAsset } from '../routes/v1/assets.js';
 import { crmAudit as assetAudit } from '../routes/v1/crm-shared.js';
 import { recordUse } from '../routes/v1/materials.js';
@@ -22,7 +22,7 @@ import {
 } from '../routes/v1/work-order-purchases.js';
 import { deliverOnCompletion } from '../routes/v1/sales-fulfilment.js';
 import type { RequestContext } from '../http/routes.js';
-import { updateAccessNotes } from '../routes/v1/customers.js';
+import { assertMayChangeAccess, updateAccessNotes } from '../routes/v1/customers.js';
 import {
   mayWork,
   peopleOf,
@@ -492,7 +492,13 @@ async function applyOnce(mutation: Mutation, push: PushContext): Promise<Mutatio
       userId: principal.userId,
       method: 'SYNC',
       path: `/v1/sync/push#${mutation.kind}`,
-      requestFingerprint: fingerprintRequest('SYNC', mutation.kind, mutation),
+      requestFingerprint: fingerprintRequest(
+        context.services.requestFingerprintKey,
+        'SYNC',
+        mutation.kind,
+        mutation,
+      ),
+      alsoMatches: [legacyFingerprint('SYNC', mutation.kind, mutation)],
       expiresAt: new Date(now.getTime() + CLAIM_SECONDS * 1000),
     }),
   );
@@ -677,6 +683,20 @@ const unavailable = () =>
     'work_order_unavailable',
     'This job is no longer yours to change: it was reassigned, or removed.',
   );
+
+/**
+ * When a closed job closed: completed (a reviewed job keeps that moment) or
+ * cancelled. Undefined while it is open.
+ */
+function closedAt(job: WorkOrder): Date | undefined {
+  if (job.state === 'cancelled') {
+    return job.cancelledAt ?? job.updatedAt;
+  }
+  if (job.state === 'complete' || job.state === 'reviewed') {
+    return job.completedAt ?? job.updatedAt;
+  }
+  return undefined;
+}
 
 async function stateChanged(
   tx: TenantTransaction,
@@ -1061,14 +1081,36 @@ async function material(
     return unavailable();
   }
   await requireWork(tx, principal, job);
+  // The same id arriving again finds the first record, whatever the job is now.
+  const earlier = await tx.inventoryMaterials.findByClientActionId(mutation.payload.materialId);
+  if (earlier !== undefined) {
+    return applied(null, true);
+  }
+  // A part the engineer recorded on site before the job closed, arriving later
+  // for want of signal, was used on the job: it is accepted, posted to stock and
+  // the job's cost like any other, and marked (0062). If the job was already
+  // invoiced, the job then shows parts not yet billed. One recorded after the
+  // job closed is refused, and a cancelled job takes no parts at all.
+  const occurredAt = push.recordedAt(mutation);
+  const closed = closedAt(job);
+  if (job.state === 'cancelled') {
+    return rejected('work_order_closed', 'This job was cancelled; no parts can be recorded on it.');
+  }
+  if (closed !== undefined && occurredAt > closed) {
+    return rejected(
+      'work_order_closed',
+      'This job was closed before the part was recorded; it was not added.',
+    );
+  }
   const result = await recordUse(tx, context, job, {
     itemId: mutation.payload.itemId,
     quantity: mutation.payload.quantity,
     note: mutation.payload.note ?? null,
     clientActionId: mutation.payload.materialId,
-    occurredAt: push.recordedAt(mutation),
+    occurredAt,
     lots: mutation.payload.lots,
     allowExpired: mutation.payload.allowExpired,
+    ...(closed === undefined ? {} : { recordedAfterClose: true }),
   });
   return applied(null, result.outcome === 'already_recorded');
 }
@@ -1332,6 +1374,10 @@ async function access(
   if (site === undefined) {
     return rejected('site_unavailable', 'This site no longer exists.');
   }
+  // The same rule as the office's screen, asked before anything else: an
+  // engineer whose job at the site closed while they were offline is told so,
+  // not shown a conflict they would resolve only to be refused.
+  await assertMayChangeAccess(tx, context.principal, site.id);
   const changed = ACCESS_FIELDS.filter((field) => mutation.payload.changes[field] !== undefined);
   const value = (text: string | null | undefined) => {
     const trimmed = text?.trim() ?? '';
@@ -1390,7 +1436,7 @@ async function access(
 async function startSubmission(
   tx: TenantTransaction,
   mutation: Extract<Mutation, { kind: 'submission.start' }>,
-  { context }: PushContext,
+  { context, recordedAt }: PushContext,
 ): Promise<Outcome> {
   const { principal } = context;
   const { formId, formVersionId, workOrderId } = mutation.payload;
@@ -1417,7 +1463,11 @@ async function startSubmission(
       return unavailable();
     }
     await requireWork(tx, principal, job);
-    if (['complete', 'reviewed', 'cancelled'].includes(job.state)) {
+    // A form the phone started on site before the job closed, arriving later for
+    // want of signal, was started in time: it is kept, and its submit is marked
+    // (0061). One started after the job closed is refused, as a screen is.
+    const closed = closedAt(job);
+    if (closed !== undefined && recordedAt(mutation) > closed) {
       return stateChanged(tx, principal, job, 'in_progress');
     }
     if (!(await tx.workOrders.listForms(job.id)).some((entry) => entry.formId === form.id)) {
@@ -1610,6 +1660,16 @@ async function submit(
     throw error;
   }
 
+  // A draft only exists on a closed job if it was started before the job closed
+  // (see startSubmission), so it is accepted — the engineer did the work in time —
+  // and marked, which writes the job's history and shows the office a badge.
+  // Correcting a reopened submission is not new work and is not marked.
+  let afterClose = false;
+  if (submission.status === 'draft' && submission.workOrderId !== null) {
+    const job = await tx.workOrders.find(submission.workOrderId);
+    afterClose = job !== undefined && closedAt(job) !== undefined;
+  }
+
   const { location } = mutation.payload;
   const result = await tx.submissions.submit(
     submission.id,
@@ -1622,6 +1682,7 @@ async function submit(
       : location.status === 'captured'
         ? { ...location, capturedAt: phoneTime(location.capturedAt).toISOString() }
         : location,
+    { afterClose },
   );
   if (result.outcome === 'written') {
     return applied(result.submission.revision, false, result.submission.answers);

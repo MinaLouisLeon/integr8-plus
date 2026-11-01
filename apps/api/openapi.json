@@ -96,7 +96,7 @@
       "post": {
         "operationId": "signIn",
         "summary": "Sign in with an email address and password",
-        "description": "Returns a token pair for one company, plus every company this person belongs to. A wrong password, an unknown address and an identity with no company are all the same failure, deliberately: distinguishing them would turn this endpoint into a way of testing which addresses are customers.",
+        "description": "Returns a token pair for one company, plus every company this person belongs to. For `clientApp: mobile` the pair also carries the offline grant that lets the phone open with no network for seven days (`offlineGrant`, `offlineGrantExpiresAt`). A wrong password, an unknown address and an identity with no company are all the same failure, deliberately: distinguishing them would turn this endpoint into a way of testing which addresses are customers.",
         "tags": [
           "authentication"
         ],
@@ -181,6 +181,16 @@
                           "type": "string",
                           "format": "uuid",
                           "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "offlineGrant": {
+                          "description": "Mobile only. A signed grant (EdDSA JWT, `typ: offline`) the phone keeps and checks with no network; replaces the previous one. Absent for the desktop and web apps.",
+                          "type": "string"
+                        },
+                        "offlineGrantExpiresAt": {
+                          "description": "When the offline grant ends: seven days by default, never after the session does.",
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
                         }
                       },
                       "required": [
@@ -390,7 +400,7 @@
       "post": {
         "operationId": "completeMagicLink",
         "summary": "Sign in with an emailed 6-digit code",
-        "description": "`token` is the 6-digit code from the email. A wrong code counts towards the account lockout exactly as a wrong password does. The session that results lets Change password go without the current password for fifteen minutes.",
+        "description": "`token` is the 6-digit code from the email. A wrong code counts towards the account lockout exactly as a wrong password does. The session that results lets Change password go without the current password for fifteen minutes. For `clientApp: mobile` the pair carries the offline grant, as with a password.",
         "tags": [
           "authentication"
         ],
@@ -475,6 +485,16 @@
                           "type": "string",
                           "format": "uuid",
                           "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "offlineGrant": {
+                          "description": "Mobile only. A signed grant (EdDSA JWT, `typ: offline`) the phone keeps and checks with no network; replaces the previous one. Absent for the desktop and web apps.",
+                          "type": "string"
+                        },
+                        "offlineGrantExpiresAt": {
+                          "description": "When the offline grant ends: seven days by default, never after the session does.",
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
                         }
                       },
                       "required": [
@@ -603,7 +623,7 @@
       "post": {
         "operationId": "refreshSession",
         "summary": "Exchange a refresh token for a new pair",
-        "description": "Single-use. The token returned replaces the one sent, and presenting a spent token is treated as theft: the session is revoked and both the thief and the legitimate holder are signed out.",
+        "description": "Single-use. The token returned replaces the one sent, and presenting a spent token is treated as theft: the session is revoked and both the thief and the legitimate holder are signed out. A phone’s session also gets a new offline grant, replacing the last, so it runs for seven days from the phone’s last contact rather than from signing in.",
         "tags": [
           "authentication"
         ],
@@ -655,6 +675,16 @@
                       "type": "string",
                       "format": "uuid",
                       "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "offlineGrant": {
+                      "description": "Mobile only. A signed grant (EdDSA JWT, `typ: offline`) the phone keeps and checks with no network; replaces the previous one. Absent for the desktop and web apps.",
+                      "type": "string"
+                    },
+                    "offlineGrantExpiresAt": {
+                      "description": "When the offline grant ends: seven days by default, never after the session does.",
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
                     }
                   },
                   "required": [
@@ -787,6 +817,16 @@
                           "type": "string",
                           "format": "uuid",
                           "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "offlineGrant": {
+                          "description": "Mobile only. A signed grant (EdDSA JWT, `typ: offline`) the phone keeps and checks with no network; replaces the previous one. Absent for the desktop and web apps.",
+                          "type": "string"
+                        },
+                        "offlineGrantExpiresAt": {
+                          "description": "When the offline grant ends: seven days by default, never after the session does.",
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
                         }
                       },
                       "required": [
@@ -4272,7 +4312,7 @@
             }
           },
           "409": {
-            "description": "This plan has no price configured (`plan_not_purchasable`), or Integr8 invoices this company directly (`billing_invoiced`)."
+            "description": "This plan has no price configured (`plan_not_purchasable`), or Integr8 invoices this company directly (`billing_invoiced`), as it does every company on a deployment that takes no card payments."
           },
           "422": {
             "description": "The request failed validation.",
@@ -4375,7 +4415,7 @@
             }
           },
           "409": {
-            "description": "This company has never paid, so there is no portal yet (`no_billing_account`), or Integr8 invoices it directly (`billing_invoiced`)."
+            "description": "This company has never paid, so there is no portal yet (`no_billing_account`), or Integr8 invoices it directly (`billing_invoiced`), as it does every company on a deployment that takes no card payments."
           },
           "422": {
             "description": "The request failed validation.",
@@ -4860,7 +4900,7 @@
       "patch": {
         "operationId": "changeMemberRole",
         "summary": "Change what somebody may do",
-        "description": "A built-in `role`, or one of the company’s own roles by `customRoleId` (ADR-0013), which ranks as its base. Nobody may grant a role above their own, for the same reason nobody may invite at one: without that rule, changing a role is a way of promoting yourself; below the owner, nobody gives a company role holding something they do not (422 `role_beyond_own`). Their sessions are ended, so the next token they get carries the new role — but an access token already issued keeps its old role until it lapses, within fifteen minutes.",
+        "description": "A built-in `role`, or one of the company’s own roles by `customRoleId` (ADR-0013), which ranks as its base. Nobody may grant a role above their own, for the same reason nobody may invite at one: without that rule, changing a role is a way of promoting yourself; below the owner, nobody gives a company role holding something they do not (422 `role_beyond_own`). Their sessions are ended, so the next token they get carries the new role, and an access token already issued, with the old role, is refused within thirty seconds.",
         "tags": [
           "workspace"
         ],
@@ -5068,7 +5108,7 @@
       "patch": {
         "operationId": "setMemberStatus",
         "summary": "Suspend somebody, or let them back in",
-        "description": "Suspending refuses them entry and keeps everything they have ever done. It is the reversible half of removing somebody: the right answer for a lost phone or somebody between jobs. Their sessions are ended, so they cannot sign in or refresh — but see the note on this file about the fifteen minutes an access token already in their hands stays valid.",
+        "description": "Suspending refuses them entry and keeps everything they have ever done. It is the reversible half of removing somebody: the right answer for a lost phone or somebody between jobs. Their sessions are ended, so they cannot sign in or refresh, and an access token already in their hands is refused within thirty seconds. Letting them back in takes a seat, and is refused with 409 `seat_limit_reached` when every seat is taken.",
         "tags": [
           "workspace"
         ],
@@ -5222,7 +5262,7 @@
             "description": "No such person in this company."
           },
           "409": {
-            "description": "This is the company’s only owner (`last_owner`)."
+            "description": "This is the company’s only owner (`last_owner`), or every seat is taken (`seat_limit_reached`)."
           },
           "422": {
             "description": "The request failed validation.",
@@ -5276,7 +5316,7 @@
       "delete": {
         "operationId": "removeMember",
         "summary": "Remove somebody from this company",
-        "description": "Soft, and deliberately so: everything they filled in, signed and submitted stays, and the history still names them. What goes is their way in and the seat they were taking up. As with suspending, an access token already issued outlives this by up to fifteen minutes.",
+        "description": "Soft, and deliberately so: everything they filled in, signed and submitted stays, and the history still names them. What goes is their way in and the seat they were taking up. As with suspending, an access token already issued is refused within thirty seconds.",
         "tags": [
           "workspace"
         ],
@@ -6340,7 +6380,7 @@
       "patch": {
         "operationId": "updateSettings",
         "summary": "Change how this company works",
-        "description": "Only what is sent is changed, so a screen that edits branding cannot blank working hours it never showed. The branding fields — logo, app icon, colours, default theme, website and whether the company’s own apps are built — are Integr8’s to set (`branding.manage`), and a company owner sending one of them is refused with 403; timezone, currency, locale and working hours stay the owner’s.",
+        "description": "Only what is sent is changed, so a screen that edits branding cannot blank working hours it never showed. The branding fields — logo, app icon, colours, default theme, website and whether the company’s own apps are built — are Integr8’s to set (`branding.manage`), and a company owner sending one of them is refused with 403; timezone, currency, locale and working hours stay the owner’s. The currency changes only while the company has no money records yet (409 `currency_in_use`): sending the current one is always fine.",
         "tags": [
           "workspace"
         ],
@@ -6552,6 +6592,9 @@
           },
           "403": {
             "description": "A branding field was sent by somebody other than Integr8 staff."
+          },
+          "409": {
+            "description": "A different `currency` while the company already holds money records (`currency_in_use`)."
           },
           "422": {
             "description": "An unknown timezone (`unknown_timezone`), or a logo or app icon that is not a stored image of this company’s (`logo_not_found`, `app_icon_not_found`)."
@@ -8290,7 +8333,7 @@
       "delete": {
         "operationId": "revokeSession",
         "summary": "Sign a device out",
-        "description": "Revokes the session and any offline grant issued to it. A device with an offline grant would otherwise keep working for up to a week after being \"signed out\".",
+        "description": "Revokes the session and the offline grant issued with it. A phone learns of it the next time it reaches the API, and is then signed out and wiped. Until then, with no signal, it can still open on the grant it holds, which ends at most seven days (`AUTH_OFFLINE_GRANT_TTL_SECONDS`) after the phone last reached the API.",
         "tags": [
           "workspace"
         ],
@@ -10125,7 +10168,7 @@
       "patch": {
         "operationId": "updateForm",
         "summary": "Rename a form or change its settings",
-        "description": "Settings take effect immediately and are not versioned: who may fill a form, whether a signature is mandatory, and which job types require it — a job of a requiring type cannot complete until the form is submitted for it. The requirement applies to jobs created afterwards.",
+        "description": "Settings take effect immediately and are not versioned: who may fill a form, whether a signature is mandatory (a job with any submission of the form cannot complete without the customer’s sign-off, read from the form at that moment), and which job types require it — a job of a requiring type cannot complete until the form is submitted for it. The requirement applies to jobs created afterwards.",
         "tags": [
           "forms"
         ],
@@ -14882,7 +14925,7 @@
             "description": "No such submission this person may change."
           },
           "409": {
-            "description": "Changed elsewhere, not in a state that can be submitted, or the plan’s submissions for the month are used up (`submission_limit_reached`)."
+            "description": "Changed elsewhere, not in a state that can be submitted, a draft on a job that is completed, reviewed or cancelled (`submission_job_closed`), or the plan’s submissions for the month are used up (`submission_limit_reached`)."
           },
           "422": {
             "description": "The answers were refused. Details name each question."
@@ -33651,7 +33694,7 @@
       "put": {
         "operationId": "updateSiteAccess",
         "summary": "Correct a site’s access notes",
-        "description": "For the engineer who finds the gate code has changed: anyone working a job at the site may correct its access notes, as well as the office. Every change records who made it and when.",
+        "description": "For the engineer who finds the gate code has changed: anyone on the crew of an open job at the site (not complete, reviewed or cancelled) may correct its access notes, as well as the office. Every change records who made it and when.",
         "tags": [
           "customers"
         ],
@@ -33901,7 +33944,7 @@
             }
           },
           "403": {
-            "description": "This person is not working a job at the site."
+            "description": "This person is not working an open job at the site."
           },
           "404": {
             "description": "No such site."
@@ -63345,7 +63388,7 @@
       "post": {
         "operationId": "createPurchaseOrder",
         "summary": "Draft a purchase order",
-        "description": "A draft in the company currency, numbered `PO-000001` onwards. Lines name catalogue items; a line without a `description` takes the item name. Honours `Idempotency-Key`.",
+        "description": "A draft in the company currency, numbered `PO-000001` onwards. `currencyCode`, when sent, must be the company currency. Lines name catalogue items; a line without a `description` takes the item name. Honours `Idempotency-Key`.",
         "tags": [
           "purchasing"
         ],
@@ -63821,6 +63864,110 @@
                         "additionalProperties": false
                       }
                     },
+                    "parties": {
+                      "type": "object",
+                      "properties": {
+                        "buyer": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "address": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "taxReference": {
+                              "nullable": true,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "name",
+                            "address",
+                            "taxReference"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "supplier": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "address": {
+                              "nullable": true,
+                              "type": "object",
+                              "properties": {
+                                "line1": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "line2": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "city": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "region": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "postcode": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "countryCode": {
+                                  "nullable": true,
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "line1",
+                                "line2",
+                                "city",
+                                "region",
+                                "postcode",
+                                "countryCode"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "contactName": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "email": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "phone": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "taxReference": {
+                              "nullable": true,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "name",
+                            "address",
+                            "contactName",
+                            "email",
+                            "phone",
+                            "taxReference"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "buyer",
+                        "supplier"
+                      ],
+                      "additionalProperties": false
+                    },
                     "can": {
                       "type": "object",
                       "properties": {
@@ -63850,6 +63997,7 @@
                     "order",
                     "lines",
                     "receipts",
+                    "parties",
                     "can"
                   ],
                   "additionalProperties": false
@@ -63891,7 +64039,7 @@
             }
           },
           "422": {
-            "description": "Invalid, or the supplier is inactive (`supplier_inactive`)."
+            "description": "Invalid, the supplier is inactive (`supplier_inactive`), or `currencyCode` is not the company currency (`purchase_currency_not_company`)."
           },
           "429": {
             "description": "Rate limit exceeded.",
@@ -64333,6 +64481,110 @@
                         "additionalProperties": false
                       }
                     },
+                    "parties": {
+                      "type": "object",
+                      "properties": {
+                        "buyer": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "address": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "taxReference": {
+                              "nullable": true,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "name",
+                            "address",
+                            "taxReference"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "supplier": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "address": {
+                              "nullable": true,
+                              "type": "object",
+                              "properties": {
+                                "line1": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "line2": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "city": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "region": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "postcode": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "countryCode": {
+                                  "nullable": true,
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "line1",
+                                "line2",
+                                "city",
+                                "region",
+                                "postcode",
+                                "countryCode"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "contactName": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "email": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "phone": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "taxReference": {
+                              "nullable": true,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "name",
+                            "address",
+                            "contactName",
+                            "email",
+                            "phone",
+                            "taxReference"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "buyer",
+                        "supplier"
+                      ],
+                      "additionalProperties": false
+                    },
                     "can": {
                       "type": "object",
                       "properties": {
@@ -64362,6 +64614,7 @@
                     "order",
                     "lines",
                     "receipts",
+                    "parties",
                     "can"
                   ],
                   "additionalProperties": false
@@ -64920,6 +65173,110 @@
                         "additionalProperties": false
                       }
                     },
+                    "parties": {
+                      "type": "object",
+                      "properties": {
+                        "buyer": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "address": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "taxReference": {
+                              "nullable": true,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "name",
+                            "address",
+                            "taxReference"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "supplier": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "address": {
+                              "nullable": true,
+                              "type": "object",
+                              "properties": {
+                                "line1": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "line2": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "city": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "region": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "postcode": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "countryCode": {
+                                  "nullable": true,
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "line1",
+                                "line2",
+                                "city",
+                                "region",
+                                "postcode",
+                                "countryCode"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "contactName": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "email": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "phone": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "taxReference": {
+                              "nullable": true,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "name",
+                            "address",
+                            "contactName",
+                            "email",
+                            "phone",
+                            "taxReference"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "buyer",
+                        "supplier"
+                      ],
+                      "additionalProperties": false
+                    },
                     "can": {
                       "type": "object",
                       "properties": {
@@ -64949,6 +65306,7 @@
                     "order",
                     "lines",
                     "receipts",
+                    "parties",
                     "can"
                   ],
                   "additionalProperties": false
@@ -65453,6 +65811,110 @@
                         "additionalProperties": false
                       }
                     },
+                    "parties": {
+                      "type": "object",
+                      "properties": {
+                        "buyer": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "address": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "taxReference": {
+                              "nullable": true,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "name",
+                            "address",
+                            "taxReference"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "supplier": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "address": {
+                              "nullable": true,
+                              "type": "object",
+                              "properties": {
+                                "line1": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "line2": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "city": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "region": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "postcode": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "countryCode": {
+                                  "nullable": true,
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "line1",
+                                "line2",
+                                "city",
+                                "region",
+                                "postcode",
+                                "countryCode"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "contactName": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "email": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "phone": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "taxReference": {
+                              "nullable": true,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "name",
+                            "address",
+                            "contactName",
+                            "email",
+                            "phone",
+                            "taxReference"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "buyer",
+                        "supplier"
+                      ],
+                      "additionalProperties": false
+                    },
                     "can": {
                       "type": "object",
                       "properties": {
@@ -65482,6 +65944,7 @@
                     "order",
                     "lines",
                     "receipts",
+                    "parties",
                     "can"
                   ],
                   "additionalProperties": false
@@ -65984,6 +66447,110 @@
                         "additionalProperties": false
                       }
                     },
+                    "parties": {
+                      "type": "object",
+                      "properties": {
+                        "buyer": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "address": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "taxReference": {
+                              "nullable": true,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "name",
+                            "address",
+                            "taxReference"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "supplier": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "address": {
+                              "nullable": true,
+                              "type": "object",
+                              "properties": {
+                                "line1": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "line2": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "city": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "region": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "postcode": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "countryCode": {
+                                  "nullable": true,
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "line1",
+                                "line2",
+                                "city",
+                                "region",
+                                "postcode",
+                                "countryCode"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "contactName": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "email": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "phone": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "taxReference": {
+                              "nullable": true,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "name",
+                            "address",
+                            "contactName",
+                            "email",
+                            "phone",
+                            "taxReference"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "buyer",
+                        "supplier"
+                      ],
+                      "additionalProperties": false
+                    },
                     "can": {
                       "type": "object",
                       "properties": {
@@ -66013,6 +66580,7 @@
                     "order",
                     "lines",
                     "receipts",
+                    "parties",
                     "can"
                   ],
                   "additionalProperties": false
@@ -66599,6 +67167,110 @@
                         "additionalProperties": false
                       }
                     },
+                    "parties": {
+                      "type": "object",
+                      "properties": {
+                        "buyer": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "address": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "taxReference": {
+                              "nullable": true,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "name",
+                            "address",
+                            "taxReference"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "supplier": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "address": {
+                              "nullable": true,
+                              "type": "object",
+                              "properties": {
+                                "line1": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "line2": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "city": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "region": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "postcode": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "countryCode": {
+                                  "nullable": true,
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "line1",
+                                "line2",
+                                "city",
+                                "region",
+                                "postcode",
+                                "countryCode"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "contactName": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "email": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "phone": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "taxReference": {
+                              "nullable": true,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "name",
+                            "address",
+                            "contactName",
+                            "email",
+                            "phone",
+                            "taxReference"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "buyer",
+                        "supplier"
+                      ],
+                      "additionalProperties": false
+                    },
                     "can": {
                       "type": "object",
                       "properties": {
@@ -66628,6 +67300,7 @@
                     "order",
                     "lines",
                     "receipts",
+                    "parties",
                     "can"
                   ],
                   "additionalProperties": false
@@ -66672,7 +67345,7 @@
             "description": "Changed by somebody else (`version_conflict`), not approved (`order_not_receivable`), or already posted (`already_posted`)."
           },
           "422": {
-            "description": "More than is left to receive (`over_received`), no location (`location_required`), or a line named twice (`line_repeated`)."
+            "description": "More than is left to receive (`over_received`), no location (`location_required`), a line named twice (`line_repeated`), or an order in another currency than the company’s (`purchase_currency_not_company`)."
           },
           "429": {
             "description": "Rate limit exceeded.",
@@ -67197,6 +67870,110 @@
                         "additionalProperties": false
                       }
                     },
+                    "parties": {
+                      "type": "object",
+                      "properties": {
+                        "buyer": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "address": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "taxReference": {
+                              "nullable": true,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "name",
+                            "address",
+                            "taxReference"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "supplier": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "address": {
+                              "nullable": true,
+                              "type": "object",
+                              "properties": {
+                                "line1": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "line2": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "city": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "region": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "postcode": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "countryCode": {
+                                  "nullable": true,
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "line1",
+                                "line2",
+                                "city",
+                                "region",
+                                "postcode",
+                                "countryCode"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "contactName": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "email": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "phone": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "taxReference": {
+                              "nullable": true,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "name",
+                            "address",
+                            "contactName",
+                            "email",
+                            "phone",
+                            "taxReference"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "buyer",
+                        "supplier"
+                      ],
+                      "additionalProperties": false
+                    },
                     "can": {
                       "type": "object",
                       "properties": {
@@ -67226,6 +68003,7 @@
                     "order",
                     "lines",
                     "receipts",
+                    "parties",
                     "can"
                   ],
                   "additionalProperties": false
@@ -68446,12 +69224,16 @@
                               "submittedAt": {
                                 "nullable": true,
                                 "type": "string"
+                              },
+                              "submittedAfterClose": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
                               "id",
                               "status",
-                              "submittedAt"
+                              "submittedAt",
+                              "submittedAfterClose"
                             ],
                             "additionalProperties": false
                           }
@@ -68592,7 +69374,8 @@
                               "qualification_override",
                               "maintenance_planned",
                               "coverage_changed",
-                              "deadline_missed"
+                              "deadline_missed",
+                              "form_submitted_after_close"
                             ]
                           },
                           "fromState": {
@@ -69333,6 +70116,9 @@
                             "nullable": true,
                             "type": "string"
                           },
+                          "recordedAfterClose": {
+                            "type": "boolean"
+                          },
                           "version": {
                             "type": "integer",
                             "minimum": -9007199254740991,
@@ -69395,6 +70181,7 @@
                           "occurredAt",
                           "cancelledBy",
                           "clientActionId",
+                          "recordedAfterClose",
                           "version",
                           "lots"
                         ],
@@ -69404,6 +70191,9 @@
                     "materialsCost": {
                       "nullable": true,
                       "type": "string"
+                    },
+                    "partsNotYetBilled": {
+                      "type": "boolean"
                     },
                     "van": {
                       "nullable": true,
@@ -69538,6 +70328,7 @@
                     "previousAtSite",
                     "materials",
                     "materialsCost",
+                    "partsNotYetBilled",
                     "van",
                     "salesOrders",
                     "can"
@@ -69574,14 +70365,7 @@
             "description": "No such job (this person may see) or item."
           },
           "409": {
-            "description": "The idempotency key is in use by a request still running, or was reused with a different body.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "description": "The job is completed, reviewed or cancelled (`work_order_closed`), or already invoiced (`work_order_invoiced`): a part recorded now would never be billed. Returning unused parts stays allowed."
           },
           "422": {
             "description": "No van assigned (`no_van`), no location given by a dispatcher (`location_required`), the item is archived, or its serial numbers or batches do not fit (`serial_single_unit`, `lots_quantity_mismatch`, `lot_repeated`, `batch_expired`, `item_not_tracked`)."
@@ -70777,12 +71561,16 @@
                               "submittedAt": {
                                 "nullable": true,
                                 "type": "string"
+                              },
+                              "submittedAfterClose": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
                               "id",
                               "status",
-                              "submittedAt"
+                              "submittedAt",
+                              "submittedAfterClose"
                             ],
                             "additionalProperties": false
                           }
@@ -70923,7 +71711,8 @@
                               "qualification_override",
                               "maintenance_planned",
                               "coverage_changed",
-                              "deadline_missed"
+                              "deadline_missed",
+                              "form_submitted_after_close"
                             ]
                           },
                           "fromState": {
@@ -71664,6 +72453,9 @@
                             "nullable": true,
                             "type": "string"
                           },
+                          "recordedAfterClose": {
+                            "type": "boolean"
+                          },
                           "version": {
                             "type": "integer",
                             "minimum": -9007199254740991,
@@ -71726,6 +72518,7 @@
                           "occurredAt",
                           "cancelledBy",
                           "clientActionId",
+                          "recordedAfterClose",
                           "version",
                           "lots"
                         ],
@@ -71735,6 +72528,9 @@
                     "materialsCost": {
                       "nullable": true,
                       "type": "string"
+                    },
+                    "partsNotYetBilled": {
+                      "type": "boolean"
                     },
                     "van": {
                       "nullable": true,
@@ -71869,6 +72665,7 @@
                     "previousAtSite",
                     "materials",
                     "materialsCost",
+                    "partsNotYetBilled",
                     "van",
                     "salesOrders",
                     "can"
@@ -73077,12 +73874,16 @@
                               "submittedAt": {
                                 "nullable": true,
                                 "type": "string"
+                              },
+                              "submittedAfterClose": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
                               "id",
                               "status",
-                              "submittedAt"
+                              "submittedAt",
+                              "submittedAfterClose"
                             ],
                             "additionalProperties": false
                           }
@@ -73223,7 +74024,8 @@
                               "qualification_override",
                               "maintenance_planned",
                               "coverage_changed",
-                              "deadline_missed"
+                              "deadline_missed",
+                              "form_submitted_after_close"
                             ]
                           },
                           "fromState": {
@@ -73964,6 +74766,9 @@
                             "nullable": true,
                             "type": "string"
                           },
+                          "recordedAfterClose": {
+                            "type": "boolean"
+                          },
                           "version": {
                             "type": "integer",
                             "minimum": -9007199254740991,
@@ -74026,6 +74831,7 @@
                           "occurredAt",
                           "cancelledBy",
                           "clientActionId",
+                          "recordedAfterClose",
                           "version",
                           "lots"
                         ],
@@ -74035,6 +74841,9 @@
                     "materialsCost": {
                       "nullable": true,
                       "type": "string"
+                    },
+                    "partsNotYetBilled": {
+                      "type": "boolean"
                     },
                     "van": {
                       "nullable": true,
@@ -74169,6 +74978,7 @@
                     "previousAtSite",
                     "materials",
                     "materialsCost",
+                    "partsNotYetBilled",
                     "van",
                     "salesOrders",
                     "can"
@@ -74449,6 +75259,9 @@
                             "nullable": true,
                             "type": "string"
                           },
+                          "recordedAfterClose": {
+                            "type": "boolean"
+                          },
                           "version": {
                             "type": "integer",
                             "minimum": -9007199254740991,
@@ -74533,6 +75346,7 @@
                           "occurredAt",
                           "cancelledBy",
                           "clientActionId",
+                          "recordedAfterClose",
                           "version",
                           "lots",
                           "workOrder"
@@ -89851,7 +90665,7 @@
       "get": {
         "operationId": "listCustomerInvoices",
         "summary": "Find invoices",
-        "description": "Newest first, a page at a time. `q` matches a reference (`INV-000123`, `123`) or words of the customer’s name; `status` is the derived status; `overdue=true` keeps those past due and still owing.",
+        "description": "Newest first, a page at a time. `q` matches a reference (`INV-000123`, `123`) or words of the customer’s name; `status` is the derived status; `overdue=true` keeps those past due and still owing; `partsNotBilled=true` keeps those made from a job with parts no invoice bills yet, for a follow-up invoice.",
         "tags": [
           "finance"
         ],
@@ -89932,6 +90746,18 @@
           },
           {
             "name": "overdue",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "name": "partsNotBilled",
             "in": "query",
             "required": false,
             "schema": {
@@ -90083,6 +90909,9 @@
                             ],
                             "additionalProperties": false
                           },
+                          "partsNotYetBilled": {
+                            "type": "boolean"
+                          },
                           "createdAt": {
                             "type": "string",
                             "format": "date-time",
@@ -90105,6 +90934,7 @@
                           "dueDate",
                           "amounts",
                           "source",
+                          "partsNotYetBilled",
                           "createdAt",
                           "updatedAt"
                         ],
@@ -90441,6 +91271,9 @@
                           ],
                           "additionalProperties": false
                         },
+                        "partsNotYetBilled": {
+                          "type": "boolean"
+                        },
                         "createdAt": {
                           "type": "string",
                           "format": "date-time",
@@ -90709,6 +91542,7 @@
                         "dueDate",
                         "amounts",
                         "source",
+                        "partsNotYetBilled",
                         "createdAt",
                         "updatedAt",
                         "site",
@@ -91281,6 +92115,9 @@
                           ],
                           "additionalProperties": false
                         },
+                        "partsNotYetBilled": {
+                          "type": "boolean"
+                        },
                         "createdAt": {
                           "type": "string",
                           "format": "date-time",
@@ -91549,6 +92386,7 @@
                         "dueDate",
                         "amounts",
                         "source",
+                        "partsNotYetBilled",
                         "createdAt",
                         "updatedAt",
                         "site",
@@ -91952,7 +92790,7 @@
       "post": {
         "operationId": "createCustomerInvoiceFromJob",
         "summary": "Draft an invoice from a completed job",
-        "description": "One line per part used on the job (net of returns, at the item’s sale price) and one labour line for the time on site, at the company’s labour rate when set. The job must be complete (409 `job_not_complete`) and not already invoiced (409 `job_already_invoiced`). Honours `Idempotency-Key`.",
+        "description": "One line per part used on the job (net of returns, at the item’s sale price) and one labour line for the time on site, at the company’s labour rate when set. The job must be complete (409 `job_not_complete`) and not already invoiced (409 `job_already_invoiced`) — except that a job already invoiced with parts no invoice bills yet (recorded on a phone before the job closed and synced after, `partsNotYetBilled`) gets a follow-up draft with just those parts and no labour. Honours `Idempotency-Key`.",
         "tags": [
           "finance"
         ],
@@ -92105,6 +92943,9 @@
                             "reference"
                           ],
                           "additionalProperties": false
+                        },
+                        "partsNotYetBilled": {
+                          "type": "boolean"
                         },
                         "createdAt": {
                           "type": "string",
@@ -92374,6 +93215,7 @@
                         "dueDate",
                         "amounts",
                         "source",
+                        "partsNotYetBilled",
                         "createdAt",
                         "updatedAt",
                         "site",
@@ -92910,6 +93752,9 @@
                           ],
                           "additionalProperties": false
                         },
+                        "partsNotYetBilled": {
+                          "type": "boolean"
+                        },
                         "createdAt": {
                           "type": "string",
                           "format": "date-time",
@@ -93178,6 +94023,7 @@
                         "dueDate",
                         "amounts",
                         "source",
+                        "partsNotYetBilled",
                         "createdAt",
                         "updatedAt",
                         "site",
@@ -93841,6 +94687,9 @@
                           ],
                           "additionalProperties": false
                         },
+                        "partsNotYetBilled": {
+                          "type": "boolean"
+                        },
                         "createdAt": {
                           "type": "string",
                           "format": "date-time",
@@ -94109,6 +94958,7 @@
                         "dueDate",
                         "amounts",
                         "source",
+                        "partsNotYetBilled",
                         "createdAt",
                         "updatedAt",
                         "site",
@@ -94789,6 +95639,9 @@
                           ],
                           "additionalProperties": false
                         },
+                        "partsNotYetBilled": {
+                          "type": "boolean"
+                        },
                         "createdAt": {
                           "type": "string",
                           "format": "date-time",
@@ -95057,6 +95910,7 @@
                         "dueDate",
                         "amounts",
                         "source",
+                        "partsNotYetBilled",
                         "createdAt",
                         "updatedAt",
                         "site",
@@ -95620,6 +96474,9 @@
                           ],
                           "additionalProperties": false
                         },
+                        "partsNotYetBilled": {
+                          "type": "boolean"
+                        },
                         "createdAt": {
                           "type": "string",
                           "format": "date-time",
@@ -95888,6 +96745,7 @@
                         "dueDate",
                         "amounts",
                         "source",
+                        "partsNotYetBilled",
                         "createdAt",
                         "updatedAt",
                         "site",
@@ -96803,6 +97661,9 @@
                           ],
                           "additionalProperties": false
                         },
+                        "partsNotYetBilled": {
+                          "type": "boolean"
+                        },
                         "createdAt": {
                           "type": "string",
                           "format": "date-time",
@@ -96825,6 +97686,7 @@
                         "dueDate",
                         "amounts",
                         "source",
+                        "partsNotYetBilled",
                         "createdAt",
                         "updatedAt"
                       ],
@@ -97610,6 +98472,9 @@
                           ],
                           "additionalProperties": false
                         },
+                        "partsNotYetBilled": {
+                          "type": "boolean"
+                        },
                         "createdAt": {
                           "type": "string",
                           "format": "date-time",
@@ -97632,6 +98497,7 @@
                         "dueDate",
                         "amounts",
                         "source",
+                        "partsNotYetBilled",
                         "createdAt",
                         "updatedAt"
                       ],
@@ -98237,6 +99103,9 @@
                           ],
                           "additionalProperties": false
                         },
+                        "partsNotYetBilled": {
+                          "type": "boolean"
+                        },
                         "createdAt": {
                           "type": "string",
                           "format": "date-time",
@@ -98259,6 +99128,7 @@
                         "dueDate",
                         "amounts",
                         "source",
+                        "partsNotYetBilled",
                         "createdAt",
                         "updatedAt"
                       ],
@@ -98917,6 +99787,9 @@
                           ],
                           "additionalProperties": false
                         },
+                        "partsNotYetBilled": {
+                          "type": "boolean"
+                        },
                         "createdAt": {
                           "type": "string",
                           "format": "date-time",
@@ -98939,6 +99812,7 @@
                         "dueDate",
                         "amounts",
                         "source",
+                        "partsNotYetBilled",
                         "createdAt",
                         "updatedAt"
                       ],
@@ -99173,6 +100047,9 @@
                           "unallocated": {
                             "type": "string"
                           },
+                          "reversed": {
+                            "type": "boolean"
+                          },
                           "recordedAt": {
                             "type": "string",
                             "format": "date-time",
@@ -99190,6 +100067,7 @@
                           "paymentReference",
                           "allocated",
                           "unallocated",
+                          "reversed",
                           "recordedAt"
                         ],
                         "additionalProperties": false
@@ -99438,6 +100316,9 @@
                         "unallocated": {
                           "type": "string"
                         },
+                        "reversed": {
+                          "type": "boolean"
+                        },
                         "recordedAt": {
                           "type": "string",
                           "format": "date-time",
@@ -99477,9 +100358,54 @@
                         "paymentReference",
                         "allocated",
                         "unallocated",
+                        "reversed",
                         "recordedAt",
                         "notes",
                         "recordedBy"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "reversal": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "reason": {
+                          "type": "string"
+                        },
+                        "reversedOn": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        },
+                        "reversedBy": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "reversedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "reason",
+                        "reversedOn",
+                        "reversedBy",
+                        "reversedAt"
                       ],
                       "additionalProperties": false
                     },
@@ -99722,6 +100648,9 @@
                             ],
                             "additionalProperties": false
                           },
+                          "partsNotYetBilled": {
+                            "type": "boolean"
+                          },
                           "createdAt": {
                             "type": "string",
                             "format": "date-time",
@@ -99744,6 +100673,7 @@
                           "dueDate",
                           "amounts",
                           "source",
+                          "partsNotYetBilled",
                           "createdAt",
                           "updatedAt"
                         ],
@@ -99758,17 +100688,22 @@
                         },
                         "removeAllocation": {
                           "type": "boolean"
+                        },
+                        "reverse": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
                         "allocate",
-                        "removeAllocation"
+                        "removeAllocation",
+                        "reverse"
                       ],
                       "additionalProperties": false
                     }
                   },
                   "required": [
                     "receipt",
+                    "reversal",
                     "allocations",
                     "openInvoices",
                     "can"
@@ -99940,6 +100875,9 @@
                         "unallocated": {
                           "type": "string"
                         },
+                        "reversed": {
+                          "type": "boolean"
+                        },
                         "recordedAt": {
                           "type": "string",
                           "format": "date-time",
@@ -99979,9 +100917,54 @@
                         "paymentReference",
                         "allocated",
                         "unallocated",
+                        "reversed",
                         "recordedAt",
                         "notes",
                         "recordedBy"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "reversal": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "reason": {
+                          "type": "string"
+                        },
+                        "reversedOn": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        },
+                        "reversedBy": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "reversedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "reason",
+                        "reversedOn",
+                        "reversedBy",
+                        "reversedAt"
                       ],
                       "additionalProperties": false
                     },
@@ -100224,6 +101207,9 @@
                             ],
                             "additionalProperties": false
                           },
+                          "partsNotYetBilled": {
+                            "type": "boolean"
+                          },
                           "createdAt": {
                             "type": "string",
                             "format": "date-time",
@@ -100246,6 +101232,7 @@
                           "dueDate",
                           "amounts",
                           "source",
+                          "partsNotYetBilled",
                           "createdAt",
                           "updatedAt"
                         ],
@@ -100260,17 +101247,22 @@
                         },
                         "removeAllocation": {
                           "type": "boolean"
+                        },
+                        "reverse": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
                         "allocate",
-                        "removeAllocation"
+                        "removeAllocation",
+                        "reverse"
                       ],
                       "additionalProperties": false
                     }
                   },
                   "required": [
                     "receipt",
+                    "reversal",
                     "allocations",
                     "openInvoices",
                     "can"
@@ -100462,6 +101454,9 @@
                         "unallocated": {
                           "type": "string"
                         },
+                        "reversed": {
+                          "type": "boolean"
+                        },
                         "recordedAt": {
                           "type": "string",
                           "format": "date-time",
@@ -100501,9 +101496,54 @@
                         "paymentReference",
                         "allocated",
                         "unallocated",
+                        "reversed",
                         "recordedAt",
                         "notes",
                         "recordedBy"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "reversal": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "reason": {
+                          "type": "string"
+                        },
+                        "reversedOn": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        },
+                        "reversedBy": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "reversedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "reason",
+                        "reversedOn",
+                        "reversedBy",
+                        "reversedAt"
                       ],
                       "additionalProperties": false
                     },
@@ -100746,6 +101786,9 @@
                             ],
                             "additionalProperties": false
                           },
+                          "partsNotYetBilled": {
+                            "type": "boolean"
+                          },
                           "createdAt": {
                             "type": "string",
                             "format": "date-time",
@@ -100768,6 +101811,7 @@
                           "dueDate",
                           "amounts",
                           "source",
+                          "partsNotYetBilled",
                           "createdAt",
                           "updatedAt"
                         ],
@@ -100782,17 +101826,22 @@
                         },
                         "removeAllocation": {
                           "type": "boolean"
+                        },
+                        "reverse": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
                         "allocate",
-                        "removeAllocation"
+                        "removeAllocation",
+                        "reverse"
                       ],
                       "additionalProperties": false
                     }
                   },
                   "required": [
                     "receipt",
+                    "reversal",
                     "allocations",
                     "openInvoices",
                     "can"
@@ -100965,6 +102014,9 @@
                         "unallocated": {
                           "type": "string"
                         },
+                        "reversed": {
+                          "type": "boolean"
+                        },
                         "recordedAt": {
                           "type": "string",
                           "format": "date-time",
@@ -101004,9 +102056,54 @@
                         "paymentReference",
                         "allocated",
                         "unallocated",
+                        "reversed",
                         "recordedAt",
                         "notes",
                         "recordedBy"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "reversal": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "reason": {
+                          "type": "string"
+                        },
+                        "reversedOn": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        },
+                        "reversedBy": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "reversedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "reason",
+                        "reversedOn",
+                        "reversedBy",
+                        "reversedAt"
                       ],
                       "additionalProperties": false
                     },
@@ -101249,6 +102346,9 @@
                             ],
                             "additionalProperties": false
                           },
+                          "partsNotYetBilled": {
+                            "type": "boolean"
+                          },
                           "createdAt": {
                             "type": "string",
                             "format": "date-time",
@@ -101271,6 +102371,7 @@
                           "dueDate",
                           "amounts",
                           "source",
+                          "partsNotYetBilled",
                           "createdAt",
                           "updatedAt"
                         ],
@@ -101285,17 +102386,22 @@
                         },
                         "removeAllocation": {
                           "type": "boolean"
+                        },
+                        "reverse": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
                         "allocate",
-                        "removeAllocation"
+                        "removeAllocation",
+                        "reverse"
                       ],
                       "additionalProperties": false
                     }
                   },
                   "required": [
                     "receipt",
+                    "reversal",
                     "allocations",
                     "openInvoices",
                     "can"
@@ -101330,6 +102436,593 @@
           },
           "409": {
             "description": "Already removed."
+          },
+          "422": {
+            "description": "The request failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/finance/payments/{receiptId}/reverse": {
+      "post": {
+        "operationId": "reverseCustomerPayment",
+        "summary": "Take a payment back",
+        "description": "Owners and admins, with a reason: a bounced cheque, a transfer that never arrived, a payment recorded against the wrong customer. The payment is not deleted: a reversal is recorded beside it, dated today in the company’s calendar, its allocations are removed so the invoices owe again, it is never allocated again, and the ledger posts the opposite of its entry. Both stay in the history. Once only: 409 `payment_already_reversed`. Honours `Idempotency-Key`.",
+        "tags": [
+          "finance"
+        ],
+        "parameters": [
+          {
+            "name": "receiptId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 255
+            },
+            "description": "A client-generated key. Replaying a request with the same key returns the original response and repeats no effect."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  }
+                },
+                "required": [
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The payment, reversed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "receipt": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "reference": {
+                          "type": "string"
+                        },
+                        "customer": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "receivedOn": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        },
+                        "amount": {
+                          "type": "string"
+                        },
+                        "currencyCode": {
+                          "type": "string"
+                        },
+                        "method": {
+                          "type": "string",
+                          "enum": [
+                            "cash",
+                            "bank_transfer",
+                            "other"
+                          ]
+                        },
+                        "paymentReference": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "allocated": {
+                          "type": "string"
+                        },
+                        "unallocated": {
+                          "type": "string"
+                        },
+                        "reversed": {
+                          "type": "boolean"
+                        },
+                        "recordedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "notes": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "recordedBy": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "reference",
+                        "customer",
+                        "receivedOn",
+                        "amount",
+                        "currencyCode",
+                        "method",
+                        "paymentReference",
+                        "allocated",
+                        "unallocated",
+                        "reversed",
+                        "recordedAt",
+                        "notes",
+                        "recordedBy"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "reversal": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "reason": {
+                          "type": "string"
+                        },
+                        "reversedOn": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        },
+                        "reversedBy": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "reversedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "reason",
+                        "reversedOn",
+                        "reversedBy",
+                        "reversedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "allocations": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "invoice": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "reference": {
+                                "nullable": true,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "reference"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "receipt": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "reference": {
+                                "type": "string"
+                              },
+                              "receivedOn": {
+                                "type": "string",
+                                "format": "date",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                              },
+                              "method": {
+                                "type": "string",
+                                "enum": [
+                                  "cash",
+                                  "bank_transfer",
+                                  "other"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "reference",
+                              "receivedOn",
+                              "method"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "amount": {
+                            "type": "string"
+                          },
+                          "allocatedBy": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "allocatedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          },
+                          "removedBy": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "removedAt": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "invoice",
+                          "receipt",
+                          "amount",
+                          "allocatedBy",
+                          "allocatedAt",
+                          "removedBy",
+                          "removedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "openInvoices": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "reference": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "customer": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "draft",
+                              "issued",
+                              "partially_paid",
+                              "paid",
+                              "credited",
+                              "void"
+                            ]
+                          },
+                          "overdue": {
+                            "type": "boolean"
+                          },
+                          "currencyCode": {
+                            "type": "string"
+                          },
+                          "issueDate": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "date",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                          },
+                          "dueDate": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "date",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                          },
+                          "amounts": {
+                            "type": "object",
+                            "properties": {
+                              "total": {
+                                "type": "string"
+                              },
+                              "allocated": {
+                                "type": "string"
+                              },
+                              "credited": {
+                                "type": "string"
+                              },
+                              "balance": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "total",
+                              "allocated",
+                              "credited",
+                              "balance"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "source": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "sales_order",
+                                  "work_order"
+                                ]
+                              },
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "reference": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "id",
+                              "reference"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "partsNotYetBilled": {
+                            "type": "boolean"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "reference",
+                          "customer",
+                          "status",
+                          "overdue",
+                          "currencyCode",
+                          "issueDate",
+                          "dueDate",
+                          "amounts",
+                          "source",
+                          "partsNotYetBilled",
+                          "createdAt",
+                          "updatedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "can": {
+                      "type": "object",
+                      "properties": {
+                        "allocate": {
+                          "type": "boolean"
+                        },
+                        "removeAllocation": {
+                          "type": "boolean"
+                        },
+                        "reverse": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "allocate",
+                        "removeAllocation",
+                        "reverse"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "receipt",
+                    "reversal",
+                    "allocations",
+                    "openInvoices",
+                    "can"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller lacks the required permission, or the company does not have the `finance` module switched on (`feature_disabled`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such payment."
+          },
+          "409": {
+            "description": "Already reversed (`payment_already_reversed`)."
           },
           "422": {
             "description": "The request failed validation.",
@@ -101546,6 +103239,9 @@
                             ],
                             "additionalProperties": false
                           },
+                          "partsNotYetBilled": {
+                            "type": "boolean"
+                          },
                           "createdAt": {
                             "type": "string",
                             "format": "date-time",
@@ -101568,6 +103264,7 @@
                           "dueDate",
                           "amounts",
                           "source",
+                          "partsNotYetBilled",
                           "createdAt",
                           "updatedAt"
                         ],
@@ -101634,6 +103331,9 @@
                           "unallocated": {
                             "type": "string"
                           },
+                          "reversed": {
+                            "type": "boolean"
+                          },
                           "recordedAt": {
                             "type": "string",
                             "format": "date-time",
@@ -101651,6 +103351,7 @@
                           "paymentReference",
                           "allocated",
                           "unallocated",
+                          "reversed",
                           "recordedAt"
                         ],
                         "additionalProperties": false
@@ -111376,7 +113077,8 @@
                                   "expense_claim",
                                   "expense_payment",
                                   "payroll_run",
-                                  "assembly"
+                                  "assembly",
+                                  "payment_reversal"
                                 ]
                               },
                               "id": {
@@ -111701,7 +113403,8 @@
                             "expense_claim",
                             "expense_payment",
                             "payroll_run",
-                            "assembly"
+                            "assembly",
+                            "payment_reversal"
                           ]
                         },
                         "id": {
@@ -112111,7 +113814,8 @@
                             "expense_claim",
                             "expense_payment",
                             "payroll_run",
-                            "assembly"
+                            "assembly",
+                            "payment_reversal"
                           ]
                         },
                         "id": {
@@ -112590,7 +114294,8 @@
                             "expense_claim",
                             "expense_payment",
                             "payroll_run",
-                            "assembly"
+                            "assembly",
+                            "payment_reversal"
                           ]
                         },
                         "id": {
@@ -113123,7 +114828,8 @@
                             "expense_claim",
                             "expense_payment",
                             "payroll_run",
-                            "assembly"
+                            "assembly",
+                            "payment_reversal"
                           ]
                         },
                         "id": {
@@ -113569,7 +115275,8 @@
                             "expense_claim",
                             "expense_payment",
                             "payroll_run",
-                            "assembly"
+                            "assembly",
+                            "payment_reversal"
                           ]
                         },
                         "id": {
@@ -114081,7 +115788,8 @@
                     "expense_claim",
                     "expense_payment",
                     "payroll_run",
-                    "assembly"
+                    "assembly",
+                    "payment_reversal"
                   ]
                 },
                 {
@@ -114098,7 +115806,8 @@
                       "expense_claim",
                       "expense_payment",
                       "payroll_run",
-                      "assembly"
+                      "assembly",
+                      "payment_reversal"
                     ]
                   }
                 }
@@ -114197,7 +115906,8 @@
                                   "expense_claim",
                                   "expense_payment",
                                   "payroll_run",
-                                  "assembly"
+                                  "assembly",
+                                  "payment_reversal"
                                 ]
                               },
                               "id": {
@@ -114471,7 +116181,8 @@
                         "expense_claim",
                         "expense_payment",
                         "payroll_run",
-                        "assembly"
+                        "assembly",
+                        "payment_reversal"
                       ]
                     }
                   }
@@ -114655,7 +116366,8 @@
                             "expense_claim",
                             "expense_payment",
                             "payroll_run",
-                            "assembly"
+                            "assembly",
+                            "payment_reversal"
                           ]
                         },
                         "id": {
@@ -115158,7 +116870,8 @@
                             "expense_claim",
                             "expense_payment",
                             "payroll_run",
-                            "assembly"
+                            "assembly",
+                            "payment_reversal"
                           ]
                         },
                         "id": {
@@ -115558,7 +117271,8 @@
                             "expense_claim",
                             "expense_payment",
                             "payroll_run",
-                            "assembly"
+                            "assembly",
+                            "payment_reversal"
                           ]
                         },
                         "id": {
@@ -117689,7 +119403,8 @@
                             "expense_claim",
                             "expense_payment",
                             "payroll_run",
-                            "assembly"
+                            "assembly",
+                            "payment_reversal"
                           ]
                         },
                         "id": {
@@ -118140,7 +119855,8 @@
                             "expense_claim",
                             "expense_payment",
                             "payroll_run",
-                            "assembly"
+                            "assembly",
+                            "payment_reversal"
                           ]
                         },
                         "id": {
@@ -126549,7 +128265,7 @@
       "post": {
         "operationId": "createPayRun",
         "summary": "Prepare a month’s pay run",
-        "description": "Proposes a line for everyone employed in the month who has pay terms. Needs a confirmed rule set in force (422 `no_confirmed_rules`, or `rules_not_confirmed` when the latest set waits for the owner). No later than next month (422 `month_in_future`); one run a month (409 `month_taken`).",
+        "description": "Proposes a line for everyone employed in the month who has pay terms. The latest rule set in force for the month is used, and must be confirmed and from the same year: 422 `no_confirmed_rules` when there is none, `rules_not_confirmed` when it waits for the owner (an older confirmed set is not used instead), `rules_from_another_year` when it starts in an earlier year. No later than next month (422 `month_in_future`); one run a month (409 `month_taken`).",
         "tags": [
           "payroll"
         ],
@@ -127007,7 +128723,7 @@
             "description": "The month has a run."
           },
           "422": {
-            "description": "No confirmed rule set in force, or too far ahead."
+            "description": "No rule set in force (`no_confirmed_rules`), the latest waits for the owner (`rules_not_confirmed`) or is from an earlier year (`rules_from_another_year`), or too far ahead (`month_in_future`)."
           },
           "429": {
             "description": "Rate limit exceeded.",
@@ -128157,7 +129873,7 @@
       "post": {
         "operationId": "recalculatePayRun",
         "summary": "Recalculate a draft from today’s terms, hours and claims",
-        "description": "Keeps what was typed for the run (overtime hours, bonus, deduction, unpaid days, note) for anyone already in it, and uses the confirmed rule set now in force for the month.",
+        "description": "Keeps what was typed for the run (overtime hours, bonus, deduction, unpaid days, note) for anyone already in it, and uses the rule set now in force for the month, under the same rules as preparing a run (422 `rules_not_confirmed`, `rules_from_another_year`).",
         "tags": [
           "payroll"
         ],
@@ -128620,14 +130336,7 @@
             "description": "Approved, or changed elsewhere."
           },
           "422": {
-            "description": "The request failed validation.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "description": "The latest rule set in force waits for the owner (`rules_not_confirmed`) or is from an earlier year (`rules_from_another_year`)."
           },
           "429": {
             "description": "Rate limit exceeded.",
@@ -139839,12 +141548,16 @@
                               "submittedAt": {
                                 "nullable": true,
                                 "type": "string"
+                              },
+                              "submittedAfterClose": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
                               "id",
                               "status",
-                              "submittedAt"
+                              "submittedAt",
+                              "submittedAfterClose"
                             ],
                             "additionalProperties": false
                           }
@@ -139985,7 +141698,8 @@
                               "qualification_override",
                               "maintenance_planned",
                               "coverage_changed",
-                              "deadline_missed"
+                              "deadline_missed",
+                              "form_submitted_after_close"
                             ]
                           },
                           "fromState": {
@@ -140726,6 +142440,9 @@
                             "nullable": true,
                             "type": "string"
                           },
+                          "recordedAfterClose": {
+                            "type": "boolean"
+                          },
                           "version": {
                             "type": "integer",
                             "minimum": -9007199254740991,
@@ -140788,6 +142505,7 @@
                           "occurredAt",
                           "cancelledBy",
                           "clientActionId",
+                          "recordedAfterClose",
                           "version",
                           "lots"
                         ],
@@ -140797,6 +142515,9 @@
                     "materialsCost": {
                       "nullable": true,
                       "type": "string"
+                    },
+                    "partsNotYetBilled": {
+                      "type": "boolean"
                     },
                     "van": {
                       "nullable": true,
@@ -140931,6 +142652,7 @@
                     "previousAtSite",
                     "materials",
                     "materialsCost",
+                    "partsNotYetBilled",
                     "van",
                     "salesOrders",
                     "can"
@@ -142348,12 +144070,16 @@
                               "submittedAt": {
                                 "nullable": true,
                                 "type": "string"
+                              },
+                              "submittedAfterClose": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
                               "id",
                               "status",
-                              "submittedAt"
+                              "submittedAt",
+                              "submittedAfterClose"
                             ],
                             "additionalProperties": false
                           }
@@ -142494,7 +144220,8 @@
                               "qualification_override",
                               "maintenance_planned",
                               "coverage_changed",
-                              "deadline_missed"
+                              "deadline_missed",
+                              "form_submitted_after_close"
                             ]
                           },
                           "fromState": {
@@ -143235,6 +144962,9 @@
                             "nullable": true,
                             "type": "string"
                           },
+                          "recordedAfterClose": {
+                            "type": "boolean"
+                          },
                           "version": {
                             "type": "integer",
                             "minimum": -9007199254740991,
@@ -143297,6 +145027,7 @@
                           "occurredAt",
                           "cancelledBy",
                           "clientActionId",
+                          "recordedAfterClose",
                           "version",
                           "lots"
                         ],
@@ -143306,6 +145037,9 @@
                     "materialsCost": {
                       "nullable": true,
                       "type": "string"
+                    },
+                    "partsNotYetBilled": {
+                      "type": "boolean"
                     },
                     "van": {
                       "nullable": true,
@@ -143440,6 +145174,7 @@
                     "previousAtSite",
                     "materials",
                     "materialsCost",
+                    "partsNotYetBilled",
                     "van",
                     "salesOrders",
                     "can"
@@ -144642,12 +146377,16 @@
                               "submittedAt": {
                                 "nullable": true,
                                 "type": "string"
+                              },
+                              "submittedAfterClose": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
                               "id",
                               "status",
-                              "submittedAt"
+                              "submittedAt",
+                              "submittedAfterClose"
                             ],
                             "additionalProperties": false
                           }
@@ -144788,7 +146527,8 @@
                               "qualification_override",
                               "maintenance_planned",
                               "coverage_changed",
-                              "deadline_missed"
+                              "deadline_missed",
+                              "form_submitted_after_close"
                             ]
                           },
                           "fromState": {
@@ -145529,6 +147269,9 @@
                             "nullable": true,
                             "type": "string"
                           },
+                          "recordedAfterClose": {
+                            "type": "boolean"
+                          },
                           "version": {
                             "type": "integer",
                             "minimum": -9007199254740991,
@@ -145591,6 +147334,7 @@
                           "occurredAt",
                           "cancelledBy",
                           "clientActionId",
+                          "recordedAfterClose",
                           "version",
                           "lots"
                         ],
@@ -145600,6 +147344,9 @@
                     "materialsCost": {
                       "nullable": true,
                       "type": "string"
+                    },
+                    "partsNotYetBilled": {
+                      "type": "boolean"
                     },
                     "van": {
                       "nullable": true,
@@ -145734,6 +147481,7 @@
                     "previousAtSite",
                     "materials",
                     "materialsCost",
+                    "partsNotYetBilled",
                     "van",
                     "salesOrders",
                     "can"
@@ -146915,12 +148663,16 @@
                               "submittedAt": {
                                 "nullable": true,
                                 "type": "string"
+                              },
+                              "submittedAfterClose": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
                               "id",
                               "status",
-                              "submittedAt"
+                              "submittedAt",
+                              "submittedAfterClose"
                             ],
                             "additionalProperties": false
                           }
@@ -147061,7 +148813,8 @@
                               "qualification_override",
                               "maintenance_planned",
                               "coverage_changed",
-                              "deadline_missed"
+                              "deadline_missed",
+                              "form_submitted_after_close"
                             ]
                           },
                           "fromState": {
@@ -147802,6 +149555,9 @@
                             "nullable": true,
                             "type": "string"
                           },
+                          "recordedAfterClose": {
+                            "type": "boolean"
+                          },
                           "version": {
                             "type": "integer",
                             "minimum": -9007199254740991,
@@ -147864,6 +149620,7 @@
                           "occurredAt",
                           "cancelledBy",
                           "clientActionId",
+                          "recordedAfterClose",
                           "version",
                           "lots"
                         ],
@@ -147873,6 +149630,9 @@
                     "materialsCost": {
                       "nullable": true,
                       "type": "string"
+                    },
+                    "partsNotYetBilled": {
+                      "type": "boolean"
                     },
                     "van": {
                       "nullable": true,
@@ -148007,6 +149767,7 @@
                     "previousAtSite",
                     "materials",
                     "materialsCost",
+                    "partsNotYetBilled",
                     "van",
                     "salesOrders",
                     "can"
@@ -149183,12 +150944,16 @@
                               "submittedAt": {
                                 "nullable": true,
                                 "type": "string"
+                              },
+                              "submittedAfterClose": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
                               "id",
                               "status",
-                              "submittedAt"
+                              "submittedAt",
+                              "submittedAfterClose"
                             ],
                             "additionalProperties": false
                           }
@@ -149329,7 +151094,8 @@
                               "qualification_override",
                               "maintenance_planned",
                               "coverage_changed",
-                              "deadline_missed"
+                              "deadline_missed",
+                              "form_submitted_after_close"
                             ]
                           },
                           "fromState": {
@@ -150070,6 +151836,9 @@
                             "nullable": true,
                             "type": "string"
                           },
+                          "recordedAfterClose": {
+                            "type": "boolean"
+                          },
                           "version": {
                             "type": "integer",
                             "minimum": -9007199254740991,
@@ -150132,6 +151901,7 @@
                           "occurredAt",
                           "cancelledBy",
                           "clientActionId",
+                          "recordedAfterClose",
                           "version",
                           "lots"
                         ],
@@ -150141,6 +151911,9 @@
                     "materialsCost": {
                       "nullable": true,
                       "type": "string"
+                    },
+                    "partsNotYetBilled": {
+                      "type": "boolean"
                     },
                     "van": {
                       "nullable": true,
@@ -150275,6 +152048,7 @@
                     "previousAtSite",
                     "materials",
                     "materialsCost",
+                    "partsNotYetBilled",
                     "van",
                     "salesOrders",
                     "can"
@@ -151446,12 +153220,16 @@
                               "submittedAt": {
                                 "nullable": true,
                                 "type": "string"
+                              },
+                              "submittedAfterClose": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
                               "id",
                               "status",
-                              "submittedAt"
+                              "submittedAt",
+                              "submittedAfterClose"
                             ],
                             "additionalProperties": false
                           }
@@ -151592,7 +153370,8 @@
                               "qualification_override",
                               "maintenance_planned",
                               "coverage_changed",
-                              "deadline_missed"
+                              "deadline_missed",
+                              "form_submitted_after_close"
                             ]
                           },
                           "fromState": {
@@ -152333,6 +154112,9 @@
                             "nullable": true,
                             "type": "string"
                           },
+                          "recordedAfterClose": {
+                            "type": "boolean"
+                          },
                           "version": {
                             "type": "integer",
                             "minimum": -9007199254740991,
@@ -152395,6 +154177,7 @@
                           "occurredAt",
                           "cancelledBy",
                           "clientActionId",
+                          "recordedAfterClose",
                           "version",
                           "lots"
                         ],
@@ -152404,6 +154187,9 @@
                     "materialsCost": {
                       "nullable": true,
                       "type": "string"
+                    },
+                    "partsNotYetBilled": {
+                      "type": "boolean"
                     },
                     "van": {
                       "nullable": true,
@@ -152538,6 +154324,7 @@
                     "previousAtSite",
                     "materials",
                     "materialsCost",
+                    "partsNotYetBilled",
                     "van",
                     "salesOrders",
                     "can"
@@ -153699,12 +155486,16 @@
                               "submittedAt": {
                                 "nullable": true,
                                 "type": "string"
+                              },
+                              "submittedAfterClose": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
                               "id",
                               "status",
-                              "submittedAt"
+                              "submittedAt",
+                              "submittedAfterClose"
                             ],
                             "additionalProperties": false
                           }
@@ -153845,7 +155636,8 @@
                               "qualification_override",
                               "maintenance_planned",
                               "coverage_changed",
-                              "deadline_missed"
+                              "deadline_missed",
+                              "form_submitted_after_close"
                             ]
                           },
                           "fromState": {
@@ -154586,6 +156378,9 @@
                             "nullable": true,
                             "type": "string"
                           },
+                          "recordedAfterClose": {
+                            "type": "boolean"
+                          },
                           "version": {
                             "type": "integer",
                             "minimum": -9007199254740991,
@@ -154648,6 +156443,7 @@
                           "occurredAt",
                           "cancelledBy",
                           "clientActionId",
+                          "recordedAfterClose",
                           "version",
                           "lots"
                         ],
@@ -154657,6 +156453,9 @@
                     "materialsCost": {
                       "nullable": true,
                       "type": "string"
+                    },
+                    "partsNotYetBilled": {
+                      "type": "boolean"
                     },
                     "van": {
                       "nullable": true,
@@ -154791,6 +156590,7 @@
                     "previousAtSite",
                     "materials",
                     "materialsCost",
+                    "partsNotYetBilled",
                     "van",
                     "salesOrders",
                     "can"
@@ -155958,12 +157758,16 @@
                               "submittedAt": {
                                 "nullable": true,
                                 "type": "string"
+                              },
+                              "submittedAfterClose": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
                               "id",
                               "status",
-                              "submittedAt"
+                              "submittedAt",
+                              "submittedAfterClose"
                             ],
                             "additionalProperties": false
                           }
@@ -156104,7 +157908,8 @@
                               "qualification_override",
                               "maintenance_planned",
                               "coverage_changed",
-                              "deadline_missed"
+                              "deadline_missed",
+                              "form_submitted_after_close"
                             ]
                           },
                           "fromState": {
@@ -156845,6 +158650,9 @@
                             "nullable": true,
                             "type": "string"
                           },
+                          "recordedAfterClose": {
+                            "type": "boolean"
+                          },
                           "version": {
                             "type": "integer",
                             "minimum": -9007199254740991,
@@ -156907,6 +158715,7 @@
                           "occurredAt",
                           "cancelledBy",
                           "clientActionId",
+                          "recordedAfterClose",
                           "version",
                           "lots"
                         ],
@@ -156916,6 +158725,9 @@
                     "materialsCost": {
                       "nullable": true,
                       "type": "string"
+                    },
+                    "partsNotYetBilled": {
+                      "type": "boolean"
                     },
                     "van": {
                       "nullable": true,
@@ -157050,6 +158862,7 @@
                     "previousAtSite",
                     "materials",
                     "materialsCost",
+                    "partsNotYetBilled",
                     "van",
                     "salesOrders",
                     "can"
@@ -158205,12 +160018,16 @@
                               "submittedAt": {
                                 "nullable": true,
                                 "type": "string"
+                              },
+                              "submittedAfterClose": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
                               "id",
                               "status",
-                              "submittedAt"
+                              "submittedAt",
+                              "submittedAfterClose"
                             ],
                             "additionalProperties": false
                           }
@@ -158351,7 +160168,8 @@
                               "qualification_override",
                               "maintenance_planned",
                               "coverage_changed",
-                              "deadline_missed"
+                              "deadline_missed",
+                              "form_submitted_after_close"
                             ]
                           },
                           "fromState": {
@@ -159092,6 +160910,9 @@
                             "nullable": true,
                             "type": "string"
                           },
+                          "recordedAfterClose": {
+                            "type": "boolean"
+                          },
                           "version": {
                             "type": "integer",
                             "minimum": -9007199254740991,
@@ -159154,6 +160975,7 @@
                           "occurredAt",
                           "cancelledBy",
                           "clientActionId",
+                          "recordedAfterClose",
                           "version",
                           "lots"
                         ],
@@ -159163,6 +160985,9 @@
                     "materialsCost": {
                       "nullable": true,
                       "type": "string"
+                    },
+                    "partsNotYetBilled": {
+                      "type": "boolean"
                     },
                     "van": {
                       "nullable": true,
@@ -159297,6 +161122,7 @@
                     "previousAtSite",
                     "materials",
                     "materialsCost",
+                    "partsNotYetBilled",
                     "van",
                     "salesOrders",
                     "can"
@@ -160439,12 +162265,16 @@
                               "submittedAt": {
                                 "nullable": true,
                                 "type": "string"
+                              },
+                              "submittedAfterClose": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
                               "id",
                               "status",
-                              "submittedAt"
+                              "submittedAt",
+                              "submittedAfterClose"
                             ],
                             "additionalProperties": false
                           }
@@ -160585,7 +162415,8 @@
                               "qualification_override",
                               "maintenance_planned",
                               "coverage_changed",
-                              "deadline_missed"
+                              "deadline_missed",
+                              "form_submitted_after_close"
                             ]
                           },
                           "fromState": {
@@ -161326,6 +163157,9 @@
                             "nullable": true,
                             "type": "string"
                           },
+                          "recordedAfterClose": {
+                            "type": "boolean"
+                          },
                           "version": {
                             "type": "integer",
                             "minimum": -9007199254740991,
@@ -161388,6 +163222,7 @@
                           "occurredAt",
                           "cancelledBy",
                           "clientActionId",
+                          "recordedAfterClose",
                           "version",
                           "lots"
                         ],
@@ -161397,6 +163232,9 @@
                     "materialsCost": {
                       "nullable": true,
                       "type": "string"
+                    },
+                    "partsNotYetBilled": {
+                      "type": "boolean"
                     },
                     "van": {
                       "nullable": true,
@@ -161531,6 +163369,7 @@
                     "previousAtSite",
                     "materials",
                     "materialsCost",
+                    "partsNotYetBilled",
                     "van",
                     "salesOrders",
                     "can"
@@ -162711,12 +164550,16 @@
                               "submittedAt": {
                                 "nullable": true,
                                 "type": "string"
+                              },
+                              "submittedAfterClose": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
                               "id",
                               "status",
-                              "submittedAt"
+                              "submittedAt",
+                              "submittedAfterClose"
                             ],
                             "additionalProperties": false
                           }
@@ -162857,7 +164700,8 @@
                               "qualification_override",
                               "maintenance_planned",
                               "coverage_changed",
-                              "deadline_missed"
+                              "deadline_missed",
+                              "form_submitted_after_close"
                             ]
                           },
                           "fromState": {
@@ -163598,6 +165442,9 @@
                             "nullable": true,
                             "type": "string"
                           },
+                          "recordedAfterClose": {
+                            "type": "boolean"
+                          },
                           "version": {
                             "type": "integer",
                             "minimum": -9007199254740991,
@@ -163660,6 +165507,7 @@
                           "occurredAt",
                           "cancelledBy",
                           "clientActionId",
+                          "recordedAfterClose",
                           "version",
                           "lots"
                         ],
@@ -163669,6 +165517,9 @@
                     "materialsCost": {
                       "nullable": true,
                       "type": "string"
+                    },
+                    "partsNotYetBilled": {
+                      "type": "boolean"
                     },
                     "van": {
                       "nullable": true,
@@ -163803,6 +165654,7 @@
                     "previousAtSite",
                     "materials",
                     "materialsCost",
+                    "partsNotYetBilled",
                     "van",
                     "salesOrders",
                     "can"
@@ -172797,7 +174649,7 @@
       "get": {
         "operationId": "listMaintenancePlans",
         "summary": "Maintenance plans",
-        "description": "Soonest next due date first. For one asset, customer, site or contract; ended ones only with `includeEnded`.",
+        "description": "Soonest next due date first. For one asset, customer, site or contract; ended ones only with `includeEnded`; `failing=true` keeps those whose jobs the worker could not make on its last try, with the reason in `failure`.",
         "tags": [
           "maintenance"
         ],
@@ -172844,6 +174696,18 @@
           },
           {
             "name": "includeEnded",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "name": "failing",
             "in": "query",
             "required": false,
             "schema": {
@@ -173095,6 +174959,33 @@
                           "endedAt": {
                             "nullable": true,
                             "type": "string"
+                          },
+                          "failure": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "message": {
+                                "type": "string"
+                              },
+                              "at": {
+                                "type": "string"
+                              },
+                              "count": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "gaveUp": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "message",
+                              "at",
+                              "count",
+                              "gaveUp"
+                            ],
+                            "additionalProperties": false
                           }
                         },
                         "required": [
@@ -173121,7 +175012,8 @@
                           "last",
                           "version",
                           "createdAt",
-                          "endedAt"
+                          "endedAt",
+                          "failure"
                         ],
                         "additionalProperties": false
                       }
@@ -173575,6 +175467,33 @@
                     "endedAt": {
                       "nullable": true,
                       "type": "string"
+                    },
+                    "failure": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "message": {
+                          "type": "string"
+                        },
+                        "at": {
+                          "type": "string"
+                        },
+                        "count": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "gaveUp": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "message",
+                        "at",
+                        "count",
+                        "gaveUp"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [
@@ -173601,7 +175520,8 @@
                     "last",
                     "version",
                     "createdAt",
-                    "endedAt"
+                    "endedAt",
+                    "failure"
                   ],
                   "additionalProperties": false
                 }
@@ -174018,6 +175938,33 @@
                     "endedAt": {
                       "nullable": true,
                       "type": "string"
+                    },
+                    "failure": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "message": {
+                          "type": "string"
+                        },
+                        "at": {
+                          "type": "string"
+                        },
+                        "count": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "gaveUp": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "message",
+                        "at",
+                        "count",
+                        "gaveUp"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [
@@ -174044,7 +175991,8 @@
                     "last",
                     "version",
                     "createdAt",
-                    "endedAt"
+                    "endedAt",
+                    "failure"
                   ],
                   "additionalProperties": false
                 }
@@ -174402,6 +176350,33 @@
                     "endedAt": {
                       "nullable": true,
                       "type": "string"
+                    },
+                    "failure": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "message": {
+                          "type": "string"
+                        },
+                        "at": {
+                          "type": "string"
+                        },
+                        "count": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "gaveUp": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "message",
+                        "at",
+                        "count",
+                        "gaveUp"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [
@@ -174428,7 +176403,8 @@
                     "last",
                     "version",
                     "createdAt",
-                    "endedAt"
+                    "endedAt",
+                    "failure"
                   ],
                   "additionalProperties": false
                 }
@@ -177624,12 +179600,16 @@
                                     "submittedAt": {
                                       "nullable": true,
                                       "type": "string"
+                                    },
+                                    "submittedAfterClose": {
+                                      "type": "boolean"
                                     }
                                   },
                                   "required": [
                                     "id",
                                     "status",
-                                    "submittedAt"
+                                    "submittedAt",
+                                    "submittedAfterClose"
                                   ],
                                   "additionalProperties": false
                                 }
@@ -177770,7 +179750,8 @@
                                     "qualification_override",
                                     "maintenance_planned",
                                     "coverage_changed",
-                                    "deadline_missed"
+                                    "deadline_missed",
+                                    "form_submitted_after_close"
                                   ]
                                 },
                                 "fromState": {
@@ -178511,6 +180492,9 @@
                                   "nullable": true,
                                   "type": "string"
                                 },
+                                "recordedAfterClose": {
+                                  "type": "boolean"
+                                },
                                 "version": {
                                   "type": "integer",
                                   "minimum": -9007199254740991,
@@ -178573,6 +180557,7 @@
                                 "occurredAt",
                                 "cancelledBy",
                                 "clientActionId",
+                                "recordedAfterClose",
                                 "version",
                                 "lots"
                               ],
@@ -178582,6 +180567,9 @@
                           "materialsCost": {
                             "nullable": true,
                             "type": "string"
+                          },
+                          "partsNotYetBilled": {
+                            "type": "boolean"
                           },
                           "van": {
                             "nullable": true,
@@ -178716,6 +180704,7 @@
                           "previousAtSite",
                           "materials",
                           "materialsCost",
+                          "partsNotYetBilled",
                           "van",
                           "salesOrders",
                           "can"
@@ -184880,7 +186869,7 @@
       "put": {
         "operationId": "registerPushDevice",
         "summary": "Receive push notifications on this phone",
-        "description": "Registers the phone’s Expo push token for the signed-in person, tied to this session: signing out, or the session being revoked, stops notifications to it. Registering a token already registered moves it to this person and session.",
+        "description": "Registers the phone’s Expo push token for the signed-in person, tied to this session: signing out, or the session being revoked, stops notifications to it. Registering a token already registered moves it to this person and session. `locale` is the language the app is showing; notifications are written in it (Arabic for any `ar` tag, English otherwise). A phone that leaves it out keeps whatever it last said, English if nothing.",
         "tags": [
           "time"
         ],
@@ -184906,6 +186895,12 @@
                     "nullable": true,
                     "type": "string",
                     "maxLength": 200
+                  },
+                  "locale": {
+                    "description": "The app’s language, as a BCP 47 tag such as `ar` or `en`.",
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 35
                   }
                 },
                 "required": [
@@ -185802,6 +187797,7 @@
                   },
                   "seats": {
                     "default": null,
+                    "description": "The company’s own seat number. When set it replaces the plan’s, higher or lower; null uses the plan’s.",
                     "nullable": true,
                     "type": "integer",
                     "minimum": 1,
@@ -187021,7 +189017,7 @@
       "patch": {
         "operationId": "setCompanyPlan",
         "summary": "Change a company’s plan, seat count or billing mode",
-        "description": "Sets the plan the API enforces and, for a company Integr8 invoices, the plan its people see on the billing screen. Switching a company to `invoiced` makes its subscription active with no trial and lifts a read-only state that non-payment caused: Integr8 is taking the money now. Switching back to `self_serve` leaves the subscription as the provider last described it.",
+        "description": "Sets the plan the API enforces and, for a company Integr8 invoices, the plan its people see on the billing screen. Switching a company to `invoiced` makes its subscription active with no trial and lifts a read-only state that non-payment caused: Integr8 is taking the money now. Switching back to `self_serve` leaves the subscription as the provider last described it. On a deployment that takes no card payments (`BILLING_PROVIDER=none`) every company is invoiced, and `self_serve` is stored as `invoiced`.",
         "tags": [
           "platform"
         ],
@@ -187055,6 +189051,7 @@
                   },
                   "seats": {
                     "nullable": true,
+                    "description": "The company’s own seat number. When set it replaces the plan’s, higher or lower; null uses the plan’s.",
                     "type": "integer",
                     "minimum": 1,
                     "maximum": 100000
@@ -187254,7 +189251,7 @@
       "patch": {
         "operationId": "updateCompanySettings",
         "summary": "Change a company’s website, or whether its own apps are built",
-        "description": "The two branding facts the dashboard owns. The rest of the look — logo, icon, colours, theme — is set from the desktop app while acting as the company, where it can be previewed. Switching `appsEnabled` on puts the company in the list the release pipeline builds for.",
+        "description": "The two branding facts the dashboard owns. The rest of the look — logo, icon, colours, theme — is set from the desktop app while acting as the company, where it can be previewed. Switching `appsEnabled` on puts the company in the list the release pipeline builds for and, when the deployment can start builds (`APP_BUILDS=github`), starts its first build at once; `appBuild` says how that went, and is null when this change did not switch apps on.",
         "tags": [
           "platform"
         ],
@@ -187351,6 +189348,39 @@
                     },
                     "aiMobileEnabled": {
                       "type": "boolean"
+                    },
+                    "appBuild": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "started",
+                            "not_configured",
+                            "failed"
+                          ]
+                        },
+                        "runsUrl": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "runUrl": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "message": {
+                          "nullable": true,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "status",
+                        "runsUrl",
+                        "runUrl",
+                        "message"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [
@@ -187363,7 +189393,8 @@
                     "appsEnabled",
                     "aiWebEnabled",
                     "aiDesktopEnabled",
-                    "aiMobileEnabled"
+                    "aiMobileEnabled",
+                    "appBuild"
                   ],
                   "additionalProperties": false
                 }
@@ -187382,6 +189413,130 @@
           },
           "404": {
             "description": "No such company."
+          },
+          "422": {
+            "description": "The request failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/platform/companies/{tenantId}/app-builds": {
+      "post": {
+        "operationId": "startCompanyAppBuild",
+        "summary": "Build a company’s own apps again",
+        "description": "Starts the `build-company-apps.yml` workflow for this one company, at the version on the deployment’s build branch: its desktop installers and phone apps, as a new release. For a later version, or after its look changed. `not_configured` when this deployment cannot start builds (`APP_BUILDS=off`): run the workflow from GitHub Actions instead. Refused while the company’s apps are switched off.",
+        "tags": [
+          "platform"
+        ],
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "What came of asking GitHub.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "started",
+                        "not_configured",
+                        "failed"
+                      ]
+                    },
+                    "runsUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "runUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "message": {
+                      "nullable": true,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "runsUrl",
+                    "runUrl",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A platform session is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such company."
+          },
+          "409": {
+            "description": "`apps_not_enabled`: switch \"Build apps\" on first."
           },
           "422": {
             "description": "The request failed validation.",
@@ -196181,7 +198336,7 @@
       "get": {
         "operationId": "listWebsiteKeys",
         "summary": "A company’s website keys, newest first",
-        "description": "Every key, revoked ones included, with its last characters and use. Never the key itself. `canManage` says whether this account may create, enable, disable or revoke keys; `canDelete` is reserved for the terminal-created staff admin.",
+        "description": "Every key, revoked ones included, with its last characters and use. Never the key itself. Any staff member may list them. `canManage` (create, enable, disable, revoke) and `canDelete` are both true only for a staff manager, an account the terminal command made.",
         "tags": [
           "platform"
         ],
@@ -196357,7 +198512,7 @@
       "post": {
         "operationId": "createWebsiteKey",
         "summary": "Make a website key for a company",
-        "description": "Any signed-in Integr8 staff member may create a key. The key is in this answer and nowhere else: put it in the website’s server environment, never in its pages. Refused with 409 `website_key_limit` while the company already has two non-revoked keys.",
+        "description": "Only a staff manager (an account the terminal command made) may create a key; anybody else gets 403 `staff_manager_only`. The key is in this answer and nowhere else: put it in the website’s server environment, never in its pages. Refused with 409 `website_key_limit` while the company already has two non-revoked keys.",
         "tags": [
           "platform"
         ],
@@ -196486,6 +198641,9 @@
               }
             }
           },
+          "403": {
+            "description": "Not a staff manager (`staff_manager_only`)."
+          },
           "404": {
             "description": "No such company."
           },
@@ -196544,7 +198702,7 @@
       "patch": {
         "operationId": "updateWebsiteKey",
         "summary": "Enable or disable a company website key",
-        "description": "Any active Integr8 staff member can change key state. Disabling stops requests while retaining the key; enabling resumes it unless revoked.",
+        "description": "Only a staff manager (an account the terminal command made) may change a key’s state; anybody else gets 403 `staff_manager_only`. Disabling stops requests while retaining the key; enabling resumes it unless revoked.",
         "tags": [
           "platform"
         ],
@@ -196668,6 +198826,9 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "Not a staff manager (`staff_manager_only`)."
           },
           "404": {
             "description": "No such active key for this company."
@@ -196887,7 +199048,7 @@
       "post": {
         "operationId": "revokeWebsiteKey",
         "summary": "Revoke a website key",
-        "description": "Any signed-in Integr8 staff member may revoke a key. The website using it stops serving immediately. The key stays listed, revoked, for the record.",
+        "description": "Only a staff manager (an account the terminal command made) may revoke a key; anybody else gets 403 `staff_manager_only`. The website using it stops serving immediately. The key stays listed, revoked, for the record.",
         "tags": [
           "platform"
         ],
@@ -196994,6 +199155,9 @@
               }
             }
           },
+          "403": {
+            "description": "Not a staff manager (`staff_manager_only`)."
+          },
           "404": {
             "description": "No such live key for this company."
           },
@@ -197049,7 +199213,7 @@
       "get": {
         "operationId": "getPlatformHealth",
         "summary": "What is failing quietly",
-        "description": "Phones whose sync runs show trouble, billing deliveries that were recorded but not applied, and background work that gave up — over the last few days, across every company. The things that look fine from the office until a customer rings.",
+        "description": "Phones whose sync runs show trouble, billing deliveries that were recorded but not applied, background work that gave up — over the last few days, across every company — and maintenance plans the worker currently cannot make jobs for. The things that look fine from the office until a customer rings.",
         "tags": [
           "platform"
         ],
@@ -197283,13 +199447,68 @@
                         "retrying"
                       ],
                       "additionalProperties": false
+                    },
+                    "maintenance": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "tenantId": {
+                                "type": "string"
+                              },
+                              "companyName": {
+                                "type": "string"
+                              },
+                              "planId": {
+                                "type": "string"
+                              },
+                              "title": {
+                                "type": "string"
+                              },
+                              "error": {
+                                "type": "string"
+                              },
+                              "failedAt": {
+                                "type": "string"
+                              },
+                              "failureCount": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "gaveUp": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "tenantId",
+                              "companyName",
+                              "planId",
+                              "title",
+                              "error",
+                              "failedAt",
+                              "failureCount",
+                              "gaveUp"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [
                     "since",
                     "sync",
                     "webhooks",
-                    "jobs"
+                    "jobs",
+                    "maintenance"
                   ],
                   "additionalProperties": false
                 }

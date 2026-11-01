@@ -124,6 +124,77 @@ describe('signing in with an emailed code', () => {
   });
 });
 
+interface TokensBody {
+  accessToken: string;
+  refreshToken: string;
+  sessionId: string;
+  offlineGrant?: string;
+  offlineGrantExpiresAt?: string;
+}
+
+describe('the phone’s offline grant (P03)', () => {
+  const passwordSignIn = (who: { email: string; password: string }, clientApp: string) =>
+    api.app.inject({
+      method: 'POST',
+      url: '/v1/auth/sign-in',
+      remoteAddress: api.remoteAddress,
+      headers: { 'x-client-version': '1.0.0', 'x-client-app': clientApp },
+      payload: { email: who.email, password: who.password, clientApp },
+    });
+  const refresh = (refreshToken: string) =>
+    api.app.inject({
+      method: 'POST',
+      url: '/v1/auth/refresh',
+      remoteAddress: api.remoteAddress,
+      headers: { 'x-client-version': '1.0.0', 'x-client-app': 'mobile' },
+      payload: { refreshToken },
+    });
+  const week = (from: number, until: string) => (Date.parse(until) - from) / 86_400_000;
+
+  it('comes with a phone’s sign-in, by password or by code, and is renewed by every refresh', async () => {
+    const ed = await api.member('engineer', 'grant-phone');
+
+    const before = Date.now();
+    const signedIn = await passwordSignIn(ed, 'mobile');
+    expect(signedIn.statusCode, signedIn.body).toBe(200);
+    const first = (JSON.parse(signedIn.body) as { tokens: TokensBody }).tokens;
+    expect(week(before, first.offlineGrantExpiresAt!)).toBeCloseTo(7, 2);
+    expect(await api.services.tokens.verifyOfflineGrant(first.offlineGrant!)).toMatchObject({
+      typ: 'offline',
+      tid: api.tenantId,
+      sub: ed.userId,
+      sid: first.sessionId,
+    });
+
+    const renewed = await refresh(first.refreshToken);
+    expect(renewed.statusCode, renewed.body).toBe(200);
+    const second = JSON.parse(renewed.body) as TokensBody;
+    expect(second.offlineGrant).toBeDefined();
+    const [firstClaims, secondClaims] = await Promise.all([
+      api.services.tokens.verifyOfflineGrant(first.offlineGrant!),
+      api.services.tokens.verifyOfflineGrant(second.offlineGrant!),
+    ]);
+    expect(secondClaims.gid).not.toBe(firstClaims.gid);
+
+    await requestCode(ed.email);
+    const byCode = await completeCode(ed.email, await codeFor(ed.email), 'mobile');
+    expect(byCode.statusCode, byCode.body).toBe(200);
+    expect((JSON.parse(byCode.body) as { tokens: TokensBody }).tokens.offlineGrant).toBeDefined();
+  });
+
+  it('is not given to the web or the desktop app', async () => {
+    const office = await api.member('dispatcher', 'grant-office');
+    for (const clientApp of ['web', 'desktop']) {
+      const signedIn = await passwordSignIn(office, clientApp);
+      const tokens = (JSON.parse(signedIn.body) as { tokens: TokensBody }).tokens;
+      expect(tokens).not.toHaveProperty('offlineGrant');
+      expect(JSON.parse((await refresh(tokens.refreshToken)).body)).not.toHaveProperty(
+        'offlineGrant',
+      );
+    }
+  });
+});
+
 describe('changing a password', () => {
   it('needs no current password straight after a code sign-in, and emails the address', async () => {
     const dana = await api.member('admin', 'pw-code');

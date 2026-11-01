@@ -162,7 +162,8 @@ export class LedgerReportsRepository extends TenantScopedRepository {
         from erp_invoices i
         cross join lateral (select erp_invoice_balance(i.tenant_id, i.id) as balance) b
        where i.tenant_id = ${this.tenantId} and i.status = 'issued'
-         and i.currency_code = ${currency} and b.balance > 0
+         and i.currency_code = ${currency}
+         and b.balance >= power(10::numeric, -erp_currency_minor_unit(i.currency_code))
        order by coalesce(i.due_date, i.issue_date), i.reference
     `.execute(this.db);
     return rows.map((row) => ({

@@ -3,6 +3,8 @@
 import { useTranslation } from '@integr8/i18n';
 import Link from 'next/link';
 import { useEffect, type ReactNode } from 'react';
+import { LegalLinks } from '~/components/legal-links';
+import { LocaleSelect } from '~/components/locale-select';
 import { recordFunnelStep } from '~/lib/funnel';
 import { getStartedHref, signupMode } from '~/lib/signup';
 
@@ -40,7 +42,7 @@ export function MarketingShell({
           <Link href="/" className="text-lg font-semibold text-content">
             {t('common.appName')}
           </Link>
-          <div className="flex flex-1 items-center justify-end gap-4 text-sm">
+          <div className="flex flex-1 flex-wrap items-center justify-end gap-x-4 gap-y-2 text-sm">
             <Link href="/features" className="text-content-muted hover:text-content">
               {t('marketing.nav.features')}
             </Link>
@@ -66,7 +68,7 @@ export function MarketingShell({
       <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-12">{children}</main>
 
       <footer className="border-t border-border-subtle">
-        <div className="mx-auto flex max-w-5xl flex-wrap gap-4 px-6 py-6 text-sm text-content-muted">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-4 px-6 py-6 text-sm text-content-muted">
           <span>{t('common.appName')}</span>
           <Link href="/pricing" className="hover:text-content">
             {t('marketing.nav.pricing')}
@@ -74,6 +76,12 @@ export function MarketingShell({
           <Link href="/help" className="hover:text-content">
             {t('marketing.nav.help')}
           </Link>
+          {/* The terms, the privacy policy and the data processing terms (High 10). */}
+          <LegalLinks />
+          {/* A visitor reads these pages in either language, the legal ones above all. */}
+          <div className="ms-auto w-40">
+            <LocaleSelect />
+          </div>
         </div>
       </footer>
     </div>

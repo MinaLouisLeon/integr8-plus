@@ -522,7 +522,8 @@ function SubmitLocationLine({
     );
   }
   const when = formatDateTime(location.capturedAt, { locale });
-  const map = `https://www.openstreetmap.org/?mlat=${location.latitude}&mlon=${location.longitude}#map=18/${location.latitude}/${location.longitude}`;
+  // The same Google Maps link the site screens use to check a position.
+  const map = `https://www.google.com/maps/search/?api=1&query=${location.latitude},${location.longitude}`;
   return (
     <p className="text-sm text-content-muted">
       {location.accuracyMeters === undefined

@@ -1,5 +1,6 @@
 import {
   advanceAfterCreating,
+  type CandidateGroup,
   calendarDay,
   contractLastDay,
   creationDay,
@@ -9,6 +10,8 @@ import {
   formatWorkOrderReference,
   groupCandidates,
   holds,
+  MAX_PLAN_FAILURES,
+  type NextDue,
   type Permission,
   windowDays,
   windowInstants,
@@ -18,6 +21,7 @@ import {
   type DeadlineNotice,
   type DuePlan,
   getPlatformDataSource,
+  type MaintenancePlan,
   type TenantTransaction,
   withTenant,
 } from '@integr8/db';
@@ -33,7 +37,15 @@ import {
 import type { EmailSender } from '../email/sender.js';
 import { isFeatureEnabled } from '../http/features.js';
 import type { Logger } from '../http/logger.js';
+import { captureException } from '../observability/sentry.js';
 import type { PushMessage, PushSender } from '../push/sender.js';
+import {
+  fill,
+  messageLocale,
+  momentFormatter,
+  type NotificationWords,
+  wordsFor,
+} from '../notifications/words.js';
 import { nextDueFor } from '../routes/v1/maintenance.js';
 
 /**
@@ -54,7 +66,11 @@ import { nextDueFor } from '../routes/v1/maintenance.js';
  */
 
 export const MAINTENANCE_TASK = 'maintenance.plans';
+export const MAINTENANCE_RETRY_TASK = 'maintenance.retries';
 export const DEADLINES_TASK = 'deadlines.alerts';
+
+/** Between the instructions of plans that share a job. */
+const PARAGRAPH = '\n\n';
 
 const DAILY = { hours: 20 } as const;
 const OFTEN = { minutes: 10 } as const;
@@ -79,7 +95,10 @@ export interface MaintenanceReport {
   occurrences: number;
   skipped: number;
   renewalAlerts: number;
+  /** Companies whose run failed outright. */
   failures: { tenantId: string; message: string }[];
+  /** Plans that could not make their jobs, each rolled back alone (0063). */
+  planFailures: { tenantId: string; planId: string; message: string; failureCount: number }[];
 }
 
 export interface DeadlineReport {
@@ -162,14 +181,7 @@ async function holdersOf(tx: TenantTransaction, permission: Permission): Promise
 // ---------------------------------------------------------------------------
 
 export async function runMaintenancePlans(options: TaskOptions): Promise<MaintenanceReport> {
-  const report: MaintenanceReport = {
-    companies: 0,
-    jobsCreated: 0,
-    occurrences: 0,
-    skipped: 0,
-    renewalAlerts: 0,
-    failures: [],
-  };
+  const report = emptyReport();
   await eachCompany(
     MAINTENANCE_TASK,
     DAILY,
@@ -179,9 +191,7 @@ export async function runMaintenancePlans(options: TaskOptions): Promise<Mainten
       let touched = false;
       if (await isFeatureEnabled(tenant.id, 'assets')) {
         const made = await withTenant(tenant.id, (tx) => makeJobs(tx, now));
-        report.jobsCreated += made.jobsCreated;
-        report.occurrences += made.occurrences;
-        report.skipped += made.skipped;
+        tally(report, made, tenant.id, options);
         touched = made.occurrences + made.skipped > 0;
       }
       const alerts = await renewalReminders(tenant, now, options);
@@ -195,90 +205,314 @@ export async function runMaintenancePlans(options: TaskOptions): Promise<Mainten
   return report;
 }
 
+/**
+ * Plans that failed on an earlier run, tried again alone on the worker's next
+ * cycle (about every fifteen minutes) rather than the next day, until they
+ * succeed or have failed {@link MAX_PLAN_FAILURES} times in a row (0063).
+ */
+export async function runMaintenanceRetries(options: TaskOptions): Promise<MaintenanceReport> {
+  const report = emptyReport();
+  await eachCompany(
+    MAINTENANCE_RETRY_TASK,
+    OFTEN,
+    options,
+    async (tenant) => {
+      if (!(await isFeatureEnabled(tenant.id, 'assets'))) {
+        return;
+      }
+      const now = options.now ?? new Date();
+      const made = await withTenant(tenant.id, (tx) => makeJobs(tx, now, { retriesOnly: true }));
+      tally(report, made, tenant.id, options);
+      if (made.occurrences + made.skipped + made.failures.length > 0) {
+        report.companies += 1;
+      }
+    },
+    report.failures,
+  );
+  return report;
+}
+
+function emptyReport(): MaintenanceReport {
+  return {
+    companies: 0,
+    jobsCreated: 0,
+    occurrences: 0,
+    skipped: 0,
+    renewalAlerts: 0,
+    failures: [],
+    planFailures: [],
+  };
+}
+
+/** Adds one company's run to the report, and says out loud which plans failed. */
+function tally(report: MaintenanceReport, made: MadeJobs, tenantId: string, options: TaskOptions) {
+  report.jobsCreated += made.jobsCreated;
+  report.occurrences += made.occurrences;
+  report.skipped += made.skipped;
+  for (const failure of made.failures) {
+    report.planFailures.push({
+      tenantId,
+      planId: failure.planId,
+      message: failure.message,
+      failureCount: failure.failureCount,
+    });
+    options.logger.error('A maintenance plan could not make its jobs', {
+      tenantId,
+      planId: failure.planId,
+      failures: failure.failureCount,
+      error: failure.message,
+    });
+    captureException(failure.error, {
+      task: MAINTENANCE_TASK,
+      tenantId,
+      planId: failure.planId,
+    });
+  }
+}
+
 interface Candidate extends DueCandidate {
   due: DuePlan;
   sequence: number;
 }
 
+/** What one plan has to do on this run, worked out before anything is written. */
+interface PlanWork {
+  due: DuePlan;
+  /** Due dates passed over because the asset is retired. */
+  skips: string[];
+  candidates: Candidate[];
+  /** Where the plan goes next, once its due dates are made. */
+  next: NextDue | undefined;
+}
+
+export interface PlanFailure {
+  planId: string;
+  message: string;
+  /** Failures in a row, this one included. */
+  failureCount: number;
+  error: unknown;
+}
+
+export interface MadeJobs {
+  jobsCreated: number;
+  occurrences: number;
+  skipped: number;
+  failures: PlanFailure[];
+}
+
+type Counts = Omit<MadeJobs, 'failures'>;
+
+/** Whether a run takes a plan: the daily run every plan still retried, a retry run only failed ones. */
+function takes(plan: MaintenancePlan, retriesOnly: boolean): boolean {
+  if (plan.failureCount >= MAX_PLAN_FAILURES) {
+    return false;
+  }
+  return !retriesOnly || plan.failureCount > 0;
+}
+
+const messageOf = (error: unknown) => (error instanceof Error ? error.message : String(error));
+
 /**
- * Makes every job due by today, for one company, in one transaction. Plans
- * waiting on a completed job move on first, so a job finished yesterday can
- * lead to the next one today.
+ * Makes every job due by today, for one company. Plans waiting on a completed
+ * job move on first, so a job finished yesterday can lead to the next one today.
+ *
+ * Each plan's work runs in its own savepoint (0063). Plans whose due dates
+ * share a job are written together; when that fails, each is tried again on
+ * its own, so a bad plan cannot take a good one down with it. A plan that
+ * still fails is rolled back alone and its failure recorded on it; a plan that
+ * succeeds after failing has its failure cleared.
  */
 export async function makeJobs(
   tx: TenantTransaction,
   now: Date,
-): Promise<{ jobsCreated: number; occurrences: number; skipped: number }> {
+  options: { retriesOnly?: boolean } = {},
+): Promise<MadeJobs> {
+  const retriesOnly = options.retriesOnly === true;
   const { timezone } = await tx.settings.get();
   const today = calendarDay(now, timezone);
-  let jobsCreated = 0;
-  let occurrences = 0;
-  let skipped = 0;
+  const made: MadeJobs = { jobsCreated: 0, occurrences: 0, skipped: 0, failures: [] };
+  const failed = new Map<string, unknown>();
+  const succeeded = new Set<string>();
+  const fail = (planId: string, error: unknown) => {
+    failed.set(planId, error);
+    succeeded.delete(planId);
+  };
 
   // Completion plans whose last job has finished.
-  const waiting = await tx.maintenance.waitingOnCompletion();
+  const waiting = (await tx.maintenance.waitingOnCompletion()).filter((plan) =>
+    takes(plan, retriesOnly),
+  );
   const lasts = await tx.maintenance.lastOccurrences(waiting.map((plan) => plan.id));
   for (const plan of waiting) {
-    const next = nextDueFor(plan, today, lasts.get(plan.id), timezone);
-    if (next.nextDueOn !== null) {
-      await tx.maintenance.advance(plan.id, next);
-    }
-  }
-
-  const candidates: Candidate[] = [];
-  for (const due of await tx.maintenance.dueForCreation(today)) {
-    const { plan } = due;
-    const contractEnd =
-      due.contractEndsOn === null
-        ? null
-        : contractLastDay({ endsOn: due.contractEndsOn, cancelledOn: due.contractCancelledOn });
-    const schedule = {
-      counting: plan.counting,
-      interval: { count: plan.intervalCount, unit: plan.intervalUnit },
-      startsOn: plan.startsOn,
-      endsOn: plan.endsOn,
-    };
-    let dueOn = plan.nextDueOn;
-    let sequence = plan.nextSequence;
-    for (let caught = 0; dueOn !== null && caught < CATCH_UP_LIMIT; caught += 1) {
-      if (
-        creationDay(dueOn, plan.leadDays) > today ||
-        !withinPlan(dueOn, plan.endsOn, contractEnd)
-      ) {
-        break;
-      }
-      if (plan.assetStatus === 'retired') {
-        if (
-          await tx.maintenance.recordOccurrence({
-            planId: plan.id,
-            dueOn,
-            workOrderId: null,
-            skipReason: 'asset_retired',
-          })
-        ) {
-          skipped += 1;
+    try {
+      await tx.maintenance.isolated(async () => {
+        const next = nextDueFor(plan, today, lasts.get(plan.id), timezone);
+        if (next.nextDueOn !== null) {
+          await tx.maintenance.advance(plan.id, next);
         }
-      } else if (!(await tx.maintenance.hasOccurrence(plan.id, dueOn))) {
-        candidates.push({
-          key: `${plan.id}:${dueOn}`,
-          siteId: plan.siteId,
-          jobTypeId: plan.jobTypeId,
-          contractId: plan.contractId,
-          canShare: plan.canShare,
-          dueOn,
-          window: windowDays(dueOn, plan.windowBeforeDays, plan.windowAfterDays),
-          due,
-          sequence,
-        });
-      }
-      const next = advanceAfterCreating(schedule, sequence);
-      dueOn = next.nextDueOn;
-      sequence = next.nextSequence;
-      await tx.maintenance.advance(plan.id, next);
+      });
+      succeeded.add(plan.id);
+    } catch (error) {
+      fail(plan.id, error);
     }
   }
 
-  for (const group of groupCandidates(candidates)) {
+  // What each due plan has to do, read before anything is written.
+  const work = new Map<string, PlanWork>();
+  for (const due of await tx.maintenance.dueForCreation(today)) {
+    if (!takes(due.plan, retriesOnly) || failed.has(due.plan.id)) {
+      continue;
+    }
+    try {
+      work.set(due.plan.id, await planWork(tx, due, today));
+    } catch (error) {
+      fail(due.plan.id, error);
+    }
+  }
+
+  // Plans whose due dates would share a job are written together; the rest alone.
+  const groups = groupCandidates([...work.values()].flatMap((entry) => entry.candidates));
+  for (const unit of unitsOf(work, groups)) {
+    try {
+      addCounts(made, await tx.maintenance.isolated(() => writeUnit(tx, unit, timezone)));
+      for (const entry of unit) {
+        succeeded.add(entry.due.plan.id);
+      }
+    } catch (error) {
+      if (unit.length === 1) {
+        fail(unit[0]!.due.plan.id, error);
+        continue;
+      }
+      // Together they failed: each on its own, so only the bad one is held back.
+      for (const entry of unit) {
+        try {
+          addCounts(made, await tx.maintenance.isolated(() => writeUnit(tx, [entry], timezone)));
+          succeeded.add(entry.due.plan.id);
+        } catch (alone) {
+          fail(entry.due.plan.id, alone);
+        }
+      }
+    }
+  }
+
+  const plans = new Map(
+    (await tx.maintenance.findPlans([...failed.keys(), ...succeeded])).map((plan) => [
+      plan.id,
+      plan,
+    ]),
+  );
+  for (const [planId, error] of failed) {
+    const message = messageOf(error);
+    await tx.maintenance.recordFailure(planId, message);
+    made.failures.push({
+      planId,
+      message,
+      failureCount: (plans.get(planId)?.failureCount ?? 0) + 1,
+      error,
+    });
+  }
+  for (const planId of succeeded) {
+    if ((plans.get(planId)?.failureCount ?? 0) > 0) {
+      await tx.maintenance.clearFailure(planId);
+    }
+  }
+  return made;
+}
+
+function addCounts(made: MadeJobs, counts: Counts) {
+  made.jobsCreated += counts.jobsCreated;
+  made.occurrences += counts.occurrences;
+  made.skipped += counts.skipped;
+}
+
+/** One plan's due dates up to today: those to skip, those to make, and where it goes next. */
+async function planWork(tx: TenantTransaction, due: DuePlan, today: string): Promise<PlanWork> {
+  const { plan } = due;
+  const contractEnd =
+    due.contractEndsOn === null
+      ? null
+      : contractLastDay({ endsOn: due.contractEndsOn, cancelledOn: due.contractCancelledOn });
+  const schedule = {
+    counting: plan.counting,
+    interval: { count: plan.intervalCount, unit: plan.intervalUnit },
+    startsOn: plan.startsOn,
+    endsOn: plan.endsOn,
+  };
+  const work: PlanWork = { due, skips: [], candidates: [], next: undefined };
+  let dueOn = plan.nextDueOn;
+  let sequence = plan.nextSequence;
+  for (let caught = 0; dueOn !== null && caught < CATCH_UP_LIMIT; caught += 1) {
+    if (creationDay(dueOn, plan.leadDays) > today || !withinPlan(dueOn, plan.endsOn, contractEnd)) {
+      break;
+    }
+    if (plan.assetStatus === 'retired') {
+      work.skips.push(dueOn);
+    } else if (!(await tx.maintenance.hasOccurrence(plan.id, dueOn))) {
+      work.candidates.push({
+        key: `${plan.id}:${dueOn}`,
+        siteId: plan.siteId,
+        jobTypeId: plan.jobTypeId,
+        contractId: plan.contractId,
+        canShare: plan.canShare,
+        dueOn,
+        window: windowDays(dueOn, plan.windowBeforeDays, plan.windowAfterDays),
+        due,
+        sequence,
+      });
+    }
+    const next = advanceAfterCreating(schedule, sequence);
+    dueOn = next.nextDueOn;
+    sequence = next.nextSequence;
+    work.next = next;
+  }
+  return work;
+}
+
+/**
+ * Plans that must be written together: those whose due dates fall in one
+ * group, and so one job, joined through every group they share.
+ */
+function unitsOf(work: Map<string, PlanWork>, groups: readonly CandidateGroup[]): PlanWork[][] {
+  const unitOf = new Map<string, Set<string>>();
+  for (const planId of work.keys()) {
+    unitOf.set(planId, new Set([planId]));
+  }
+  for (const group of groups) {
+    const planIds = (group.candidates as Candidate[]).map((candidate) => candidate.due.plan.id);
+    const merged = new Set(planIds.flatMap((planId) => [...unitOf.get(planId)!]));
+    for (const planId of merged) {
+      unitOf.set(planId, merged);
+    }
+  }
+  return [...new Set(unitOf.values())].map((planIds) => [...planIds].map((id) => work.get(id)!));
+}
+
+/** Writes some plans' skips, jobs and next due dates, as {@link makeJobs} decided. */
+async function writeUnit(
+  tx: TenantTransaction,
+  unit: readonly PlanWork[],
+  timezone: string,
+): Promise<Counts> {
+  const counts: Counts = { jobsCreated: 0, occurrences: 0, skipped: 0 };
+  for (const entry of unit) {
+    for (const dueOn of entry.skips) {
+      if (
+        await tx.maintenance.recordOccurrence({
+          planId: entry.due.plan.id,
+          dueOn,
+          workOrderId: null,
+          skipReason: 'asset_retired',
+        })
+      ) {
+        counts.skipped += 1;
+      }
+    }
+    if (entry.next !== undefined) {
+      await tx.maintenance.advance(entry.due.plan.id, entry.next);
+    }
+  }
+
+  for (const group of groupCandidates(unit.flatMap((entry) => entry.candidates))) {
     const members = group.candidates as Candidate[];
     const first = members[0]!;
     const plan = first.due.plan;
@@ -309,7 +543,7 @@ export async function makeJobs(
           title: titles.join(', ').slice(0, 200),
           ...(instructions.length === 0
             ? {}
-            : { instructions: [...new Set(instructions)].join('\n\n').slice(0, 10000) }),
+            : { instructions: [...new Set(instructions)].join(PARAGRAPH).slice(0, 10000) }),
           dueFrom,
           dueBy,
           assetIds: members.map((member) => member.due.plan.assetId),
@@ -318,7 +552,7 @@ export async function makeJobs(
         plan.createdBy,
       );
       workOrderId = job.id;
-      jobsCreated += 1;
+      counts.jobsCreated += 1;
     } else {
       for (const member of members) {
         await tx.assets.link(workOrderId, member.due.plan.assetId, member.due.plan.createdBy);
@@ -332,11 +566,11 @@ export async function makeJobs(
           workOrderId,
         })
       ) {
-        occurrences += 1;
+        counts.occurrences += 1;
       }
     }
   }
-  return { jobsCreated, occurrences, skipped };
+  return counts;
 }
 
 async function renewalReminders(
@@ -345,7 +579,7 @@ async function renewalReminders(
   options: TaskOptions,
 ): Promise<number> {
   const prepared = await withTenant(tenant.id, async (tx) => {
-    const { timezone } = await tx.settings.get();
+    const { timezone, locale } = await tx.settings.get();
     const alerts = await tx.contracts.dueRenewalAlerts(calendarDay(now, timezone));
     if (alerts.length === 0) {
       return undefined;
@@ -362,7 +596,7 @@ async function renewalReminders(
       endsOn: alert.contract.endsOn,
       stage: alert.stage,
     }));
-    return { alerts, managers, items };
+    return { alerts, managers, items, locale: messageLocale(locale) };
   });
   if (prepared === undefined) {
     return 0;
@@ -378,6 +612,7 @@ async function renewalReminders(
           companyName: tenant.name,
           items: prepared.items,
           url,
+          locale: prepared.locale,
         }),
         { kind: 'contract_renewal', tenantId: tenant.id },
       );
@@ -455,11 +690,9 @@ async function deadlineAlertsFor(
   const jobById = new Map(jobs.map((job) => [job.id, job]));
   const customerName = new Map(customers.map((customer) => [customer.id, customer.name]));
   const memberById = new Map(members.map((member) => [member.userId as string, member]));
-  const when = new Intl.DateTimeFormat('en-GB', {
-    timeZone: settings.timezone,
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  });
+  // Emails go in the company's language; each phone's push in its own.
+  const locale = messageLocale(settings.locale);
+  const when = momentFormatter(locale, settings.timezone);
   const itemOf = (notice: Notice): DeadlineItem | undefined => {
     const job = jobById.get(notice.workOrderId);
     if (job === undefined) {
@@ -499,31 +732,38 @@ async function deadlineAlertsFor(
       await deliver(
         options.email,
         options.logger,
-        deadlineAlertEmail({ to: member.email, companyName: tenant.name, items, url }),
+        deadlineAlertEmail({ to: member.email, companyName: tenant.name, items, url, locale }),
         { kind: 'deadline_alert', tenantId: tenant.id },
       );
     }
   }
 
   if (options.push !== undefined) {
-    const tokens = new Map<string, string[]>();
+    const phones = new Map<string, (typeof devices)[number][]>();
     for (const device of devices) {
-      tokens.set(device.userId, [...(tokens.get(device.userId) ?? []), device.token]);
+      phones.set(device.userId, [...(phones.get(device.userId) ?? []), device]);
     }
     const messages: PushMessage[] = notices.flatMap((notice) => {
       const job = jobById.get(notice.workOrderId);
       if (job === undefined) {
         return [];
       }
-      const label = formatWorkOrderReference(job.reference);
-      const what = notice.kind === 'response' ? 'response' : 'completion';
+      const label = { job: formatWorkOrderReference(job.reference) };
+      const title = (words: NotificationWords['push']) =>
+        fill(
+          notice.kind === 'response'
+            ? notice.stage === 'missed'
+              ? words.responseDeadlineMissed
+              : words.responseDeadlineSoon
+            : notice.stage === 'missed'
+              ? words.completionDeadlineMissed
+              : words.completionDeadlineSoon,
+          label,
+        );
       return (crews.get(notice.workOrderId) ?? []).flatMap((member) =>
-        (tokens.get(member.userId) ?? []).map((token) => ({
-          to: token,
-          title:
-            notice.stage === 'missed'
-              ? `${label}: ${what} deadline missed`
-              : `${label}: ${what} deadline soon`,
+        (phones.get(member.userId) ?? []).map((device) => ({
+          to: device.token,
+          title: title(wordsFor(messageLocale(device.locale)).push),
           // No time: the phone shows it in its own time zone, which may not be the company's.
           body: job.title,
           data: { kind: 'deadline_alert', workOrderId: job.id },

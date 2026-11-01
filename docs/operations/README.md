@@ -60,11 +60,16 @@ changed is discarded.
 | `GEOCODER`            | `mapbox` in production; `fake` (stable coordinates from the address text) in development and tests. Production refuses `fake`. |
 | `MAPBOX_ACCESS_TOKEN` | A secret token with geocoding scope. Requests use `permanent=true`, which Mapbox requires for results that are stored.         |
 
-**Maps.** The site screen shows a Leaflet map for dropping a pin when the app is given tiles:
-`NEXT_PUBLIC_MAP_TILES_URL` / `VITE_MAP_TILES_URL` with `…_ATTRIBUTION`, such as a Mapbox
-raster style URL with a public token. In development, OpenStreetMap's tiles stand in; their
-usage policy does not allow a product to rely on them. Without tiles, a site is placed by
-coordinates or device location.
+**No map on screen.** The site screen shows the saved coordinates with an **Open in Google
+Maps** link (`https://www.google.com/maps/search/?api=1&query=<lat>,<lng>`, built by
+`googleMapsUrl` in `site-location.tsx`), so the office can check the position in Google's own
+tab; the work order and submission screens link the same way. A wrong position is corrected by
+typing coordinates (in Google Maps, right-click the spot and click the numbers to copy them) or
+with the device's location. The web and desktop apps drew a Leaflet map until 2026-10-31, but
+its tiles needed a tile service of their own in production (`NEXT_PUBLIC_MAP_TILES_URL` /
+`VITE_MAP_TILES_URL`), none was set up, and the map area stayed empty; the map, its
+OpenStreetMap development stand-in, those settings and the Leaflet dependency are gone.
+Geocoding is unchanged.
 
 ## Job types
 
@@ -115,7 +120,13 @@ against both. The database refuses, for every client and role:
 - **completing while anything the job needs is missing** (P14): a required form with no submitted
   submission for this job, fewer before or after photos than the job asks for, or no customer
   sign-off where one is required. The API answers 409 `completion_blocked`, with one detail per
-  missing thing;
+  missing thing. A sign-off is required when the job's type asks for one **or** any submission
+  on the job (draft, submitted or reopened) is of a form whose "Signature required before
+  close" setting is ticked (migration 0060). That setting is read from the form when the job
+  completes, not from the version filled: it is a form setting outside the published
+  definition, so ticking it applies to open jobs at once and unticking it relaxes them. The
+  job's `execution.signatureRequired` reports the combined answer, and every client shows the
+  same "signature missing" reason;
 - editing a completed, reviewed or cancelled job's details.
 
 A write names the revision it read; a stale one is refused `work_order_changed`.
@@ -129,6 +140,14 @@ unassigns them rather than deleting the row. Engineers see only the jobs they ar
 
 - Forms are filled for a job with `POST /v1/submissions { formId, workOrderId }`: the form must
   be one of the job's, the job open, and the person on its crew. The link never changes.
+- **A closed job and its forms** (migration 0061). Once a job is completed, reviewed or
+  cancelled, the submit route refuses a draft on it with 409 `submission_job_closed`;
+  correcting a reopened submission is still allowed. A phone is told apart: a form the
+  engineer started on the phone before the job closed (judged by when the phone recorded it)
+  is accepted when it finally syncs, marked `submittedAfterClose`, written to the job's
+  history (`form_submitted_after_close`) and shown on the job screen as a "Submitted after
+  the job closed" badge; one started after the job closed is refused as a `state_changed`
+  conflict, as before.
   `GET /v1/submissions?workOrderId=|siteId=|customerId=` finds them again, and so does the
   submission list screen.
 - Checklist items record who ticked them and when.
@@ -152,6 +171,15 @@ reassigns, reschedules (set a window, or shift by minutes) or cancels up to 200 
 its own: the result lists every job it could not change and why.
 
 ## Scheduling: visits and the schedule (P25)
+
+**The company's calendar.** The schedule's shading, the visit-day certificate check,
+maintenance due dates, contract years and deadlines counted in working hours all read the
+company's timezone, working hours and working days from Settings (`PATCH /v1/settings`;
+hours are minutes from midnight, days are ISO numbers with Monday as 1). A new company starts
+on `Africa/Cairo`, 08:00 to 17:00, Sunday to Thursday (`[7, 1, 2, 3, 4]`), since migration
+0057; before that it started on UTC, Monday to Friday, which ran Egyptian companies' deadlines
+and maintenance through Fridays. Companies that existed before 0057 keep what they have: check
+their settings rather than assuming.
 
 A job can take several trips. Each is a **visit** (`work_order_visits`, migration 0051): a
 start, an end, notes, and the people from the job's crew who go
@@ -303,6 +331,17 @@ twice. Dates from before a plan was created are not made; dates missed while the
 down are made on its next run. A retired asset's dates are skipped. A plan stops at its own end
 date and at its contract's. Changing a plan only moves what has not been made yet. A paused
 plan makes nothing; resuming carries on from today.
+
+**A plan that fails** (migration 0063). Each plan's work runs in its own savepoint; plans whose
+due dates share a job are written together and, if that fails, again one by one, so a plan
+that cannot make its job is rolled back alone while the company's other plans make theirs.
+The failure is kept on the plan (`last_error`, `last_error_at`, `failure_count`), logged, sent
+to Sentry, shown as a warning with the reason on the Maintenance screen and on the asset's plan,
+and listed on the staff dashboard's Health page. The worker tries that plan again alone on its
+next cycle (`maintenance.retries`, about every fifteen minutes) instead of the next day. After
+five failures in a row it stops retrying and keeps the warning until someone edits, pauses or
+resumes the plan, which clears it. A successful run clears it too. `GET
+/v1/maintenance-plans?failing=true` lists such plans; each plan carries `failure`.
 
 **Deadlines.** The company sets, per priority, how long it has to respond (to dispatch the job)
 and to complete it (`deadline_rules`), counted around the clock or in the company's working

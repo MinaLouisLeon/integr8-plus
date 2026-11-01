@@ -267,6 +267,95 @@ describe('completing a job', () => {
     });
   });
 
+  it('asks for a sign-off when a form filled on the job asks for one, read from the form (0060)', async () => {
+    const { plainTypeId, formId, versionId } = await inTenant(async (tx) => {
+      const form = await tx.forms.createForm({
+        title: 'Inspection report',
+        createdBy: DISPATCHER,
+        signatureRequired: true,
+      });
+      const draft = await tx.forms.createDraft({
+        formId: form.id,
+        definition: {
+          schemaVersion: 1,
+          title: { en: 'Inspection report' },
+          pages: [
+            {
+              id: 'page_1',
+              sections: [
+                { id: 'section_1', fields: [{ id: 'note', type: 'text', label: { en: 'Note' } }] },
+              ],
+            },
+          ],
+        },
+        createdBy: DISPATCHER,
+      });
+      const version = await tx.forms.publishDraft(draft.id, DISPATCHER);
+      const plain = await tx.jobTypes.create(
+        { name: 'Inspection', code: 'inspect-0060', forms: [{ formId: form.id, required: false }] },
+        DISPATCHER,
+      );
+      return { plainTypeId: plain.id, formId: form.id, versionId: version!.id };
+    });
+    const created = await inTenant((tx) =>
+      tx.workOrders.create(
+        {
+          customerId,
+          siteId,
+          jobTypeId: plainTypeId,
+          crew: [{ userId: ENGINEER, lead: true }],
+        },
+        DISPATCHER,
+      ),
+    );
+    expect(created.signatureRequired).toBe(false);
+    let job = await moveTo(created, ['dispatched', 'on_site', 'in_progress']);
+    expect(await inTenant((tx) => tx.workOrders.signatureRequired(job))).toBe(false);
+
+    // Even a draft of the form makes the job one that needs signing.
+    const draft = await inTenant((tx) =>
+      tx.submissions.startDraft({
+        formVersionId: versionId,
+        submittedBy: ENGINEER,
+        workOrderId: job.id,
+      }),
+    );
+    expect(await inTenant((tx) => tx.workOrders.signatureRequired(job))).toBe(true);
+    await inTenant((tx) =>
+      tx.submissions.submit(draft.id, { note: 'ok' }, draft.revision, ENGINEER),
+    );
+    expect(
+      await inTenant((tx) => tx.workOrders.transition(job.id, job.revision, 'complete', ENGINEER)),
+    ).toMatchObject({ outcome: 'incomplete', missing: { signoff: true } });
+    // Below the repository too.
+    await expect(
+      asTenant(app, northwind.id, () =>
+        app.query(`update work_orders set state = 'complete', last_actor = $1 where id = $2`, [
+          ENGINEER,
+          job.id,
+        ]),
+      ),
+    ).rejects.toThrow(/customer has not signed off \(asked for by Inspection report\)/u);
+
+    // Unticking the box on the form relaxes the job at once; ticking it again tightens it.
+    await inTenant((tx) => tx.forms.updateForm(formId, { signatureRequired: false }));
+    expect(await inTenant((tx) => tx.workOrders.signatureRequired(job))).toBe(false);
+    await inTenant((tx) => tx.forms.updateForm(formId, { signatureRequired: true }));
+
+    const signed = await inTenant((tx) =>
+      tx.workOrders.signOff(
+        job.id,
+        { unavailableReason: 'Site manager away', signedAt: new Date() },
+        ENGINEER,
+      ),
+    );
+    job = (signed as { workOrder: WorkOrder }).workOrder;
+    const done = await inTenant((tx) =>
+      tx.workOrders.transition(job.id, job.revision, 'complete', ENGINEER),
+    );
+    expect(done.outcome).toBe('written');
+  });
+
   it('accepts why nobody could sign instead, and refuses a sign-off that is neither', async () => {
     const job = await newJob();
     expect(

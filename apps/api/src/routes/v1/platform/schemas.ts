@@ -146,8 +146,10 @@ export const companySettingsSchema = z.object({
  */
 export const appBuildSchema = z.object({
   status: z.enum(['started', 'not_configured', 'failed']),
-  /** Where the run can be watched, when one was started. */
+  /** The workflow's list of runs on GitHub, when one was started; the newest is this one. */
   runsUrl: z.string().nullable(),
+  /** The run itself, when GitHub said which run it started. */
+  runUrl: z.string().nullable(),
   message: z.string().nullable(),
 });
 

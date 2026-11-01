@@ -134,6 +134,7 @@ function detail(overrides: Partial<WorkOrderDetail> = {}): WorkOrderDetail {
     previousAtSite: [],
     materials: [],
     materialsCost: null,
+    partsNotYetBilled: false,
     van: null,
     salesOrders: [],
     can: {
@@ -1206,6 +1207,7 @@ describe('parts used on the job', { timeout: 20_000 }, () => {
     occurredAt: '2026-10-11T09:00:00.000Z',
     cancelledBy: null,
     clientActionId: null,
+    recordedAfterClose: false,
     version: 1,
     ...overrides,
   });

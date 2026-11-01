@@ -66,7 +66,7 @@ export function UnpostedScreen({ postingId }: { postingId: string }) {
   const documentLink =
     source.kind === 'invoice' || source.kind === 'invoice_void'
       ? paths.invoice(source.id)
-      : source.kind === 'payment'
+      : source.kind === 'payment' || source.kind === 'payment_reversal'
         ? paths.payment(source.id)
         : undefined;
 

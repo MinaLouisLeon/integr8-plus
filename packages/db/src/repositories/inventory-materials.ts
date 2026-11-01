@@ -36,6 +36,8 @@ export interface Material {
   lots: MaterialLot[] | null;
   /** The asset the part was fitted to, when the job named one (0031). */
   assetId: string | null;
+  /** Recorded on a phone before the job closed, synced after it had (0062). */
+  recordedAfterClose: boolean;
 }
 
 export interface MaterialInput {
@@ -51,6 +53,8 @@ export interface MaterialInput {
   recordedBy: UserId | string;
   occurredAt?: Date;
   lots?: readonly MaterialLot[] | null;
+  /** A phone's part arriving after its job closed (0062). */
+  recordedAfterClose?: boolean;
 }
 
 export interface MaterialPatch {
@@ -86,6 +90,7 @@ export class InventoryMaterialsRepository extends TenantScopedRepository {
         recorded_by: toUserId(input.recordedBy),
         ...(input.occurredAt === undefined ? {} : { occurred_at: input.occurredAt }),
         ...(input.lots === undefined || input.lots === null ? {} : { lots: lotsJson(input.lots) }),
+        ...(input.recordedAfterClose === true ? { recorded_after_close: true } : {}),
       })
       .returningAll()
       .executeTakeFirstOrThrow();
@@ -248,5 +253,6 @@ function toMaterial(row: Selectable<ErpWorkOrderMaterialsTable>): Material {
     version: row.version,
     lots: row.lots,
     assetId: row.asset_id,
+    recordedAfterClose: row.recorded_after_close,
   };
 }

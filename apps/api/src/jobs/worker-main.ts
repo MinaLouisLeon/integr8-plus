@@ -1,6 +1,6 @@
-import { closeDatabase } from '@integr8/db';
+import { assertPlatformRoleIsLimited, closeDatabase } from '@integr8/db';
 import { buildServices } from '../composition.js';
-import { loadApiConfig } from '../config.js';
+import { assertProductionReady, loadApiConfig, startupWarnings } from '../config.js';
 import { createLogger } from '../http/logger.js';
 import { flushSentry, initialiseSentry } from '../observability/sentry.js';
 import { runMediaMaintenance } from '../media/maintenance.js';
@@ -9,10 +9,16 @@ import { runDunning } from '../billing/dunning.js';
 import { runAiReconciliation } from '../ai/reconcile.js';
 import { runSignupExpiry } from '../signup/expire.js';
 import { runQualificationExpiry } from '../qualifications/expiry.js';
-import { runDeadlineAlerts, runMaintenancePlans } from '../maintenance/tasks.js';
+import {
+  runDeadlineAlerts,
+  runMaintenancePlans,
+  runMaintenanceRetries,
+} from '../maintenance/tasks.js';
 import { purgeDueTenants } from '../platform/purge.js';
 import { runSyncMaintenance } from '../sync/maintenance.js';
 import { buildJobHandlers } from './handlers.js';
+import { runMaintenanceSteps } from './maintenance-steps.js';
+import { runTableHousekeeping } from './table-housekeeping.js';
 import { Worker } from './worker.js';
 
 /**
@@ -25,7 +31,17 @@ import { Worker } from './worker.js';
  */
 async function main(): Promise<void> {
   const config = loadApiConfig();
+  // The same refusal as the API. Without it the worker ran in production on
+  // stand-in services the API had refused: with MEDIA_STORAGE=local it gave
+  // every company a local storage record, and once R2 was configured those
+  // companies could not reach their files at all.
+  assertProductionReady(config);
   initialiseSentry(config);
+  // The platform connection must be integr8_platform, not the owner: an env
+  // file that still names postgres would give this process a superuser.
+  if (config.APP_ENV === 'production') {
+    await assertPlatformRoleIsLimited();
+  }
 
   const logger = createLogger({
     level: config.APP_ENV === 'test' ? 'error' : 'info',
@@ -52,6 +68,10 @@ async function main(): Promise<void> {
   for (const problem of services.eta.problems ?? []) {
     logger.warn(`E-invoicing: ${problem}`);
   }
+  // Metering runs here, so this is where a missing analytics token matters.
+  for (const warning of startupWarnings(config)) {
+    logger.warn(warning);
+  }
 
   // Media housekeeping on a timer, alongside the queue. Several workers running
   // it at once is safe: every step is idempotent.
@@ -59,159 +79,245 @@ async function main(): Promise<void> {
   let maintenanceTimer: NodeJS.Timeout | undefined;
   let maintenanceRun: Promise<void>;
   const maintain = async (): Promise<void> => {
-    try {
-      const report = await runMediaMaintenance({ media: services.media });
-      if (report.failures.length > 0) {
-        logger.error('Media maintenance had failures', { ...report });
-      } else {
-        logger.info('Media maintenance finished', { ...report });
-      }
-      const sync = await runSyncMaintenance({ retentionDays: config.SYNC_LOG_RETENTION_DAYS });
-      if (sync.failures.length > 0) {
-        logger.error('Sync maintenance had failures', { ...sync });
-      } else {
-        logger.info('Sync maintenance finished', { ...sync });
-      }
-
-      // Companies whose cooling-off has passed (P15). On the timer rather than
-      // on a queued job, because what has to be reliable is that a due deletion
-      // eventually runs — including one whose job row went down with the
-      // process that held it.
-      const purged = await purgeDueTenants({
-        media: services.media,
-        identity: services.identity,
-        logger,
-      });
-      if (purged.length > 0) {
-        logger.info('Scheduled deletions completed', { companies: purged.length });
-      }
-
-      // Metering (P16). Runs on the same timer but claims its turn in the
-      // database, so it happens once a night rather than once a night per
-      // worker, and every other tick is a single conditional update that
-      // matches nothing.
-      const metered = await runMetering({
-        media: services.media,
-        config,
-        logger,
-        workerId: worker.id,
-      });
-      if (metered.sampled > 0 || metered.retired > 0 || metered.failures.length > 0) {
-        logger.info('Metering finished', {
-          sampled: metered.sampled,
-          reconciled: metered.reconciled,
-          drifted: metered.drifted.length,
-          retired: metered.retired,
-          failures: metered.failures.length,
-        });
-      }
-
-      // Dunning (P17). Same timer, same turn-claiming. It only ever refuses
-      // writes and posts banners — nothing in it deletes a customer's data.
-      const dunned = await runDunning({
-        config,
-        logger,
-        workerId: worker.id,
-        email: services.email,
-      });
-      if (
-        dunned.trialsEnded > 0 ||
-        dunned.remindersPosted > 0 ||
-        dunned.madeReadOnly > 0 ||
-        dunned.failures.length > 0
-      ) {
-        logger.info('Dunning finished', {
-          trialsEnded: dunned.trialsEnded,
-          remindersPosted: dunned.remindersPosted,
-          madeReadOnly: dunned.madeReadOnly,
-          failures: dunned.failures.length,
-        });
-      }
-
-      // Signups nobody verified (P18). Nothing was created for them, so this
-      // only closes live tokens.
-      await runSignupExpiry({ logger, workerId: worker.id });
-
-      // Certificates expiring or lapsed (P26): warned once each, by email and
-      // to the holder's phone. Same timer, same turn-claiming.
-      const expiring = await runQualificationExpiry({
-        config,
-        logger,
-        workerId: worker.id,
-        email: services.email,
-        push: services.push,
-      });
-      if (expiring.warned + expiring.lapsed + expiring.failures.length > 0) {
-        logger.info('Qualification expiry finished', {
-          companies: expiring.companies,
-          warned: expiring.warned,
-          lapsed: expiring.lapsed,
-          passedOver: expiring.passedOver,
-          failures: expiring.failures.length,
-        });
-      }
-
-      // Maintenance plans and contract renewals (P27): jobs made ahead of their
-      // due dates, once a day. Same timer, same turn-claiming.
-      const maintenance = await runMaintenancePlans({
-        config,
-        logger,
-        workerId: worker.id,
-        email: services.email,
-        push: services.push,
-      });
-      if (maintenance.occurrences + maintenance.renewalAlerts + maintenance.failures.length > 0) {
-        logger.info('Maintenance plans finished', {
-          companies: maintenance.companies,
-          jobsCreated: maintenance.jobsCreated,
-          occurrences: maintenance.occurrences,
-          skipped: maintenance.skipped,
-          renewalAlerts: maintenance.renewalAlerts,
-          failures: maintenance.failures.length,
-        });
-      }
-
-      // Response deadlines (P27): misses recorded and announced, warnings sent,
-      // on every tick at most every ten minutes.
-      const deadlines = await runDeadlineAlerts({
-        config,
-        logger,
-        workerId: worker.id,
-        email: services.email,
-        push: services.push,
-      });
-      if (deadlines.warned + deadlines.missed + deadlines.failures.length > 0) {
-        logger.info('Deadline alerts finished', {
-          companies: deadlines.companies,
-          warned: deadlines.warned,
-          missed: deadlines.missed,
-          failures: deadlines.failures.length,
-        });
-      }
-
-      // The assistant (docs/ai): slots held by requests that never settled,
-      // proposals nobody confirmed, chats past their retention.
-      const assistant = await runAiReconciliation({ config, logger, workerId: worker.id });
-      if (
-        assistant.reconciled > 0 ||
-        assistant.expiredProposals > 0 ||
-        assistant.sweptConversations > 0 ||
-        assistant.failures.length > 0
-      ) {
-        logger.info('Assistant reconciliation finished', {
-          reconciled: assistant.reconciled,
-          charged: assistant.charged,
-          released: assistant.released,
-          expiredProposals: assistant.expiredProposals,
-          sweptConversations: assistant.sweptConversations,
-          failures: assistant.failures.length,
-        });
-      }
-    } catch (error) {
-      logger.error('Media maintenance failed', {
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
+    // Each step on its own: one that fails is logged under its own name and
+    // the rest still run (see runMaintenanceSteps).
+    await runMaintenanceSteps(
+      [
+        {
+          name: 'Media maintenance',
+          run: async () => {
+            const report = await runMediaMaintenance({ media: services.media });
+            if (report.failures.length > 0) {
+              logger.error('Media maintenance had failures', { ...report });
+            } else {
+              logger.info('Media maintenance finished', { ...report });
+            }
+          },
+        },
+        {
+          name: 'Sync maintenance',
+          run: async () => {
+            const sync = await runSyncMaintenance({
+              retentionDays: config.SYNC_LOG_RETENTION_DAYS,
+            });
+            if (sync.failures.length > 0) {
+              logger.error('Sync maintenance had failures', { ...sync });
+            } else {
+              logger.info('Sync maintenance finished', { ...sync });
+            }
+          },
+        },
+        {
+          // Companies whose cooling-off has passed (P15). On the timer rather
+          // than on a queued job, because what has to be reliable is that a due
+          // deletion eventually runs — including one whose job row went down
+          // with the process that held it.
+          name: 'Scheduled deletions',
+          run: async () => {
+            const purged = await purgeDueTenants({
+              media: services.media,
+              identity: services.identity,
+              logger,
+            });
+            const done = purged.filter((result) => result.purged).length;
+            if (purged.length > 0) {
+              logger.info('Scheduled deletions finished', {
+                companies: done,
+                failed: purged.length - done,
+              });
+            }
+          },
+        },
+        {
+          // Metering (P16). Runs on the same timer but claims its turn in the
+          // database, so it happens once a night rather than once a night per
+          // worker, and every other tick is a single conditional update that
+          // matches nothing.
+          name: 'Metering',
+          run: async () => {
+            const metered = await runMetering({
+              media: services.media,
+              config,
+              logger,
+              workerId: worker.id,
+            });
+            if (metered.sampled > 0 || metered.retired > 0 || metered.failures.length > 0) {
+              logger.info('Metering finished', {
+                sampled: metered.sampled,
+                reconciled: metered.reconciled,
+                drifted: metered.drifted.length,
+                retired: metered.retired,
+                failures: metered.failures.length,
+              });
+            }
+          },
+        },
+        {
+          // Dunning (P17). Same timer, same turn-claiming. It only ever refuses
+          // writes and posts banners — nothing in it deletes a customer's data.
+          name: 'Dunning',
+          run: async () => {
+            const dunned = await runDunning({
+              config,
+              logger,
+              workerId: worker.id,
+              email: services.email,
+            });
+            if (
+              dunned.trialsEnded > 0 ||
+              dunned.remindersPosted > 0 ||
+              dunned.madeReadOnly > 0 ||
+              dunned.failures.length > 0
+            ) {
+              logger.info('Dunning finished', {
+                trialsEnded: dunned.trialsEnded,
+                remindersPosted: dunned.remindersPosted,
+                madeReadOnly: dunned.madeReadOnly,
+                failures: dunned.failures.length,
+              });
+            }
+          },
+        },
+        {
+          // Signups nobody verified (P18). Nothing was created for them, so
+          // this only closes live tokens.
+          name: 'Signup expiry',
+          run: async () => {
+            await runSignupExpiry({ logger, workerId: worker.id });
+          },
+        },
+        {
+          // Certificates expiring or lapsed (P26): warned once each, by email
+          // and to the holder's phone. Same timer, same turn-claiming.
+          name: 'Qualification expiry',
+          run: async () => {
+            const expiring = await runQualificationExpiry({
+              config,
+              logger,
+              workerId: worker.id,
+              email: services.email,
+              push: services.push,
+            });
+            if (expiring.warned + expiring.lapsed + expiring.failures.length > 0) {
+              logger.info('Qualification expiry finished', {
+                companies: expiring.companies,
+                warned: expiring.warned,
+                lapsed: expiring.lapsed,
+                passedOver: expiring.passedOver,
+                failures: expiring.failures.length,
+              });
+            }
+          },
+        },
+        {
+          // Maintenance plans and contract renewals (P27): jobs made ahead of
+          // their due dates, once a day. Same timer, same turn-claiming.
+          name: 'Maintenance plans',
+          run: async () => {
+            const maintenance = await runMaintenancePlans({
+              config,
+              logger,
+              workerId: worker.id,
+              email: services.email,
+              push: services.push,
+            });
+            if (
+              maintenance.occurrences +
+                maintenance.renewalAlerts +
+                maintenance.failures.length +
+                maintenance.planFailures.length >
+              0
+            ) {
+              logger.info('Maintenance plans finished', {
+                companies: maintenance.companies,
+                jobsCreated: maintenance.jobsCreated,
+                occurrences: maintenance.occurrences,
+                skipped: maintenance.skipped,
+                renewalAlerts: maintenance.renewalAlerts,
+                failures: maintenance.failures.length,
+                planFailures: maintenance.planFailures.length,
+              });
+            }
+          },
+        },
+        {
+          // A plan that failed is tried again alone on every tick, not the next
+          // day, until it succeeds or has failed five times in a row (0063).
+          name: 'Maintenance plan retries',
+          run: async () => {
+            const retried = await runMaintenanceRetries({
+              config,
+              logger,
+              workerId: worker.id,
+            });
+            if (retried.occurrences + retried.planFailures.length + retried.failures.length > 0) {
+              logger.info('Maintenance plan retries finished', {
+                companies: retried.companies,
+                jobsCreated: retried.jobsCreated,
+                occurrences: retried.occurrences,
+                planFailures: retried.planFailures.length,
+                failures: retried.failures.length,
+              });
+            }
+          },
+        },
+        {
+          // Response deadlines (P27): misses recorded and announced, warnings
+          // sent, on every tick at most every ten minutes.
+          name: 'Deadline alerts',
+          run: async () => {
+            const deadlines = await runDeadlineAlerts({
+              config,
+              logger,
+              workerId: worker.id,
+              email: services.email,
+              push: services.push,
+            });
+            if (deadlines.warned + deadlines.missed + deadlines.failures.length > 0) {
+              logger.info('Deadline alerts finished', {
+                companies: deadlines.companies,
+                warned: deadlines.warned,
+                missed: deadlines.missed,
+                failures: deadlines.failures.length,
+              });
+            }
+          },
+        },
+        {
+          // The assistant (docs/ai): slots held by requests that never settled,
+          // proposals nobody confirmed, chats past their retention.
+          name: 'Assistant reconciliation',
+          run: async () => {
+            const assistant = await runAiReconciliation({ config, logger, workerId: worker.id });
+            if (
+              assistant.reconciled > 0 ||
+              assistant.expiredProposals > 0 ||
+              assistant.sweptConversations > 0 ||
+              assistant.failures.length > 0
+            ) {
+              logger.info('Assistant reconciliation finished', {
+                reconciled: assistant.reconciled,
+                charged: assistant.charged,
+                released: assistant.released,
+                expiredProposals: assistant.expiredProposals,
+                sweptConversations: assistant.sweptConversations,
+                failures: assistant.failures.length,
+              });
+            }
+          },
+        },
+        {
+          // Rate-limit counters, spent idempotency records and old login
+          // attempts, which nothing else deletes. Once a night, same
+          // turn-claiming; it logs only when it removed something.
+          name: 'Table housekeeping',
+          run: async () => {
+            await runTableHousekeeping({ logger, workerId: worker.id });
+          },
+        },
+      ],
+      logger,
+    );
     if (!stopping) {
       maintenanceTimer = setTimeout(() => {
         maintenanceRun = maintain();

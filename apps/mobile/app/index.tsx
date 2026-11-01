@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
-import { useEffect } from 'react';
-import { Screen } from '~/components/ui';
+import { useEffect, useState } from 'react';
+import { LoadingState, Screen } from '~/components/ui';
 import { COMPANY } from '~/lib/company';
 import { session } from '~/lib/session';
 import { localData } from '~/local/local-data';
@@ -9,10 +9,12 @@ import { resumeHref, savedRoute } from '~/local/resume';
 /**
  * Decides where to send somebody on launch.
  *
- * "Signed in" includes a device holding a live offline grant whose refresh
- * token has lapsed. An engineer a week into a job with no signal still has to
- * get in — that is the entire point of the grant, and forgetting it here would
- * quietly undo it.
+ * With no signal, the phone opens on its offline grant and nothing else
+ * (P03): signed by our API, checked on the phone, and running for seven days
+ * from the last time the phone reached us. An engineer a few days into a job
+ * in a basement gets in, which is the whole point of the grant. A phone whose
+ * grant has lapsed asks for a connection (`/reconnect`) rather than opening on
+ * its refresh token, which lasts thirty days and proves nothing offline.
  *
  * Signed in, they go back to the screen they were on when the app was last
  * closed (P14), with their jobs underneath it, so Back still leads home.
@@ -21,16 +23,28 @@ import { resumeHref, savedRoute } from '~/local/resume';
  * generic app goes straight to sign-in, as it always has.
  */
 export default function IndexScreen() {
+  // Only shown when the grant has lapsed and the phone is asking the server.
+  const [asking, setAsking] = useState(false);
+
   useEffect(() => {
     let cancelled = false;
 
     void (async () => {
-      const allowed = await session().isSignedIn();
+      // The usual case is local and instant: a live grant in the keychain. A
+      // session without one has to ask the server, which can take a moment.
+      if ((await session().isSignedIn()) && !(await session().canWorkOffline())) {
+        setAsking(true);
+      }
+      const decision = await session().openDecision();
       if (cancelled) {
         return;
       }
-      if (!allowed) {
+      if (decision === 'sign_in') {
         router.replace(COMPANY === undefined ? '/sign-in' : '/welcome');
+        return;
+      }
+      if (decision === 'connect') {
+        router.replace('/reconnect');
         return;
       }
       const db = await localData.open();
@@ -49,7 +63,5 @@ export default function IndexScreen() {
     };
   }, []);
 
-  // Reading the keychain takes a moment and involves no network, so there is
-  // nothing to show a spinner for.
-  return <Screen>{null}</Screen>;
+  return <Screen>{asking ? <LoadingState /> : null}</Screen>;
 }

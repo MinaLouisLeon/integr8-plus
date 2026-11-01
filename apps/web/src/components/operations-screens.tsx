@@ -7,25 +7,6 @@ import { useMemo, type ReactNode } from 'react';
 import { apiClient } from '~/lib/session';
 
 /**
- * Where site maps load tiles from: `NEXT_PUBLIC_MAP_TILES_URL` with
- * `NEXT_PUBLIC_MAP_TILES_ATTRIBUTION`, such as a Mapbox raster style. In
- * development only, OpenStreetMap's own tiles stand in; their usage policy does
- * not allow a product to rely on them.
- */
-const MAP_TILES: OperationsConfig['mapTiles'] =
-  process.env.NEXT_PUBLIC_MAP_TILES_URL !== undefined
-    ? {
-        url: process.env.NEXT_PUBLIC_MAP_TILES_URL,
-        attribution: process.env.NEXT_PUBLIC_MAP_TILES_ATTRIBUTION ?? '',
-      }
-    : process.env.NODE_ENV === 'development'
-      ? {
-          url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-          attribution: '© OpenStreetMap contributors',
-        }
-      : undefined;
-
-/**
  * Customers, sites, job types, work orders and imports, hosted by the web app.
  * Shared with the desktop app (`@integr8/operations-dom`); the web app supplies
  * its cookie-backed session client and Next routing.
@@ -140,7 +121,6 @@ export function OperationsScreens({ children }: { children: ReactNode }) {
         submissions: '/submissions',
       },
       download: saveFile,
-      ...(MAP_TILES === undefined ? {} : { mapTiles: MAP_TILES }),
     }),
     [router, i18n.language],
   );

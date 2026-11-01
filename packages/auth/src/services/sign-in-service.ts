@@ -408,7 +408,8 @@ export class SignInService {
    *
    * Address lockout does nothing against one common password tried across ten
    * thousand addresses, because no single address ever fails twice. This is the
-   * limit that sees that attack.
+   * limit that sees that attack. It counts failures only, so a busy office
+   * behind one address is never stopped by its own successful sign-ins.
    */
   async #guardRate(email: string, input: SignInInput, now: Date): Promise<void> {
     if (input.ipAddress == null) {
@@ -417,9 +418,9 @@ export class SignInService {
 
     const auth = await getAuthDataSource();
     const since = new Date(now.getTime() - this.#config.AUTH_IP_ATTEMPT_WINDOW_SECONDS * 1000);
-    const attempts = await auth.loginSecurity.countAttemptsFromIp(input.ipAddress, since);
+    const failures = await auth.loginSecurity.countFailedAttemptsFromIp(input.ipAddress, since);
 
-    if (attempts >= this.#config.AUTH_IP_ATTEMPT_LIMIT) {
+    if (failures >= this.#config.AUTH_IP_ATTEMPT_LIMIT) {
       await this.#record(email, 'rate_limited', input);
       throw new RateLimitedError();
     }

@@ -8,7 +8,8 @@
 ```
 
 Three long-lived branches. `dev` is where work lands, `staging` is what is
-being tested, `main` is what has shipped. Nothing skips a step, so anything on
+being tested, `main` is what has shipped. The intent is that nothing skips a step,
+but nothing enforces it yet: see "Why rules 1 and 2 are not in force". So anything on
 `main` has already been built twice and released once as a nightly.
 
 | Branch    | Takes          | A merge into it produces           |
@@ -19,37 +20,37 @@ being tested, `main` is what has shipped. Nothing skips a step, so anything on
 
 ## The rules, and what actually enforces each one
 
-| #   | Rule                                  | Enforced by                                | In force                   |
-| --- | ------------------------------------- | ------------------------------------------ | -------------------------- |
-| 1   | The three branches cannot be deleted  | `.github/rulesets/*.json` (`deletion`)     | **No — needs a paid plan** |
-| 2   | Nothing is pushed to them directly    | `.github/rulesets/*.json` (`pull_request`) | **No — needs a paid plan** |
-| 3   | Any branch may merge into `dev`       | `branch-policy.yml`                        | Yes                        |
-| 4   | Only `dev` may merge into `staging`   | `branch-policy.yml`, as a required check   | Check yes, blocking no     |
-| 5   | Only `staging` may merge into `main`  | `branch-policy.yml`, as a required check   | Check yes, blocking no     |
-| 6   | Merge into `dev` builds for test      | `release-dev.yml`                          | Yes                        |
-| 7   | Merge into `staging` builds a nightly | `release-staging.yml`                      | Yes                        |
-| 8   | Merge into `main` builds a version    | `release-main.yml`                         | Yes                        |
+| #   | Rule                                  | Enforced by                                | In force                 |
+| --- | ------------------------------------- | ------------------------------------------ | ------------------------ |
+| 1   | The three branches cannot be deleted  | `.github/rulesets/*.json` (`deletion`)     | **No — not applied yet** |
+| 2   | Nothing is pushed to them directly    | `.github/rulesets/*.json` (`pull_request`) | **No — not applied yet** |
+| 3   | Any branch may merge into `dev`       | `branch-policy.yml`                        | Yes                      |
+| 4   | Only `dev` may merge into `staging`   | `branch-policy.yml`, as a required check   | Check yes, blocking no   |
+| 5   | Only `staging` may merge into `main`  | `branch-policy.yml`, as a required check   | Check yes, blocking no   |
+| 6   | Merge into `dev` builds for test      | `release-dev.yml`                          | Yes                      |
+| 7   | Merge into `staging` builds a nightly | `release-staging.yml`                      | Yes                      |
+| 8   | Merge into `main` builds a version    | `release-main.yml`                         | Yes                      |
 
 ### Why rules 1 and 2 are not in force
 
-GitHub does not offer branch protection or rulesets for **private** repositories
-on the **Free** plan. The API does not return an empty list; it refuses:
+The rulesets in `.github/rulesets/` have never been applied: on 31 October 2026
+`GET repos/MinaLouisLeon/integr8-plus/rulesets` returned `[]`, and pull request
+#135 merged into `main` with **PR source is allowed** failing.
 
-```
-GET repos/MinaLouisLeon/integr8-plus/rulesets
-403  Upgrade to GitHub Pro or make this repository public to enable this feature.
-```
+When this was written the repository was private on the Free plan, where GitHub
+refuses rulesets (`403 Upgrade to GitHub Pro or make this repository public`).
+**The repository is now public**, so rulesets are free. Two decisions for the
+owner, in this order:
 
-There is no configuration, token scope or workflow that works around this. The
-server will accept a direct push to `main` because nothing has told it not to.
-
-Two ways to close it:
-
-- **GitHub Pro**, $4/month for the account. Then run
-  `scripts/github/apply-branch-protection.sh` and rules 1, 2, 4 and 5 all
-  become the server's job rather than a convention. This is the intended path.
-- **Make the repository public.** This is a commercial product with an
-  authentication layer in it. Almost certainly the wrong trade.
+1. **Should it stay public?** It is a commercial product with an
+   authentication layer in it, and every secret-handling mistake in its history
+   is readable by anyone. If not, make it private again and either take GitHub
+   Pro ($4/month) or accept that rules 1, 2, 4 and 5 stay unenforced.
+2. **Apply the rulesets** (below), on a public repository or with Pro. Before
+   that, decide the flow: the rulesets enforce `dev → staging → main`, there is
+   no `staging` branch on the server yet, and feature branches have been merged
+   straight into `main`. Either create `staging` from `main` and follow the
+   flow, or change `main.json`'s source rule before applying it.
 
 Until then, two partial controls are in place, and neither is enforcement:
 
@@ -95,10 +96,11 @@ Two settings worth understanding before you run it:
   pull request. On a repository with one person, any number above zero blocks
   every merge, permanently, with no way out but to edit the ruleset. Raise it
   when there is a second reviewer.
-- **`ci.yml` is not a required check yet.** A required check that never reports
-  blocks a pull request forever, and `ci.yml` does not exist on `main` until the
-  `foundation` work lands. Add `Lint, typecheck, test, build` to
-  `required_status_checks` in all three ruleset files once it does.
+- **The CI jobs are required checks.** All three ruleset files list `Lint,
+typecheck, test, build`, `Conventional commits`, `Migrations, isolation,
+authentication and API` and `Secret scan` from `ci.yml` beside `PR source is
+allowed`, so a red pull request cannot be merged. Renaming one of those jobs
+  blocks every merge until the ruleset is edited to match.
 
 ## Day to day
 
@@ -183,7 +185,7 @@ say nothing useful about the release that follows it.
 ## Runner minutes, which are finite
 
 A private repository on the Free plan gets 2,000 minutes a month, and they are
-not billed evenly: **Linux ×1, Windows ×2, macOS ×10**. A Tauri build takes
+not billed evenly (a public repository's standard runners are free): **Linux ×1, Windows ×2, macOS ×10**. A Tauri build takes
 15–25 minutes, so one macOS desktop build costs roughly 150–250 charged minutes.
 
 Hence the default split:
@@ -203,23 +205,29 @@ gh variable set DESKTOP_BUILDS --body 'disabled'   # skip desktop builds entirel
 
 ## Secrets and variables
 
-| Name                                         | Kind     | Without it                                                                                                |
-| -------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------- |
-| `TAURI_SIGNING_PRIVATE_KEY`                  | secret   | Installers build, but carry no update signature                                                           |
-| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`         | secret   | As above                                                                                                  |
-| `EXPO_TOKEN`                                 | secret   | Mobile builds cannot authenticate                                                                         |
-| `EAS_BUILDS`                                 | variable | Mobile builds are skipped. Set to `enabled` to run them                                                   |
-| `EAS_PLATFORMS`                              | variable | Android only. Set to `all` once Apple credentials exist on Expo                                           |
-| `DESKTOP_BUILDS`                             | variable | Set to `disabled` to skip desktop builds                                                                  |
-| `PUBLIC_API_URL`                             | variable | The release desktop build refuses to run: an installer must know its API. Shared with the web image       |
-| `STAGING_PUBLIC_API_URL`                     | variable | As above, for the nightly's installer and the staging web image                                           |
-| `DESKTOP_PUBLIC_SENTRY_DSN`                  | variable | Desktop installers report no errors to Sentry                                                             |
-| `BUILD_TOKEN`                                | secret   | "Build company apps" for `all` cannot list the companies; the API's `BUILD_TOKEN` must be the same        |
-| `COMPANY_APPS`                               | variable | Set to `disabled` to stop the version release building every company's apps                               |
-| `STORE_SUBMIT`                               | variable | Company phone builds are not sent to the stores. Set to `enabled` once the store accounts exist           |
-| `GOOGLE_SERVICE_ACCOUNT_KEY`                 | secret   | With `STORE_SUBMIT`, Android is not submitted. The Play Console service account's JSON key                |
-| `ASC_API_KEY`, `ASC_KEY_ID`, `ASC_ISSUER_ID` | secret   | With `STORE_SUBMIT`, iOS is not submitted. An App Store Connect API key (.p8 contents, key id, issuer id) |
-| `ASC_APP_IDS`                                | variable | iOS submission needs each company's App Store Connect app id: `{"acme":"1234567890"}`                     |
+| Name                                                                        | Kind     | Without it                                                                                                          |
+| --------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------- |
+| `TAURI_SIGNING_PRIVATE_KEY`                                                 | secret   | Installers build, but no signed update bundles or `latest.json`: installed apps are never offered them              |
+| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`                                        | secret   | As above                                                                                                            |
+| `DESKTOP_UPDATES_URL`                                                       | variable | Release builds ask `https://app.integr8-media.com/desktop-updates` for updates (the web app's feed)                 |
+| `WINDOWS_CERTIFICATE`, `WINDOWS_CERTIFICATE_PASSWORD`                       | secret   | Windows installers are not code-signed (SmartScreen warns). A code-signing certificate as base64 .pfx               |
+| `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `AZURE_TENANT_ID`                 | secret   | With the three `AZURE_SIGNING_*` variables, signs Windows installers with Azure Artifact Signing instead            |
+| `AZURE_SIGNING_ENDPOINT`, `AZURE_SIGNING_ACCOUNT`, `AZURE_SIGNING_PROFILE`  | variable | As above: the account's endpoint URL, account name and certificate profile                                          |
+| `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY` | secret   | macOS apps are not signed (Gatekeeper blocks the first open). A Developer ID Application certificate as base64 .p12 |
+| `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID`                               | secret   | Notarisation uses the `ASC_*` key below when it exists; otherwise these, or a signed but un-notarised app           |
+| `EXPO_TOKEN`                                                                | secret   | Mobile builds cannot authenticate                                                                                   |
+| `EAS_BUILDS`                                                                | variable | Mobile builds are skipped. Set to `enabled` to run them                                                             |
+| `EAS_PLATFORMS`                                                             | variable | Android only. Set to `all` once Apple credentials exist on Expo                                                     |
+| `DESKTOP_BUILDS`                                                            | variable | Set to `disabled` to skip desktop builds                                                                            |
+| `PUBLIC_API_URL`                                                            | variable | The release desktop build refuses to run: an installer must know its API. Shared with the web image                 |
+| `STAGING_PUBLIC_API_URL`                                                    | variable | As above, for the nightly's installer and the staging web image                                                     |
+| `DESKTOP_PUBLIC_SENTRY_DSN`                                                 | variable | Desktop installers report no errors to Sentry                                                                       |
+| `BUILD_TOKEN`                                                               | secret   | "Build company apps" for `all` cannot list the companies; the API's `BUILD_TOKEN` must be the same                  |
+| `COMPANY_APPS`                                                              | variable | Set to `disabled` to stop the version release building every company's apps                                         |
+| `STORE_SUBMIT`                                                              | variable | Company phone builds are not sent to the stores. Set to `enabled` once the store accounts exist                     |
+| `GOOGLE_SERVICE_ACCOUNT_KEY`                                                | secret   | With `STORE_SUBMIT`, Android is not submitted. The Play Console service account's JSON key                          |
+| `ASC_API_KEY`, `ASC_KEY_ID`, `ASC_ISSUER_ID`                                | secret   | With `STORE_SUBMIT`, iOS is not submitted. An App Store Connect API key (.p8 contents, key id, issuer id)           |
+| `ASC_APP_IDS`                                                               | variable | iOS submission needs each company's App Store Connect app id: `{"acme":"1234567890"}`                               |
 
 The desktop installer inlines its API address at build time, so the nightly
 is built against `STAGING_PUBLIC_API_URL` and the release against
@@ -234,7 +242,15 @@ release.
 The Tauri signing key is the private half of the updater keypair — the one in
 `apps/desktop/src-tauri/updater.key`, which is git-ignored. Whoever holds it can
 sign an update that every installed copy will accept and run, so it belongs in
-the repository secrets and a password manager and nowhere else.
+the repository secrets and a password manager and nowhere else. Its public half
+is `plugins.updater.pubkey` in `tauri.conf.json`; the build warns when the two
+do not match, and the apps then refuse every update. A version release with the
+key attaches signed update bundles and a `latest.json`, which the web app
+serves at `/desktop-updates/<staff or company slug>/…` (`GITHUB_RELEASES_REPOSITORY`
+in the deployment). Operating-system code signing (the Windows and Apple
+secrets) is separate and optional: it changes what Windows and macOS say when
+an installer is first opened, not whether updates work. Each is used only when
+all of its secrets exist.
 
 `EAS_BUILDS` stays off until `eas init` replaces the placeholder `projectId` in
 `apps/mobile/app.config.ts`. A job cannot branch on whether a secret exists,

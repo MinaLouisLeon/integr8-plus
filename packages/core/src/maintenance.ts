@@ -237,6 +237,12 @@ export function forecastDues(
   return dues;
 }
 
+/**
+ * After this many failures in a row the worker stops retrying a plan, and its
+ * warning stays, until someone edits the plan (migration 0063).
+ */
+export const MAX_PLAN_FAILURES = 5;
+
 /** One due date waiting for a job, as the worker groups them. */
 export interface DueCandidate {
   /** The caller's own handle on it. */

@@ -18,6 +18,7 @@
  */
 
 import { apiErrorsEn } from './api-errors.en.js';
+import { legalEn } from './legal.en.js';
 
 export const en = {
   common: {
@@ -642,6 +643,28 @@ export const en = {
     },
 
     impersonationBanner: 'You are viewing this account as {{name}}. Everything you do is recorded.',
+    // The desktop app's strip when a newer version is ready (P20). Windows closes
+    // the app to install it and the installer opens the new version.
+    appUpdate: {
+      available: 'Version {{version}} of this app is ready.',
+      windowsRestart: 'Installing closes the app and opens it again on the new version.',
+      install: 'Install now',
+      installing: 'Installing…',
+      later: 'Later',
+      installed: 'Version {{version}} is installed. Close the app and open it again to use it.',
+      failed:
+        'Version {{version}} could not be installed. Try again, or install it from the download link.',
+    },
+
+    // Banners Integr8 posts from the platform dashboard, payment reminders
+    // included (P15). The severity is a word as well as a colour.
+    announcement: {
+      region: 'Announcements from Integr8',
+      info: 'Notice',
+      warning: 'Warning',
+      critical: 'Important',
+      dismiss: 'Dismiss',
+    },
   },
 
   // The company's own roles (ninth round; ADR-0013): built on a built-in
@@ -862,6 +885,10 @@ export const en = {
   // One message per error code the API can return (ADR-0012), in their own
   // file because there are so many. `API_ERROR_CODES` is the contract.
   apiErrors: apiErrorsEn,
+
+  // The terms of service, privacy policy and data processing terms, in their
+  // own file because they are long. Pages under /legal on the website.
+  legal: legalEn,
 
   states: {
     emptyTitle: 'Nothing here yet',
@@ -1641,7 +1668,7 @@ export const en = {
         capturedNoAccuracy: 'Submitted from {{latitude}}, {{longitude}} at {{when}}',
         denied: 'Submitted without a location: the person refused location access',
         unavailable: 'Submitted without a location: the phone could not find one in time',
-        openMap: 'Open in a map',
+        openMap: 'Open in Google Maps',
       },
       showAnswers: 'Show the answers at this point',
       hideAnswers: 'Hide',
@@ -1757,10 +1784,10 @@ export const en = {
       useMyLocation: 'Use my current location',
       locating: 'Finding your location…',
       locationUnavailable: 'Your location is not available.',
-      openMap: 'Open in a map',
+      coordinates: 'Coordinates',
+      openMap: 'Open in Google Maps',
       pin: 'Save this position',
       clearPin: 'Clear and look up the address again',
-      mapLabel: 'Map of the site. Click to move the pin.',
     },
     workOrders: {
       title: 'Work orders',
@@ -1966,7 +1993,11 @@ export const en = {
         maintenance_planned: 'Created by maintenance plan {{title}}, due {{day}}',
         coverage_changed: '{{actor}} marked it {{coverage}}',
         deadline_missed: '{{deadline}} deadline of {{due}} missed',
+        form_submitted_after_close: '{{actor}} submitted {{title}} after the job was closed',
       },
+      submittedAfterClose: 'Submitted after the job closed',
+      submittedAfterCloseHint:
+        'Filled on the phone before the job closed and synced afterwards. Check it before invoicing or reporting.',
       nobodySignedEvent: '{{actor}} recorded that nobody could sign: {{reason}}',
       recordedLater: 'Recorded on the phone at {{occurred}}, synced at {{recorded}}',
       notFound: 'This work order does not exist, or you are not on it.',
@@ -2589,6 +2620,16 @@ export const en = {
         empty: 'No maintenance plans for this asset.',
         nextDue: 'Next due',
         noneEnded: 'None: the plan has ended',
+        failure: {
+          heading: 'Plans whose jobs could not be made',
+          title: 'Its jobs could not be made ({{when}}):',
+          retrying_one: 'Failed once. It is tried again automatically every few minutes.',
+          retrying_other:
+            'Failed {{count}} times in a row. It is tried again automatically every few minutes.',
+          gaveUp_one: 'Failed once. It will not be tried again until the plan is edited.',
+          gaveUp_other:
+            'Failed {{count}} times in a row, so it is no longer retried. Edit the plan to try again.',
+        },
         waiting: 'After the open job is completed',
         upcoming: 'Then',
         last: 'Last',
@@ -3713,6 +3754,7 @@ export const en = {
       },
       conflictLine: 'Asked for {{asked}}; {{location}} held {{available}}.',
       recordedBy: '{{name}}, {{when}}',
+      recordedAfterClose: 'Recorded on the phone before the job closed; synced after',
       returned: '{{quantity}} returned',
       return: 'Return',
       returnTitle: 'Return a part',
@@ -3974,6 +4016,14 @@ export const en = {
   },
   purchasing: {
     notEnabled: 'Purchasing is not switched on for your company. Ask Integr8 to turn it on.',
+    document: {
+      title: 'Purchase order {{reference}}',
+      orderedOn: 'Ordered on {{date}}',
+      expectedOn: 'Expected on {{date}}',
+      supplier: 'Supplier',
+      deliverTo: 'Deliver to',
+      print: 'Print',
+    },
     status: {
       draft: 'Draft',
       approved: 'Approved',
@@ -4460,6 +4510,7 @@ export const en = {
       },
       search: 'Find by reference or customer',
       overdueOnly: 'Overdue only',
+      partsNotBilledOnly: 'Jobs with parts not yet billed',
       empty: 'No invoices match.',
       emptyAll: 'No invoices yet. Draft one from a sales order, a completed job, or from scratch.',
       draftLabel: 'Draft invoice',
@@ -4537,6 +4588,14 @@ export const en = {
       onAccount: '{{amount}} on account',
       back: 'Payments',
       recordedBy: 'Recorded by {{name}} on {{date}}',
+      reverse: 'Reverse payment',
+      reverseTitle: 'Reverse {{reference}}?',
+      reverseIntro:
+        'The payment of {{amount}} stays on record, marked reversed. Every invoice it paid owes that amount again, it can no longer be put against an invoice, and the ledger takes the money back today. This cannot be undone.',
+      reverseReason: 'Why (a bounced cheque, the wrong customer…)',
+      reverseConfirm: 'Reverse payment',
+      reversedLine: 'Reversed by {{name}} on {{date}}: {{reason}}',
+      reversed: 'Reversed',
       details: 'Payment details',
       allocated: 'Put against invoices',
       unallocated: 'On account',
@@ -4569,6 +4628,10 @@ export const en = {
     job: {
       heading: 'Invoicing and cost',
       invoice: 'Invoice this job',
+      invoiceFollowUp: 'Invoice the parts not yet billed',
+      partsNotYetBilled: 'Parts not yet billed',
+      partsNotYetBilledHint:
+        'Parts recorded on a phone before this job closed arrived after it was invoiced. No invoice bills them yet: raise a follow-up invoice for them.',
       notInvoiced: 'Not invoiced yet.',
       notComplete: 'The job can be invoiced once it is complete.',
       costsHeading: 'What the job cost',
@@ -4794,6 +4857,7 @@ export const en = {
       credit_note: 'Credit note',
       invoice_void: 'Voided invoice',
       payment: 'Payment',
+      payment_reversal: 'Reversed payment',
       stock: 'Stock movement',
       expense_claim: 'Expense claim',
       expense_payment: 'Expense claim paid back',
@@ -5940,6 +6004,7 @@ export const en = {
       serial_required: 'Choose the serial number of each part fitted.',
       work_order_not_on_phone: 'This job is not on this phone. Sync, then try again.',
       name_required: 'Give the asset a name.',
+      note_required: 'Write the note first.',
       asset_not_on_phone: 'This asset is not on this phone. Sync, then try again.',
       amount_invalid: 'Enter an amount above zero, such as 250.50.',
       date_invalid: 'Give the date the money was spent.',
@@ -6097,6 +6162,32 @@ export const en = {
     push: {
       channelJobs: 'Job changes',
       channelUrgent: 'Urgent callouts',
+    },
+    reconnect: {
+      title: 'Connect to carry on',
+      body: 'This phone has gone longer without reaching the office than it may work offline, usually a week. Connect to mobile data or Wi-Fi once to carry on. Your unsent work is safe on the phone and is sent as soon as you are back in.',
+      stillOffline: 'Still no connection. This screen tries again by itself when one appears.',
+      retry: 'Try again',
+    },
+    announcement: {
+      dismiss: 'Dismiss',
+      info: 'Notice',
+      warning: 'Warning',
+      critical: 'Important',
+    },
+    notes: {
+      none: 'No notes yet.',
+      add: 'Add a note',
+      label: 'Note',
+      placeholder: 'What happened, or what the next person needs to know',
+      internal: 'For the office',
+      customer: 'The customer may see it',
+      save: 'Save note',
+      failed: 'The note was not saved',
+    },
+    access: {
+      hint: 'Saved on this phone at once and sent when there is signal. The office sees who changed what.',
+      failed: 'The access notes were not saved',
     },
     jobs: {
       title: 'Your jobs',
@@ -7417,6 +7508,8 @@ export const en = {
       revokeConfirm: 'Revoke this key? The website using it stops finding documents at once.',
       limit: 'Two keys are live. Revoke one before making another.',
       managerOnly: 'Only the terminal-created staff admin can permanently delete a website key.',
+      managersOnly:
+        'Only a staff manager, an account made with the terminal command, can make, enable, disable, revoke or delete website keys.',
       secretTitle: 'Copy this key now',
       secretBody:
         'It is shown only this once. Put it in the website server’s environment as INTEGR8_WEBSITE_KEY.',
@@ -7599,6 +7692,112 @@ export const en = {
       number: 'No.',
       qrPlaceholder: 'QR code',
       imagePlaceholder: 'Image',
+    },
+  },
+
+  // What the server writes to people on its own: push notifications, in the
+  // phone's language, and reminder emails and banners, in the company's.
+  // Read by the API through `@integr8/i18n/core`; `{{…}}` is filled there.
+  notifications: {
+    push: {
+      newJob: 'New job: {{job}}',
+      urgentCallout: 'Urgent callout: {{job}}',
+      rescheduled: 'Rescheduled: {{job}}',
+      dispatched: 'Dispatched: {{job}}',
+      cancelled: 'Cancelled: {{job}}',
+      nowUrgent: 'Now urgent: {{job}}',
+      newVisit: 'New visit: {{job}}',
+      urgentVisit: 'Urgent visit: {{job}}',
+      visitMoved: 'Visit moved: {{job}}',
+      visitCancelled: 'Visit cancelled: {{job}}',
+      takenOffVisit: 'Taken off a visit: {{job}}',
+      openForTime: 'Open the job for its time.',
+      openForTimeAt: '{{site}} · open the job for its time.',
+      openForNewTime: 'Open the job for its new time.',
+      openForNewTimeAt: '{{site}} · open the job for its new time.',
+      responseDeadlineMissed: '{{job}}: response deadline missed',
+      responseDeadlineSoon: '{{job}}: response deadline soon',
+      completionDeadlineMissed: '{{job}}: completion deadline missed',
+      completionDeadlineSoon: '{{job}}: completion deadline soon',
+      certificateExpired: '{{qualification}} has expired',
+      certificateExpiring: '{{qualification}} expires soon',
+      certificateExpiredBody: 'Send the renewed certificate to the office.',
+      certificateExpiringBody: 'Valid until {{date}}. Renew it in time.',
+    },
+    email: {
+      pasteLink: 'Or paste this into your browser:',
+      dunning: {
+        subjectFailed: 'Payment failed for {{company}}',
+        subjectReadOnly: '{{company}} is read-only — payment outstanding',
+        titleFailed: 'A payment did not go through',
+        titleReadOnly: 'Your account is read-only',
+        failed: 'A payment for {{company}} has not gone through.',
+        failedNoDeadline: 'Please update your card to keep everything working.',
+        failedDeadline:
+          'If it is still outstanding on {{date}}, the account becomes read-only — your data stays, but new work cannot be saved.',
+        failedFix: 'Updating your card takes a minute and fixes it immediately.',
+        readOnly: '{{company}} is now read-only because a payment is outstanding.',
+        readOnlyKept:
+          'Nothing has been deleted and nothing will be. Everything can still be read and exported; what has stopped is saving new work.',
+        readOnlyFix: 'Updating your card restores it straight away.',
+        action: 'Update your card',
+      },
+      certificates: {
+        subjectExpired: 'Certificates expired — {{company}}',
+        subjectExpiring: 'Certificates expiring soon — {{company}}',
+        titleExpired: 'Certificates have expired',
+        titleExpiring: 'Certificates expiring soon',
+        ownExpired: 'A certificate of yours on {{company}} has expired or is about to.',
+        ownExpiring: 'A certificate of yours on {{company}} is about to expire.',
+        team: 'Certificates held by people at {{company}} have expired or are about to.',
+        expired: '{{qualification}} expired on {{date}}.',
+        expiring: '{{qualification}} expires on {{date}}.',
+        personExpired: '{{person}}: {{qualification}} expired on {{date}}.',
+        personExpiring: '{{person}}: {{qualification}} expires on {{date}}.',
+        affectedVisits: 'Planned visits that now need someone else, or a reason: {{visits}}.',
+        visit: '{{job}}, {{when}}',
+        aJob: 'a job',
+        ownNext:
+          'Once it is renewed, send the new certificate to the office so they can record it.',
+        teamNext: 'Record each renewal as a new certificate, so the old one stays in the history.',
+        action: 'Open qualifications',
+      },
+      contracts: {
+        subjectEnded: 'Contracts ended without renewal — {{company}}',
+        subjectEnding: 'Contracts ending soon — {{company}}',
+        titleEnded: 'Contracts have ended',
+        titleEnding: 'Contracts ending soon',
+        intro: 'Service contracts at {{company}} are ending or have ended.',
+        ended: '{{reference}} {{title}} for {{customer}} ended on {{date}} without being renewed.',
+        ending: '{{reference}} {{title}} for {{customer}} ends on {{date}}.',
+        next: 'Renew a contract to keep its maintenance plans making jobs and its customer’s jobs covered.',
+        action: 'Open contracts',
+      },
+      deadlines: {
+        subjectMissed: 'Deadlines missed — {{company}}',
+        subjectDue: 'Deadlines due soon — {{company}}',
+        titleMissed: 'Deadlines missed',
+        titleDue: 'Deadlines due soon',
+        introMissed: 'Jobs at {{company}} have missed their deadlines, or are about to.',
+        introDue: 'Jobs at {{company}} are about to reach their deadlines.',
+        responseMissed:
+          '{{job}} ({{customer}}): the response deadline was due at {{when}} and was missed.',
+        responseDue: '{{job}} ({{customer}}): the response deadline is due at {{when}}.',
+        completionMissed:
+          '{{job}} ({{customer}}): the completion deadline was due at {{when}} and was missed.',
+        completionDue: '{{job}} ({{customer}}): the completion deadline is due at {{when}}.',
+        explained:
+          'A response deadline is met when the job is dispatched; a completion deadline when it is completed.',
+        action: 'Open the deadlines report',
+      },
+    },
+    announcements: {
+      paymentFailed:
+        'A payment for this account has not gone through. Please update the card in Billing. If it is still outstanding on {{date}}, the account becomes read-only — your data stays, but new work cannot be saved.',
+      paymentFailedNoDate:
+        'A payment for this account has not gone through. Please update the card in Billing. If it is still outstanding shortly, the account becomes read-only — your data stays, but new work cannot be saved.',
+      readOnly:
+        'This account is read-only because a payment is outstanding. Nothing has been deleted and nothing will be: everything can still be read and exported. Update the card in Billing and writing is restored straight away.',
     },
   },
 
@@ -7845,7 +8044,8 @@ export const en = {
       slugHint: 'Lower case letters, digits and hyphens. It cannot be changed.',
       plan: 'Plan',
       seats: 'Seats',
-      seatsHint: 'Leave empty for no limit.',
+      seatsHint:
+        'Leave empty to use the plan’s number of seats. A number here replaces the plan’s, higher or lower.',
       billingMode: 'Billing',
       billingModeHint:
         'Invoiced: you bill them and set their plan here; no trial, no checkout. Pays in the app: they start a trial and subscribe with a card.',
@@ -7947,6 +8147,18 @@ export const en = {
       buildApps: 'Build apps for this company',
       buildAppsHint:
         'When on, every release also builds this company’s installers and phone apps, and the “Build company apps” workflow accepts its short name.',
+      // Starting a build from here (APP_BUILDS=github): when apps are switched
+      // on, and by hand with "Rebuild apps" for a later version or a new look.
+      rebuild: 'Rebuild apps',
+      rebuilding: 'Starting…',
+      rebuildHint:
+        'Builds this company’s installers and phone apps again, at the current version, as a new release. Takes 20 to 40 minutes on GitHub.',
+      buildStarted: 'Build started on GitHub.',
+      buildWatch: 'Watch the build',
+      buildWatchAll: 'See the builds',
+      buildNotConfigured:
+        'This server does not start builds itself (APP_BUILDS is off). Run “Build company apps” from GitHub Actions with the short name {{slug}}.',
+      buildFailed: 'The build could not be started: {{message}}',
       save: 'Save',
       saving: 'Saving...',
       saved: 'Saved.',
@@ -8121,6 +8333,16 @@ export const en = {
         retrying: 'Failed and waiting to retry',
         hint: 'Which company and which job: open the company and look under errors.',
       },
+      maintenance: {
+        title: 'Maintenance plans that cannot make their jobs',
+        empty: 'Every maintenance plan made its jobs on its last run.',
+        company: 'Company',
+        plan: 'Plan',
+        error: 'Why',
+        when: 'Last failed',
+        failures: 'In a row',
+        gaveUp: 'No longer retried until the plan is edited',
+      },
     },
     releases: {
       title: 'Releases in the field',
@@ -8191,7 +8413,8 @@ export const en = {
       mode: 'Billing',
       plan: 'Plan',
       seats: 'Seats',
-      seatsHint: 'Leave empty for no limit.',
+      seatsHint:
+        'Leave empty to use the plan’s number of seats. A number here replaces the plan’s, higher or lower.',
       save: 'Save',
       saving: 'Saving\u2026',
       saved: 'Saved.',

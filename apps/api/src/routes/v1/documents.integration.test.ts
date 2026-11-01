@@ -528,11 +528,18 @@ describe('website keys and the website lookup', () => {
       payload: body,
     });
 
-  it('can be made by staff, and the secret is shown once', async () => {
+  it('can be made by a staff manager only, and the secret is shown once', async () => {
     await setFlag(true);
     await setWebsiteFileAccess(true);
     const url = `/v1/platform/companies/${api.tenantId}/website-keys`;
-    const first = await api.call(admin.accessToken, {
+    const refusedCreate = await api.call(admin.accessToken, {
+      method: 'POST',
+      url,
+      payload: { label: 'ops-website' },
+    });
+    expect(refusedCreate.statusCode).toBe(403);
+    expect(code(refusedCreate)).toBe('staff_manager_only');
+    const first = await api.call(manager.accessToken, {
       method: 'POST',
       url,
       payload: { label: 'ops-website' },
@@ -556,7 +563,7 @@ describe('website keys and the website lookup', () => {
       canManage: boolean;
       canDelete: boolean;
     }>(await api.call(admin.accessToken, { method: 'GET', url }));
-    expect(listed.canManage).toBe(true);
+    expect(listed.canManage).toBe(false);
     expect(listed.canDelete).toBe(false);
     expect(listed.items.map((item) => item.hint)).toEqual(
       expect.arrayContaining([secret.slice(-4), json<{ key: { hint: string } }>(first).key.hint]),
@@ -570,7 +577,7 @@ describe('website keys and the website lookup', () => {
     expect(managerListed.canManage).toBe(true);
     expect(managerListed.canDelete).toBe(true);
 
-    const third = await api.call(admin.accessToken, { method: 'POST', url, payload: {} });
+    const third = await api.call(manager.accessToken, { method: 'POST', url, payload: {} });
     expect(third.statusCode).toBe(409);
     expect(code(third)).toBe('website_key_limit');
 
@@ -624,6 +631,68 @@ describe('website keys and the website lookup', () => {
     await as(owner, 'POST', `/v1/documents/${document.id}/expire`, { expired: false });
   });
 
+  it('gives short-lived links to a document the website already knows, and to nothing else', async () => {
+    const files = (key: string | null, id: string) =>
+      api.app.inject({
+        method: 'GET',
+        url: `/v1/website/files/${id}`,
+        remoteAddress: api.remoteAddress,
+        headers: key === null ? {} : { authorization: `Bearer ${key}` },
+      });
+
+    const served = await files(secret, document.id);
+    expect(served.statusCode, served.body).toBe(200);
+    const links = json<{ viewUrl: string; downloadUrl: string }>(served);
+    expect((await fetchSigned(links.viewUrl)).statusCode).toBe(200);
+    expect((await files(secret, randomUUID())).statusCode).toBe(404);
+    for (const key of [null, `i8wk_${'x'.repeat(43)}`]) {
+      const refused = await files(key, document.id);
+      expect(refused.statusCode).toBe(401);
+      expect(code(refused)).toBe('website_key_invalid');
+    }
+
+    // An expired document is not available.
+    await as(owner, 'POST', `/v1/documents/${document.id}/expire`, { expired: true });
+    expect((await files(secret, document.id)).statusCode).toBe(404);
+    await as(owner, 'POST', `/v1/documents/${document.id}/expire`, { expired: false });
+
+    // The company's own switch, Integr8's grant and the module, each refuses on its own.
+    const company = await as(owner, 'PATCH', '/v1/settings/website-access', {
+      websiteFilesEnabled: false,
+    });
+    expect(company.statusCode, company.body).toBe(200);
+    expect(code(await files(secret, document.id))).toBe('feature_disabled');
+    expect(
+      code(
+        await lookup(secret, {
+          key: { field: 'certificate', value: 'GS-2026-0042' },
+          confirm: { field: 'customer', value: 'Nile Towers' },
+        }),
+      ),
+    ).toBe('feature_disabled');
+    await setWebsiteFileAccess(true);
+
+    const grant = await api.call(admin.accessToken, {
+      method: 'PUT',
+      url: `/v1/platform/companies/${api.tenantId}/flags/website_files`,
+      payload: { enabled: false },
+    });
+    expect(grant.statusCode, grant.body).toBe(200);
+    expect(code(await files(secret, document.id))).toBe('feature_disabled');
+    expect(
+      code(await lookup(secret, { key: { field: 'certificate', value: 'GS-2026-0042' } })),
+    ).toBe('feature_disabled');
+    await setWebsiteFileAccess(true);
+
+    await setFlag(false);
+    expect(code(await files(secret, document.id))).toBe('feature_disabled');
+    expect(
+      code(await lookup(secret, { key: { field: 'certificate', value: 'GS-2026-0042' } })),
+    ).toBe('feature_disabled');
+    await setFlag(true);
+    expect((await files(secret, document.id)).statusCode).toBe(200);
+  });
+
   it('refuses no key, a made-up key and a revoked key alike', async () => {
     const body = { key: { field: 'certificate', value: 'GS-2026-0042' } };
     for (const key of [null, `i8wk_${'x'.repeat(43)}`, 'not-a-key']) {
@@ -631,7 +700,13 @@ describe('website keys and the website lookup', () => {
       expect(refused.statusCode).toBe(401);
       expect(code(refused)).toBe('website_key_invalid');
     }
-    const revoked = await api.call(admin.accessToken, {
+    const refusedRevoke = await api.call(admin.accessToken, {
+      method: 'POST',
+      url: `/v1/platform/companies/${api.tenantId}/website-keys/${keyId}/revoke`,
+      payload: {},
+    });
+    expect(refusedRevoke.statusCode).toBe(403);
+    const revoked = await api.call(manager.accessToken, {
       method: 'POST',
       url: `/v1/platform/companies/${api.tenantId}/website-keys/${keyId}/revoke`,
       payload: {},

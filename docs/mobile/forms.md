@@ -137,6 +137,13 @@ It stores the location on `submissions.submit_location` and on the history event
 Migration 0012 lets it be written only by submitting. The web shows it in the submission's
 history, with a map link.
 
+**When the office closed the job meanwhile** (migration 0061). A form the phone started before
+the job was completed, reviewed or cancelled — by when the phone recorded starting it — is
+accepted when it syncs, marked `submittedAfterClose`; the job's history says so and the office
+sees a "Submitted after the job closed" badge on the job. A form started after the job closed
+comes back as a `state_changed` conflict, as before. The web and desktop submit route refuses
+a draft on a closed job outright (`submission_job_closed`).
+
 ## Starting from earlier answers
 
 Assets arrive in P24. Until then, a form started on a job offers to start from **the most

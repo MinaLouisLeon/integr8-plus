@@ -3,6 +3,7 @@
 import { useTranslation } from '@integr8/i18n';
 import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
+import { LegalLinks } from '~/components/legal-links';
 import { MarketingShell } from '~/components/marketing-shell';
 import { SignupClosed } from '~/components/signup-closed';
 import { Button, Field } from '~/components/ui';
@@ -124,6 +125,9 @@ export default function SignUpPage() {
             {t('auth.signIn')}
           </Link>
         </p>
+
+        {/* Before an address is handed over, as well as in the footer (High 10). */}
+        <LegalLinks />
       </div>
     </MarketingShell>
   );

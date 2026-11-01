@@ -18,6 +18,7 @@ apps/api/src/routes/v1/platform
         │
 apps/api/src/platform
   onboarding.ts     company + job types + owner invitation + bucket, in one action
+  app-builds.ts     asks GitHub to build one company's own apps (APP_BUILDS)
   export.ts         everything a company has, as one gzipped JSON file
   purge.ts          bucket first, then rows — see below
         │
@@ -101,7 +102,9 @@ change is in the audit log as `staff.added`, `staff.restored`, `staff.credential
 
 One call, `POST /v1/platform/companies`, and a company is usable:
 
-1. the company row, with its plan and seat count;
+1. the company row, with its plan and seat count. The seat count is optional: empty, the
+   company has the plan's number of seats; set, it replaces the plan's number, higher or lower
+   (the same field on the company's page changes it later; see docs/billing);
 2. **roles** — nothing to do. Roles are a fixed set in `@integr8/core`, not rows;
 3. job types, because a company with none cannot raise a job and an empty list is the first
    thing that makes a new customer think the product is broken;
@@ -131,6 +134,26 @@ actions, both through `POST /v1/platform/companies/:tenantId/invitations/:invita
 
 Both withdraw the previous invitation, so an old link that went astray stops working, and both
 work on an invitation that already expired while the company was being set up.
+
+### Building the company's own apps
+
+The company's page → **Website and apps** → **Build apps for this company** puts the company in
+the list every version release builds (`GET /v1/build/companies`). Saving with the box newly
+ticked also asks for the company's first build at once, and **Rebuild apps**
+(`POST /v1/platform/companies/:tenantId/app-builds`, refused with `apps_not_enabled` while the
+box is off) asks again later: after its look changed, or for a version released before it was
+switched on. Both write `tenant.app_build_requested` to the audit log with what GitHub said.
+
+Whether the server can ask is `APP_BUILDS`:
+
+| `APP_BUILDS`    | What a request does                                                                                                                                                                                                                                                                                                                                    |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `off` (default) | Nothing is started; the dashboard says to run **Build company apps** from GitHub Actions with the company's short name. The recording stand-in keeps the requests for tests                                                                                                                                                                            |
+| `github`        | Dispatches `build-company-apps.yml` for that company on `GITHUB_BUILD_REF` (default `main`) with `GITHUB_BUILD_TOKEN`, a fine-grained token with **Actions: read and write** on `GITHUB_BUILD_REPOSITORY` only. The dashboard links the run when GitHub names it, otherwise the workflow's runs. Missing token or repository: the API refuses to start |
+
+GitHub answers as soon as the run is queued, so the request never waits for a build; whether it
+finished is on GitHub (the run, then the release `company-<slug>-v<version>`). See
+`docs/deployment/company-apps.md`.
 
 ---
 
@@ -188,6 +211,18 @@ export  ──▶  schedule  ──▶  (7 days)  ──▶  purge
   null, so a schedule without a finished export cannot be written. It is the same export a
   customer asking for their data would be given — there is no "deletion export" that quietly
   holds less.
+- **What the export holds is a decision per table.** `EXPORTED_TABLES` in
+  `packages/db/src/repositories/tenant-data-export.ts` lists what goes in: the company's
+  records in every module, its settings, documents, and its e-invoicing with the full Tax
+  Authority submission history, which is a tax record. `NOT_EXPORTED_TABLES` names everything
+  else with the reason: credentials (sessions, invitations, push tokens), this system's working
+  state (jobs, counters, sync bookkeeping), figures derived from exported rows (stock balances),
+  and Integr8's own records about the company (its plan, feature switches, storage metering, the
+  model provider's cost). `WITHHELD_COLUMNS` leaves sealed values and link or signing secrets
+  out of the query itself: the Tax Authority login, HR's sealed national id, insurance and bank
+  numbers (their last four stay), signing nonces and the quote link hash. A new company table in
+  neither list fails to compile, and `tenant-data-export.integration.test.ts` checks both lists
+  against the database.
 - **The archive lives in a platform bucket, not the company's.** The purge destroys the
   company's bucket, so an export kept there would be deleted by the act it exists to justify —
   while `tenant_exports`, which has no foreign key to `tenants` precisely so it outlives the
@@ -198,10 +233,19 @@ export  ──▶  schedule  ──▶  (7 days)  ──▶  purge
   than active, because whoever called the deletion off decides separately whether to start
   serving them again.
 - **`purge_tenant()` refuses anything not scheduled and due**, so even the schema owner cannot
-  remove a company early. It works out its own delete order, because nearly every tenant table
-  is `on delete restrict`, and it lifts the append-only guards on `audit_log`,
-  `submission_events` and `work_order_events` for the length of the purge — a company's history
-  goes only when the company does. `platform_audit_log` is deliberately not on that list.
+  remove a company early. Since migration 0055 it runs with triggers and foreign-key checks
+  suspended (`session_replication_role = replica`) and empties every table whose `tenant_id`
+  references `tenants`, in one pass. Before that it deleted with every guard live and could not
+  purge a company that had published a form, converted a quote into an order, or approved a
+  purchase order. Suspending the checks is safe because no table outside that list points into
+  it; `packages/db/src/testing/tenant-purge.integration.test.ts` checks that on every run. A
+  company's history goes only when the company does: `platform_audit_log`, `tenant_exports` and
+  `tenant_deletions` keep their rows.
+- **One company that cannot be purged does not hold up anything else.** The worker tries each
+  due company on its own and logs the one that failed; it stays scheduled and is tried again.
+  Each housekeeping step on the worker's timer (media, sync, purges, metering, dunning, expiry
+  alerts, maintenance plans, deadlines, the assistant) also runs on its own, so a failing purge
+  no longer stops deadline alerts.
 
 **Bucket first, then rows.** The two stores cannot be emptied atomically, so the order is the
 decision:
@@ -237,6 +281,31 @@ a log that is being written to cannot repeat or skip an entry.
   it is what to show, not what is allowed;
 - `announcements` — banners, by language tag, with `dismissible`;
 - and a suspension is not a field here at all: a suspended company's `/v1/me` is a 423.
+
+**Where the banners show.** The web app's company workspace and the desktop app draw them with
+one component, `AnnouncementBanners` in `@integr8/operations-dom`, from the `/v1/me` answer each
+shell already holds: in the web shell under the impersonation banner on every signed-in page, and
+in the desktop frame under the top bar, outside the scrolling screen. Dunning's payment reminders
+arrive the same way, since they are announcements too. The phone keeps the last ones it heard
+from `/v1/me` in its local database (refreshed on launch and on returning to the app, at most every
+15 minutes) and shows them at the top of Today, offline too; ended ones drop by the phone's clock.
+Payment reminders therefore reach engineers' phones as well.
+
+- **Severity** is a word as well as a colour (Notice, Warning, Important). A `critical` banner is
+  an `alert`, so a screen reader interrupts with it; the others are polite `status` messages. The
+  most severe come first.
+- **Language:** the reader's own tag, then its base language, then English, then whatever there
+  is. Staff write English today, so an Arabic screen usually shows English: the text carries its
+  own `lang` and that language's direction, so it is laid out left to right inside the mirrored
+  page (and an Arabic message that opens with "Integr8" still reads right to left).
+- **Dismissing** is per browser or per desktop install: the ids of the most recent dismissals,
+  up to two hundred, are kept in `localStorage` under `integr8.announcements.dismissed`, and
+  nothing else is. A banner posted as not dismissible has no button and ignores any remembered
+  id. Closing one moves focus to the next banner, or to the page's `main` when none is left.
+- **Ending:** a banner whose `endsAt` passes is taken down then, without another `/v1/me`,
+  because the desktop app stays open for days. Ending one early from the dashboard reaches a
+  screen the next time that app fetches `/v1/me`: at sign-in, on a reload, and when a screen
+  that reads it opens after the 30 seconds the answer is cached.
 
 ---
 

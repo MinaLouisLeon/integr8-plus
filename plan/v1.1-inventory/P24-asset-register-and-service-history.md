@@ -1,7 +1,7 @@
 # P24 — Asset register and service history
 
 **Version:** v1.1 Inventory and Assets
-**Status:** `DONE` — CRM/ERP plan phase E3 (see `docs/crm-erp/README.md`; ADR-0008). The last exit check, on real equipment and label stock, is a manual check before the pilot.
+**Status:** `IN PROGRESS` — built as CRM/ERP plan phase E3 (see `docs/crm-erp/README.md`; ADR-0008). The last exit check, on real equipment and label stock, is a manual check before the pilot.
 **Depends on:** P23
 
 ## Goal

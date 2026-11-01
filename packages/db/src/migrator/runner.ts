@@ -15,6 +15,12 @@ import type { MigrationFile } from './files.js';
  *   once queue rather than interleave.
  * - **Reversible.** Every migration has a `down`, and `down` is exercised in CI
  *   rather than written and never run.
+ * - **Tolerant of a newer schema.** Rolling a release back to the previous image
+ *   leaves the newer release's migrations applied, with no file for them in the
+ *   older build. As long as they are all newer than anything this build knows,
+ *   that is a schema ahead of the build, not a broken one: `up` has nothing to
+ *   do, `status` says so, and readiness passes, so the previous release runs on
+ *   it. That is the promise expand/contract makes (docs/database/migrations.md).
  *
  * It talks to `pg` directly rather than through Kysely because a migration file
  * holds many statements, and Kysely's parameterised protocol permits one per
@@ -40,7 +46,13 @@ export interface AppliedMigration {
 export interface MigrationStatus {
   version: string;
   name: string;
-  state: 'applied' | 'pending' | 'missing-file' | 'checksum-mismatch';
+  /**
+   * `ahead-of-build` is an applied migration this build has no file for and
+   * that is newer than every file it has: a newer release ran it, and this
+   * build is an earlier one. `missing-file` is the same absence anywhere else,
+   * which no rollback explains.
+   */
+  state: 'applied' | 'pending' | 'missing-file' | 'checksum-mismatch' | 'ahead-of-build';
   appliedAt?: Date;
 }
 
@@ -63,6 +75,95 @@ export class MigrationChecksumError extends Error {
     );
     this.name = 'MigrationChecksumError';
   }
+}
+
+/**
+ * Compares the version table with the files this build carries.
+ *
+ * Pure, so the classification that decides whether a rolled-back release may
+ * start is tested without a database. An applied migration with no file counts
+ * as `ahead-of-build` only when it is newer than the newest file here: a gap in
+ * the middle means a file was deleted or renamed, and a build with no files at
+ * all is a packaging mistake, not an earlier release.
+ */
+export function compareMigrations(
+  applied: readonly Pick<AppliedMigration, 'version' | 'name' | 'checksum' | 'applied_at'>[],
+  files: readonly Pick<MigrationFile, 'version' | 'name' | 'checksum'>[],
+): MigrationStatus[] {
+  const appliedByVersion = new Map(applied.map((row) => [row.version, row]));
+  const onDisk = new Map(files.map((migration) => [migration.version, migration]));
+  const newestFile = newestVersion(files);
+
+  const versions = [...new Set([...appliedByVersion.keys(), ...onDisk.keys()])].sort((a, b) =>
+    a.localeCompare(b),
+  );
+
+  return versions.map((version): MigrationStatus => {
+    const file = onDisk.get(version);
+    const row = appliedByVersion.get(version);
+
+    if (row === undefined) {
+      return { version, name: file?.name ?? '(unknown)', state: 'pending' };
+    }
+    if (file === undefined) {
+      return {
+        version,
+        name: row.name,
+        state: isNewer(version, newestFile) ? 'ahead-of-build' : 'missing-file',
+        appliedAt: row.applied_at,
+      };
+    }
+    return {
+      version,
+      name: file.name,
+      state: file.checksum === row.checksum ? 'applied' : 'checksum-mismatch',
+      appliedAt: row.applied_at,
+    };
+  });
+}
+
+/**
+ * What stops this build from migrating or rolling back, one line each.
+ *
+ * A schema ahead of the build is not on the list by itself. It is when this
+ * build also has a migration still to apply: then the newer release that ran
+ * did not contain this one's migrations, so this build is not its predecessor,
+ * and nothing can say what applying the missing one on top of it would do.
+ */
+export function migrationProblems(statuses: readonly MigrationStatus[]): string[] {
+  const ahead = statuses.filter((entry) => entry.state === 'ahead-of-build');
+  const problems: string[] = [];
+
+  for (const entry of statuses) {
+    const label = `${entry.version}_${entry.name}`;
+    if (entry.state === 'missing-file') {
+      problems.push(`${label} was applied but its file is gone`);
+    } else if (entry.state === 'checksum-mismatch') {
+      problems.push(`${label} was applied but its file has changed since`);
+    } else if (entry.state === 'pending' && ahead.length > 0) {
+      problems.push(
+        `${label} has not been applied, yet the database already has ${listMigrations(ahead)} from a newer release that did not include it`,
+      );
+    }
+  }
+
+  return problems;
+}
+
+/** `0057_a, 0058_b`, for messages. */
+export function listMigrations(entries: readonly { version: string; name: string }[]): string {
+  return entries.map((entry) => `${entry.version}_${entry.name}`).join(', ');
+}
+
+function newestVersion(files: readonly { version: string }[]): string | undefined {
+  return files
+    .map((file) => file.version)
+    .sort((a, b) => a.localeCompare(b))
+    .at(-1);
+}
+
+function isNewer(version: string, newestFile: string | undefined): boolean {
+  return newestFile !== undefined && version.localeCompare(newestFile) > 0;
 }
 
 export class Migrator {
@@ -105,53 +206,41 @@ export class Migrator {
 
   async status(): Promise<MigrationStatus[]> {
     await this.ensureVersionTable();
-    const applied = new Map((await this.applied()).map((row) => [row.version, row]));
-    const onDisk = new Map(this.migrations.map((migration) => [migration.version, migration]));
-
-    const versions = [...new Set([...applied.keys(), ...onDisk.keys()])].sort((a, b) =>
-      a.localeCompare(b),
-    );
-
-    return versions.map((version) => {
-      const file = onDisk.get(version);
-      const row = applied.get(version);
-
-      if (row === undefined) {
-        return { version, name: file?.name ?? '(unknown)', state: 'pending' as const };
-      }
-      if (file === undefined) {
-        return { version, name: row.name, state: 'missing-file', appliedAt: row.applied_at };
-      }
-      return {
-        version,
-        name: file.name,
-        state: file.checksum === row.checksum ? 'applied' : 'checksum-mismatch',
-        appliedAt: row.applied_at,
-      };
-    });
+    return compareMigrations(await this.applied(), this.migrations);
   }
 
   /**
-   * Throws if any applied migration differs from its file, or has no file.
+   * Applied migrations from a newer release that this build has no file for.
+   *
+   * Empty except after rolling back to an earlier image. The CLI prints them
+   * as a warning when `up` has nothing to do because of them.
+   */
+  async aheadOfBuild(): Promise<MigrationStatus[]> {
+    return (await this.status()).filter((entry) => entry.state === 'ahead-of-build');
+  }
+
+  /**
+   * Throws if any applied migration differs from its file, or has no file and
+   * is not explained by a newer release (see `migrationProblems`).
    *
    * Called before every `up`, so an edited migration blocks a deploy rather
    * than producing two databases that quietly disagree.
    */
   async verify(): Promise<void> {
-    const problems = (await this.status())
-      .filter((entry) => entry.state === 'checksum-mismatch' || entry.state === 'missing-file')
-      .map((entry) =>
-        entry.state === 'missing-file'
-          ? `${entry.version}_${entry.name} was applied but its file is gone`
-          : `${entry.version}_${entry.name} was applied but its file has changed since`,
-      );
+    const problems = migrationProblems(await this.status());
 
     if (problems.length > 0) {
       throw new MigrationChecksumError(problems);
     }
   }
 
-  /** Applies every pending migration, or stops after `to`. */
+  /**
+   * Applies every pending migration, or stops after `to`.
+   *
+   * On a schema ahead of this build nothing is ever pending (`verify` refuses
+   * the one case where something would be), so this returns an empty list and
+   * the earlier release starts on the newer schema.
+   */
   async up(options: { to?: string } = {}): Promise<MigrationOutcome[]> {
     return this.#locked(async () => {
       await this.ensureVersionTable();
@@ -195,14 +284,29 @@ export class Migrator {
           ? applied.slice(0, options.steps ?? 1)
           : applied.filter((row) => row.version > floor);
 
-      const outcomes: MigrationOutcome[] = [];
-      for (const row of targets) {
+      // Every target is checked before any is rolled back, so a refusal leaves
+      // the schema as it was rather than part of the way down.
+      const newestFile = newestVersion(this.migrations);
+      const plan = targets.map((row) => {
         const migration = byVersion.get(row.version);
-        if (migration === undefined) {
+        if (migration !== undefined) {
+          return migration;
+        }
+        if (isNewer(row.version, newestFile)) {
           throw new Error(
-            `Cannot roll back ${row.version}_${row.name}: its file is not on disk. Restore it from git first.`,
+            [
+              `Cannot roll back ${row.version}_${row.name}: a newer release applied it, and this build has no down file for it.`,
+              'Run "down" from that release instead, or leave it applied: this build runs on the newer schema.',
+            ].join('\n'),
           );
         }
+        throw new Error(
+          `Cannot roll back ${row.version}_${row.name}: its file is not on disk. Restore it from git first.`,
+        );
+      });
+
+      const outcomes: MigrationOutcome[] = [];
+      for (const migration of plan) {
         outcomes.push(await this.#applyDown(migration));
       }
 

@@ -76,6 +76,22 @@ export function InvoiceStatusBadge({
   );
 }
 
+/**
+ * The job an invoice bills has parts no invoice bills yet: recorded on a phone
+ * before the job closed and synced after it was invoiced (0062).
+ */
+export function PartsNotYetBilledBadge() {
+  const { t } = useTranslation();
+  return (
+    <span
+      className="inline-flex items-center rounded-full border border-warning bg-warning-subtle px-2 py-0.5 text-xs font-medium text-content"
+      title={t('finance.job.partsNotYetBilledHint')}
+    >
+      {t('finance.job.partsNotYetBilled')}
+    </span>
+  );
+}
+
 /** What an invoice adds up to and what is left, as a definition list. */
 export function AmountsSummary({
   amounts,

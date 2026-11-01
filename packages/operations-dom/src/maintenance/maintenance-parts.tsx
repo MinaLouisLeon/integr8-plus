@@ -1,4 +1,4 @@
-import { formatCalendarDate, useTranslation } from '@integr8/i18n';
+import { formatCalendarDate, formatDateTime, useTranslation } from '@integr8/i18n';
 import {
   type MaintenancePlan,
   type MaintenanceStanding,
@@ -14,6 +14,38 @@ import {
 
 const badge =
   'inline-flex items-center whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-medium';
+
+/**
+ * The worker could not make this plan's jobs (0063): why, when, and whether it
+ * is still retrying or waits for someone to edit the plan.
+ */
+export function PlanFailureNotice({ failure }: { failure: MaintenancePlan['failure'] }) {
+  const { t } = useTranslation();
+  const { locale } = useOperations();
+  if (failure === null) {
+    return null;
+  }
+  return (
+    <div
+      role="status"
+      className="flex flex-col gap-1 rounded-md border border-warning bg-warning-subtle px-3 py-2 text-sm text-content"
+    >
+      <span className="font-medium">
+        {t('operations.maintenance.plans.failure.title', {
+          when: formatDateTime(failure.at, { locale }),
+        })}
+      </span>
+      <span dir="auto" className="break-words">
+        {failure.message}
+      </span>
+      <span className="text-xs text-content-muted">
+        {failure.gaveUp
+          ? t('operations.maintenance.plans.failure.gaveUp', { count: failure.count })
+          : t('operations.maintenance.plans.failure.retrying', { count: failure.count })}
+      </span>
+    </div>
+  );
+}
 
 const STANDING_STYLE: Record<MaintenanceStanding, string> = {
   upcoming: 'border-border-subtle bg-surface text-content',

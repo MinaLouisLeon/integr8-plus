@@ -3,6 +3,7 @@ import {
   assertRlsEnforced,
   closeDatabase,
   configureDatabase,
+  getOwnerDb,
   getPlatformDb,
   getTenantDataSource,
   RlsNotEnforcedError,
@@ -158,11 +159,15 @@ describe('the startup assertion', () => {
   it('refuses an owner connection, which would silently bypass every policy', async () => {
     requireDisposableDatabase();
 
+    await expect(assertRlsEnforced(getOwnerDb())).rejects.toThrow(RlsNotEnforcedError);
+  });
+
+  it('refuses the platform connection too, which reads past RLS by design', async () => {
     await expect(assertRlsEnforced(getPlatformDb())).rejects.toThrow(RlsNotEnforcedError);
   });
 
   it('explains why it refused', async () => {
-    const message = await assertRlsEnforced(getPlatformDb()).then(
+    const message = await assertRlsEnforced(getOwnerDb()).then(
       () => '',
       (error: unknown) => (error instanceof Error ? error.message : ''),
     );

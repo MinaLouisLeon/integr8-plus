@@ -30,6 +30,15 @@ Plans, entitlements and Stripe. Build this only once the product is worth paying
 - [ ] Proration on seat removal — the quantity is sent at checkout, not on every membership change
 - [ ] In-app upgrade prompt shown at the moment a limit is hit — the refusal carries the numbers, but no prompt is rendered
 
+Pre-production audit, Medium (2026-10-31):
+
+- **`BILLING_PROVIDER=none`, the production default.** Integr8 invoices every company; no
+  Stripe keys are needed and production accepts it. Every company reads as invoiced
+  (`effectiveBillingMode`), new companies are stored invoiced, checkout and the portal answer
+  `billing_invoiced`, the webhook believes nothing and dunning does nothing
+  (`billing-none.integration.test.ts`). With `stripe`, production refuses test-mode keys.
+  Paymob is the planned card adapter behind the same interface (docs/billing).
+
 ## Exit criteria
 
 - [x] A company subscribes, is charged, and their entitlements apply immediately
@@ -107,3 +116,19 @@ provider_event_id)`. The request-level idempotency table cannot serve: it is ten
 - **A correction is not a new submission.** Counting a reopened submission against the monthly
   limit would charge twice for one piece of work — and refusing one would trap a correction the
   company has already been asked to make, which is the one thing a limit must never do.
+
+## Seats, after the pre-production audit — 2026-10-31
+
+- **Letting a suspended person back in now takes a seat.** `PATCH /v1/members/{userId}/status`
+  to `active` called no seat check, so suspending somebody, inviting a replacement and
+  reactivating the first went past the plan's limit. It now calls the same `assertSeatAvailable`
+  as inviting and accepting: 409 `seat_limit_reached`, naming `body.status`.
+- **The company's own seat number replaces the plan's.** The dashboard has always saved a
+  `tenants.seats` per company, hinted "Leave empty for no limit", and nothing read it: the plan's
+  number was enforced either way. Now, when staff set it, it replaces the plan's number, higher
+  or lower; empty means the plan's (`seatLimitFor` in `billing/entitlements.ts`). The billing
+  screen's entitlements show the same number. This is the one per-company override, and it is
+  for seats only: the bullet above about overrides still holds for everything else.
+- Proven by the billing integration suite: a reactivation refused when full and let through with
+  one more seat; an invitation allowed by a higher company number on a full plan, refused by a
+  lower one on a roomy plan, and the plan's number back when the field is emptied.

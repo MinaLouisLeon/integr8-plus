@@ -7,6 +7,13 @@ import { dunningEmail } from '../email/messages.js';
 import type { EmailSender } from '../email/sender.js';
 import { forgetTenantStatus } from '../http/suspension.js';
 import type { Logger } from '../http/logger.js';
+import {
+  dayWords,
+  fill,
+  type MessageLocale,
+  messageLocale,
+  wordsFor,
+} from '../notifications/words.js';
 
 /**
  * What happens to a company that has not paid (P17).
@@ -83,6 +90,13 @@ export async function runDunning(options: DunningOptions): Promise<DunningReport
     madeReadOnly: 0,
     failures: [],
   };
+
+  // With no card provider Integr8 invoices every company and chases its own
+  // invoices: there is nothing to pay in the app, so no trial may run out into
+  // read-only and no reminder may ask for a card.
+  if (options.config.BILLING_PROVIDER === 'none') {
+    return report;
+  }
 
   const platform = getPlatformDataSource();
   const claimed =
@@ -240,7 +254,12 @@ async function stepOne(
   await platform.settings.createAnnouncement({
     tenantId,
     severity: expired ? 'critical' : 'warning',
-    message: { en: expired ? readOnlyMessage() : graceMessage(subscription.graceEndsAt) },
+    // In both languages: everybody in the company sees the banner, each in the
+    // language their own app is showing.
+    message: {
+      en: reminderBanner('en', expired, subscription.graceEndsAt),
+      ar: reminderBanner('ar', expired, subscription.graceEndsAt),
+    },
     endsAt,
     // Dismissible even when it is critical. A banner somebody cannot close is
     // a banner they stop reading, and this one is reposted every three days
@@ -280,9 +299,16 @@ async function notifyByEmail(
     return;
   }
 
-  const recipients = (await withTenant(tenantId, (tx) => tx.tenantUsers.list())).filter(
+  const { members, settings } = await withTenant(tenantId, async (tx) => ({
+    members: await tx.tenantUsers.list(),
+    settings: await tx.settings.get(),
+  }));
+  const recipients = members.filter(
     (member) => member.status === 'active' && (member.role === 'owner' || member.role === 'admin'),
   );
+  // In the company's language: an email goes to a person, and no language is
+  // stored per person.
+  const locale = messageLocale(settings.locale);
 
   for (const person of recipients) {
     await deliver(
@@ -294,6 +320,7 @@ async function notifyByEmail(
         billingUrl: url,
         deadline: graceEndsAt,
         readOnly,
+        locale,
       }),
       { kind: 'dunning', tenantId },
     );
@@ -303,11 +330,17 @@ async function notifyByEmail(
 const READ_ONLY_REASON =
   'This account is read-only because a payment is outstanding. Nothing has been deleted — everything is here, and can be read and exported. Paying restores it immediately.';
 
-function graceMessage(graceEndsAt: Date | null): string {
-  const when = graceEndsAt === null ? 'shortly' : `on ${graceEndsAt.toISOString().slice(0, 10)}`;
-  return `A payment for this account has not gone through. Please update the card in Billing. If it is still outstanding ${when}, the account becomes read-only — your data stays, but new work cannot be saved.`;
-}
-
-function readOnlyMessage(): string {
-  return 'This account is read-only because a payment is outstanding. Nothing has been deleted and nothing will be: everything can still be read and exported. Update the card in Billing and writing is restored straight away.';
+/** The banner, in one language. */
+function reminderBanner(
+  locale: MessageLocale,
+  readOnly: boolean,
+  graceEndsAt: Date | null,
+): string {
+  const words = wordsFor(locale).announcements;
+  if (readOnly) {
+    return words.readOnly;
+  }
+  return graceEndsAt === null
+    ? words.paymentFailedNoDate
+    : fill(words.paymentFailed, { date: dayWords(graceEndsAt, locale) });
 }

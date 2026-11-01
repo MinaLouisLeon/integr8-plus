@@ -15,7 +15,7 @@ export interface paths {
         put?: never;
         /**
          * Sign in with an email address and password
-         * @description Returns a token pair for one company, plus every company this person belongs to. A wrong password, an unknown address and an identity with no company are all the same failure, deliberately: distinguishing them would turn this endpoint into a way of testing which addresses are customers.
+         * @description Returns a token pair for one company, plus every company this person belongs to. For `clientApp: mobile` the pair also carries the offline grant that lets the phone open with no network for seven days (`offlineGrant`, `offlineGrantExpiresAt`). A wrong password, an unknown address and an identity with no company are all the same failure, deliberately: distinguishing them would turn this endpoint into a way of testing which addresses are customers.
          */
         post: operations["signIn"];
         delete?: never;
@@ -55,7 +55,7 @@ export interface paths {
         put?: never;
         /**
          * Sign in with an emailed 6-digit code
-         * @description `token` is the 6-digit code from the email. A wrong code counts towards the account lockout exactly as a wrong password does. The session that results lets Change password go without the current password for fifteen minutes.
+         * @description `token` is the 6-digit code from the email. A wrong code counts towards the account lockout exactly as a wrong password does. The session that results lets Change password go without the current password for fifteen minutes. For `clientApp: mobile` the pair carries the offline grant, as with a password.
          */
         post: operations["completeMagicLink"];
         delete?: never;
@@ -75,7 +75,7 @@ export interface paths {
         put?: never;
         /**
          * Exchange a refresh token for a new pair
-         * @description Single-use. The token returned replaces the one sent, and presenting a spent token is treated as theft: the session is revoked and both the thief and the legitimate holder are signed out.
+         * @description Single-use. The token returned replaces the one sent, and presenting a spent token is treated as theft: the session is revoked and both the thief and the legitimate holder are signed out. A phone’s session also gets a new offline grant, replacing the last, so it runs for seven days from the phone’s last contact rather than from signing in.
          */
         post: operations["refreshSession"];
         delete?: never;
@@ -495,7 +495,7 @@ export interface paths {
         head?: never;
         /**
          * Change what somebody may do
-         * @description A built-in `role`, or one of the company’s own roles by `customRoleId` (ADR-0013), which ranks as its base. Nobody may grant a role above their own, for the same reason nobody may invite at one: without that rule, changing a role is a way of promoting yourself; below the owner, nobody gives a company role holding something they do not (422 `role_beyond_own`). Their sessions are ended, so the next token they get carries the new role — but an access token already issued keeps its old role until it lapses, within fifteen minutes.
+         * @description A built-in `role`, or one of the company’s own roles by `customRoleId` (ADR-0013), which ranks as its base. Nobody may grant a role above their own, for the same reason nobody may invite at one: without that rule, changing a role is a way of promoting yourself; below the owner, nobody gives a company role holding something they do not (422 `role_beyond_own`). Their sessions are ended, so the next token they get carries the new role, and an access token already issued, with the old role, is refused within thirty seconds.
          */
         patch: operations["changeMemberRole"];
         trace?: never;
@@ -515,7 +515,7 @@ export interface paths {
         head?: never;
         /**
          * Suspend somebody, or let them back in
-         * @description Suspending refuses them entry and keeps everything they have ever done. It is the reversible half of removing somebody: the right answer for a lost phone or somebody between jobs. Their sessions are ended, so they cannot sign in or refresh — but see the note on this file about the fifteen minutes an access token already in their hands stays valid.
+         * @description Suspending refuses them entry and keeps everything they have ever done. It is the reversible half of removing somebody: the right answer for a lost phone or somebody between jobs. Their sessions are ended, so they cannot sign in or refresh, and an access token already in their hands is refused within thirty seconds. Letting them back in takes a seat, and is refused with 409 `seat_limit_reached` when every seat is taken.
          */
         patch: operations["setMemberStatus"];
         trace?: never;
@@ -532,7 +532,7 @@ export interface paths {
         post?: never;
         /**
          * Remove somebody from this company
-         * @description Soft, and deliberately so: everything they filled in, signed and submitted stays, and the history still names them. What goes is their way in and the seat they were taking up. As with suspending, an access token already issued outlives this by up to fifteen minutes.
+         * @description Soft, and deliberately so: everything they filled in, signed and submitted stays, and the history still names them. What goes is their way in and the seat they were taking up. As with suspending, an access token already issued is refused within thirty seconds.
          */
         delete: operations["removeMember"];
         options?: never;
@@ -663,7 +663,7 @@ export interface paths {
         head?: never;
         /**
          * Change how this company works
-         * @description Only what is sent is changed, so a screen that edits branding cannot blank working hours it never showed. The branding fields — logo, app icon, colours, default theme, website and whether the company’s own apps are built — are Integr8’s to set (`branding.manage`), and a company owner sending one of them is refused with 403; timezone, currency, locale and working hours stay the owner’s.
+         * @description Only what is sent is changed, so a screen that edits branding cannot blank working hours it never showed. The branding fields — logo, app icon, colours, default theme, website and whether the company’s own apps are built — are Integr8’s to set (`branding.manage`), and a company owner sending one of them is refused with 403; timezone, currency, locale and working hours stay the owner’s. The currency changes only while the company has no money records yet (409 `currency_in_use`): sending the current one is always fine.
          */
         patch: operations["updateSettings"];
         trace?: never;
@@ -885,7 +885,7 @@ export interface paths {
         post?: never;
         /**
          * Sign a device out
-         * @description Revokes the session and any offline grant issued to it. A device with an offline grant would otherwise keep working for up to a week after being "signed out".
+         * @description Revokes the session and the offline grant issued with it. A phone learns of it the next time it reaches the API, and is then signed out and wiped. Until then, with no signal, it can still open on the grant it holds, which ends at most seven days (`AUTH_OFFLINE_GRANT_TTL_SECONDS`) after the phone last reached the API.
          */
         delete: operations["revokeSession"];
         options?: never;
@@ -1028,7 +1028,7 @@ export interface paths {
         head?: never;
         /**
          * Rename a form or change its settings
-         * @description Settings take effect immediately and are not versioned: who may fill a form, whether a signature is mandatory, and which job types require it — a job of a requiring type cannot complete until the form is submitted for it. The requirement applies to jobs created afterwards.
+         * @description Settings take effect immediately and are not versioned: who may fill a form, whether a signature is mandatory (a job with any submission of the form cannot complete without the customer’s sign-off, read from the form at that moment), and which job types require it — a job of a requiring type cannot complete until the form is submitted for it. The requirement applies to jobs created afterwards.
          */
         patch: operations["updateForm"];
         trace?: never;
@@ -2496,7 +2496,7 @@ export interface paths {
         get?: never;
         /**
          * Correct a site’s access notes
-         * @description For the engineer who finds the gate code has changed: anyone working a job at the site may correct its access notes, as well as the office. Every change records who made it and when.
+         * @description For the engineer who finds the gate code has changed: anyone on the crew of an open job at the site (not complete, reviewed or cancelled) may correct its access notes, as well as the office. Every change records who made it and when.
          */
         put: operations["updateSiteAccess"];
         post?: never;
@@ -3986,7 +3986,7 @@ export interface paths {
         put?: never;
         /**
          * Draft a purchase order
-         * @description A draft in the company currency, numbered `PO-000001` onwards. Lines name catalogue items; a line without a `description` takes the item name. Honours `Idempotency-Key`.
+         * @description A draft in the company currency, numbered `PO-000001` onwards. `currencyCode`, when sent, must be the company currency. Lines name catalogue items; a line without a `description` takes the item name. Honours `Idempotency-Key`.
          */
         post: operations["createPurchaseOrder"];
         delete?: never;
@@ -4565,7 +4565,7 @@ export interface paths {
         };
         /**
          * Find invoices
-         * @description Newest first, a page at a time. `q` matches a reference (`INV-000123`, `123`) or words of the customer’s name; `status` is the derived status; `overdue=true` keeps those past due and still owing.
+         * @description Newest first, a page at a time. `q` matches a reference (`INV-000123`, `123`) or words of the customer’s name; `status` is the derived status; `overdue=true` keeps those past due and still owing; `partsNotBilled=true` keeps those made from a job with parts no invoice bills yet, for a follow-up invoice.
          */
         get: operations["listCustomerInvoices"];
         put?: never;
@@ -4611,7 +4611,7 @@ export interface paths {
         put?: never;
         /**
          * Draft an invoice from a completed job
-         * @description One line per part used on the job (net of returns, at the item’s sale price) and one labour line for the time on site, at the company’s labour rate when set. The job must be complete (409 `job_not_complete`) and not already invoiced (409 `job_already_invoiced`). Honours `Idempotency-Key`.
+         * @description One line per part used on the job (net of returns, at the item’s sale price) and one labour line for the time on site, at the company’s labour rate when set. The job must be complete (409 `job_not_complete`) and not already invoiced (409 `job_already_invoiced`) — except that a job already invoiced with parts no invoice bills yet (recorded on a phone before the job closed and synced after, `partsNotYetBilled`) gets a follow-up draft with just those parts and no labour. Honours `Idempotency-Key`.
          */
         post: operations["createCustomerInvoiceFromJob"];
         delete?: never;
@@ -4868,6 +4868,26 @@ export interface paths {
          * @description Owners and admins. The money returns to the customer’s account and the invoice owes it again; the allocation stays on record as removed. 409 `allocation_removed` when already removed.
          */
         post: operations["removeCustomerPaymentAllocation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/finance/payments/{receiptId}/reverse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Take a payment back
+         * @description Owners and admins, with a reason: a bounced cheque, a transfer that never arrived, a payment recorded against the wrong customer. The payment is not deleted: a reversal is recorded beside it, dated today in the company’s calendar, its allocations are removed so the invoices owe again, it is never allocated again, and the ledger posts the opposite of its entry. Both stay in the history. Once only: 409 `payment_already_reversed`. Honours `Idempotency-Key`.
+         */
+        post: operations["reverseCustomerPayment"];
         delete?: never;
         options?: never;
         head?: never;
@@ -6010,7 +6030,7 @@ export interface paths {
         put?: never;
         /**
          * Prepare a month’s pay run
-         * @description Proposes a line for everyone employed in the month who has pay terms. Needs a confirmed rule set in force (422 `no_confirmed_rules`, or `rules_not_confirmed` when the latest set waits for the owner). No later than next month (422 `month_in_future`); one run a month (409 `month_taken`).
+         * @description Proposes a line for everyone employed in the month who has pay terms. The latest rule set in force for the month is used, and must be confirmed and from the same year: 422 `no_confirmed_rules` when there is none, `rules_not_confirmed` when it waits for the owner (an older confirmed set is not used instead), `rules_from_another_year` when it starts in an earlier year. No later than next month (422 `month_in_future`); one run a month (409 `month_taken`).
          */
         post: operations["createPayRun"];
         delete?: never;
@@ -6049,7 +6069,7 @@ export interface paths {
         put?: never;
         /**
          * Recalculate a draft from today’s terms, hours and claims
-         * @description Keeps what was typed for the run (overtime hours, bonus, deduction, unpaid days, note) for anyone already in it, and uses the confirmed rule set now in force for the month.
+         * @description Keeps what was typed for the run (overtime hours, bonus, deduction, unpaid days, note) for anyone already in it, and uses the rule set now in force for the month, under the same rules as preparing a run (422 `rules_not_confirmed`, `rules_from_another_year`).
          */
         post: operations["recalculatePayRun"];
         delete?: never;
@@ -7129,7 +7149,7 @@ export interface paths {
         };
         /**
          * Maintenance plans
-         * @description Soonest next due date first. For one asset, customer, site or contract; ended ones only with `includeEnded`.
+         * @description Soonest next due date first. For one asset, customer, site or contract; ended ones only with `includeEnded`; `failing=true` keeps those whose jobs the worker could not make on its last try, with the reason in `failure`.
          */
         get: operations["listMaintenancePlans"];
         put?: never;
@@ -7413,7 +7433,7 @@ export interface paths {
         get?: never;
         /**
          * Receive push notifications on this phone
-         * @description Registers the phone’s Expo push token for the signed-in person, tied to this session: signing out, or the session being revoked, stops notifications to it. Registering a token already registered moves it to this person and session.
+         * @description Registers the phone’s Expo push token for the signed-in person, tied to this session: signing out, or the session being revoked, stops notifications to it. Registering a token already registered moves it to this person and session. `locale` is the language the app is showing; notifications are written in it (Arabic for any `ar` tag, English otherwise). A phone that leaves it out keeps whatever it last said, English if nothing.
          */
         put: operations["registerPushDevice"];
         post?: never;
@@ -7610,7 +7630,7 @@ export interface paths {
         head?: never;
         /**
          * Change a company’s plan, seat count or billing mode
-         * @description Sets the plan the API enforces and, for a company Integr8 invoices, the plan its people see on the billing screen. Switching a company to `invoiced` makes its subscription active with no trial and lifts a read-only state that non-payment caused: Integr8 is taking the money now. Switching back to `self_serve` leaves the subscription as the provider last described it.
+         * @description Sets the plan the API enforces and, for a company Integr8 invoices, the plan its people see on the billing screen. Switching a company to `invoiced` makes its subscription active with no trial and lifts a read-only state that non-payment caused: Integr8 is taking the money now. Switching back to `self_serve` leaves the subscription as the provider last described it. On a deployment that takes no card payments (`BILLING_PROVIDER=none`) every company is invoiced, and `self_serve` is stored as `invoiced`.
          */
         patch: operations["setCompanyPlan"];
         trace?: never;
@@ -7630,9 +7650,29 @@ export interface paths {
         head?: never;
         /**
          * Change a company’s website, or whether its own apps are built
-         * @description The two branding facts the dashboard owns. The rest of the look — logo, icon, colours, theme — is set from the desktop app while acting as the company, where it can be previewed. Switching `appsEnabled` on puts the company in the list the release pipeline builds for.
+         * @description The two branding facts the dashboard owns. The rest of the look — logo, icon, colours, theme — is set from the desktop app while acting as the company, where it can be previewed. Switching `appsEnabled` on puts the company in the list the release pipeline builds for and, when the deployment can start builds (`APP_BUILDS=github`), starts its first build at once; `appBuild` says how that went, and is null when this change did not switch apps on.
          */
         patch: operations["updateCompanySettings"];
+        trace?: never;
+    };
+    "/v1/platform/companies/{tenantId}/app-builds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Build a company’s own apps again
+         * @description Starts the `build-company-apps.yml` workflow for this one company, at the version on the deployment’s build branch: its desktop installers and phone apps, as a new release. For a later version, or after its look changed. `not_configured` when this deployment cannot start builds (`APP_BUILDS=off`): run the workflow from GitHub Actions instead. Refused while the company’s apps are switched off.
+         */
+        post: operations["startCompanyAppBuild"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/v1/platform/companies/{tenantId}/impersonate": {
@@ -8342,13 +8382,13 @@ export interface paths {
         };
         /**
          * A company’s website keys, newest first
-         * @description Every key, revoked ones included, with its last characters and use. Never the key itself. `canManage` says whether this account may create, enable, disable or revoke keys; `canDelete` is reserved for the terminal-created staff admin.
+         * @description Every key, revoked ones included, with its last characters and use. Never the key itself. Any staff member may list them. `canManage` (create, enable, disable, revoke) and `canDelete` are both true only for a staff manager, an account the terminal command made.
          */
         get: operations["listWebsiteKeys"];
         put?: never;
         /**
          * Make a website key for a company
-         * @description Any signed-in Integr8 staff member may create a key. The key is in this answer and nowhere else: put it in the website’s server environment, never in its pages. Refused with 409 `website_key_limit` while the company already has two non-revoked keys.
+         * @description Only a staff manager (an account the terminal command made) may create a key; anybody else gets 403 `staff_manager_only`. The key is in this answer and nowhere else: put it in the website’s server environment, never in its pages. Refused with 409 `website_key_limit` while the company already has two non-revoked keys.
          */
         post: operations["createWebsiteKey"];
         delete?: never;
@@ -8376,7 +8416,7 @@ export interface paths {
         head?: never;
         /**
          * Enable or disable a company website key
-         * @description Any active Integr8 staff member can change key state. Disabling stops requests while retaining the key; enabling resumes it unless revoked.
+         * @description Only a staff manager (an account the terminal command made) may change a key’s state; anybody else gets 403 `staff_manager_only`. Disabling stops requests while retaining the key; enabling resumes it unless revoked.
          */
         patch: operations["updateWebsiteKey"];
         trace?: never;
@@ -8392,7 +8432,7 @@ export interface paths {
         put?: never;
         /**
          * Revoke a website key
-         * @description Any signed-in Integr8 staff member may revoke a key. The website using it stops serving immediately. The key stays listed, revoked, for the record.
+         * @description Only a staff manager (an account the terminal command made) may revoke a key; anybody else gets 403 `staff_manager_only`. The website using it stops serving immediately. The key stays listed, revoked, for the record.
          */
         post: operations["revokeWebsiteKey"];
         delete?: never;
@@ -8410,7 +8450,7 @@ export interface paths {
         };
         /**
          * What is failing quietly
-         * @description Phones whose sync runs show trouble, billing deliveries that were recorded but not applied, and background work that gave up — over the last few days, across every company. The things that look fine from the office until a customer rings.
+         * @description Phones whose sync runs show trouble, billing deliveries that were recorded but not applied, background work that gave up — over the last few days, across every company — and maintenance plans the worker currently cannot make jobs for. The things that look fine from the office until a customer rings.
          */
         get: operations["getPlatformHealth"];
         put?: never;
@@ -8510,6 +8550,13 @@ export interface operations {
                             refreshTokenExpiresAt: string;
                             /** Format: uuid */
                             sessionId: string;
+                            /** @description Mobile only. A signed grant (EdDSA JWT, `typ: offline`) the phone keeps and checks with no network; replaces the previous one. Absent for the desktop and web apps. */
+                            offlineGrant?: string;
+                            /**
+                             * Format: date-time
+                             * @description When the offline grant ends: seven days by default, never after the session does.
+                             */
+                            offlineGrantExpiresAt?: string;
                         };
                         /** Format: uuid */
                         tenantId: string;
@@ -8694,6 +8741,13 @@ export interface operations {
                             refreshTokenExpiresAt: string;
                             /** Format: uuid */
                             sessionId: string;
+                            /** @description Mobile only. A signed grant (EdDSA JWT, `typ: offline`) the phone keeps and checks with no network; replaces the previous one. Absent for the desktop and web apps. */
+                            offlineGrant?: string;
+                            /**
+                             * Format: date-time
+                             * @description When the offline grant ends: seven days by default, never after the session does.
+                             */
+                            offlineGrantExpiresAt?: string;
                         };
                         /** Format: uuid */
                         tenantId: string;
@@ -8799,6 +8853,13 @@ export interface operations {
                         refreshTokenExpiresAt: string;
                         /** Format: uuid */
                         sessionId: string;
+                        /** @description Mobile only. A signed grant (EdDSA JWT, `typ: offline`) the phone keeps and checks with no network; replaces the previous one. Absent for the desktop and web apps. */
+                        offlineGrant?: string;
+                        /**
+                         * Format: date-time
+                         * @description When the offline grant ends: seven days by default, never after the session does.
+                         */
+                        offlineGrantExpiresAt?: string;
                     };
                 };
             };
@@ -8885,6 +8946,13 @@ export interface operations {
                             refreshTokenExpiresAt: string;
                             /** Format: uuid */
                             sessionId: string;
+                            /** @description Mobile only. A signed grant (EdDSA JWT, `typ: offline`) the phone keeps and checks with no network; replaces the previous one. Absent for the desktop and web apps. */
+                            offlineGrant?: string;
+                            /**
+                             * Format: date-time
+                             * @description When the offline grant ends: seven days by default, never after the session does.
+                             */
+                            offlineGrantExpiresAt?: string;
                         };
                         /** Format: uuid */
                         tenantId: string;
@@ -10717,7 +10785,7 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description This plan has no price configured (`plan_not_purchasable`), or Integr8 invoices this company directly (`billing_invoiced`). */
+            /** @description This plan has no price configured (`plan_not_purchasable`), or Integr8 invoices this company directly (`billing_invoiced`), as it does every company on a deployment that takes no card payments. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -10801,7 +10869,7 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description This company has never paid, so there is no portal yet (`no_billing_account`), or Integr8 invoices it directly (`billing_invoiced`). */
+            /** @description This company has never paid, so there is no portal yet (`no_billing_account`), or Integr8 invoices it directly (`billing_invoiced`), as it does every company on a deployment that takes no card payments. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -11300,7 +11368,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description This is the company’s only owner (`last_owner`). */
+            /** @description This is the company’s only owner (`last_owner`), or every seat is taken (`seat_limit_reached`). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -12092,6 +12160,13 @@ export interface operations {
             };
             /** @description A branding field was sent by somebody other than Integr8 staff. */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A different `currency` while the company already holds money records (`currency_in_use`). */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -16245,7 +16320,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Changed elsewhere, not in a state that can be submitted, or the plan’s submissions for the month are used up (`submission_limit_reached`). */
+            /** @description Changed elsewhere, not in a state that can be submitted, a draft on a job that is completed, reviewed or cancelled (`submission_job_closed`), or the plan’s submissions for the month are used up (`submission_limit_reached`). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -24945,7 +25020,7 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description This person is not working a job at the site. */
+            /** @description This person is not working an open job at the site. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -37281,6 +37356,28 @@ export interface operations {
                                 returnedQuantity: string;
                             }[];
                         }[];
+                        parties: {
+                            buyer: {
+                                name: string;
+                                address: string | null;
+                                taxReference: string | null;
+                            };
+                            supplier: {
+                                name: string;
+                                address: {
+                                    line1: string | null;
+                                    line2: string | null;
+                                    city: string | null;
+                                    region: string | null;
+                                    postcode: string | null;
+                                    countryCode: string | null;
+                                } | null;
+                                contactName: string | null;
+                                email: string | null;
+                                phone: string | null;
+                                taxReference: string | null;
+                            };
+                        };
                         can: {
                             edit: boolean;
                             approve: boolean;
@@ -37324,7 +37421,7 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description Invalid, or the supplier is inactive (`supplier_inactive`). */
+            /** @description Invalid, the supplier is inactive (`supplier_inactive`), or `currencyCode` is not the company currency (`purchase_currency_not_company`). */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -37468,6 +37565,28 @@ export interface operations {
                                 returnedQuantity: string;
                             }[];
                         }[];
+                        parties: {
+                            buyer: {
+                                name: string;
+                                address: string | null;
+                                taxReference: string | null;
+                            };
+                            supplier: {
+                                name: string;
+                                address: {
+                                    line1: string | null;
+                                    line2: string | null;
+                                    city: string | null;
+                                    region: string | null;
+                                    postcode: string | null;
+                                    countryCode: string | null;
+                                } | null;
+                                contactName: string | null;
+                                email: string | null;
+                                phone: string | null;
+                                taxReference: string | null;
+                            };
+                        };
                         can: {
                             edit: boolean;
                             approve: boolean;
@@ -37669,6 +37788,28 @@ export interface operations {
                                 returnedQuantity: string;
                             }[];
                         }[];
+                        parties: {
+                            buyer: {
+                                name: string;
+                                address: string | null;
+                                taxReference: string | null;
+                            };
+                            supplier: {
+                                name: string;
+                                address: {
+                                    line1: string | null;
+                                    line2: string | null;
+                                    city: string | null;
+                                    region: string | null;
+                                    postcode: string | null;
+                                    countryCode: string | null;
+                                } | null;
+                                contactName: string | null;
+                                email: string | null;
+                                phone: string | null;
+                                taxReference: string | null;
+                            };
+                        };
                         can: {
                             edit: boolean;
                             approve: boolean;
@@ -37862,6 +38003,28 @@ export interface operations {
                                 returnedQuantity: string;
                             }[];
                         }[];
+                        parties: {
+                            buyer: {
+                                name: string;
+                                address: string | null;
+                                taxReference: string | null;
+                            };
+                            supplier: {
+                                name: string;
+                                address: {
+                                    line1: string | null;
+                                    line2: string | null;
+                                    city: string | null;
+                                    region: string | null;
+                                    postcode: string | null;
+                                    countryCode: string | null;
+                                } | null;
+                                contactName: string | null;
+                                email: string | null;
+                                phone: string | null;
+                                taxReference: string | null;
+                            };
+                        };
                         can: {
                             edit: boolean;
                             approve: boolean;
@@ -38054,6 +38217,28 @@ export interface operations {
                                 returnedQuantity: string;
                             }[];
                         }[];
+                        parties: {
+                            buyer: {
+                                name: string;
+                                address: string | null;
+                                taxReference: string | null;
+                            };
+                            supplier: {
+                                name: string;
+                                address: {
+                                    line1: string | null;
+                                    line2: string | null;
+                                    city: string | null;
+                                    region: string | null;
+                                    postcode: string | null;
+                                    countryCode: string | null;
+                                } | null;
+                                contactName: string | null;
+                                email: string | null;
+                                phone: string | null;
+                                taxReference: string | null;
+                            };
+                        };
                         can: {
                             edit: boolean;
                             approve: boolean;
@@ -38269,6 +38454,28 @@ export interface operations {
                                 returnedQuantity: string;
                             }[];
                         }[];
+                        parties: {
+                            buyer: {
+                                name: string;
+                                address: string | null;
+                                taxReference: string | null;
+                            };
+                            supplier: {
+                                name: string;
+                                address: {
+                                    line1: string | null;
+                                    line2: string | null;
+                                    city: string | null;
+                                    region: string | null;
+                                    postcode: string | null;
+                                    countryCode: string | null;
+                                } | null;
+                                contactName: string | null;
+                                email: string | null;
+                                phone: string | null;
+                                taxReference: string | null;
+                            };
+                        };
                         can: {
                             edit: boolean;
                             approve: boolean;
@@ -38319,7 +38526,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description More than is left to receive (`over_received`), no location (`location_required`), or a line named twice (`line_repeated`). */
+            /** @description More than is left to receive (`over_received`), no location (`location_required`), a line named twice (`line_repeated`), or an order in another currency than the company’s (`purchase_currency_not_company`). */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -38486,6 +38693,28 @@ export interface operations {
                                 returnedQuantity: string;
                             }[];
                         }[];
+                        parties: {
+                            buyer: {
+                                name: string;
+                                address: string | null;
+                                taxReference: string | null;
+                            };
+                            supplier: {
+                                name: string;
+                                address: {
+                                    line1: string | null;
+                                    line2: string | null;
+                                    city: string | null;
+                                    region: string | null;
+                                    postcode: string | null;
+                                    countryCode: string | null;
+                                } | null;
+                                contactName: string | null;
+                                email: string | null;
+                                phone: string | null;
+                                taxReference: string | null;
+                            };
+                        };
                         can: {
                             edit: boolean;
                             approve: boolean;
@@ -38846,6 +39075,7 @@ export interface operations {
                                 /** @enum {string} */
                                 status: "draft" | "submitted" | "reopened";
                                 submittedAt: string | null;
+                                submittedAfterClose: boolean;
                             } | null;
                         }[];
                         checklist: {
@@ -38875,7 +39105,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed" | "form_submitted_after_close";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -39046,6 +39276,7 @@ export interface operations {
                                 name: string;
                             } | null;
                             clientActionId: string | null;
+                            recordedAfterClose: boolean;
                             version: number;
                             lots: {
                                 /** Format: uuid */
@@ -39059,6 +39290,7 @@ export interface operations {
                             }[] | null;
                         }[];
                         materialsCost: string | null;
+                        partsNotYetBilled: boolean;
                         van: {
                             /** Format: uuid */
                             id: string;
@@ -39119,14 +39351,12 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description The idempotency key is in use by a request still running, or was reused with a different body. */
+            /** @description The job is completed, reviewed or cancelled (`work_order_closed`), or already invoiced (`work_order_invoiced`): a part recorded now would never be billed. Returning unused parts stays allowed. */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
+                content?: never;
             };
             /** @description No van assigned (`no_van`), no location given by a dispatcher (`location_required`), the item is archived, or its serial numbers or batches do not fit (`serial_single_unit`, `lots_quantity_mismatch`, `lot_repeated`, `batch_expired`, `item_not_tracked`). */
             422: {
@@ -39439,6 +39669,7 @@ export interface operations {
                                 /** @enum {string} */
                                 status: "draft" | "submitted" | "reopened";
                                 submittedAt: string | null;
+                                submittedAfterClose: boolean;
                             } | null;
                         }[];
                         checklist: {
@@ -39468,7 +39699,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed" | "form_submitted_after_close";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -39639,6 +39870,7 @@ export interface operations {
                                 name: string;
                             } | null;
                             clientActionId: string | null;
+                            recordedAfterClose: boolean;
                             version: number;
                             lots: {
                                 /** Format: uuid */
@@ -39652,6 +39884,7 @@ export interface operations {
                             }[] | null;
                         }[];
                         materialsCost: string | null;
+                        partsNotYetBilled: boolean;
                         van: {
                             /** Format: uuid */
                             id: string;
@@ -40018,6 +40251,7 @@ export interface operations {
                                 /** @enum {string} */
                                 status: "draft" | "submitted" | "reopened";
                                 submittedAt: string | null;
+                                submittedAfterClose: boolean;
                             } | null;
                         }[];
                         checklist: {
@@ -40047,7 +40281,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed" | "form_submitted_after_close";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -40218,6 +40452,7 @@ export interface operations {
                                 name: string;
                             } | null;
                             clientActionId: string | null;
+                            recordedAfterClose: boolean;
                             version: number;
                             lots: {
                                 /** Format: uuid */
@@ -40231,6 +40466,7 @@ export interface operations {
                             }[] | null;
                         }[];
                         materialsCost: string | null;
+                        partsNotYetBilled: boolean;
                         van: {
                             /** Format: uuid */
                             id: string;
@@ -40396,6 +40632,7 @@ export interface operations {
                                 name: string;
                             } | null;
                             clientActionId: string | null;
+                            recordedAfterClose: boolean;
                             version: number;
                             lots: {
                                 /** Format: uuid */
@@ -45408,6 +45645,7 @@ export interface operations {
                 salesOrderId?: string;
                 workOrderId?: string;
                 overdue?: "true" | "false";
+                partsNotBilled?: "true" | "false";
                 cursor?: string;
                 limit?: number;
             };
@@ -45454,6 +45692,7 @@ export interface operations {
                                 id: string;
                                 reference: string;
                             } | null;
+                            partsNotYetBilled: boolean;
                             /** Format: date-time */
                             createdAt: string;
                             /** Format: date-time */
@@ -45596,6 +45835,7 @@ export interface operations {
                                 id: string;
                                 reference: string;
                             } | null;
+                            partsNotYetBilled: boolean;
                             /** Format: date-time */
                             createdAt: string;
                             /** Format: date-time */
@@ -45867,6 +46107,7 @@ export interface operations {
                                 id: string;
                                 reference: string;
                             } | null;
+                            partsNotYetBilled: boolean;
                             /** Format: date-time */
                             createdAt: string;
                             /** Format: date-time */
@@ -46131,6 +46372,7 @@ export interface operations {
                                 id: string;
                                 reference: string;
                             } | null;
+                            partsNotYetBilled: boolean;
                             /** Format: date-time */
                             createdAt: string;
                             /** Format: date-time */
@@ -46387,6 +46629,7 @@ export interface operations {
                                 id: string;
                                 reference: string;
                             } | null;
+                            partsNotYetBilled: boolean;
                             /** Format: date-time */
                             createdAt: string;
                             /** Format: date-time */
@@ -46669,6 +46912,7 @@ export interface operations {
                                 id: string;
                                 reference: string;
                             } | null;
+                            partsNotYetBilled: boolean;
                             /** Format: date-time */
                             createdAt: string;
                             /** Format: date-time */
@@ -47027,6 +47271,7 @@ export interface operations {
                                 id: string;
                                 reference: string;
                             } | null;
+                            partsNotYetBilled: boolean;
                             /** Format: date-time */
                             createdAt: string;
                             /** Format: date-time */
@@ -47290,6 +47535,7 @@ export interface operations {
                                 id: string;
                                 reference: string;
                             } | null;
+                            partsNotYetBilled: boolean;
                             /** Format: date-time */
                             createdAt: string;
                             /** Format: date-time */
@@ -47638,6 +47884,7 @@ export interface operations {
                                 id: string;
                                 reference: string;
                             } | null;
+                            partsNotYetBilled: boolean;
                             /** Format: date-time */
                             createdAt: string;
                             /** Format: date-time */
@@ -47941,6 +48188,7 @@ export interface operations {
                                 id: string;
                                 reference: string;
                             } | null;
+                            partsNotYetBilled: boolean;
                             /** Format: date-time */
                             createdAt: string;
                             /** Format: date-time */
@@ -48150,6 +48398,7 @@ export interface operations {
                                 id: string;
                                 reference: string;
                             } | null;
+                            partsNotYetBilled: boolean;
                             /** Format: date-time */
                             createdAt: string;
                             /** Format: date-time */
@@ -48446,6 +48695,7 @@ export interface operations {
                                 id: string;
                                 reference: string;
                             } | null;
+                            partsNotYetBilled: boolean;
                             /** Format: date-time */
                             createdAt: string;
                             /** Format: date-time */
@@ -48567,6 +48817,7 @@ export interface operations {
                             paymentReference: string | null;
                             allocated: string;
                             unallocated: string;
+                            reversed: boolean;
                             /** Format: date-time */
                             recordedAt: string;
                         }[];
@@ -48688,6 +48939,7 @@ export interface operations {
                             paymentReference: string | null;
                             allocated: string;
                             unallocated: string;
+                            reversed: boolean;
                             /** Format: date-time */
                             recordedAt: string;
                             notes: string | null;
@@ -48697,6 +48949,18 @@ export interface operations {
                                 name: string;
                             };
                         };
+                        reversal: {
+                            reason: string;
+                            /** Format: date */
+                            reversedOn: string;
+                            reversedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            reversedAt: string;
+                        } | null;
                         allocations: {
                             /** Format: uuid */
                             id: string;
@@ -48760,6 +49024,7 @@ export interface operations {
                                 id: string;
                                 reference: string;
                             } | null;
+                            partsNotYetBilled: boolean;
                             /** Format: date-time */
                             createdAt: string;
                             /** Format: date-time */
@@ -48768,6 +49033,7 @@ export interface operations {
                         can: {
                             allocate: boolean;
                             removeAllocation: boolean;
+                            reverse: boolean;
                         };
                     };
                 };
@@ -48885,6 +49151,7 @@ export interface operations {
                             paymentReference: string | null;
                             allocated: string;
                             unallocated: string;
+                            reversed: boolean;
                             /** Format: date-time */
                             recordedAt: string;
                             notes: string | null;
@@ -48894,6 +49161,18 @@ export interface operations {
                                 name: string;
                             };
                         };
+                        reversal: {
+                            reason: string;
+                            /** Format: date */
+                            reversedOn: string;
+                            reversedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            reversedAt: string;
+                        } | null;
                         allocations: {
                             /** Format: uuid */
                             id: string;
@@ -48957,6 +49236,7 @@ export interface operations {
                                 id: string;
                                 reference: string;
                             } | null;
+                            partsNotYetBilled: boolean;
                             /** Format: date-time */
                             createdAt: string;
                             /** Format: date-time */
@@ -48965,6 +49245,7 @@ export interface operations {
                         can: {
                             allocate: boolean;
                             removeAllocation: boolean;
+                            reverse: boolean;
                         };
                     };
                 };
@@ -49076,6 +49357,7 @@ export interface operations {
                             paymentReference: string | null;
                             allocated: string;
                             unallocated: string;
+                            reversed: boolean;
                             /** Format: date-time */
                             recordedAt: string;
                             notes: string | null;
@@ -49085,6 +49367,18 @@ export interface operations {
                                 name: string;
                             };
                         };
+                        reversal: {
+                            reason: string;
+                            /** Format: date */
+                            reversedOn: string;
+                            reversedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            reversedAt: string;
+                        } | null;
                         allocations: {
                             /** Format: uuid */
                             id: string;
@@ -49148,6 +49442,7 @@ export interface operations {
                                 id: string;
                                 reference: string;
                             } | null;
+                            partsNotYetBilled: boolean;
                             /** Format: date-time */
                             createdAt: string;
                             /** Format: date-time */
@@ -49156,6 +49451,7 @@ export interface operations {
                         can: {
                             allocate: boolean;
                             removeAllocation: boolean;
+                            reverse: boolean;
                         };
                     };
                 };
@@ -49265,6 +49561,7 @@ export interface operations {
                             paymentReference: string | null;
                             allocated: string;
                             unallocated: string;
+                            reversed: boolean;
                             /** Format: date-time */
                             recordedAt: string;
                             notes: string | null;
@@ -49274,6 +49571,18 @@ export interface operations {
                                 name: string;
                             };
                         };
+                        reversal: {
+                            reason: string;
+                            /** Format: date */
+                            reversedOn: string;
+                            reversedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            reversedAt: string;
+                        } | null;
                         allocations: {
                             /** Format: uuid */
                             id: string;
@@ -49337,6 +49646,7 @@ export interface operations {
                                 id: string;
                                 reference: string;
                             } | null;
+                            partsNotYetBilled: boolean;
                             /** Format: date-time */
                             createdAt: string;
                             /** Format: date-time */
@@ -49345,6 +49655,7 @@ export interface operations {
                         can: {
                             allocate: boolean;
                             removeAllocation: boolean;
+                            reverse: boolean;
                         };
                     };
                 };
@@ -49375,6 +49686,220 @@ export interface operations {
                 content?: never;
             };
             /** @description Already removed. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    reverseCustomerPayment: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                receiptId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The payment, reversed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        receipt: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date */
+                            receivedOn: string;
+                            amount: string;
+                            currencyCode: string;
+                            /** @enum {string} */
+                            method: "cash" | "bank_transfer" | "other";
+                            paymentReference: string | null;
+                            allocated: string;
+                            unallocated: string;
+                            reversed: boolean;
+                            /** Format: date-time */
+                            recordedAt: string;
+                            notes: string | null;
+                            recordedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                        };
+                        reversal: {
+                            reason: string;
+                            /** Format: date */
+                            reversedOn: string;
+                            reversedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            reversedAt: string;
+                        } | null;
+                        allocations: {
+                            /** Format: uuid */
+                            id: string;
+                            invoice: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string | null;
+                            };
+                            receipt: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                                /** Format: date */
+                                receivedOn: string;
+                                /** @enum {string} */
+                                method: "cash" | "bank_transfer" | "other";
+                            };
+                            amount: string;
+                            allocatedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            allocatedAt: string;
+                            removedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: date-time */
+                            removedAt: string | null;
+                        }[];
+                        openInvoices: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "issued" | "partially_paid" | "paid" | "credited" | "void";
+                            overdue: boolean;
+                            currencyCode: string;
+                            /** Format: date */
+                            issueDate: string | null;
+                            /** Format: date */
+                            dueDate: string | null;
+                            amounts: {
+                                total: string;
+                                allocated: string;
+                                credited: string;
+                                balance: string;
+                            };
+                            source: {
+                                /** @enum {string} */
+                                kind: "sales_order" | "work_order";
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                            } | null;
+                            partsNotYetBilled: boolean;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                        }[];
+                        can: {
+                            allocate: boolean;
+                            removeAllocation: boolean;
+                            reverse: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `finance` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such payment. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Already reversed (`payment_already_reversed`). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -49473,6 +49998,7 @@ export interface operations {
                                 id: string;
                                 reference: string;
                             } | null;
+                            partsNotYetBilled: boolean;
                             /** Format: date-time */
                             createdAt: string;
                             /** Format: date-time */
@@ -49496,6 +50022,7 @@ export interface operations {
                             paymentReference: string | null;
                             allocated: string;
                             unallocated: string;
+                            reversed: boolean;
                             /** Format: date-time */
                             recordedAt: string;
                         }[];
@@ -53282,7 +53809,7 @@ export interface operations {
                             total: string;
                             source: {
                                 /** @enum {string} */
-                                kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly";
+                                kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly" | "payment_reversal";
                                 /** Format: uuid */
                                 id: string;
                             } | null;
@@ -53418,7 +53945,7 @@ export interface operations {
                         total: string;
                         source: {
                             /** @enum {string} */
-                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly";
+                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly" | "payment_reversal";
                             /** Format: uuid */
                             id: string;
                         } | null;
@@ -53574,7 +54101,7 @@ export interface operations {
                         total: string;
                         source: {
                             /** @enum {string} */
-                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly";
+                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly" | "payment_reversal";
                             /** Format: uuid */
                             id: string;
                         } | null;
@@ -53749,7 +54276,7 @@ export interface operations {
                         total: string;
                         source: {
                             /** @enum {string} */
-                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly";
+                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly" | "payment_reversal";
                             /** Format: uuid */
                             id: string;
                         } | null;
@@ -54009,7 +54536,7 @@ export interface operations {
                         total: string;
                         source: {
                             /** @enum {string} */
-                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly";
+                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly" | "payment_reversal";
                             /** Format: uuid */
                             id: string;
                         } | null;
@@ -54183,7 +54710,7 @@ export interface operations {
                         total: string;
                         source: {
                             /** @enum {string} */
-                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly";
+                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly" | "payment_reversal";
                             /** Format: uuid */
                             id: string;
                         } | null;
@@ -54406,7 +54933,7 @@ export interface operations {
         parameters: {
             query?: {
                 status?: "pending" | "posted" | "skipped";
-                kind?: ("invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly") | ("invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly")[];
+                kind?: ("invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly" | "payment_reversal") | ("invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly" | "payment_reversal")[];
                 reason?: ("queued" | "auto_off" | "before_set_up" | "foreign_currency" | "cost_unknown" | "period_locked" | "waits_for_invoice" | "failed") | ("queued" | "auto_off" | "before_set_up" | "foreign_currency" | "cost_unknown" | "period_locked" | "waits_for_invoice" | "failed")[];
                 cursor?: string;
                 limit?: number;
@@ -54429,7 +54956,7 @@ export interface operations {
                             id: string;
                             source: {
                                 /** @enum {string} */
-                                kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly";
+                                kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly" | "payment_reversal";
                                 /** Format: uuid */
                                 id: string;
                             };
@@ -54536,7 +55063,7 @@ export interface operations {
             content: {
                 "application/json": {
                     ids?: string[];
-                    kind?: ("invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly")[];
+                    kind?: ("invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly" | "payment_reversal")[];
                 };
             };
         };
@@ -54640,7 +55167,7 @@ export interface operations {
                         id: string;
                         source: {
                             /** @enum {string} */
-                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly";
+                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly" | "payment_reversal";
                             /** Format: uuid */
                             id: string;
                         };
@@ -54821,7 +55348,7 @@ export interface operations {
                         total: string;
                         source: {
                             /** @enum {string} */
-                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly";
+                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly" | "payment_reversal";
                             /** Format: uuid */
                             id: string;
                         } | null;
@@ -54981,7 +55508,7 @@ export interface operations {
                         id: string;
                         source: {
                             /** @enum {string} */
-                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly";
+                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly" | "payment_reversal";
                             /** Format: uuid */
                             id: string;
                         };
@@ -55863,7 +56390,7 @@ export interface operations {
                         total: string;
                         source: {
                             /** @enum {string} */
-                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly";
+                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly" | "payment_reversal";
                             /** Format: uuid */
                             id: string;
                         } | null;
@@ -56037,7 +56564,7 @@ export interface operations {
                         total: string;
                         source: {
                             /** @enum {string} */
-                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly";
+                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly" | "payment_reversal";
                             /** Format: uuid */
                             id: string;
                         } | null;
@@ -59794,7 +60321,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description No confirmed rule set in force, or too far ahead. */
+            /** @description No rule set in force (`no_confirmed_rules`), the latest waits for the owner (`rules_not_confirmed`) or is from an earlier year (`rules_from_another_year`), or too far ahead (`month_in_future`). */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -60446,14 +60973,12 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description The request failed validation. */
+            /** @description The latest rule set in force waits for the owner (`rules_not_confirmed`) or is from an earlier year (`rules_from_another_year`). */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
+                content?: never;
             };
             /** @description Rate limit exceeded. */
             429: {
@@ -64609,6 +65134,7 @@ export interface operations {
                                 /** @enum {string} */
                                 status: "draft" | "submitted" | "reopened";
                                 submittedAt: string | null;
+                                submittedAfterClose: boolean;
                             } | null;
                         }[];
                         checklist: {
@@ -64638,7 +65164,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed" | "form_submitted_after_close";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -64809,6 +65335,7 @@ export interface operations {
                                 name: string;
                             } | null;
                             clientActionId: string | null;
+                            recordedAfterClose: boolean;
                             version: number;
                             lots: {
                                 /** Format: uuid */
@@ -64822,6 +65349,7 @@ export interface operations {
                             }[] | null;
                         }[];
                         materialsCost: string | null;
+                        partsNotYetBilled: boolean;
                         van: {
                             /** Format: uuid */
                             id: string;
@@ -65285,6 +65813,7 @@ export interface operations {
                                 /** @enum {string} */
                                 status: "draft" | "submitted" | "reopened";
                                 submittedAt: string | null;
+                                submittedAfterClose: boolean;
                             } | null;
                         }[];
                         checklist: {
@@ -65314,7 +65843,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed" | "form_submitted_after_close";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -65485,6 +66014,7 @@ export interface operations {
                                 name: string;
                             } | null;
                             clientActionId: string | null;
+                            recordedAfterClose: boolean;
                             version: number;
                             lots: {
                                 /** Format: uuid */
@@ -65498,6 +66028,7 @@ export interface operations {
                             }[] | null;
                         }[];
                         materialsCost: string | null;
+                        partsNotYetBilled: boolean;
                         van: {
                             /** Format: uuid */
                             id: string;
@@ -65857,6 +66388,7 @@ export interface operations {
                                 /** @enum {string} */
                                 status: "draft" | "submitted" | "reopened";
                                 submittedAt: string | null;
+                                submittedAfterClose: boolean;
                             } | null;
                         }[];
                         checklist: {
@@ -65886,7 +66418,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed" | "form_submitted_after_close";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -66057,6 +66589,7 @@ export interface operations {
                                 name: string;
                             } | null;
                             clientActionId: string | null;
+                            recordedAfterClose: boolean;
                             version: number;
                             lots: {
                                 /** Format: uuid */
@@ -66070,6 +66603,7 @@ export interface operations {
                             }[] | null;
                         }[];
                         materialsCost: string | null;
+                        partsNotYetBilled: boolean;
                         van: {
                             /** Format: uuid */
                             id: string;
@@ -66427,6 +66961,7 @@ export interface operations {
                                 /** @enum {string} */
                                 status: "draft" | "submitted" | "reopened";
                                 submittedAt: string | null;
+                                submittedAfterClose: boolean;
                             } | null;
                         }[];
                         checklist: {
@@ -66456,7 +66991,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed" | "form_submitted_after_close";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -66627,6 +67162,7 @@ export interface operations {
                                 name: string;
                             } | null;
                             clientActionId: string | null;
+                            recordedAfterClose: boolean;
                             version: number;
                             lots: {
                                 /** Format: uuid */
@@ -66640,6 +67176,7 @@ export interface operations {
                             }[] | null;
                         }[];
                         materialsCost: string | null;
+                        partsNotYetBilled: boolean;
                         van: {
                             /** Format: uuid */
                             id: string;
@@ -66995,6 +67532,7 @@ export interface operations {
                                 /** @enum {string} */
                                 status: "draft" | "submitted" | "reopened";
                                 submittedAt: string | null;
+                                submittedAfterClose: boolean;
                             } | null;
                         }[];
                         checklist: {
@@ -67024,7 +67562,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed" | "form_submitted_after_close";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -67195,6 +67733,7 @@ export interface operations {
                                 name: string;
                             } | null;
                             clientActionId: string | null;
+                            recordedAfterClose: boolean;
                             version: number;
                             lots: {
                                 /** Format: uuid */
@@ -67208,6 +67747,7 @@ export interface operations {
                             }[] | null;
                         }[];
                         materialsCost: string | null;
+                        partsNotYetBilled: boolean;
                         van: {
                             /** Format: uuid */
                             id: string;
@@ -67565,6 +68105,7 @@ export interface operations {
                                 /** @enum {string} */
                                 status: "draft" | "submitted" | "reopened";
                                 submittedAt: string | null;
+                                submittedAfterClose: boolean;
                             } | null;
                         }[];
                         checklist: {
@@ -67594,7 +68135,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed" | "form_submitted_after_close";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -67765,6 +68306,7 @@ export interface operations {
                                 name: string;
                             } | null;
                             clientActionId: string | null;
+                            recordedAfterClose: boolean;
                             version: number;
                             lots: {
                                 /** Format: uuid */
@@ -67778,6 +68320,7 @@ export interface operations {
                             }[] | null;
                         }[];
                         materialsCost: string | null;
+                        partsNotYetBilled: boolean;
                         van: {
                             /** Format: uuid */
                             id: string;
@@ -68132,6 +68675,7 @@ export interface operations {
                                 /** @enum {string} */
                                 status: "draft" | "submitted" | "reopened";
                                 submittedAt: string | null;
+                                submittedAfterClose: boolean;
                             } | null;
                         }[];
                         checklist: {
@@ -68161,7 +68705,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed" | "form_submitted_after_close";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -68332,6 +68876,7 @@ export interface operations {
                                 name: string;
                             } | null;
                             clientActionId: string | null;
+                            recordedAfterClose: boolean;
                             version: number;
                             lots: {
                                 /** Format: uuid */
@@ -68345,6 +68890,7 @@ export interface operations {
                             }[] | null;
                         }[];
                         materialsCost: string | null;
+                        partsNotYetBilled: boolean;
                         van: {
                             /** Format: uuid */
                             id: string;
@@ -68693,6 +69239,7 @@ export interface operations {
                                 /** @enum {string} */
                                 status: "draft" | "submitted" | "reopened";
                                 submittedAt: string | null;
+                                submittedAfterClose: boolean;
                             } | null;
                         }[];
                         checklist: {
@@ -68722,7 +69269,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed" | "form_submitted_after_close";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -68893,6 +69440,7 @@ export interface operations {
                                 name: string;
                             } | null;
                             clientActionId: string | null;
+                            recordedAfterClose: boolean;
                             version: number;
                             lots: {
                                 /** Format: uuid */
@@ -68906,6 +69454,7 @@ export interface operations {
                             }[] | null;
                         }[];
                         materialsCost: string | null;
+                        partsNotYetBilled: boolean;
                         van: {
                             /** Format: uuid */
                             id: string;
@@ -69253,6 +69802,7 @@ export interface operations {
                                 /** @enum {string} */
                                 status: "draft" | "submitted" | "reopened";
                                 submittedAt: string | null;
+                                submittedAfterClose: boolean;
                             } | null;
                         }[];
                         checklist: {
@@ -69282,7 +69832,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed" | "form_submitted_after_close";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -69453,6 +70003,7 @@ export interface operations {
                                 name: string;
                             } | null;
                             clientActionId: string | null;
+                            recordedAfterClose: boolean;
                             version: number;
                             lots: {
                                 /** Format: uuid */
@@ -69466,6 +70017,7 @@ export interface operations {
                             }[] | null;
                         }[];
                         materialsCost: string | null;
+                        partsNotYetBilled: boolean;
                         van: {
                             /** Format: uuid */
                             id: string;
@@ -69806,6 +70358,7 @@ export interface operations {
                                 /** @enum {string} */
                                 status: "draft" | "submitted" | "reopened";
                                 submittedAt: string | null;
+                                submittedAfterClose: boolean;
                             } | null;
                         }[];
                         checklist: {
@@ -69835,7 +70388,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed" | "form_submitted_after_close";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -70006,6 +70559,7 @@ export interface operations {
                                 name: string;
                             } | null;
                             clientActionId: string | null;
+                            recordedAfterClose: boolean;
                             version: number;
                             lots: {
                                 /** Format: uuid */
@@ -70019,6 +70573,7 @@ export interface operations {
                             }[] | null;
                         }[];
                         materialsCost: string | null;
+                        partsNotYetBilled: boolean;
                         van: {
                             /** Format: uuid */
                             id: string;
@@ -70378,6 +70933,7 @@ export interface operations {
                                 /** @enum {string} */
                                 status: "draft" | "submitted" | "reopened";
                                 submittedAt: string | null;
+                                submittedAfterClose: boolean;
                             } | null;
                         }[];
                         checklist: {
@@ -70407,7 +70963,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed" | "form_submitted_after_close";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -70578,6 +71134,7 @@ export interface operations {
                                 name: string;
                             } | null;
                             clientActionId: string | null;
+                            recordedAfterClose: boolean;
                             version: number;
                             lots: {
                                 /** Format: uuid */
@@ -70591,6 +71148,7 @@ export interface operations {
                             }[] | null;
                         }[];
                         materialsCost: string | null;
+                        partsNotYetBilled: boolean;
                         van: {
                             /** Format: uuid */
                             id: string;
@@ -74469,6 +75027,7 @@ export interface operations {
                 siteId?: string;
                 contractId?: string;
                 includeEnded?: "true" | "false";
+                failing?: "true" | "false";
             };
             header?: never;
             path?: never;
@@ -74543,6 +75102,12 @@ export interface operations {
                             version: number;
                             createdAt: string;
                             endedAt: string | null;
+                            failure: {
+                                message: string;
+                                at: string;
+                                count: number;
+                                gaveUp: boolean;
+                            } | null;
                         }[];
                         defaults: {
                             leadDays: number;
@@ -74711,6 +75276,12 @@ export interface operations {
                         version: number;
                         createdAt: string;
                         endedAt: string | null;
+                        failure: {
+                            message: string;
+                            at: string;
+                            count: number;
+                            gaveUp: boolean;
+                        } | null;
                     };
                 };
             };
@@ -74877,6 +75448,12 @@ export interface operations {
                         version: number;
                         createdAt: string;
                         endedAt: string | null;
+                        failure: {
+                            message: string;
+                            at: string;
+                            count: number;
+                            gaveUp: boolean;
+                        } | null;
                     };
                 };
             };
@@ -75033,6 +75610,12 @@ export interface operations {
                         version: number;
                         createdAt: string;
                         endedAt: string | null;
+                        failure: {
+                            message: string;
+                            at: string;
+                            count: number;
+                            gaveUp: boolean;
+                        } | null;
                     };
                 };
             };
@@ -76295,6 +76878,7 @@ export interface operations {
                                     /** @enum {string} */
                                     status: "draft" | "submitted" | "reopened";
                                     submittedAt: string | null;
+                                    submittedAfterClose: boolean;
                                 } | null;
                             }[];
                             checklist: {
@@ -76324,7 +76908,7 @@ export interface operations {
                             }[];
                             events: {
                                 /** @enum {string} */
-                                kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed";
+                                kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed" | "form_submitted_after_close";
                                 /** @enum {string|null} */
                                 fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                                 /** @enum {string|null} */
@@ -76495,6 +77079,7 @@ export interface operations {
                                     name: string;
                                 } | null;
                                 clientActionId: string | null;
+                                recordedAfterClose: boolean;
                                 version: number;
                                 lots: {
                                     /** Format: uuid */
@@ -76508,6 +77093,7 @@ export interface operations {
                                 }[] | null;
                             }[];
                             materialsCost: string | null;
+                            partsNotYetBilled: boolean;
                             van: {
                                 /** Format: uuid */
                                 id: string;
@@ -78201,6 +78787,8 @@ export interface operations {
                     /** @enum {string} */
                     platform: "ios" | "android";
                     deviceLabel?: string | null;
+                    /** @description The app’s language, as a BCP 47 tag such as `ar` or `en`. */
+                    locale?: string;
                 };
             };
         };
@@ -78771,7 +79359,10 @@ export interface operations {
                      * @enum {string}
                      */
                     plan?: "trial" | "starter" | "standard" | "enterprise";
-                    /** @default null */
+                    /**
+                     * @description The company’s own seat number. When set it replaces the plan’s, higher or lower; null uses the plan’s.
+                     * @default null
+                     */
                     seats?: number | null;
                     /**
                      * @default self_serve
@@ -79287,6 +79878,7 @@ export interface operations {
                 "application/json": {
                     /** @enum {string} */
                     plan: "trial" | "starter" | "standard" | "enterprise";
+                    /** @description The company’s own seat number. When set it replaces the plan’s, higher or lower; null uses the plan’s. */
                     seats: number | null;
                     /** @enum {string} */
                     billingMode?: "self_serve" | "invoiced";
@@ -79422,6 +80014,13 @@ export interface operations {
                         aiWebEnabled: boolean;
                         aiDesktopEnabled: boolean;
                         aiMobileEnabled: boolean;
+                        appBuild: {
+                            /** @enum {string} */
+                            status: "started" | "not_configured" | "failed";
+                            runsUrl: string | null;
+                            runUrl: string | null;
+                            message: string | null;
+                        } | null;
                     };
                 };
             };
@@ -79436,6 +80035,93 @@ export interface operations {
             };
             /** @description No such company. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    startCompanyAppBuild: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description What came of asking GitHub. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        status: "started" | "not_configured" | "failed";
+                        runsUrl: string | null;
+                        runUrl: string | null;
+                        message: string | null;
+                    };
+                };
+            };
+            /** @description A platform session is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such company. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `apps_not_enabled`: switch "Build apps" on first. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -83688,6 +84374,13 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
+            /** @description Not a staff manager (`staff_manager_only`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description No such company. */
             404: {
                 headers: {
@@ -83888,6 +84581,13 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
+            /** @description Not a staff manager (`staff_manager_only`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description No such active key for this company. */
             404: {
                 headers: {
@@ -83977,6 +84677,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Error"];
                 };
+            };
+            /** @description Not a staff manager (`staff_manager_only`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description No such live key for this company. */
             404: {
@@ -84080,6 +84787,18 @@ export interface operations {
                         jobs: {
                             deadLettered: number;
                             retrying: number;
+                        };
+                        maintenance: {
+                            items: {
+                                tenantId: string;
+                                companyName: string;
+                                planId: string;
+                                title: string;
+                                error: string;
+                                failedAt: string;
+                                failureCount: number;
+                                gaveUp: boolean;
+                            }[];
                         };
                     };
                 };

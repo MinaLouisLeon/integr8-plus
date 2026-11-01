@@ -99,6 +99,10 @@ The design is in [forms on the phone](../../docs/mobile/forms.md).
   `expo-camera`'s, reading every common symbology.
 - **The conformance corpus ships in the app** (`@integr8/form-engine/conformance`), with a
   Settings button, so the phone's own Hermes can be checked on any build.
+- **A form filled before the job closed still counts** (migration 0061, pre-production audit
+  2026-10-31). The submit route refuses a draft on a closed job; phone sync accepts one the
+  phone started before the job closed and marks it `submittedAfterClose`, with a history
+  entry and an office badge, and refuses one started after.
 
 ## Deploying
 

@@ -22,7 +22,7 @@ Two identity spaces: tenant users and platform (super admin) users. They never m
 - [x] Impersonation: time-limited token, mandatory reason, audit entry written before access is granted
 - [x] Invite flow: admin invites by email with role preset; invite expires; acceptance binds the user to the tenant
 - [ ] Refresh-token rotation; tokens stored in the OS keychain on desktop and SecureStore on mobile — never in local storage
-- [x] Offline authentication: a signed token valid for a configurable number of days so the mobile app opens without signal
+- [x] Offline authentication: a signed token valid for a configurable number of days so the mobile app opens without signal (issued to the phone and checked on it since 2026-10-31; see the end of this file)
 - [x] Password policy, rate-limited attempts, lockout with admin unlock
 - [x] Session listing and remote revocation
 
@@ -228,3 +228,54 @@ fails against the old code (`expected null to be 'membership_ended'`) and passes
 | `@integr8/auth` integration | 55 of 55 |
 
 Still open: the mobile app opening with cached work after seven days offline, which needs P11–P14.
+
+## The grant reaches the phone — 2026-10-31
+
+The pre-production audit found the offline box above ticked for a grant no phone ever received.
+`issueOfflineGrant` was built and tested, but nothing called it and no route returned a grant, so
+the phone fell back to its refresh token: **a lost phone opened offline for thirty days, not the
+documented seven**, checked against nothing but its own clock.
+
+Now:
+
+- **Issued with every pair for `clientApp: mobile`**: password and code sign-in, company switch
+  and refresh (`SessionService.issue` and `refresh`, in the same transaction as the pair). Each
+  replaces the last, so the window runs from the phone's last contact; never past the session's
+  end; none for the desktop, the web or an impersonation. An additive field on the token payload
+  (`offlineGrant`, `offlineGrantExpiresAt`), so nothing inside `/v1` broke.
+- **The phone opens on the grant only.** `SessionManager.openDecision` opens on a live grant,
+  refreshes when it can, and otherwise shows _Connect to carry on_; it never opens on the
+  refresh token alone.
+- **The phone checks the signature.** Ed25519 against the deployment's public keys built into the
+  app (`EXPO_PUBLIC_AUTH_VERIFICATION_KEYS`), with `@noble/curves` (MIT, pinned, audited, no
+  native code), plus the grant's own `exp` and an `iat` not far in the future. What it does not
+  check is written down in [offline access](../../docs/auth/offline-access.md).
+
+| Proven by                                  | What                                                                                                                                                          |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/auth` sessions integration suite | A grant with a phone's sign-in and with every refresh, seven days from the refresh, the old one revoked; none for desktop or web; capped at the session's end |
+| `apps/api` auth-codes integration suite    | Password and code sign-in and refresh return a grant the API's own verifier accepts, and a new one each refresh; web and desktop get none                     |
+| `packages/api-client` unit tests           | The phone opens on a live grant without the network, never on the refresh token alone, refreshes a lapsed grant, and refuses a grant its check refuses        |
+| `apps/mobile` `offline-grant.test.ts`      | Grants signed as the API signs them verify; edited, foreign-key, unsigned, access-token, expired and clock-set-back ones do not                               |
+| `expo export --platform android`           | The app, with the Ed25519 library, compiles to Hermes bytecode                                                                                                |
+
+The exit criterion stays unticked until [P11 checklist 7](../../docs/mobile/device-checklist.md#p11)
+has been run on a phone.
+
+## Signing out reaches the access token — 2026-10-31
+
+The pre-production audit found that `authenticate` checked only the access token's signature.
+Signing out everywhere, Change password, suspending a member and staff ending a session stopped
+refreshes, but the access token already on the device kept working for up to fifteen minutes.
+
+Now every authenticated request also asks `SessionService.assertLive`: the session exists, belongs
+to the token's person, is not revoked, has not reached its maximum lifetime, and the person is
+still an active member. The answer is cached in memory per session for 30 seconds (at most 10,000
+remembered, oldest dropped first), and a revocation made through `SessionService` forgets the
+cached answer at once. A session that is not live gets the same `401` as an expired token.
+Impersonation's per-request grant check is unchanged and still runs after it.
+
+| Proven by                                  | What                                                                                                                                        |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/auth` sessions integration suite | Refused at once after a revocation in-process; within the window after one made behind the cache; a suspended member; the bound; a mismatch |
+| `apps/api` server and members suites       | A signed-out device's token and a suspended member's token answer `401` on the next request                                                 |

@@ -307,8 +307,15 @@ Every route also needs the company's module: `hr`, `payroll` (which needs
   explicit, audited reveal (`no-store`), to `hr.sensitive` or the person; the
   insurance report and bank file are audited and `no-store` too. Without the
   key those numbers cannot be stored, shown or exported (503
-  `hr_key_missing`); losing the key loses them, so it is kept with the
-  backups and rotated only with a re-encryption plan.
+  `hr_key_missing`), and production refuses to start without it. Losing the
+  key loses them, so it is kept in the password manager, apart from the
+  backups (`docs/database/runbook-backup-and-restore.md`). It rotates:
+  `HR_DATA_KEY` seals, older keys listed in `HR_DATA_KEYS_PREVIOUS` still open
+  (each tried in turn; GCM's tag rejects a wrong one), and `admin-cli
+hr-reseal` re-seals every company's fields under the current key, company by
+  company in its own tenant transaction, with an audit line each (setup guide,
+  Stage 11 part Z). Stored values keep their `hr1.` shape, so a rollback reads
+  them.
 - **Separation of duties.** Nobody decides their own expense claim (API and
   `hr_expense_claims_not_self_approved`); a pay run is approved by somebody
   other than whoever last prepared it (API and

@@ -240,6 +240,7 @@ export function workOrderDetail(
     previousAtSite: [],
     materials: [],
     materialsCost: null,
+    partsNotYetBilled: false,
     van: null,
     salesOrders: [],
     can: {

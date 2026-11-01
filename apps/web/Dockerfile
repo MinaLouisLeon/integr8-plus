@@ -23,7 +23,7 @@ WORKDIR /repo
 
 FROM base AS build
 ARG NEXT_PUBLIC_API_BASE_URL=http://localhost:3000
-ARG NEXT_PUBLIC_APP_VERSION=0.1.0
+ARG NEXT_PUBLIC_APP_VERSION=
 ARG NEXT_PUBLIC_APP_ENV=production
 ARG NEXT_PUBLIC_SENTRY_DSN=
 # Public sign-up: off sends visitors to the contact page; open shows the form.

@@ -113,6 +113,7 @@ export {
   workOrderPrioritySchema,
   WORK_ORDER_TRANSITIONS,
   CLOSED_WORK_ORDER_STATES,
+  OPEN_WORK_ORDER_STATES,
   ACTIVE_WORK_ORDER_STATES,
   findTransition,
   nextStates,
@@ -290,6 +291,9 @@ export {
   invoiceStatusSchema,
   type InvoiceStatus,
   invoiceStatus,
+  currencyMinorUnits,
+  minorUnit,
+  balanceSettled,
   CREDIT_NOTE_STATUSES,
   creditNoteStatusSchema,
   type CreditNoteStatus,
@@ -554,6 +558,7 @@ export {
   DEFAULT_PLAN_LEAD_DAYS,
   DEFAULT_PLAN_WINDOW_DAYS,
   MAINTENANCE_FORECAST_DAYS,
+  MAX_PLAN_FAILURES,
   type PlanInterval,
   addInterval,
   calendarDue,
@@ -623,3 +628,16 @@ export {
   type ComplianceSummary,
   complianceSummary,
 } from './deadlines.js';
+
+export {
+  LEGAL_DOCUMENTS,
+  type LegalDocument,
+  LEGAL_LAST_UPDATED,
+  LEGAL_REVIEWED,
+  LEGAL_SITE_ORIGIN,
+  legalPath,
+  legalUrl,
+  type LegalOperator,
+  LEGAL_OPERATOR,
+  missingOperatorDetails,
+} from './legal.js';

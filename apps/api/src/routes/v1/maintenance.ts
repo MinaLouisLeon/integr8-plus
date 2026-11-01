@@ -14,6 +14,7 @@ import {
   laterDay,
   MAINTENANCE_FORECAST_DAYS,
   maintenanceStanding,
+  MAX_PLAN_FAILURES,
   type NextDue,
   nextAfterFinishing,
   PLAN_COUNTINGS,
@@ -95,6 +96,21 @@ export const planSchema = z.object({
   version: z.number().int(),
   createdAt: z.string(),
   endedAt: z.string().nullable(),
+  /**
+   * The worker could not make this plan's jobs (0063): why and when, and how
+   * many times in a row. Retried alone every few minutes until it succeeds or
+   * has failed five times; then it waits for someone to edit the plan. Null
+   * when the last run went well.
+   */
+  failure: z
+    .object({
+      message: z.string(),
+      at: z.string(),
+      count: z.number().int(),
+      /** True once the worker has stopped retrying. */
+      gaveUp: z.boolean(),
+    })
+    .nullable(),
 });
 
 const planInputSchema = z.object({
@@ -257,6 +273,15 @@ async function planBodies(tx: TenantTransaction, plans: readonly MaintenancePlan
       version: plan.version,
       createdAt: iso(plan.createdAt),
       endedAt: isoOrNull(plan.endedAt),
+      failure:
+        plan.lastError === null || plan.lastErrorAt === null
+          ? null
+          : {
+              message: plan.lastError,
+              at: iso(plan.lastErrorAt),
+              count: plan.failureCount,
+              gaveUp: plan.failureCount >= MAX_PLAN_FAILURES,
+            },
     };
   });
 }
@@ -339,7 +364,7 @@ export const listMaintenancePlansRoute = defineRoute({
   operationId: 'listMaintenancePlans',
   summary: 'Maintenance plans',
   description:
-    'Soonest next due date first. For one asset, customer, site or contract; ended ones only with `includeEnded`.',
+    'Soonest next due date first. For one asset, customer, site or contract; ended ones only with `includeEnded`; `failing=true` keeps those whose jobs the worker could not make on its last try, with the reason in `failure`.',
   tags: TAGS,
   security: 'authenticated',
   permission: 'asset.read',
@@ -351,6 +376,7 @@ export const listMaintenancePlansRoute = defineRoute({
     siteId: z.uuid().optional(),
     contractId: z.uuid().optional(),
     includeEnded: booleanQuery,
+    failing: booleanQuery,
   }),
   body: noSchema,
   responses: {
@@ -371,6 +397,7 @@ export const listMaintenancePlansRoute = defineRoute({
         ...(query.siteId === undefined ? {} : { siteId: query.siteId }),
         ...(query.contractId === undefined ? {} : { contractId: query.contractId }),
         includeEnded: query.includeEnded === 'true',
+        failing: query.failing === 'true',
       });
       return {
         items: await planBodies(tx, plans),

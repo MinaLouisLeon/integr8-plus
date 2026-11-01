@@ -159,7 +159,9 @@ Under the account menu on web, desktop and phone; `POST /v1/me/password`.
 - Auth stores it (`PUT /admin/users/{id}`). Then **every other session the
   person has, in every company, is signed out**, offline access on phones
   included (`revoked_reason = password_changed`). The device that made the
-  change stays signed in.
+  change stays signed in. Their access tokens stop being accepted within 30
+  seconds, not when they lapse: every request checks that its session is still
+  live (`docs/auth/README.md`, "Ending a session ends its access token").
 - An audit entry is written, and the address is emailed "your password was
   changed", with the time, in English or Arabic. A failed send is logged and
   does not undo the change.

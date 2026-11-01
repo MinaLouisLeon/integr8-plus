@@ -120,7 +120,11 @@ Small, and worth naming precisely so it is not rediscovered:
 3. **Push the eighty-percent warning** rather than waiting to be asked for it. The P15
    announcement channel is the cheapest honest option.
 4. **One reconciliation run against the real Cloudflare account**, which closes the first exit
-   criterion and nothing else will.
+   criterion and nothing else will. Since the pre-production audit (2026-10-31) the setup guide
+   asks for `CLOUDFLARE_API_TOKEN` (Account Analytics: Read only; Stage 0 part D, Stage 3), and
+   Stage 9 part C checks that the first night's rows say `matched`, not `unavailable`. The
+   token was in no template before, so every check on a running machine said `unavailable`;
+   with R2 in production the API and the worker now warn at start-up without it.
 
 Billing the overage is deliberately not on this list: it belongs with invoicing, not with metering.
 
@@ -146,3 +150,8 @@ Billing the overage is deliberately not on this list: it belongs with invoicing,
 - **Changing a company's plan did not take effect for up to thirty seconds.** The plan is read
   off the row the suspension door-check caches, and the dashboard's plan route did not clear it
   the way suspend and reactivate do. It does now.
+- **Every plan shipped with a retention window, though the docs said none did.** Migration 0016
+  seeded 90 days on trial, 365 on starter and 730 on standard, and new companies start on
+  trial, so photos, signatures, issued PDFs and the company's logo would have been soft-deleted
+  after 90 days. Found in the October 2026 audit; migration 0056 clears the seeded values
+  (leaving any set on purpose), and retention never takes the logo or app icon.

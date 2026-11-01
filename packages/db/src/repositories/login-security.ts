@@ -6,6 +6,14 @@ import {
   loginOutcomeSchema,
 } from '../schema.js';
 
+/** The outcomes the per-IP limit counts: everything but a success and its own refusals. */
+const IP_LIMIT_FAILURES: readonly LoginOutcome[] = [
+  'bad_credentials',
+  'unknown_identity',
+  'locked_out',
+  'no_membership',
+];
+
 export interface LoginAttemptInput {
   email: string;
   outcome: LoginOutcome;
@@ -91,18 +99,24 @@ export class LoginSecurityRepository {
   }
 
   /**
-   * Attempts from one IP address since `since`.
+   * Failed attempts from one IP address since `since`.
    *
    * The second rate limit, and the one that catches the attack that matters:
    * per-address lockout does nothing against somebody trying one common
    * password across ten thousand addresses.
+   *
+   * Only failures count. A whole office signs in from one address every
+   * morning, and counting its successes would lock it out by nine. Refusals
+   * this limit itself recorded do not count either: if they did, people
+   * retrying while blocked would keep the block alive for ever.
    */
-  async countAttemptsFromIp(ipAddress: string, since: Date): Promise<number> {
+  async countFailedAttemptsFromIp(ipAddress: string, since: Date): Promise<number> {
     const row = await this.db
       .selectFrom('login_attempts')
       .select((eb) => eb.fn.countAll<string>().as('count'))
       .where('ip_address', '=', ipAddress)
       .where('occurred_at', '>=', since)
+      .where('outcome', 'in', IP_LIMIT_FAILURES)
       .executeTakeFirstOrThrow();
 
     return Number.parseInt(row.count, 10);

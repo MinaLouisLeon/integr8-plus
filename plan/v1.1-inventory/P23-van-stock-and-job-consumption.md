@@ -18,11 +18,11 @@ The mobile side of inventory, and the link between parts and jobs.
 
 - [x] Van stock visible on the mobile app, offline (E2: the first pull page carries the van's stock; the picker shows a forecast net of unsent uses)
 - [x] Parts consumed on a job, deducted from that engineer's van (E2; a short van refuses and flags, never goes negative)
-- [ ] Barcode scanning for every stock movement on mobile
-- [ ] Non-stock parts — the one-off item bought at a merchant that morning
-- [ ] Van replenishment requests from the phone; warehouse picks and transfers
+- [ ] Barcode scanning for every stock movement on mobile (receiving, lot picking and assets scan; the part picker and van refill do not yet)
+- [x] Non-stock parts — the one-off item bought at a merchant that morning (F2: `work-order-purchases.ts`)
+- [x] Van replenishment requests from the phone; warehouse picks and transfers (F2: `van-requests.ts`)
 - [x] Stock movements queued through the P12 outbox and reconciled on sync (E2: `work_order.material`, posted once per phone action)
-- [ ] Parts usage reporting by engineer, customer, asset and job type
+- [ ] Parts usage reporting by engineer, customer, asset and job type (by engineer, customer and job type today, `analytics.ts`; not by asset)
 - [x] Returns from van to warehouse (E2: transfers from the web and desktop; returns of unused parts from the job)
 
 ## Exit criteria
@@ -35,3 +35,7 @@ The mobile side of inventory, and the link between parts and jobs.
 
 - Offline stock movements are the one place where the append-only ledger genuinely saves you.
   Two engineers consuming the same part offline is not a conflict; it is two ledger entries.
+- Parts and the job's state (pre-production audit, 2026-10-31; migration 0062): the office
+  records no part on a closed, cancelled or invoiced job; a phone's part recorded before the
+  job closed is accepted and marked, and on an invoiced job shows as "parts not yet billed"
+  for a follow-up invoice; a cancelled job takes none. `docs/crm-erp/07-finance-and-inventory-invariants.md`.

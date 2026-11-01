@@ -85,19 +85,22 @@ describe('loading the settings', () => {
       GEOCODER: 'mapbox',
       MAPBOX_ACCESS_TOKEN: 'pk.token',
       PUSH_SENDER: 'expo',
-      BILLING_PROVIDER: 'stripe',
-      STRIPE_SECRET_KEY: 'sk_test_x',
-      STRIPE_WEBHOOK_SECRET: 'whsec_x',
+      BILLING_PROVIDER: 'none',
       EMAIL_SENDER: 'resend',
       RESEND_API_KEY: 're_x',
       EMAIL_FROM: 'Integr8 <hello@example.com>',
       WEB_APP_URL: 'https://app.example.com',
       API_CORS_ORIGINS: 'https://app.example.com',
+      HR_DATA_KEY: Buffer.alloc(32, 1).toString('base64'),
       AI_ENABLED: 'true',
       AI_PROVIDER: 'recording',
     } as const;
     const config = loadApiConfig(production);
-    expect(() => assertProductionReady(config)).not.toThrow();
+    expect(() =>
+      assertProductionReady(config, {
+        DATABASE_URL_PLATFORM: 'postgres://integr8_platform:x@postgres:5432/integr8',
+      }),
+    ).not.toThrow();
     expect(aiConfiguration(config).ready).toBe(false);
     expect(aiConfiguration(config).problems.join()).toMatch(/recording in production/u);
   });

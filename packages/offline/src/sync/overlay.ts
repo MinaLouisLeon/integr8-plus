@@ -214,6 +214,8 @@ export function applyToJob(
                 occurredAt: at,
                 cancelledBy: null,
                 clientActionId: payload.materialId,
+                // The server marks it if the job had closed before it arrived.
+                recordedAfterClose: false,
                 version: 1,
                 lots:
                   payload.item.tracking === undefined || payload.item.tracking === 'none'

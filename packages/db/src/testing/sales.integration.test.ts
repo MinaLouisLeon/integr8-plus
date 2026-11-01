@@ -120,19 +120,68 @@ describe('totals', () => {
         totals: await tx.salesQuotes.quoteTotals(quote.id),
       };
     });
+    // Each figure to the pound's two places, half up (0064): 0.0336 tax is 0.03.
     expect(
       lines.map((line) => [line.gross, line.discount, line.net, line.tax, line.total]),
     ).toEqual([
-      ['0.3', '0.06', '0.24', '0.0336', '0.2736'],
+      ['0.3', '0.06', '0.24', '0.03', '0.27'],
       ['3', '0', '3', '0', '3'],
     ]);
     expect(totals).toEqual({
       gross: '3.3',
       discount: '0.06',
       net: '3.24',
-      tax: '0.0336',
-      total: '3.2736',
+      tax: '0.03',
+      total: '3.27',
     });
+  });
+
+  it('round each line to its currency, keep a document to one scale, and leave older lines at four places (0064)', async () => {
+    const riverside = await customer(northwind, 'Rounding Ltd');
+    const figures = await repos(northwind, async (tx) => {
+      // 7 x 13.33 = 93.31; 14% tax is 13.0634, so 13.06; total 106.37.
+      const pounds = await tx.salesQuotes.createQuote(
+        { customerId: riverside.id, title: 'Pounds', currencyCode: 'EGP' },
+        [{ description: 'Filter', quantity: '7', unitPrice: '13.33', taxRateBp: 1400 }],
+        USER,
+      );
+      // Half up: 0.125 at two places is 0.13.
+      const half = await tx.salesQuotes.createQuote(
+        { customerId: riverside.id, title: 'Half', currencyCode: 'EGP' },
+        [{ description: 'Washer', quantity: '1', unitPrice: '0.125' }],
+        USER,
+      );
+      // The Kuwaiti dinar has three places.
+      const dinars = await tx.salesQuotes.createQuote(
+        { customerId: riverside.id, title: 'Dinars', currencyCode: 'KWD' },
+        [{ description: 'Filter', quantity: '7', unitPrice: '13.3333', taxRateBp: 1400 }],
+        USER,
+      );
+      return {
+        pounds: await tx.salesQuotes.quoteTotals(pounds.id),
+        half: await tx.salesQuotes.quoteTotals(half.id),
+        dinars: await tx.salesQuotes.quoteTotals(dinars.id),
+        older: pounds.id,
+      };
+    });
+    expect(figures.pounds).toMatchObject({ net: '93.31', tax: '13.06', total: '106.37' });
+    expect(figures.half).toMatchObject({ total: '0.13' });
+    expect(figures.dinars).toMatchObject({ net: '93.333', tax: '13.067', total: '106.4' });
+
+    // A line written before 0064 kept four places, and still does; a line added
+    // to that document later takes the document's scale, not the currency's.
+    await owner.query(`update crm_quote_lines set money_scale = 4 where quote_id = $1`, [
+      figures.older,
+    ]);
+    const older = await repos(northwind, (tx) => tx.salesQuotes.quoteTotals(figures.older));
+    expect(older).toMatchObject({ net: '93.31', tax: '13.0634', total: '106.3734' });
+    const { rows } = await owner.query<{ money_scale: number }>(
+      `insert into crm_quote_lines (tenant_id, quote_id, position, description, quantity, unit_price)
+       select tenant_id, quote_id, 99, 'Added later', 1, 1 from crm_quote_lines where quote_id = $1 limit 1
+       returning money_scale`,
+      [figures.older],
+    );
+    expect(rows[0]?.money_scale).toBe(4);
   });
 
   it('adds decimal strings without a float in sight', () => {

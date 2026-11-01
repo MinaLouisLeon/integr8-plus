@@ -33,6 +33,8 @@ export interface Submission {
   carriedOver: CarriedOver | null;
   /** Where the device was when it was last submitted, if it recorded that (P13). */
   submitLocation: SubmitLocation | null;
+  /** Submitted from a phone after its job had closed, from a draft started before (0061). */
+  submittedAfterClose: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -221,14 +223,22 @@ export class SubmissionsRepository extends TenantScopedRepository {
     reason?: string,
     /** Where the device was. A submit that says nothing clears an earlier one's. */
     location: SubmitLocation | null = null,
+    /** A phone's draft arriving after its job closed (0061); only a draft takes it. */
+    options: { afterClose?: boolean } = {},
   ): Promise<WriteResult> {
-    return this.#write(submissionId, expectedRevision, ['draft', 'reopened'], {
-      answers,
-      status: 'submitted',
-      last_actor: toUserId(actor),
-      last_reason: reason ?? null,
-      submit_location: location,
-    });
+    return this.#write(
+      submissionId,
+      expectedRevision,
+      options.afterClose === true ? ['draft'] : ['draft', 'reopened'],
+      {
+        answers,
+        status: 'submitted',
+        last_actor: toUserId(actor),
+        last_reason: reason ?? null,
+        submit_location: location,
+        ...(options.afterClose === true ? { submitted_after_close: true } : {}),
+      },
+    );
   }
 
   async reopen(
@@ -254,6 +264,7 @@ export class SubmissionsRepository extends TenantScopedRepository {
       last_actor: string;
       last_reason?: string | null;
       submit_location?: SubmitLocation | null;
+      submitted_after_close?: boolean;
     },
   ): Promise<WriteResult> {
     const row = await this.db
@@ -485,6 +496,7 @@ function toDomain(row: Selectable<SubmissionsTable>): Submission {
     assetId: row.asset_id,
     carriedOver: row.carried_over,
     submitLocation: row.submit_location,
+    submittedAfterClose: row.submitted_after_close,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

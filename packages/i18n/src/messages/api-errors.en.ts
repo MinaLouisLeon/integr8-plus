@@ -68,6 +68,8 @@ export const apiErrorsEn = {
   answers_changed:
     'These answers were changed on another device while you were offline. Choose which to keep.',
   app_icon_not_found: 'The app icon must be an image uploaded by this company. Upload it again.',
+  apps_not_enabled:
+    'This company’s apps are switched off. Tick “Build apps for this company” and save first.',
   asset_not_at_site: 'This asset is not at the job’s site. Choose one of that site’s assets.',
   asset_not_on_work_order: 'This asset is not one of the job’s assets. Link it to the job first.',
   asset_retired: 'This asset is retired. It takes no new work, condition or form.',
@@ -135,6 +137,8 @@ export const apiErrorsEn = {
   credit_over_balance: 'This credit note takes off more than the invoice still owes.',
   crew_member_unknown:
     'Someone on the crew is not an active member of the company. Choose active members.',
+  currency_in_use:
+    'The company already has quotes, invoices, stock costs or other records in its currency, so the currency cannot change now.',
   cursor_invalid: 'The phone’s place in the sync was not recognised. It will download again.',
   customer_closed: 'This customer is closed and takes no new work. Reopen it first.',
   customer_fixed: 'An invoice made from an order or a job keeps its customer.',
@@ -366,6 +370,8 @@ export const apiErrorsEn = {
   part_missing: 'Part of this file has not arrived.',
   part_out_of_range: 'This file does not have that many parts. Upload it again.',
   party_required: 'Choose a customer or a lead.',
+  payment_already_reversed: 'This payment was already reversed.',
+  payment_reversed: 'This payment was reversed, so it cannot be put against an invoice.',
   payroll_off: 'Payroll is not switched on. Pay this claim back directly.',
   period_locked: 'That month is locked. Date it in an open month.',
   period_too_long: 'Choose a period of at most two years.',
@@ -381,6 +387,8 @@ export const apiErrorsEn = {
   price_required: 'This supplier has no price for this item. Enter the price.',
   prices_hidden: 'Prices are for those who manage purchasing or move stock.',
   purchase_cancelled: 'This purchase was already taken off the job.',
+  purchase_currency_not_company:
+    'Purchase orders are in the company currency. Convert the prices before you enter them.',
   purchase_id_taken: 'This purchase belongs to another job.',
   purchase_not_ready:
     'The purchase this receipt belongs to has not arrived yet. It will be sent again.',
@@ -419,6 +427,8 @@ export const apiErrorsEn = {
   role_beyond_own: 'This role can do things you cannot, so only the owner gives it.',
   role_holds_grant: 'Their role already includes this.',
   role_in_use: 'Somebody holds this role. Give them another role first.',
+  rules_from_another_year:
+    'The rule set in force for this month is from an earlier year. Add one from this year, even with the same figures, and have the owner confirm it.',
   rules_not_confirmed:
     'The rule set for this month is waiting for the owner to confirm it. Payroll uses it once they do.',
   run_approved: 'An approved pay run does not change. Correct it next month.',
@@ -476,6 +486,8 @@ export const apiErrorsEn = {
   submission_draft: 'A draft cannot be made into a document. Submit it first.',
   submission_id_taken:
     'This form clashed with another submission. Discard it and fill it in again.',
+  submission_job_closed:
+    'This job is closed, so this form can no longer be submitted. Reopen the job first, or discard the draft.',
   submission_limit_reached:
     'This plan’s submissions for the month are used up. They reset at the start of next month, or a larger plan lifts the limit.',
   submission_state: 'This submission cannot be changed as it is now. Reopen it first.',
@@ -525,6 +537,8 @@ export const apiErrorsEn = {
   work_order_changed:
     'This job was changed elsewhere since you loaded it. Reload it and try again.',
   work_order_closed: 'This job is closed. Reopen it before changing it.',
+  work_order_invoiced:
+    'This job is already invoiced, so a part recorded now would never be billed. Unused parts can still be returned.',
   work_order_not_customers: 'Choose one of the customer’s jobs.',
   work_order_required: 'Choose the job you are on.',
   work_order_unavailable: 'This job is no longer yours to change: it was reassigned or removed.',

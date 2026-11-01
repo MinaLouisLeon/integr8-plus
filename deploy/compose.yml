@@ -32,16 +32,182 @@ x-logging: &logging
       max-size: '10m'
       max-file: '5'
 
-# Everything the API and the worker read. One block, so they cannot disagree.
+# Everything the API and the worker read, and nothing else. One block, so they
+# cannot disagree.
+#
+# A list of names rather than the whole env file: a name with no value takes
+# its value from deploy/.env (the --env-file), and one missing there stays
+# unset. What is not named never reaches these containers, so they do not hold
+# the Postgres superuser's password, the owner's connection, the role passwords
+# or the secret Auth signs with — a compromised API process has nothing of the
+# migrate or auth services' to give away. Their database connection outside one
+# company is integr8_platform (DATABASE_URL_PLATFORM), which is not a superuser.
+#
+# Adding a setting to the API means adding its name here; compose-env.test.ts
+# in apps/api fails until it is, and fails if a forbidden one appears.
 x-api-env: &api-env
-  env_file:
-    - ${ENV_FILE:-.env}
   environment:
     HOST: 0.0.0.0
     PORT: 3000
     # The Auth container, over the compose network. The env file can override
     # it; the old SUPABASE_URL stops the API with a message naming this one.
     SUPABASE_AUTH_URL: ${SUPABASE_AUTH_URL:-http://auth:9999}
+    SUPABASE_URL:
+    SUPABASE_SERVICE_ROLE_KEY:
+    APP_ENV:
+    # Database: the tenant role, the sign-in role and the platform role.
+    DATABASE_URL:
+    DATABASE_URL_AUTH:
+    DATABASE_URL_PLATFORM:
+    DB_POOL_MAX:
+    DB_AUTH_POOL_MAX:
+    DB_POOL_IDLE_MS:
+    DB_POOL_ACQUIRE_TIMEOUT_MS:
+    DB_STATEMENT_TIMEOUT_MS:
+    DB_TENANT_CACHE_MAX:
+    DB_TENANT_CACHE_IDLE_MS:
+    # Tokens and the keys that seal stored secrets.
+    AUTH_ISSUER:
+    AUTH_AUDIENCE:
+    AUTH_SIGNING_KEY:
+    AUTH_SIGNING_KEY_ID:
+    AUTH_VERIFICATION_KEYS:
+    AUTH_ACCESS_TOKEN_TTL_SECONDS:
+    AUTH_REFRESH_TOKEN_TTL_SECONDS:
+    AUTH_SESSION_MAX_TTL_SECONDS:
+    AUTH_OFFLINE_GRANT_TTL_SECONDS:
+    AUTH_INVITATION_TTL_SECONDS:
+    AUTH_IMPERSONATION_TTL_SECONDS:
+    AUTH_LOCKOUT_THRESHOLD:
+    AUTH_LOCKOUT_DURATION_SECONDS:
+    AUTH_LOCKOUT_WINDOW_SECONDS:
+    AUTH_IP_ATTEMPT_LIMIT:
+    AUTH_IP_ATTEMPT_WINDOW_SECONDS:
+    AUTH_MIN_PASSWORD_LENGTH:
+    AUTH_SIGN_IN_CODE_INTERVAL_SECONDS:
+    AUTH_SIGN_IN_CODE_HOURLY_LIMIT:
+    AUTH_FRESH_SIGN_IN_SECONDS:
+    PLATFORM_SECRET_KEY:
+    PLATFORM_ACCESS_TOKEN_TTL_SECONDS:
+    PLATFORM_REFRESH_TOKEN_TTL_SECONDS:
+    PLATFORM_SESSION_TTL_SECONDS:
+    PLATFORM_LOCKOUT_THRESHOLD:
+    PLATFORM_LOCKOUT_DURATION_SECONDS:
+    HR_DATA_KEY:
+    HR_DATA_KEYS_PREVIOUS:
+    ETA_CREDENTIALS_KEY:
+    # Addresses, clients and limits.
+    API_MIN_SUPPORTED_CLIENT:
+    API_UPDATE_URL:
+    API_IP_RATE_LIMIT:
+    API_IP_RATE_WINDOW_SECONDS:
+    API_TENANT_RATE_LIMIT:
+    API_TENANT_RATE_WINDOW_SECONDS:
+    API_IDEMPOTENCY_TTL_SECONDS:
+    API_MAX_BODY_BYTES:
+    API_CORS_ORIGINS:
+    API_PUBLIC_URL:
+    WEB_APP_URL:
+    SYNC_REPLAY_DAYS:
+    SYNC_LOG_RETENTION_DAYS:
+    PUBLIC_SIGNUP:
+    BUILD_TOKEN:
+    APP_BUILDS:
+    GITHUB_BUILD_TOKEN:
+    GITHUB_BUILD_REPOSITORY:
+    GITHUB_BUILD_REF:
+    WEBSITE_LOOKUP_RATE_LIMIT:
+    WEBSITE_LOOKUP_RATE_WINDOW_SECONDS:
+    # Files.
+    MEDIA_STORAGE:
+    MEDIA_LOCAL_DIR:
+    MEDIA_URL_SECRET:
+    MEDIA_MAX_BYTES:
+    MEDIA_RESTORE_DAYS:
+    MEDIA_MAINTENANCE_INTERVAL_SECONDS:
+    CLOUDFLARE_ACCOUNT_ID:
+    CLOUDFLARE_API_TOKEN:
+    R2_ACCESS_KEY_ID:
+    R2_SECRET_ACCESS_KEY:
+    R2_BUCKET_PREFIX:
+    R2_ENDPOINT:
+    # Outside services.
+    GEOCODER:
+    MAPBOX_ACCESS_TOKEN:
+    PUSH_SENDER:
+    EXPO_ACCESS_TOKEN:
+    BILLING_PROVIDER:
+    STRIPE_SECRET_KEY:
+    STRIPE_WEBHOOK_SECRET:
+    BILLING_RETURN_URL:
+    BILLING_TRIAL_DAYS:
+    BILLING_GRACE_DAYS:
+    EMAIL_SENDER:
+    RESEND_API_KEY:
+    EMAIL_FROM:
+    PDF_RENDERER:
+    PDF_RENDER_TIMEOUT_MS:
+    PDF_MAX_CONCURRENT:
+    # Errors and release identity.
+    SENTRY_DSN:
+    SENTRY_TRACES_SAMPLE_RATE:
+    API_RELEASE:
+    # The assistant.
+    AI_ENABLED:
+    AI_PROVIDER:
+    AI_GROQ_API_KEY:
+    AI_GEMINI_API_KEY:
+    AI_ANTHROPIC_API_KEY:
+    AI_OPENAI_API_KEY:
+    AI_GROQ_BASE_URL:
+    AI_GEMINI_BASE_URL:
+    AI_ANTHROPIC_BASE_URL:
+    AI_OPENAI_BASE_URL:
+    AI_OPENAI_REASONING_EFFORT:
+    AI_ANTHROPIC_EFFORT:
+    AI_CREDIT_EXHAUSTED_PAUSE_SECONDS:
+    AI_MODEL_HELP:
+    AI_MODEL_INSIGHTS:
+    AI_MODEL_AGENT:
+    AI_PROVIDER_APPROVED_DATA_CLASSES:
+    AI_MODEL_PRICES:
+    AI_DEFAULT_PRICE_INPUT_PER_MILLION_MICROUSD:
+    AI_DEFAULT_PRICE_OUTPUT_PER_MILLION_MICROUSD:
+    AI_REQUEST_TIMEOUT_MS:
+    AI_MAX_INPUT_TOKENS:
+    AI_MAX_OUTPUT_TOKENS:
+    AI_MAX_PROVIDER_CALLS:
+    AI_MAX_TOOL_STEPS:
+    AI_MAX_CONCURRENT_PER_TENANT:
+    AI_MAX_CONCURRENT_PER_USER:
+    AI_GLOBAL_MONTHLY_BUDGET_MICROUSD:
+    AI_RESERVATION_TTL_SECONDS:
+    AI_ACTION_TTL_SECONDS:
+    AI_HISTORY_TURNS:
+    # E-invoicing.
+    ETA_ALLOW_PRODUCTION:
+    ETA_PREPROD_CA_FILE:
+    ETA_PREPROD_IDENTITY_URL:
+    ETA_PREPROD_API_URL:
+    ETA_PRODUCTION_IDENTITY_URL:
+    ETA_PRODUCTION_API_URL:
+    ETA_REQUEST_TIMEOUT_MS:
+    ETA_SIGNING_REQUEST_TTL_SECONDS:
+    ETA_MAX_STATUS_CHECKS:
+    # The worker.
+    WORKER_BATCH_SIZE:
+    WORKER_IDLE_POLL_MS:
+    WORKER_LEASE_MS:
+    WORKER_RETRY_BASE_MS:
+    WORKER_RETRY_MAX_MS:
+
+# What the migrator reads: the owner's connection, which only it holds.
+# DATABASE_URL is there because the database settings need one to load; the
+# migrator never connects with it.
+x-migrator-env: &migrator-env
+  APP_ENV:
+  DATABASE_URL:
+  DATABASE_URL_ADMIN:
 
 services:
   postgres:
@@ -62,23 +228,38 @@ services:
       timeout: 5s
       retries: 20
 
-  # Creates the two login roles the API connects as, and Supabase Auth's role
-  # and schema. Idempotent: run again and it resets their passwords to what the
-  # env file says.
+  # Creates the three login roles the API and worker connect as, and Supabase
+  # Auth's role and schema. Idempotent: run again and it resets their passwords
+  # (and attributes) to what the env file says.
   bootstrap:
-    <<: [*api-image, *api-env, *logging]
+    <<: [*api-image, *logging]
     command: ['node', 'node_modules/@integr8/db/dist/migrator/cli.js', 'bootstrap']
+    environment:
+      <<: *migrator-env
+      INTEGR8_APP_PASSWORD:
+      INTEGR8_AUTH_PASSWORD:
+      INTEGR8_PLATFORM_PASSWORD:
+      SUPABASE_AUTH_DB_PASSWORD:
     depends_on:
       postgres:
         condition: service_healthy
     restart: 'no'
     mem_limit: 512m
 
-  # Applies every pending migration, then exits. The API refuses traffic until
-  # the schema matches its build, so this has to finish first.
+  # Applies every pending migration, then loads the form template library this
+  # build ships, then exits. The API refuses traffic until the schema matches
+  # its build, so this has to finish first. The library sync only upserts the
+  # global templates by key: a company's own forms, copied from a template, are
+  # never touched, and running it on every start changes nothing the second
+  # time. A shell runs the two because a compose command is one process.
   migrate:
-    <<: [*api-image, *api-env, *logging]
-    command: ['node', 'node_modules/@integr8/db/dist/migrator/cli.js', 'up']
+    <<: [*api-image, *logging]
+    command:
+      - sh
+      - -c
+      - node node_modules/@integr8/db/dist/migrator/cli.js up && node node_modules/@integr8/db/dist/seed/templates-cli.js
+    environment:
+      <<: *migrator-env
     depends_on:
       bootstrap:
         condition: service_completed_successfully
@@ -184,7 +365,7 @@ services:
       args:
         # Baked into the browser bundle: where a customer's browser reaches the API.
         NEXT_PUBLIC_API_BASE_URL: ${PUBLIC_API_URL:?set PUBLIC_API_URL in deploy/.env}
-        NEXT_PUBLIC_APP_VERSION: ${APP_VERSION:-1.1.0}
+        NEXT_PUBLIC_APP_VERSION: ${APP_VERSION:-}
         NEXT_PUBLIC_APP_ENV: ${APP_ENV:-staging}
         NEXT_PUBLIC_SENTRY_DSN: ${WEB_PUBLIC_SENTRY_DSN:-}
         NEXT_PUBLIC_SIGNUP: ${PUBLIC_SIGNUP:-off}
@@ -198,6 +379,12 @@ services:
       API_BASE_URL: http://api:3000
       APP_ENV: ${APP_ENV:-staging}
       SENTRY_DSN: ${WEB_SENTRY_DSN:-}
+      # The desktop apps' update feed (/desktop-updates): the repository whose
+      # releases hold them, a token only if that repository is private, and
+      # the public address the feed's download links use then.
+      GITHUB_RELEASES_REPOSITORY: ${GITHUB_RELEASES_REPOSITORY:-}
+      GITHUB_RELEASES_TOKEN: ${GITHUB_RELEASES_TOKEN:-}
+      WEB_APP_URL: ${WEB_APP_URL:-}
     depends_on:
       api:
         condition: service_healthy

@@ -5,8 +5,10 @@ import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
 import { Platform } from 'react-native';
+import { deviceLocale } from '~/lib/preferences';
 import { session } from '~/lib/session';
 import { localData } from './local-data';
+import { isOffline, isOnline } from './online';
 
 /**
  * Push notifications (P14): a new job, a job moved, an urgent callout.
@@ -57,31 +59,76 @@ async function createChannels(names: ChannelNames): Promise<void> {
 
 let registered: string | undefined;
 
+type PushStep = 'channels' | 'permission' | 'token' | 'register';
+
+/**
+ * A registration that failed, told to whoever can fix it and not to the
+ * engineer, who can do nothing about it: Sentry, when the build has a DSN,
+ * tagged with the step, and the device log either way.
+ *
+ * `token` failing on Android almost always means the build had no
+ * `google-services.json` for its package (setup guide, Stage 8), and it was
+ * once swallowed without a trace: the phone simply never heard about a job.
+ */
+function reportPushFailure(step: PushStep, error: unknown): void {
+  const message = error instanceof Error ? error.message : String(error);
+  console.warn(`Push registration failed at ${step} on ${Platform.OS}: ${message}`);
+  Sentry.captureException(error, { tags: { area: 'push', step, platform: Platform.OS } });
+}
+
+/** Runs one step, reporting a failure as that step's; resolves undefined when it failed. */
+async function step<T>(name: PushStep, run: () => Promise<T>): Promise<T | undefined> {
+  try {
+    return await run();
+  } catch (error) {
+    reportPushFailure(name, error);
+    return undefined;
+  }
+}
+
 /**
  * Asks once for permission and registers this phone for the signed-in person.
  * Quietly does nothing on a simulator, in a build without an EAS project, when
- * permission is refused, or offline — the next launch tries again.
+ * permission is refused, or offline — the next launch tries again. A failure
+ * is reported, never shown: the work on the phone goes on without push.
  */
 export async function registerForPush(names: ChannelNames): Promise<void> {
-  try {
-    await createChannels(names);
-    const projectId = (Constants.expoConfig?.extra?.eas as { projectId?: string } | undefined)
-      ?.projectId;
-    if (!Device.isDevice || projectId === undefined || projectId === PLACEHOLDER_PROJECT) {
-      return;
-    }
+  // A channel that could not be made still lets the phone register: Android
+  // then shows its notifications on the default channel.
+  await step('channels', () => createChannels(names));
+  const projectId = (Constants.expoConfig?.extra?.eas as { projectId?: string } | undefined)
+    ?.projectId;
+  if (!Device.isDevice || projectId === undefined || projectId === PLACEHOLDER_PROJECT) {
+    return;
+  }
+  const granted = await step('permission', async () => {
     let permission = await Notifications.getPermissionsAsync();
     if (!permission.granted && permission.canAskAgain) {
       permission = await Notifications.requestPermissionsAsync();
     }
-    if (!permission.granted) {
-      return;
-    }
-    const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId });
-    await sendToken(token);
-  } catch (error) {
-    Sentry.captureException(error, { tags: { area: 'push' } });
+    return permission.granted;
+  });
+  // Offline is not a failure: the token needs Expo's servers, and the next
+  // launch tries again.
+  if (granted !== true || !(await isOnline())) {
+    return;
   }
+  const token = await step(
+    'token',
+    async () => (await Notifications.getExpoPushTokenAsync({ projectId })).data,
+  );
+  if (token === undefined) {
+    return;
+  }
+  await step('register', async () => {
+    try {
+      await sendToken(token);
+    } catch (error) {
+      if (!isOffline(error)) {
+        throw error;
+      }
+    }
+  });
 }
 
 async function sendToken(token: string): Promise<void> {
@@ -93,6 +140,11 @@ async function sendToken(token: string): Promise<void> {
       token,
       platform: Platform.OS === 'ios' ? 'ios' : 'android',
       deviceLabel: Device.deviceName ?? Device.modelName ?? null,
+      // The language the app is showing, the same one it chose at start-up, so
+      // notifications arrive in it. Sent every time the phone registers, which
+      // is every launch: a phone switched to another language says so on the
+      // next one.
+      locale: deviceLocale(),
     },
   });
   registered = token;

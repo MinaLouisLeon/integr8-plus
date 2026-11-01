@@ -1,5 +1,6 @@
 import type { NavPath } from '@integr8/core';
 import { LOCALE_DESCRIPTORS, useTranslation, type Locale } from '@integr8/i18n';
+import { AnnouncementBanners } from '@integr8/operations-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
@@ -8,6 +9,7 @@ import { useContextMenu } from '~/components/context-menu';
 import { ImpersonationBanner } from '~/components/impersonation-banner';
 import { ChromeIconGlyph, NavIconGlyph } from '~/components/nav-icon';
 import { RefreshButton } from '~/components/refresh-button';
+import { UpdateBanner } from '~/components/update-banner';
 import { useShellChromeOverride } from '~/components/shell-chrome';
 import { assistantShown, type Me, useAiCapabilities, useMe } from '~/features/forms/api';
 import { desktopNavigation, routeChrome, type DesktopNavGroup } from '~/lib/navigation';
@@ -122,6 +124,9 @@ export function AppFrame({
           onOpenDrawer={() => setDrawerRoute(location.pathname)}
         />
         <ImpersonationBanner />
+        <UpdateBanner />
+        {/* Integr8's announcements and payment reminders, outside the scrolling screen so they stay in view. */}
+        <AnnouncementBanners announcements={me.data?.announcements} className="px-6 pt-4" />
         {/* The builder fills the window, so the page itself never scrolls; each screen scrolls its own content. */}
         <main id="main" className="min-h-0 flex-1 overflow-y-auto">
           {children}

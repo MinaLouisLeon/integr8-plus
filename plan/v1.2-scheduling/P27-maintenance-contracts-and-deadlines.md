@@ -236,3 +236,15 @@ Covered by the integration suites (`packages/db` and `apps/api`, `maintenance-co
 - Found while building this: migration 0052 (P26) never added the `qualifications.expiry` row to
   `scheduled_task_runs`, so the daily certificate expiry run never won a turn. 0053 adds it with
   this phase's own two runs.
+- Found in the October 2026 audit: deadlines in working hours, maintenance due days and
+  contract years read the company's calendar, and a new company's was UTC, Monday to Friday, so
+  an Egyptian company's response clock ran through Friday and stopped on Sunday. Migration 0057
+  makes new companies start on `Africa/Cairo`, Sunday to Thursday, and the repository fallbacks
+  (`DEFAULT_SETTINGS`, the ledger's `erp_ledger_timezone`) match. Existing companies keep their
+  settings.
+- Found in the pre-production audit (2026-10-31): the worker made a company's maintenance jobs in
+  one transaction, so one failing plan rolled back every other plan, and the next try was a day
+  later. Migration 0063 runs each plan in its own savepoint, keeps the failure on the plan
+  (shown on the Maintenance screen, the asset's plan and the staff Health page, logged and sent
+  to Sentry), retries the plan alone every worker cycle (`maintenance.retries`) and stops after
+  five failures in a row until the plan is edited (`docs/operations/README.md`).

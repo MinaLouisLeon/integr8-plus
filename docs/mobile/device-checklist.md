@@ -27,6 +27,12 @@ in the phase's plan file under `plan/v0.3-field-loop/`.
 3. **Data.** An engineer with at least one open job whose site has access notes and hazards,
    a job closed within the last 30 days, and a customer with more than one site.
 
+4. **For notifications, crash reports and the offline grant** (P11 checklist 7, P14 checklists 4
+   and 5): a build from an EAS profile whose environment has `GOOGLE_SERVICES_JSON` (with an app
+   for the build's package), `EXPO_PUBLIC_SENTRY_DSN` and `EXPO_PUBLIC_AUTH_VERIFICATION_KEYS`
+   set, as the setup guide's Stage 8, part A describes. A development build reads the
+   `development` environment.
+
 ## P11
 
 ### 1. Encrypted at rest
@@ -87,6 +93,22 @@ version 5, two versions later, and has no such button — its unsent work is a f
       expired (up to 15 minutes after it was issued; background and foreground the app again if
       need be) it returns to sign-in, and the checks from step 5 pass.
 
+### 7. The offline grant ends
+
+On the test box, set `AUTH_OFFLINE_GRANT_TTL_SECONDS=600` (ten minutes) in its env file and
+redeploy, so a week is ten minutes. Use a build whose EAS environment has
+`EXPO_PUBLIC_AUTH_VERIFICATION_KEYS` set to the test box's `AUTH_VERIFICATION_KEYS`.
+
+- [ ] Sign in with signal and download. Put the phone in aeroplane mode and force-quit the app.
+- [ ] Reopen within ten minutes: it opens on its jobs, offline.
+- [ ] Record a note, force-quit, wait until the ten minutes have passed, reopen: it shows
+      _Connect to carry on_ and nothing of the company's. It does not open, although the refresh
+      token has thirty days left.
+- [ ] Turn aeroplane mode off: within seconds it opens by itself, and the note is sent.
+- [ ] Sentry has no `offline-grant` warning from this phone. (`built_without_keys` means the
+      build had no keys; `unknown_key` or `bad_signature` means the wrong ones.)
+- [ ] Put `AUTH_OFFLINE_GRANT_TTL_SECONDS` back (remove the line) and redeploy.
+
 ## P12
 
 Two phones (**A** and **B**) signed in as two engineers on the same job, and the web app open as a
@@ -99,7 +121,8 @@ them on a phone once P14 lands.
 
 - [ ] On **A**, open the job with signal: the badge beside Back says **Safe to leave**.
 - [ ] Turn on aeroplane mode. Move the job on (on site, in progress), tick every checklist item,
-      add a note, correct the gate code.
+      add a note (**Add a note** at the end of the job's notes), correct the gate code
+      (**Correct access notes** on the access panel). Both show on the job at once.
 - [ ] The badge says **Not sent yet**; the card under the access notes counts the changes; the
       banner says _No connection. … items are waiting on this phone._
 - [ ] Force-quit the app and open it again, still offline: everything above is still shown.
@@ -127,6 +150,9 @@ them on a phone once P14 lands.
       are shown, the parking notes are not asked about (nobody else changed them).
 - [ ] Choose **Mine** for the gate code and **Send my choices**. The banner returns to
       _Everything is sent._; the web shows _2222_ and the parking notes.
+- [ ] Offline on **A**, correct the gate code; on the web, cancel A's only job at that site. Bring
+      **A** online: the change is refused (_Needs your attention_) and the web keeps the old code.
+      The job, now closed, no longer offers **Correct access notes**.
 - [ ] On a dispatched job, offline on **A**, mark it _Travelling_; on the web, move it back to
       scheduled. Bring **A** online: the conflict names who moved it. **Keep theirs**: the phone
       shows _Scheduled_.
@@ -316,6 +342,10 @@ every time they reached for paper or rang the office. Put the notes in the plan 
 - [ ] Mark a job urgent: the _Urgent callouts_ channel sounds. On Android, both channels are in
       the app's notification settings.
 - [ ] Sign out: a new assignment for that engineer sends nothing to the phone.
+- [ ] Post an announcement to the company from the dashboard (Announcements). Bring the app back
+      to the foreground: Today shows it at the top, in its severity's colour. Put the phone in
+      aeroplane mode and restart the app: it still shows. **Dismiss** it: it stays hidden after a
+      restart. An announcement that cannot be closed has no **Dismiss**.
 
 ### 5. Crashes and updates
 

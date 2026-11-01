@@ -1,6 +1,10 @@
 import { type PaymentMethod, type UserId, parseFinanceReference, toUserId } from '@integr8/core';
 import { type Selectable, sql } from 'kysely';
-import type { ErpPaymentAllocationsTable, ErpPaymentReceiptsTable } from '../schema.js';
+import type {
+  ErpPaymentAllocationsTable,
+  ErpPaymentReceiptsTable,
+  ErpPaymentReversalsTable,
+} from '../schema.js';
 import { toDayString, trimDecimal } from './crm-leads.js';
 import { prefixQuery } from './customers.js';
 import { blankToNull } from './sales-quotes.js';
@@ -16,6 +20,11 @@ import { TenantScopedRepository, type TenantScope } from './tenant-scope.js';
  * and refuses more than either has (`erp_payment_allocations_guard`). A
  * wrong allocation is removed, keeping who removed it and when; what is not
  * allocated stays on the customer's account.
+ *
+ * A receipt that should never have counted — a bounced cheque, the wrong
+ * customer — is reversed (0064): a record of its own with a reason, which
+ * removes the receipt's allocations and posts the opposite ledger entry. The
+ * receipt stays, marked, and is never allocated again.
  */
 
 export interface PaymentReceipt {
@@ -57,11 +66,23 @@ export interface PaymentAllocation {
 export interface ReceiptAmounts {
   amount: string;
   allocated: string;
-  /** What is left on the customer's account from this receipt. */
+  /** What is left on the customer's account from this receipt; nothing once reversed. */
   unallocated: string;
 }
 
-export type AllocationRefusal = 'over_receipt' | 'over_invoice' | 'invoice_not_open' | 'mismatch';
+/** A receipt taken back (0064). */
+export interface PaymentReversal {
+  id: string;
+  receiptId: string;
+  reason: string;
+  /** `YYYY-MM-DD`, the company's day; the ledger posts it on this day. */
+  reversedOn: string;
+  reversedBy: UserId;
+  reversedAt: Date;
+}
+
+export type AllocationRefusal =
+  'over_receipt' | 'over_invoice' | 'invoice_not_open' | 'mismatch' | 'receipt_reversed';
 
 /** A customer's standing in one currency. */
 export interface CustomerAccount {
@@ -79,6 +100,7 @@ const ALLOCATION_REFUSALS: Record<string, AllocationRefusal> = {
   erp_payment_allocations_over_invoice: 'over_invoice',
   erp_payment_allocations_invoice_not_open: 'invoice_not_open',
   erp_payment_allocations_mismatch: 'mismatch',
+  erp_payment_allocations_receipt_reversed: 'receipt_reversed',
 };
 
 export class FinancePaymentsRepository extends TenantScopedRepository {
@@ -176,7 +198,9 @@ export class FinancePaymentsRepository extends TenantScopedRepository {
       select = select.where(
         sql<boolean>`erp_payment_receipts.amount > coalesce((select sum(a.amount) from erp_payment_allocations a
           where a.tenant_id = erp_payment_receipts.tenant_id and a.receipt_id = erp_payment_receipts.id
-            and a.removed_at is null), 0)`,
+            and a.removed_at is null), 0)
+          and not exists (select 1 from erp_payment_reversals v
+            where v.tenant_id = erp_payment_receipts.tenant_id and v.receipt_id = erp_payment_receipts.id)`,
       );
     }
     if (query.after !== undefined) {
@@ -205,10 +229,17 @@ export class FinancePaymentsRepository extends TenantScopedRepository {
       return new Map();
     }
     const ids = [...new Set(receiptIds)];
-    const { rows } = await sql<{ id: string; amount: string; allocated: string }>`
+    const { rows } = await sql<{
+      id: string;
+      amount: string;
+      allocated: string;
+      reversed: boolean;
+    }>`
       select r.id, r.amount::text as amount,
              coalesce((select sum(a.amount) from erp_payment_allocations a
-                        where a.tenant_id = r.tenant_id and a.receipt_id = r.id and a.removed_at is null), 0)::text as allocated
+                        where a.tenant_id = r.tenant_id and a.receipt_id = r.id and a.removed_at is null), 0)::text as allocated,
+             exists (select 1 from erp_payment_reversals v
+                      where v.tenant_id = r.tenant_id and v.receipt_id = r.id) as reversed
         from erp_payment_receipts r
        where r.tenant_id = ${this.tenantId}
          and r.id in (${sql.join(ids.map((id) => sql`${id}::uuid`))})
@@ -217,7 +248,9 @@ export class FinancePaymentsRepository extends TenantScopedRepository {
       rows.map((row) => {
         const amount = trimDecimal(row.amount);
         const allocated = trimDecimal(row.allocated);
-        return [row.id, { amount, allocated, unallocated: subtract(amount, allocated) }];
+        // A reversed receipt has nothing left: the money went back.
+        const unallocated = row.reversed ? '0' : subtract(amount, allocated);
+        return [row.id, { amount, allocated, unallocated }];
       }),
     );
   }
@@ -249,6 +282,45 @@ export class FinancePaymentsRepository extends TenantScopedRepository {
       }
       throw error;
     }
+  }
+
+  /**
+   * Takes a receipt back (0064). The database removes its allocations and
+   * queues the opposite ledger entry in the same statement; a receipt is
+   * reversed once.
+   */
+  async reverseReceipt(
+    receiptId: string,
+    input: { reason: string; reversedOn: string },
+    reversedBy: UserId | string,
+  ): Promise<PaymentReversal | 'already_reversed'> {
+    const row = await this.db
+      .insertInto('erp_payment_reversals')
+      .values({
+        tenant_id: this.tenantId,
+        receipt_id: receiptId,
+        reason: input.reason.trim(),
+        reversed_on: input.reversedOn,
+        reversed_by: toUserId(reversedBy),
+      })
+      .onConflict((oc) => oc.columns(['tenant_id', 'receipt_id']).doNothing())
+      .returningAll()
+      .executeTakeFirst();
+    return row === undefined ? 'already_reversed' : toReversal(row);
+  }
+
+  /** The reversals of these receipts, by receipt. */
+  async reversalsFor(receiptIds: readonly string[]): Promise<Map<string, PaymentReversal>> {
+    if (receiptIds.length === 0) {
+      return new Map();
+    }
+    const rows = await this.db
+      .selectFrom('erp_payment_reversals')
+      .selectAll()
+      .where('tenant_id', '=', this.tenantId)
+      .where('receipt_id', 'in', [...new Set(receiptIds)])
+      .execute();
+    return new Map(rows.map((row) => [row.receipt_id, toReversal(row)]));
   }
 
   async findAllocation(allocationId: string): Promise<PaymentAllocation | undefined> {
@@ -323,6 +395,8 @@ export class FinancePaymentsRepository extends TenantScopedRepository {
                                            and a.removed_at is null), 0)) as unallocated
           from erp_payment_receipts r
          where r.tenant_id = ${this.tenantId} and r.customer_id = ${customerId}::uuid
+           and not exists (select 1 from erp_payment_reversals v
+                            where v.tenant_id = r.tenant_id and v.receipt_id = r.id)
          group by r.currency_code
       )
       select coalesce(o.currency_code, c.currency_code) as currency_code,
@@ -373,6 +447,17 @@ function toReceipt(row: Selectable<ErpPaymentReceiptsTable>): PaymentReceipt {
     notes: row.notes,
     recordedBy: toUserId(row.recorded_by),
     recordedAt: row.recorded_at,
+  };
+}
+
+function toReversal(row: Selectable<ErpPaymentReversalsTable>): PaymentReversal {
+  return {
+    id: row.id,
+    receiptId: row.receipt_id,
+    reason: row.reason,
+    reversedOn: toDayString(row.reversed_on)!,
+    reversedBy: toUserId(row.reversed_by),
+    reversedAt: row.reversed_at,
   };
 }
 
