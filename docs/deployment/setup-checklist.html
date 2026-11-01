@@ -55,14 +55,14 @@
         <p>The laptop generates the signing keys, connects to the server over SSH and edits one file on GitHub. It never builds anything. Commands marked <code># laptop</code> are typed into <b>PowerShell</b> (open the <b>Terminal</b> app from the Start menu); commands marked <code># machine</code> are typed into the SSH session once the server exists, where the server's own Linux shell runs them. Never mix them up.</p>
         <ul class="check" data-stage="a0">
           <li><input type="checkbox" id="a0-1"><label for="a0-1"><b>Allow PowerShell to run scripts</b>, once: <code>Set-ExecutionPolicy -Scope CurrentUser RemoteSigned</code>, answer <code>Y</code>.</label></li>
-          <li><input type="checkbox" id="a0-2"><label for="a0-2"><b>Install Git and Node</b> with the commands below (Node LTS is 22 or newer). Close and reopen the Terminal afterwards so the new programs are on the path.</label></li>
+          <li><input type="checkbox" id="a0-2"><label for="a0-2"><b>Install Git and Node</b> with the commands below: Node 22, release 22.22.1 or newer 22.x (22.22.2 recommended, the one in the repository's <code>.nvmrc</code>); the repository refuses to install on Node 23 or later. Close and reopen the Terminal afterwards so the new programs are on the path.</label></li>
         </ul>
         <pre><button class="copy" type="button">Copy</button><code># laptop (PowerShell)
 winget install --id Git.Git -e
-winget install --id OpenJS.NodeJS.LTS -e
+winget install --id OpenJS.NodeJS.22 -e
 # close this window, open a new Terminal, then:
 git --version
-node --version          # v22 or v24
+node --version          # v22.22.1 or newer v22
 npm install -g pnpm@latest-10
 pnpm --version          # 10.x
 git config --global core.autocrlf false</code></pre>

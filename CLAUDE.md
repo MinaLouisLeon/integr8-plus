@@ -42,11 +42,12 @@ staff from the platform dashboard; there is no public sign-up by default.
 ## Commands
 
 ```bash
-pnpm install                     # Node >= 22.22.1 (lint-staged's engine); add --config.engine-strict=false on 22.22.0
+pnpm install                     # Node 22.22.1 or newer 22.x (22.22.2 recommended, see .nvmrc)
 pnpm build | lint | typecheck | test     # whole workspace; add --filter @integr8/<pkg>
 pnpm test:integration            # needs a disposable Postgres (see below)
 pnpm format:check                # Prettier, what CI runs
 pnpm guide:check                 # setup guide: Markdown and HTML must agree
+pnpm pins:check                  # exact dependency versions; .nvmrc, Dockerfiles and engines agree
 pnpm --filter @integr8/api openapi && pnpm --filter @integr8/api-client generate   # after changing a route
 pnpm --filter @integr8/db db up | status | deploy   # migrations (deploy = bootstrap roles + up)
 pnpm --filter @integr8/db db:templates               # sync the form template library

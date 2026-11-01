@@ -6,7 +6,7 @@
   "description": "Multi-tenant field operations platform",
   "packageManager": "pnpm@10.33.0",
   "engines": {
-    "node": ">=22.0.0",
+    "node": ">=22.22.1 <23",
     "pnpm": ">=10.0.0"
   },
   "scripts": {
@@ -21,6 +21,7 @@
     "format:check": "prettier --check .",
     "licences:check": "node scripts/licences/check.mjs && node --test scripts/licences/check.test.mjs",
     "guide:check": "node scripts/guide/check.mjs",
+    "pins:check": "node scripts/pins/check.mjs && node --test scripts/pins/check.test.mjs",
     "clean": "turbo run clean",
     "prepare": "husky"
   },

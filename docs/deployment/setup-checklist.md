@@ -64,15 +64,15 @@ Everything the stack needs from the outside world is created and written down he
 The laptop generates the signing keys, connects to the server over SSH and edits one file on GitHub. It never builds anything. Commands marked `# laptop` are typed into **PowerShell** (open the **Terminal** app from the Start menu); commands marked `# machine` are typed into the SSH session once the server exists, where the server's own Linux shell runs them. Never mix them up.
 
 - [ ] **Allow PowerShell to run scripts**, once: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`, answer `Y`.
-- [ ] **Install Git and Node** with the commands below (Node LTS is 22 or newer). Close and reopen the Terminal afterwards so the new programs are on the path.
+- [ ] **Install Git and Node** with the commands below: Node 22, release 22.22.1 or newer 22.x (22.22.2 recommended, the one in the repository's `.nvmrc`); the repository refuses to install on Node 23 or later. Close and reopen the Terminal afterwards so the new programs are on the path.
 
 ```powershell
 # laptop (PowerShell)
 winget install --id Git.Git -e
-winget install --id OpenJS.NodeJS.LTS -e
+winget install --id OpenJS.NodeJS.22 -e
 # close this window, open a new Terminal, then:
 git --version
-node --version          # v22 or v24
+node --version          # v22.22.1 or newer v22
 npm install -g pnpm@latest-10
 pnpm --version          # 10.x
 git config --global core.autocrlf false
