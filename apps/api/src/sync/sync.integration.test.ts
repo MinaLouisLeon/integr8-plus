@@ -441,7 +441,8 @@ describe('killing the app', () => {
     expect(phone.network.count('PUT', partPath(1))).toBe(1);
     expect(phone.network.count('PUT', partPath(2))).toBe(1);
     expect(phone.network.count('PUT', partPath(3))).toBe(1);
-    expect(await call(officeToken, 'GET', `/v1/media/${mediaId}`)).toMatchObject({
+    // Nothing names the video yet, so it is only its uploader's to read (docs/media).
+    expect(await call(await api.signIn(engineer), 'GET', `/v1/media/${mediaId}`)).toMatchObject({
       status: 'stored',
       byteSize: size,
     });

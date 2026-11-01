@@ -7913,6 +7913,7 @@
                           "document.read",
                           "document.create",
                           "document.manage",
+                          "document.upload",
                           "document.design",
                           "eta.read",
                           "eta.prepare",
@@ -16508,25 +16509,62 @@
                     "title": {
                       "type": "string"
                     },
+                    "source": {
+                      "type": "string",
+                      "enum": [
+                        "generated",
+                        "uploaded"
+                      ]
+                    },
                     "templateId": {
+                      "nullable": true,
                       "type": "string",
                       "format": "uuid",
                       "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                     },
                     "templateRevision": {
+                      "nullable": true,
                       "type": "integer",
                       "minimum": -9007199254740991,
                       "maximum": 9007199254740991
                     },
                     "submissionId": {
+                      "nullable": true,
                       "type": "string",
                       "format": "uuid",
                       "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                     },
                     "formId": {
+                      "nullable": true,
                       "type": "string",
                       "format": "uuid",
                       "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "reference": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "customer": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "name": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "shareable": {
+                      "type": "boolean"
                     },
                     "status": {
                       "type": "string",
@@ -16640,10 +16678,14 @@
                   "required": [
                     "id",
                     "title",
+                    "source",
                     "templateId",
                     "templateRevision",
                     "submissionId",
                     "formId",
+                    "reference",
+                    "customer",
+                    "shareable",
                     "status",
                     "failureCode",
                     "linkOpens",
@@ -16791,6 +16833,18 @@
             }
           },
           {
+            "name": "source",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "generated",
+                "uploaded"
+              ]
+            }
+          },
+          {
             "name": "state",
             "in": "query",
             "required": false,
@@ -16866,25 +16920,62 @@
                           "title": {
                             "type": "string"
                           },
+                          "source": {
+                            "type": "string",
+                            "enum": [
+                              "generated",
+                              "uploaded"
+                            ]
+                          },
                           "templateId": {
+                            "nullable": true,
                             "type": "string",
                             "format": "uuid",
                             "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                           },
                           "templateRevision": {
+                            "nullable": true,
                             "type": "integer",
                             "minimum": -9007199254740991,
                             "maximum": 9007199254740991
                           },
                           "submissionId": {
+                            "nullable": true,
                             "type": "string",
                             "format": "uuid",
                             "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                           },
                           "formId": {
+                            "nullable": true,
                             "type": "string",
                             "format": "uuid",
                             "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "reference": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "customer": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "shareable": {
+                            "type": "boolean"
                           },
                           "status": {
                             "type": "string",
@@ -16998,10 +17089,14 @@
                         "required": [
                           "id",
                           "title",
+                          "source",
                           "templateId",
                           "templateRevision",
                           "submissionId",
                           "formId",
+                          "reference",
+                          "customer",
+                          "shareable",
                           "status",
                           "failureCode",
                           "linkOpens",
@@ -17099,31 +17194,77 @@
             "bearerAuth": []
           }
         ]
-      }
-    },
-    "/v1/documents/{documentId}": {
-      "get": {
-        "operationId": "getDocument",
-        "summary": "One document",
-        "description": "With `document.read`, any document; with `document.create` alone, only the ones this person made.",
+      },
+      "post": {
+        "operationId": "uploadDocument",
+        "summary": "Add a PDF the company already has to the register",
+        "description": "Needs `document.upload`. Upload the PDF first (`/v1/media`, as `application/pdf`, at most 20 MB), then name it here with a title and its reference number (a certificate number, say), and optionally the customer it is for. The bytes are checked to be a PDF (422 `document_not_pdf`). It is ready at once, with its own public code and link like a generated document, and starts not shareable unless `shareable` is true. The website lookup finds it by its reference, and by the customer’s name as the second value when a customer is given. Honours `Idempotency-Key`.",
         "tags": [
           "documents"
         ],
         "parameters": [
           {
-            "name": "documentId",
-            "in": "path",
-            "required": true,
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
             "schema": {
               "type": "string",
-              "format": "uuid",
-              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-            }
+              "maxLength": 255
+            },
+            "description": "A client-generated key. Replaying a request with the same key returns the original response and repeats no effect."
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "fileId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "title": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "reference": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "customerId": {
+                    "nullable": true,
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "expiresAt": {
+                    "nullable": true,
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                  },
+                  "shareable": {
+                    "default": false,
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "fileId",
+                  "title",
+                  "reference"
+                ]
+              }
+            }
+          }
+        },
         "responses": {
-          "200": {
-            "description": "The document.",
+          "201": {
+            "description": "The document, ready.",
             "content": {
               "application/json": {
                 "schema": {
@@ -17137,25 +17278,62 @@
                     "title": {
                       "type": "string"
                     },
+                    "source": {
+                      "type": "string",
+                      "enum": [
+                        "generated",
+                        "uploaded"
+                      ]
+                    },
                     "templateId": {
+                      "nullable": true,
                       "type": "string",
                       "format": "uuid",
                       "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                     },
                     "templateRevision": {
+                      "nullable": true,
                       "type": "integer",
                       "minimum": -9007199254740991,
                       "maximum": 9007199254740991
                     },
                     "submissionId": {
+                      "nullable": true,
                       "type": "string",
                       "format": "uuid",
                       "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                     },
                     "formId": {
+                      "nullable": true,
                       "type": "string",
                       "format": "uuid",
                       "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "reference": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "customer": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "name": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "shareable": {
+                      "type": "boolean"
                     },
                     "status": {
                       "type": "string",
@@ -17269,10 +17447,306 @@
                   "required": [
                     "id",
                     "title",
+                    "source",
                     "templateId",
                     "templateRevision",
                     "submissionId",
                     "formId",
+                    "reference",
+                    "customer",
+                    "shareable",
+                    "status",
+                    "failureCode",
+                    "linkOpens",
+                    "link",
+                    "publicCode",
+                    "pageCount",
+                    "byteSize",
+                    "renderedAt",
+                    "expiredAt",
+                    "expiresAt",
+                    "createdBy",
+                    "createdAt",
+                    "fields"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller lacks the required permission, or the company does not have the `documents` module switched on (`feature_disabled`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such file uploaded by this person, or no such customer."
+          },
+          "409": {
+            "description": "The file is already used by something else (`media_in_use`)."
+          },
+          "422": {
+            "description": "Not a PDF (`document_not_pdf`), larger than 20 MB (`document_too_large`), or an expiry already past (`document_expiry_past`)."
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "No web address for the QR link (`document_link_unavailable`)."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/documents/{documentId}": {
+      "get": {
+        "operationId": "getDocument",
+        "summary": "One document",
+        "description": "With `document.read`, any document; with `document.create` alone, only the ones this person made.",
+        "tags": [
+          "documents"
+        ],
+        "parameters": [
+          {
+            "name": "documentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The document.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "source": {
+                      "type": "string",
+                      "enum": [
+                        "generated",
+                        "uploaded"
+                      ]
+                    },
+                    "templateId": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "templateRevision": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "submissionId": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "formId": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "reference": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "customer": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "name": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "shareable": {
+                      "type": "boolean"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "pending",
+                        "ready",
+                        "failed"
+                      ]
+                    },
+                    "failureCode": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "linkOpens": {
+                      "type": "boolean"
+                    },
+                    "link": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "publicCode": {
+                      "type": "string"
+                    },
+                    "pageCount": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "byteSize": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "renderedAt": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "expiredAt": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "expiresAt": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "createdBy": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "fields": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "key": {
+                            "type": "string"
+                          },
+                          "label": {
+                            "type": "object",
+                            "additionalProperties": {
+                              "type": "string"
+                            }
+                          },
+                          "value": {
+                            "type": "string"
+                          },
+                          "lookupRole": {
+                            "nullable": true,
+                            "type": "string",
+                            "enum": [
+                              "key",
+                              "confirm"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "key",
+                          "label",
+                          "value",
+                          "lookupRole"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "title",
+                    "source",
+                    "templateId",
+                    "templateRevision",
+                    "submissionId",
+                    "formId",
+                    "reference",
+                    "customer",
+                    "shareable",
                     "status",
                     "failureCode",
                     "linkOpens",
@@ -17417,25 +17891,62 @@
                     "title": {
                       "type": "string"
                     },
+                    "source": {
+                      "type": "string",
+                      "enum": [
+                        "generated",
+                        "uploaded"
+                      ]
+                    },
                     "templateId": {
+                      "nullable": true,
                       "type": "string",
                       "format": "uuid",
                       "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                     },
                     "templateRevision": {
+                      "nullable": true,
                       "type": "integer",
                       "minimum": -9007199254740991,
                       "maximum": 9007199254740991
                     },
                     "submissionId": {
+                      "nullable": true,
                       "type": "string",
                       "format": "uuid",
                       "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                     },
                     "formId": {
+                      "nullable": true,
                       "type": "string",
                       "format": "uuid",
                       "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "reference": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "customer": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "name": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "shareable": {
+                      "type": "boolean"
                     },
                     "status": {
                       "type": "string",
@@ -17549,10 +18060,14 @@
                   "required": [
                     "id",
                     "title",
+                    "source",
                     "templateId",
                     "templateRevision",
                     "submissionId",
                     "formId",
+                    "reference",
+                    "customer",
+                    "shareable",
                     "status",
                     "failureCode",
                     "linkOpens",
@@ -17920,25 +18435,62 @@
                     "title": {
                       "type": "string"
                     },
+                    "source": {
+                      "type": "string",
+                      "enum": [
+                        "generated",
+                        "uploaded"
+                      ]
+                    },
                     "templateId": {
+                      "nullable": true,
                       "type": "string",
                       "format": "uuid",
                       "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                     },
                     "templateRevision": {
+                      "nullable": true,
                       "type": "integer",
                       "minimum": -9007199254740991,
                       "maximum": 9007199254740991
                     },
                     "submissionId": {
+                      "nullable": true,
                       "type": "string",
                       "format": "uuid",
                       "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                     },
                     "formId": {
+                      "nullable": true,
                       "type": "string",
                       "format": "uuid",
                       "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "reference": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "customer": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "name": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "shareable": {
+                      "type": "boolean"
                     },
                     "status": {
                       "type": "string",
@@ -18052,10 +18604,335 @@
                   "required": [
                     "id",
                     "title",
+                    "source",
                     "templateId",
                     "templateRevision",
                     "submissionId",
                     "formId",
+                    "reference",
+                    "customer",
+                    "shareable",
+                    "status",
+                    "failureCode",
+                    "linkOpens",
+                    "link",
+                    "publicCode",
+                    "pageCount",
+                    "byteSize",
+                    "renderedAt",
+                    "expiredAt",
+                    "expiresAt",
+                    "createdBy",
+                    "createdAt",
+                    "fields"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller lacks the required permission, or the company does not have the `documents` module switched on (`feature_disabled`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such document."
+          },
+          "422": {
+            "description": "The request failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/documents/{documentId}/share": {
+      "post": {
+        "operationId": "setDocumentShareable",
+        "summary": "Let a document be shown outside the company, or stop it",
+        "description": "Needs `document.upload`. `shareable: false` stops the QR code’s link (it answers as if the code did not exist) and the website lookup at once; `true` lets them show it again, while it is not expired. Each change is recorded in the audit log. Works the same for generated and uploaded documents.",
+        "tags": [
+          "documents"
+        ],
+        "parameters": [
+          {
+            "name": "documentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "shareable": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "shareable"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The document.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "source": {
+                      "type": "string",
+                      "enum": [
+                        "generated",
+                        "uploaded"
+                      ]
+                    },
+                    "templateId": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "templateRevision": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "submissionId": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "formId": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "reference": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "customer": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "name": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "shareable": {
+                      "type": "boolean"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "pending",
+                        "ready",
+                        "failed"
+                      ]
+                    },
+                    "failureCode": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "linkOpens": {
+                      "type": "boolean"
+                    },
+                    "link": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "publicCode": {
+                      "type": "string"
+                    },
+                    "pageCount": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "byteSize": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "renderedAt": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "expiredAt": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "expiresAt": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "createdBy": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "fields": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "key": {
+                            "type": "string"
+                          },
+                          "label": {
+                            "type": "object",
+                            "additionalProperties": {
+                              "type": "string"
+                            }
+                          },
+                          "value": {
+                            "type": "string"
+                          },
+                          "lookupRole": {
+                            "nullable": true,
+                            "type": "string",
+                            "enum": [
+                              "key",
+                              "confirm"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "key",
+                          "label",
+                          "value",
+                          "lookupRole"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "title",
+                    "source",
+                    "templateId",
+                    "templateRevision",
+                    "submissionId",
+                    "formId",
+                    "reference",
+                    "customer",
+                    "shareable",
                     "status",
                     "failureCode",
                     "linkOpens",
@@ -18150,7 +19027,7 @@
       "get": {
         "operationId": "getPublicDocument",
         "summary": "A document, for whoever holds its QR code",
-        "description": "Public. The company, the form, the title and the date. 404 for a code that is unknown, deleted or not ready; 410 `document_expired` for one the company stopped.",
+        "description": "Public. The company, the form, the title and the date. 404 for a code that is unknown, deleted, not ready or not shareable; 410 `document_expired` for one the company stopped.",
         "tags": [
           "documents"
         ],
@@ -18204,6 +19081,10 @@
                         "formTitle": {
                           "type": "string"
                         },
+                        "reference": {
+                          "nullable": true,
+                          "type": "string"
+                        },
                         "createdAt": {
                           "type": "string",
                           "format": "date-time",
@@ -18225,6 +19106,7 @@
                       "required": [
                         "title",
                         "formTitle",
+                        "reference",
                         "createdAt",
                         "pageCount",
                         "byteSize"
@@ -18379,7 +19261,7 @@
       "post": {
         "operationId": "lookupWebsiteDocument",
         "summary": "Find one document from the company’s own website",
-        "description": "For a company’s website server, never a browser: `Authorization: Bearer <website key>`. `key` is the template’s lookup field and the value a visitor typed; `confirm` is the second field, required when the template asks for one. Exact after trimming and ignoring case. Answers `found: false` rather than 404, and never more than one document. Rate-limited per key (429).",
+        "description": "For a company’s website server, never a browser: `Authorization: Bearer <website key>`. Either `reference` (what a visitor typed, matched against any document’s lookup key, an uploaded document’s reference number included) with `customer` as the second value, or `key` (a named template field) with `confirm`. The second value is required when the document has one. Exact after trimming and ignoring case. Only documents the company has made shareable, and whose link has not expired, are found. Answers `found: false` rather than 404, and never more than one document. Needs the company’s documents switch on both sides (Integr8’s `website_files` and the company’s own). Rate-limited per key (429).",
         "tags": [
           "documents"
         ],
@@ -18427,11 +19309,18 @@
                       "field",
                       "value"
                     ]
+                  },
+                  "reference": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "customer": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
                   }
-                },
-                "required": [
-                  "key"
-                ]
+                }
               }
             }
           }
@@ -19063,7 +19952,7 @@
       "get": {
         "operationId": "getWebsiteFile",
         "summary": "Get short-lived links to one customer document",
-        "description": "Server-side website key required. The document ID must already be known to the company website. Returns five-minute links; never a file listing.",
+        "description": "Server-side website key required. The document ID must already be known to the company website. Only a document the company has made shareable, whose link has not expired. Returns five-minute links; never a file listing.",
         "tags": [
           "website"
         ],
@@ -28436,7 +29325,7 @@
       "get": {
         "operationId": "getMedia",
         "summary": "A link to read a stored file",
-        "description": "Anyone in the company may read a file they have the id of: ids are unguessable and are only handed out inside submissions the reader can already see. Links expire in five minutes; `thumbnailUrl` is set once a thumbnail has been made.",
+        "description": "A file follows the record that uses it: whoever may see the submission, job, customer, expense claim, document, item, asset or certificate it belongs to may read it; the company’s logo and app icon every member; a file nothing uses yet only whoever uploaded it. Anyone else is answered 404, as for a file that does not exist. Links expire in five minutes; `thumbnailUrl` is set once a thumbnail has been made.",
         "tags": [
           "media"
         ],
@@ -28551,7 +29440,7 @@
             }
           },
           "404": {
-            "description": "No such stored file, or it was deleted."
+            "description": "No such stored file, it was deleted, or this person may not see what uses it."
           },
           "422": {
             "description": "The request failed validation.",
@@ -42916,6 +43805,7 @@
                                 "document.read",
                                 "document.create",
                                 "document.manage",
+                                "document.upload",
                                 "document.design",
                                 "eta.read",
                                 "eta.prepare",
@@ -43013,6 +43903,7 @@
                           "document.read",
                           "document.create",
                           "document.manage",
+                          "document.upload",
                           "document.design",
                           "eta.read",
                           "eta.prepare",
@@ -43238,6 +44129,7 @@
                                 "document.read",
                                 "document.create",
                                 "document.manage",
+                                "document.upload",
                                 "document.design",
                                 "eta.read",
                                 "eta.prepare",
@@ -43327,6 +44219,7 @@
                                 "document.read",
                                 "document.create",
                                 "document.manage",
+                                "document.upload",
                                 "document.design",
                                 "eta.read",
                                 "eta.prepare",
@@ -43416,6 +44309,7 @@
                                 "document.read",
                                 "document.create",
                                 "document.manage",
+                                "document.upload",
                                 "document.design",
                                 "eta.read",
                                 "eta.prepare",
@@ -43671,6 +44565,7 @@
                         "document.read",
                         "document.create",
                         "document.manage",
+                        "document.upload",
                         "document.design",
                         "eta.read",
                         "eta.prepare",
@@ -43762,6 +44657,7 @@
                         "document.read",
                         "document.create",
                         "document.manage",
+                        "document.upload",
                         "document.design",
                         "eta.read",
                         "eta.prepare",
@@ -43902,6 +44798,7 @@
                           "document.read",
                           "document.create",
                           "document.manage",
+                          "document.upload",
                           "document.design",
                           "eta.read",
                           "eta.prepare",
@@ -43991,6 +44888,7 @@
                           "document.read",
                           "document.create",
                           "document.manage",
+                          "document.upload",
                           "document.design",
                           "eta.read",
                           "eta.prepare",
@@ -44080,6 +44978,7 @@
                           "document.read",
                           "document.create",
                           "document.manage",
+                          "document.upload",
                           "document.design",
                           "eta.read",
                           "eta.prepare",
@@ -44313,6 +45212,7 @@
                         "document.read",
                         "document.create",
                         "document.manage",
+                        "document.upload",
                         "document.design",
                         "eta.read",
                         "eta.prepare",
@@ -44404,6 +45304,7 @@
                         "document.read",
                         "document.create",
                         "document.manage",
+                        "document.upload",
                         "document.design",
                         "eta.read",
                         "eta.prepare",
@@ -44538,6 +45439,7 @@
                           "document.read",
                           "document.create",
                           "document.manage",
+                          "document.upload",
                           "document.design",
                           "eta.read",
                           "eta.prepare",
@@ -44627,6 +45529,7 @@
                           "document.read",
                           "document.create",
                           "document.manage",
+                          "document.upload",
                           "document.design",
                           "eta.read",
                           "eta.prepare",
@@ -44716,6 +45619,7 @@
                           "document.read",
                           "document.create",
                           "document.manage",
+                          "document.upload",
                           "document.design",
                           "eta.read",
                           "eta.prepare",
@@ -44983,6 +45887,7 @@
                           "document.read",
                           "document.create",
                           "document.manage",
+                          "document.upload",
                           "document.design",
                           "eta.read",
                           "eta.prepare",
@@ -45072,6 +45977,7 @@
                           "document.read",
                           "document.create",
                           "document.manage",
+                          "document.upload",
                           "document.design",
                           "eta.read",
                           "eta.prepare",
@@ -45161,6 +46067,7 @@
                           "document.read",
                           "document.create",
                           "document.manage",
+                          "document.upload",
                           "document.design",
                           "eta.read",
                           "eta.prepare",
@@ -106724,7 +107631,7 @@
       "get": {
         "operationId": "getAssetTimeline",
         "summary": "Everything an asset has been through",
-        "description": "Newest first: its own events, the jobs linked to it, and the submissions, parts and files that name it or whose job has no other asset. Anyone who may read the asset sees all of it, whoever did the work.",
+        "description": "Newest first: its own events, the jobs linked to it, and the submissions, parts and files that name it or whose job has no other asset. Anyone who may read the asset sees all of it, whoever did the work. With `limit`, one page at a time: `nextCursor` is passed back as `before` for the older entries (\"Show older\"), and is null on the last page. Without `limit`, the whole timeline, as before paging existed.",
         "tags": [
           "assets"
         ],
@@ -106738,11 +107645,30 @@
               "format": "uuid",
               "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
             }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            }
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 400
+            }
           }
         ],
         "responses": {
           "200": {
-            "description": "The timeline.",
+            "description": "The timeline, or one page of it.",
             "content": {
               "application/json": {
                 "schema": {
@@ -107617,10 +108543,15 @@
                           }
                         ]
                       }
+                    },
+                    "nextCursor": {
+                      "nullable": true,
+                      "type": "string"
                     }
                   },
                   "required": [
-                    "entries"
+                    "entries",
+                    "nextCursor"
                   ],
                   "additionalProperties": false
                 }
@@ -107651,14 +108582,7 @@
             "description": "No such asset."
           },
           "422": {
-            "description": "The request failed validation.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "description": "A `before` this API did not hand out (`invalid_cursor`)."
           },
           "429": {
             "description": "Rate limit exceeded.",

@@ -134,6 +134,7 @@ export const apiErrorsAr: Catalogue<typeof apiErrorsEn> = {
   document_fields_invalid: 'بعض حقول المستند ناقصة أو أطول من المسموح. راجع الحقول المحددة أدناه.',
   document_link_unavailable:
     'لا يمكن إنشاء المستندات بعد: لا يوجد لهذا الخادم عنوان ويب لرمز QR. تواصل مع Integr8.',
+  document_not_pdf: 'لا يمكن رفع مستند إلا بصيغة PDF. اختر ملف PDF.',
   document_template_archived: 'هذا القالب مؤرشف. اختر قالبًا آخر.',
   document_template_changed: 'حفظ شخص آخر هذا القالب في الأثناء. افتحه من جديد لترى تغييراته.',
   document_template_image_unusable:
@@ -141,6 +142,7 @@ export const apiErrorsAr: Catalogue<typeof apiErrorsEn> = {
   document_template_invalid: 'في القالب مشكلات، كل منها مذكور أدناه.',
   document_template_problem: 'هذا الجزء من القالب يحتاج إلى تصحيح.',
   document_template_wrong_form: 'هذا القالب يخص نموذجًا آخر.',
+  document_too_large: 'حجم ملف PDF هذا أكبر من 20 ميجابايت. ارفع ملفًا أصغر.',
   double_booked: 'هذا الشخص مكلَّف بمهمة أخرى في ذلك الوقت.',
   draft_changed: 'حُفظت المسودة مرة أخرى منذ راجعتها. راجعها من جديد قبل النشر.',
   draft_conflict:

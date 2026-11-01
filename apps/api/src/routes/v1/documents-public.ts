@@ -22,13 +22,15 @@ import { iso } from './schemas.js';
  * **The QR code's link** (D7): `/d/<code>` on the web app reads these. The code
  * is a 128-bit capability: whoever holds it sees the company, the form, the
  * date, and may view and download the PDF, with no account. A code that is
- * unknown, deleted, not yet printed, or whose company is not active answers
- * 404 alike; one the company expired answers 410, which tells the holder
- * nothing they did not already have.
+ * unknown, deleted, not yet printed, not shareable (0067), or whose company is
+ * not active answers 404 alike; one the company expired answers 410, which
+ * tells the holder nothing they did not already have.
  *
  * **The website lookup** (D10): a company's own server, holding a website key
- * issued from the dashboard, asks for one document by the template's lookup
- * field. One match or none, never a list; an expired document is not found.
+ * issued from the dashboard, asks for one document by its reference (the
+ * template's lookup field, or an uploaded document's reference number) and,
+ * where the document has one, a second value. One match or none, never a
+ * list; an expired or unshared document is not found.
  */
 
 const TAGS = ['documents'];
@@ -44,7 +46,10 @@ const publicDocumentSchema = z.object({
   }),
   document: z.object({
     title: z.string(),
+    /** The form it was made from; empty for an uploaded document. */
     formTitle: z.string(),
+    /** An uploaded document's reference number; null for a generated one (0067). */
+    reference: z.string().nullable(),
     createdAt: z.iso.datetime(),
     pageCount: z.number().int().nullable(),
     byteSize: z.number().int().nullable(),
@@ -69,10 +74,11 @@ async function byCode(code: string): Promise<Found> {
   }
   const { document, formTitle } = await withTenant(found.tenantId, async (tx) => {
     const record = await tx.documents.find(found.documentId);
-    const form = record === undefined ? undefined : await tx.forms.findForm(record.formId);
+    const form = record?.formId == null ? undefined : await tx.forms.findForm(record.formId);
     return { document: record, formTitle: form?.title ?? '' };
   });
-  if (document?.status !== 'ready') {
+  // Not shared is answered exactly as not found: the holder learns nothing.
+  if (document?.status !== 'ready' || !document.shareable) {
     throw notFound('This link is not valid.');
   }
   if (!linkOpens(document)) {
@@ -92,6 +98,7 @@ function publicBody(found: Found): z.infer<typeof publicDocumentSchema> {
     document: {
       title: found.document.title,
       formTitle: found.formTitle,
+      reference: found.document.reference,
       createdAt: iso(found.document.createdAt),
       pageCount: found.document.pageCount,
       byteSize: found.document.byteSize,
@@ -105,7 +112,7 @@ export const getPublicDocumentRoute = defineRoute({
   operationId: 'getPublicDocument',
   summary: 'A document, for whoever holds its QR code',
   description:
-    'Public. The company, the form, the title and the date. 404 for a code that is unknown, deleted or not ready; 410 `document_expired` for one the company stopped.',
+    'Public. The company, the form, the title and the date. 404 for a code that is unknown, deleted, not ready or not shareable; 410 `document_expired` for one the company stopped.',
   tags: TAGS,
   security: 'public',
   params: codeParams,
@@ -182,6 +189,30 @@ const lookupFieldSchema = z.object({
   value: z.string().trim().min(1).max(500),
 });
 
+const lookupBodySchema = z
+  .object({
+    /** The template's lookup field and the value a visitor typed. */
+    key: lookupFieldSchema.optional(),
+    /** The second field, when the template asks for one. */
+    confirm: lookupFieldSchema.optional(),
+    /**
+     * Instead of `key`: the reference a visitor typed (a certificate number),
+     * matched against whichever field is a document's lookup key, an uploaded
+     * document's reference number included (0067).
+     */
+    reference: z.string().trim().min(1).max(500).optional(),
+    /** With `reference`: the second value, such as the customer's name, when the document has one. */
+    customer: z.string().trim().min(1).max(500).optional(),
+  })
+  .refine((body) => (body.key === undefined) !== (body.reference === undefined), {
+    message: 'Give either `key` or `reference`.',
+    path: ['reference'],
+  })
+  .refine((body) => body.customer === undefined || body.reference !== undefined, {
+    message: '`customer` goes with `reference`; with `key`, use `confirm`.',
+    path: ['customer'],
+  });
+
 const lookupResultSchema = z.object({
   found: z.boolean(),
   document: z
@@ -210,14 +241,14 @@ export const websiteDocumentLookupRoute = defineRoute({
   operationId: 'lookupWebsiteDocument',
   summary: 'Find one document from the company’s own website',
   description:
-    'For a company’s website server, never a browser: `Authorization: Bearer <website key>`. `key` is the template’s lookup field and the value a visitor typed; `confirm` is the second field, required when the template asks for one. Exact after trimming and ignoring case. Answers `found: false` rather than 404, and never more than one document. Rate-limited per key (429).',
+    'For a company’s website server, never a browser: `Authorization: Bearer <website key>`. Either `reference` (what a visitor typed, matched against any document’s lookup key, an uploaded document’s reference number included) with `customer` as the second value, or `key` (a named template field) with `confirm`. The second value is required when the document has one. Exact after trimming and ignoring case. Only documents the company has made shareable, and whose link has not expired, are found. Answers `found: false` rather than 404, and never more than one document. Needs the company’s documents switch on both sides (Integr8’s `website_files` and the company’s own). Rate-limited per key (429).',
   tags: TAGS,
   security: 'public',
   websiteKeyAuth: true,
   allowedWhenReadOnly: true,
   params: noSchema,
   query: noSchema,
-  body: z.object({ key: lookupFieldSchema, confirm: lookupFieldSchema.optional() }),
+  body: lookupBodySchema,
   responses: {
     200: { description: 'One document, or none.', schema: lookupResultSchema },
     401: { description: 'No website key, or not a live one (`website_key_invalid`).' },
@@ -267,8 +298,15 @@ export const websiteDocumentLookupRoute = defineRoute({
     }
 
     const match = await withTenant(live.tenantId, async (tx) => {
-      const document = await tx.documents.lookup({ key: body.key, confirm: body.confirm });
-      const form = document === undefined ? undefined : await tx.forms.findForm(document.formId);
+      const document = await tx.documents.lookup(
+        body.reference === undefined
+          ? { key: body.key!, confirm: body.confirm }
+          : {
+              key: { value: body.reference },
+              confirm: body.customer === undefined ? undefined : { value: body.customer },
+            },
+      );
+      const form = document?.formId == null ? undefined : await tx.forms.findForm(document.formId);
       return document === undefined ? undefined : { document, formTitle: form?.title ?? '' };
     });
     await getPlatformDataSource().websiteKeys.recordUse(live.id, match !== undefined);
