@@ -18,15 +18,27 @@
  * find-and-replace.
  */
 
+import type { Locale } from '@integr8/i18n';
+
+/** One article as the help page shows it, in the reader's language. */
 export interface HelpArticle {
   slug: string;
-  category: 'getting-started' | 'forms' | 'mobile' | 'people' | 'billing';
+  category: string;
+  /** The category's name, in the same language as the article. */
+  categoryLabel: string;
   question: string;
   /** Paragraphs. Rendered in order, no markup. */
   answer: string[];
 }
 
-export const HELP_ARTICLES: readonly HelpArticle[] = [
+interface DraftArticle {
+  slug: string;
+  category: 'getting-started' | 'forms' | 'mobile' | 'people' | 'billing';
+  question: string;
+  answer: string[];
+}
+
+export const HELP_ARTICLES: readonly DraftArticle[] = [
   {
     slug: 'what-do-i-do-first',
     category: 'getting-started',
@@ -181,3 +193,20 @@ export const HELP_CATEGORIES = [
   { key: 'people', label: 'People' },
   { key: 'billing', label: 'Billing' },
 ] as const;
+
+/**
+ * The articles for one language, each carrying its category's name.
+ *
+ * A stand-in with the bilingual library's signature (Low 12), so the help
+ * page is written against the function that replaces this file: for now
+ * every language gets these English articles.
+ */
+export function helpArticlesFor(locale: Locale): readonly HelpArticle[] {
+  void locale;
+  return HELP_ARTICLES.map((article) => ({
+    ...article,
+    categoryLabel:
+      HELP_CATEGORIES.find((category) => category.key === article.category)?.label ??
+      article.category,
+  }));
+}

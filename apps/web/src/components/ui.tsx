@@ -49,6 +49,8 @@ export function Button({ variant = 'primary', busy = false, children, ...rest }:
       aria-busy={busy}
       className={[
         'inline-flex items-center justify-center gap-2 rounded-md px-4 py-2',
+        // Inside the Integr8 Media look (public pages, /platform) buttons are its pills.
+        'in-data-[look=integr8]:rounded-full in-data-[look=integr8]:px-5',
         'text-sm font-medium transition-colors',
         'disabled:cursor-not-allowed disabled:opacity-60',
         BUTTON_VARIANTS[variant],
@@ -99,7 +101,7 @@ export function Field({ label, error, hint, ...rest }: FieldProps) {
         aria-invalid={error !== undefined}
         aria-describedby={describedBy === '' ? undefined : describedBy}
         className={[
-          'rounded-md border bg-surface px-3 py-2 text-content',
+          'rounded-md border bg-surface px-3 py-2 text-content in-data-[look=integr8]:rounded-xl',
           // `text-start`, not `text-left`: this input holds Arabic one day.
           'text-start text-sm',
           error === undefined ? 'border-border-subtle' : 'border-danger',

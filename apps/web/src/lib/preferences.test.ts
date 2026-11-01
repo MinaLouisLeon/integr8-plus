@@ -1,31 +1,54 @@
-import { negotiateLocale } from '@integr8/i18n/core';
-import { describe, expect, it } from 'vitest';
-import { acceptedLanguages } from './preferences';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
- * Parsing `Accept-Language` is the one piece of `preferences.ts` that is worth
- * testing on its own: the rest is cookie reads, and getting the quality
- * ordering wrong shows somebody the wrong language without ever erroring.
+ * English first (Low 3): the locale is the remembered choice, and without one
+ * it is English, whatever language the browser asks for.
  */
-describe('Accept-Language', () => {
-  it('orders by quality, best first', () => {
-    expect(acceptedLanguages('en;q=0.5,ar;q=0.9')).toEqual(['ar', 'en']);
+
+const store = vi.hoisted(() => ({
+  cookies: new Map<string, string>(),
+}));
+
+vi.mock('next/headers', () => ({
+  cookies: () =>
+    Promise.resolve({
+      get: (name: string) => {
+        const value = store.cookies.get(name);
+        return value === undefined ? undefined : { name, value };
+      },
+    }),
+  // An Arabic browser. Reading this would make the first test fail.
+  headers: () => Promise.resolve(new Headers({ 'accept-language': 'ar-EG,ar;q=0.9,en;q=0.5' })),
+}));
+
+const { LOCALE_COOKIE, readPreferences, resolveLocale } = await import('./preferences');
+
+describe('the locale', () => {
+  beforeEach(() => {
+    store.cookies.clear();
   });
 
-  it('treats a tag with no quality as the most preferred', () => {
-    expect(acceptedLanguages('en-GB,en;q=0.9,ar;q=0.8')).toEqual(['en-GB', 'en', 'ar']);
+  it('is English when nothing was chosen, even for an Arabic browser', async () => {
+    const preferences = await readPreferences();
+    expect(preferences.locale).toBe('en');
+    expect(preferences.direction).toBe('ltr');
   });
 
-  it('tolerates whitespace and empty entries', () => {
-    expect(acceptedLanguages(' en-GB , , ar ')).toEqual(['en-GB', 'ar']);
+  it('is Arabic, right to left, once Arabic was chosen', async () => {
+    store.cookies.set(LOCALE_COOKIE, 'ar');
+    const preferences = await readPreferences();
+    expect(preferences.locale).toBe('ar');
+    expect(preferences.direction).toBe('rtl');
   });
 
-  it('returns nothing when the header is absent', () => {
-    expect(acceptedLanguages(null)).toEqual([]);
+  it('stays English when English was chosen', async () => {
+    store.cookies.set(LOCALE_COOKIE, 'en');
+    expect((await readPreferences()).locale).toBe('en');
   });
 
-  it('feeds the negotiator, which matches on language and ignores region', () => {
-    expect(negotiateLocale(acceptedLanguages('ar-EG,en;q=0.5'))).toBe('ar');
-    expect(negotiateLocale(acceptedLanguages('fr-FR,de;q=0.5'))).toBe('en');
+  it('ignores a cookie that names no language this product has', () => {
+    expect(resolveLocale('fr')).toBe('en');
+    expect(resolveLocale('')).toBe('en');
+    expect(resolveLocale(undefined)).toBe('en');
   });
 });

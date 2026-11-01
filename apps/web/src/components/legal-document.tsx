@@ -40,7 +40,7 @@ export function LegalDocumentPage({ document }: { document: LegalDocument }) {
                   href={legalPath(other)}
                   aria-current={other === document ? 'page' : undefined}
                   className={[
-                    'inline-flex rounded-md px-3 py-1.5',
+                    'inline-flex rounded-full px-4 py-1.5',
                     other === document
                       ? 'bg-accent-subtle font-medium text-content'
                       : 'text-content-muted hover:bg-surface-muted hover:text-content',
@@ -51,7 +51,10 @@ export function LegalDocumentPage({ document }: { document: LegalDocument }) {
               </li>
             ))}
           </ul>
-          <h1 id="legal-title" className="text-3xl font-bold tracking-tight text-content">
+          <h1
+            id="legal-title"
+            className="font-display text-4xl leading-tight font-semibold text-content sm:text-5xl"
+          >
             {t(`legal.documents.${document}`)}
           </h1>
           <p className="text-sm text-content-muted">
@@ -88,9 +91,12 @@ export function LegalDocumentPage({ document }: { document: LegalDocument }) {
             key={section.id}
             id={section.id}
             aria-labelledby={`${section.id}-title`}
-            className="flex scroll-mt-6 flex-col gap-3"
+            className="flex scroll-mt-28 flex-col gap-3"
           >
-            <h2 id={`${section.id}-title`} className="text-xl font-semibold text-content">
+            <h2
+              id={`${section.id}-title`}
+              className="font-display text-xl font-semibold text-content"
+            >
               {section.title}
             </h2>
             {parseLegalBody(section.body).map((block, blockIndex) =>
@@ -114,7 +120,7 @@ export function LegalDocumentPage({ document }: { document: LegalDocument }) {
 
         <section
           aria-labelledby="legal-operator"
-          className="flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-5"
+          className="flex flex-col gap-3 rounded-3xl border border-border-subtle bg-surface p-7"
         >
           <h2 id="legal-operator" className="text-lg font-semibold text-content">
             {t('legal.operator.title')}

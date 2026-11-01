@@ -10,12 +10,19 @@ import Link from 'next/link';
  * data protection law both expect the privacy policy to be one click away
  * from anywhere somebody hands over their details.
  */
-export function LegalLinks({ className }: { className?: string }) {
+export function LegalLinks({
+  className,
+  listClassName = 'flex flex-wrap gap-x-4 gap-y-1 text-sm text-content-muted',
+}: {
+  className?: string;
+  /** The list's own classes: a row by default, a column in the public footer. */
+  listClassName?: string;
+}) {
   const { t } = useTranslation();
 
   return (
     <nav aria-label={t('legal.nav')} className={className}>
-      <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-content-muted">
+      <ul className={listClassName}>
         {LEGAL_DOCUMENTS.map((document) => (
           <li key={document}>
             <Link href={legalPath(document)} className="hover:text-content hover:underline">
