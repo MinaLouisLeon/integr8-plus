@@ -351,6 +351,9 @@ export type {
   FormTemplateRecord,
   FormTemplatesReader,
   FormTemplatesWriter,
+  LibraryContent,
+  LibraryDocument,
+  LibraryFile,
 } from './repositories/form-templates.js';
 
 export type {
@@ -495,6 +498,9 @@ export {
   SalesQuotesRepository,
 } from './repositories/sales-quotes.js';
 export {
+  BUSINESS_DOCUMENT_KINDS,
+  type BusinessDocumentKind,
+  type BusinessDocumentRecord,
   type DocumentFieldValue,
   type DocumentListQuery,
   type DocumentRecord,
@@ -502,6 +508,7 @@ export {
   type WebsiteKey,
   DocumentsRepository,
   DocumentTemplatesRepository,
+  isBusinessDocumentKind,
   linkOpens,
   MAX_LIVE_WEBSITE_KEYS,
   normalizeFieldValue,
@@ -867,6 +874,7 @@ export {
 
 export {
   FORM_TEMPLATE_CATEGORIES,
+  FORM_TEMPLATE_SOURCES,
   FORM_VERSION_STATUSES,
   formVersionStatusSchema,
   MEDIA_CATEGORIES,
@@ -877,6 +885,7 @@ export {
   SUBMISSION_EVENT_KINDS,
   SUBMISSION_STATUSES,
   type FormTemplateCategory,
+  type FormTemplateSource,
   type FormVersionStatus,
   type MediaCategory,
   type DocumentLookupRole,

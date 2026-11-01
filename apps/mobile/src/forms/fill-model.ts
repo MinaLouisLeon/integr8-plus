@@ -16,6 +16,7 @@ import {
 } from '@integr8/form-engine';
 import {
   firstPerField,
+  localNow,
   pageIndexOfField,
   problemsPerPage,
   progressFraction,
@@ -244,7 +245,7 @@ export class FillModel {
 
   /** What is submitted: visible answers only, no calculated values — the engine's rule. */
   submission(): Record<string, unknown> {
-    return toSubmission(this.form, this.#state, this.#context);
+    return toSubmission(this.form, this.#state, this.#now());
   }
 
   /**
@@ -296,12 +297,12 @@ export class FillModel {
   #reopen(): void {
     if (this.#reviewing) {
       this.#reviewing = false;
-      this.#state = transition(this.form, this.#state, { type: 'reopen' }, this.#context).state;
+      this.#state = transition(this.form, this.#state, { type: 'reopen' }, this.#now()).state;
     }
   }
 
   #dispatch(event: FormEvent): Transition {
-    const result = transition(this.form, this.#state, event, this.#context);
+    const result = transition(this.form, this.#state, event, this.#now());
     this.#state = result.state;
     if (
       result.accepted &&
@@ -353,8 +354,16 @@ export class FillModel {
     }
   }
 
+  /**
+   * The context rules are worked out in: the caller's, with `now` (schema
+   * version 2) read from the clock at each change unless the caller fixed it.
+   */
+  #now(): EvaluationContext {
+    return this.#context.now === undefined ? { ...this.#context, now: localNow() } : this.#context;
+  }
+
   #build(): FillSnapshot {
-    const view = viewForm(this.form, this.#state, this.#context);
+    const view = viewForm(this.form, this.#state, this.#now());
     const pages = visiblePages(this.form, view);
     const pageIndex = Math.min(this.#pageIndex, Math.max(pages.length - 1, 0));
     const open = this.#openEntry;

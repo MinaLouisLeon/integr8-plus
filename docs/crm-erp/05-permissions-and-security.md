@@ -181,6 +181,19 @@ The invoice is a commercial record. The issuer block is printed as the company
 typed it, and the settings screen says so; Integr8 makes no tax, e-invoicing
 or compliance claim.
 
+**Server-made PDFs (1.3.0).** Quotes, invoices, purchase orders and job reports
+printed by the server add no permission: seeing a record's PDFs needs reading
+the record (`sales.read`, `finance.read`, `purchasing.read` with seeing purchase
+prices, or reading the job); making one needs managing it (`sales.manage`,
+`finance.manage`, `purchasing.manage`, or reading the job and holding
+`work_order.manage` or `work_order.progress`); emailing one needs the same,
+except `work_order.manage` for a job report. A viewer makes and sends nothing.
+Every one also needs the `documents` module; drafts are not printed; a new PDF's
+QR page opens only once someone with `document.upload` shares it. The job
+report prints only comments marked for the customer, and the PDF is a snapshot
+taken with the asking seat's own view of the record. See
+[`docs/documents/BUSINESS-PDFS.md`](../documents/BUSINESS-PDFS.md).
+
 ## Assets (phase E3; ADR-0008)
 
 | Permission     | Owner | Admin | Dispatcher | Engineer | Viewer |

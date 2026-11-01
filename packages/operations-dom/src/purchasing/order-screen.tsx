@@ -32,6 +32,7 @@ import {
   LinesEditor,
 } from './order-list.js';
 import { PurchaseOrderDocument } from './order-document.js';
+import { BusinessPdfPanel } from '../documents/business-pdfs.js';
 import {
   isPositiveQuantity,
   isQuantity,
@@ -236,6 +237,10 @@ export function OrderScreen({ orderId }: { orderId: string }) {
         </header>
 
         {error === undefined ? null : <Failure error={error} />}
+
+        {order.status === 'draft' ? null : (
+          <BusinessPdfPanel kind="purchase_order" recordId={order.id} />
+        )}
 
         <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-3">
           <div className="flex flex-col">

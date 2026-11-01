@@ -26,7 +26,7 @@ import {
   useTheme,
 } from '~/components/ui';
 import { formatWhen } from '~/lib/format';
-import { assetStart, startForm } from '~/forms/session';
+import { assetStart, liveNeedsNewerApp, startForm } from '~/forms/session';
 import { linkAsset, openAssetFile, recordCondition } from '~/local/job-actions';
 import { localData } from '~/local/local-data';
 import { useLocalQuery } from '~/local/react';
@@ -156,6 +156,10 @@ function Asset() {
                 setBusy(true);
                 void assetStart(context, { form, workOrderId, assetId: data.asset.id })
                   .then(async (start) => {
+                    if (await liveNeedsNewerApp(context, form)) {
+                      Alert.alert(t('fill.updateApp.title'), t('fill.updateApp.body'));
+                      return;
+                    }
                     const submissionId = await startForm(context, {
                       form,
                       workOrderId,

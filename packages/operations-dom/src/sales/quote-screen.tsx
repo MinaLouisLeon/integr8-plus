@@ -23,6 +23,7 @@ import {
   SalesLinesEditor,
 } from './sales-parts.js';
 import { QuoteDocument } from './quote-document.js';
+import { BusinessPdfPanel, MakePdfDialog } from '../documents/business-pdfs.js';
 
 /**
  * One quote (CRM/ERP plan, phase S1; ADR-0006): its lines and totals, who it
@@ -38,6 +39,8 @@ export function QuoteScreen({ quoteId }: { quoteId: string }) {
   const [details, setDetails] = useState<Details | null>(null);
   const [link, setLink] = useState<{ url: string | null; token: string } | null>(null);
   const [answering, setAnswering] = useState(false);
+  // The customer's link, kept only while its PDF is being asked for (1.3.0).
+  const [pdfLink, setPdfLink] = useState<string | null>(null);
 
   const me = useQuery({
     queryKey: keys.me,
@@ -537,6 +540,8 @@ export function QuoteScreen({ quoteId }: { quoteId: string }) {
           </section>
         )}
 
+        {quote.status === 'draft' ? null : <BusinessPdfPanel kind="quote" recordId={quote.id} />}
+
         {link === null ? null : (
           <Dialog
             title={t('sales.quotes.linkTitle')}
@@ -555,15 +560,35 @@ export function QuoteScreen({ quoteId }: { quoteId: string }) {
               >
                 {link.url ?? `/q/${link.token}`}
               </output>
-              <button
-                type="button"
-                className={`${buttonClass.secondary} self-start`}
-                onClick={() => copyText(link.url ?? `/q/${link.token}`)}
-              >
-                {t('sales.quotes.copyLink')}
-              </button>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className={buttonClass.secondary}
+                  onClick={() => copyText(link.url ?? `/q/${link.token}`)}
+                >
+                  {t('sales.quotes.copyLink')}
+                </button>
+                <button
+                  type="button"
+                  className={buttonClass.secondary}
+                  onClick={() => {
+                    setPdfLink(link.token);
+                    setLink(null);
+                  }}
+                >
+                  {t('businessPdfs.make.withLink')}
+                </button>
+              </div>
             </div>
           </Dialog>
+        )}
+        {pdfLink === null ? null : (
+          <MakePdfDialog
+            kind="quote"
+            recordId={quote.id}
+            quoteLinkToken={pdfLink}
+            onClose={() => setPdfLink(null)}
+          />
         )}
         {answering ? (
           <AnswerDialog

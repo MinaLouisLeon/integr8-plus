@@ -82,7 +82,11 @@ function design(language: 'en' | 'ar'): TemplateDesign {
 }
 
 function render(language: 'en' | 'ar') {
-  return renderDocumentHtml({
+  return renderDocumentHtml(renderInput(language));
+}
+
+function renderInput(language: 'en' | 'ar'): Parameters<typeof renderDocumentHtml>[0] {
+  return {
     design: design(language),
     form: form(),
     answers: { customer: language === 'ar' ? 'شركة النيل' : 'Nile Co.', notes: 'ok' },
@@ -101,7 +105,7 @@ function render(language: 'en' | 'ar') {
     qrUrl: 'https://app.integr8.example/d/abcdefghijklmnopqrstuv',
     images: { logo: null, files: {}, media: {} },
     mode: 'pdf',
-  });
+  };
 }
 
 async function png(width: number, height: number, alpha = false): Promise<Uint8Array> {
@@ -235,6 +239,54 @@ describe('the Chromium printer', () => {
         { title: 'تقرير', author: 'Integr8 Test' },
       );
       expect(final.pageCount).toBe((await PDFDocument.load(arabic)).getPageCount());
+    },
+  );
+
+  it.skipIf(CHROMIUM === undefined)(
+    'prints landscape, with a header left off the first page by printing that page apart',
+    { timeout: 180_000 },
+    async () => {
+      const printer = new ChromiumPrinter({
+        executablePath: CHROMIUM!,
+        timeoutMs: 90_000,
+        maxConcurrent: 1,
+      });
+      printers.push(printer);
+      const base = design('ar');
+      const rendered = renderDocumentHtml({
+        ...renderInput('ar'),
+        design: {
+          ...base,
+          page: {
+            ...base.page,
+            orientation: 'landscape',
+            margins: { ...base.page.margins, top: 25 },
+            header: {
+              start: { kind: 'text', text: { ar: 'شركة النيل' }, bold: true },
+              center: null,
+              end: { kind: 'page' },
+              notOnFirstPage: true,
+            },
+          },
+        },
+      });
+      expect(rendered.firstPage?.hasHeader).toBe(false);
+      const merged = await PDFDocument.load(await printer.print(rendered));
+      const { firstPage: _first, ...everyPage } = rendered;
+      const plain = await PDFDocument.load(await printer.print(everyPage));
+      expect(merged.getPageCount()).toBe(plain.getPageCount());
+      expect(merged.getPageCount()).toBeGreaterThan(1);
+      const { width, height } = merged.getPage(0).getSize();
+      expect(Math.round(width)).toBe(842);
+      expect(Math.round(height)).toBe(595);
+      const background = await backgroundImage(await png(1600, 1131), 'landscape');
+      const final = await underlayBackgrounds(
+        await merged.save(),
+        { every: background! },
+        { title: 't', author: 'a' },
+      );
+      const page = (await PDFDocument.load(final.bytes)).getPage(0).getSize();
+      expect(Math.round(page.width)).toBe(842);
     },
   );
 });

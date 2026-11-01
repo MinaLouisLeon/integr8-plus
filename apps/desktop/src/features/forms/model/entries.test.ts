@@ -13,13 +13,7 @@ import {
 import { createI18n } from '@integr8/i18n';
 import { describe, expect, it } from 'vitest';
 import { completeExpression, lookupIn } from '../components/condition-builder';
-import {
-  calculationSources,
-  fromCalculation,
-  termFromKey,
-  termKey,
-  toCalculation,
-} from './calculation';
+import { formulaSources, parseFormula, printFormula } from './formula';
 import { breakingText, issueText } from './issues';
 import {
   limitProblem,
@@ -254,48 +248,39 @@ describe('conditions across entries', () => {
 
 describe('calculations across entries', () => {
   it('works out a total, the smallest, the largest and a count, and reads them back', () => {
-    const calculation = {
-      first: {
-        kind: 'aggregate' as const,
-        operator: 'sum' as const,
-        section: 'radiators',
-        field: 'watts',
-      },
-      rest: [
-        { operator: 'divide' as const, term: { kind: 'count' as const, section: 'radiators' } },
-      ],
-    };
-    const expression = fromCalculation(calculation);
-    expect(expression).toEqual({
+    const sources = formulaSources(form(), 'total');
+    const parsed = parseFormula('sum([radiators], [watts]) / count([radiators])', sources, 'en');
+    expect(parsed.ok && parsed.expression).toEqual({
       kind: 'arithmetic',
       operator: 'divide',
       left: { kind: 'aggregate', operator: 'sum', section: 'radiators', field: 'watts' },
       right: { kind: 'count', section: 'radiators' },
     });
-    expect(toCalculation(expression)).toEqual(calculation);
-    expect(compiles(form({}, [note, { ...total, calculation: expression }]))).toEqual([]);
-
-    for (const term of [calculation.first, calculation.rest[0]!.term]) {
-      expect(termFromKey(termKey(term))).toEqual(term);
+    if (!parsed.ok) {
+      return;
     }
-    expect(termFromKey(termKey({ kind: 'field', field: 'watts' }))).toEqual({
-      kind: 'field',
-      field: 'watts',
-    });
+    expect(compiles(form({}, [note, { ...total, calculation: parsed.expression }]))).toEqual([]);
+    const printed = printFormula(parsed.expression, form(), 'en')!;
+    expect(parseFormula(printed, sources, 'en')).toEqual(parsed);
+    for (const operator of ['min', 'max'] as const) {
+      expect(parseFormula(`${operator}([radiators], [watts])`, sources, 'en')).toMatchObject({
+        expression: { kind: 'aggregate', operator },
+      });
+    }
   });
 
   it('offers each field only what it can read where it sits', () => {
-    const outside = calculationSources(form(), 'total');
-    expect(outside.fields.map((field) => field.id)).toEqual([]);
+    const outside = formulaSources(form(), 'total');
+    expect(outside.questions.map((field) => field.id)).toEqual([]);
     expect(
       outside.sections.map(({ section, numbers }) => [section.id, numbers.map((n) => n.id)]),
     ).toEqual([['radiators', ['watts']]]);
 
-    const inside = calculationSources(
+    const inside = formulaSources(
       form({ fields: [room, watts, newField('number', 'doubled', { en: 'Doubled' })] }),
       'doubled',
     );
-    expect(inside.fields.map((field) => field.id)).toEqual(['watts', 'total']);
+    expect(inside.questions.map((field) => field.id)).toEqual(['watts', 'total']);
     expect(inside.sections).toEqual([]);
   });
 });

@@ -21,7 +21,7 @@ Current project state and known gotchas: `MEMORY.md`.
 
 ## Workspace
 
-pnpm 10 workspaces + Turborepo, Node 22.22.1 or newer 22.x (22.22.2 recommended, see `.nvmrc`), TypeScript 6.0.3 (pinned on purpose —
+pnpm 10 workspaces + Turborepo, Node 22.22.1 or newer 22.x (22.23.4 recommended, see `.nvmrc`), TypeScript 6.0.3 (pinned on purpose —
 see `CONTRIBUTING.md`), Vitest, ESLint (type-aware, flat config), Prettier. Every dependency
 is pinned to an exact version.
 
@@ -31,11 +31,13 @@ is pinned to an exact version.
 | `apps/web`                   | `@integr8/web`               | Next.js: marketing, office app, billing, platform dashboard. Port 3001          |
 | `apps/desktop`               | `@integr8/desktop`           | React + Vite SPA in Tauri v2; `staff` / `company` flavours. Port 3002           |
 | `apps/mobile`                | `@integr8/mobile`            | Expo Router, offline-first (SQLCipher); one build per company                   |
+| `apps/forms-ai`              | `@integr8/forms-ai`          | Offline MCP server + installer for AI tools writing `.integr8form`; Node SEA    |
 | `packages/core`              | `@integr8/core`              | Domain types, zod schemas, permission matrix, navigation model                  |
 | `packages/db`                | `@integr8/db`                | Migrations, repositories, tenant isolation, seeds — the only place SQL runs     |
 | `packages/auth`              | `@integr8/auth`              | Sessions, EdDSA tokens, refresh rotation, impersonation, offline grants         |
 | `packages/api-client`        | `@integr8/api-client`        | Typed client generated from `apps/api/openapi.json`                             |
 | `packages/form-engine`       | `@integr8/form-engine`       | Pure form engine + conformance suite (Node and Hermes must agree byte-for-byte) |
+| `packages/form-package`      | `@integr8/form-package`      | The `.integr8form` file: pack, strict unpack, publish-level check (Node only)   |
 | `packages/form-input`        | `@integr8/form-input`        | Engine state → what a form filler shows                                         |
 | `packages/form-renderer-dom` | `@integr8/form-renderer-dom` | Form/submission screens for web + desktop                                       |
 | `packages/operations-dom`    | `@integr8/operations-dom`    | Operations screens shared by web + desktop                                      |

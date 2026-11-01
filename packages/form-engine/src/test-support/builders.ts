@@ -1,12 +1,13 @@
 import { type CompiledForm, compileDefinition } from '../compile.js';
 import {
-  DEFINITION_SCHEMA_VERSION,
   type FormDefinition,
   type Page,
   type Section,
+  withRequiredSchemaVersion,
 } from '../definition.js';
 import type { ComparisonOperator, Expression } from '../expression.js';
-import type { Field, FieldOf, FieldType } from '../field-types.js';
+import type { FieldOf, FieldType } from '../field-types.js';
+import type { Information, SectionItem } from '../information.js';
 
 /**
  * Small builders so a test reads like the form it describes.
@@ -75,6 +76,42 @@ export const over = (left: Expression, right: Expression): Expression => ({
   right,
 });
 
+// Schema version 2.
+export const now = (): Expression => ({ kind: 'now' });
+export const round = (operand: Expression, places: number): Expression => ({
+  kind: 'round',
+  operand,
+  places,
+});
+export const percentage = (part: Expression, whole: Expression): Expression => ({
+  kind: 'percentage',
+  part,
+  whole,
+});
+export const statistic = (
+  operator: 'min' | 'max' | 'average',
+  ...operands: Expression[]
+): Expression => ({ kind: 'statistic', operator, operands });
+export const difference = (
+  unit: 'minutes' | 'hours' | 'days',
+  from: Expression,
+  to: Expression,
+): Expression => ({ kind: 'difference', unit, from, to });
+export const shiftDate = (
+  operator: 'add' | 'subtract',
+  unit: 'days' | 'weeks' | 'months',
+  dateValue: Expression,
+  amount: Expression,
+): Expression => ({ kind: 'shift_date', operator, unit, date: dateValue, amount });
+
+/** An Information block (schema version 2). */
+export function information(
+  id: string,
+  extra: Partial<Omit<Information, 'id' | 'type'>> = {},
+): Information {
+  return { id, type: 'information', body: label(`About ${id}`), ...extra };
+}
+
 export const options = (...values: string[]) =>
   values.map((value) => ({ value, label: label(value) }));
 
@@ -111,7 +148,7 @@ export function field<T extends FieldType>(
 
 export function section(
   id: string,
-  fieldsInSection: Field[],
+  fieldsInSection: SectionItem[],
   extra: Partial<Section> = {},
 ): Section {
   return { id, fields: fieldsInSection, ...extra };
@@ -121,12 +158,13 @@ export function page(id: string, sections: Section[], extra: Partial<Page> = {})
   return { id, sections, ...extra };
 }
 
+/** Declaring the lowest format that has what it uses, as the API stores it. */
 export function definition(pages: Page[]): FormDefinition {
-  return { schemaVersion: DEFINITION_SCHEMA_VERSION, title: label('Test form'), pages };
+  return withRequiredSchemaVersion({ schemaVersion: 1, title: label('Test form'), pages });
 }
 
 /** One page, one section, these fields. The common case. */
-export function fields(...members: Field[]): FormDefinition {
+export function fields(...members: SectionItem[]): FormDefinition {
   return definition([page('page_1', [section('section_1', members)])]);
 }
 

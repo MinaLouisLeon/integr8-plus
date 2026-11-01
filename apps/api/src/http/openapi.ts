@@ -133,14 +133,21 @@ function operation(route: AnyRoute): Record<string, unknown> {
     ...(route.description === undefined ? {} : { description: route.description }),
     tags: route.tags,
     ...(parameters.length === 0 ? {} : { parameters }),
-    ...(hasBody
+    ...(route.fileBody !== undefined
       ? {
           requestBody: {
             required: true,
-            content: { 'application/json': { schema: toJsonSchema(route.body, 'input') } },
+            content: { [route.fileBody]: { schema: { type: 'string', format: 'binary' } } },
           },
         }
-      : {}),
+      : hasBody
+        ? {
+            requestBody: {
+              required: true,
+              content: { 'application/json': { schema: toJsonSchema(route.body, 'input') } },
+            },
+          }
+        : {}),
     responses: responses(route),
     ...(route.websiteKeyAuth === true
       ? { security: [{ websiteKeyAuth: [] }] }

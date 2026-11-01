@@ -1,4 +1,5 @@
 import type { FieldOf, FieldType } from '@integr8/form-engine';
+import { useTranslation } from '@integr8/i18n';
 import { fontSize, radii, spacing } from '@integr8/tokens';
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
@@ -19,6 +20,8 @@ export interface WidgetProps<T extends FieldType = FieldType> {
   value: unknown;
   /** The question as shown, for naming controls to a screen reader. */
   label: string;
+  /** Whether it must be answered right now; a tick box shows the mark itself. */
+  required: boolean;
   invalid: boolean;
   /** For a choice whose options depend on another answer: the values on offer. `undefined` offers all. */
   available: readonly string[] | undefined;
@@ -62,13 +65,17 @@ export function ChoiceRow({
   role,
   disabled,
   onPress,
+  question,
 }: {
   label: string;
   selected: boolean;
   role: 'radio' | 'checkbox';
   disabled: boolean;
   onPress: () => void;
+  /** A tick box that is the whole question: its words are the question's, with its required mark. */
+  question?: { required: boolean };
 }) {
+  const { t } = useTranslation();
   const theme = useTheme();
   return (
     <Pressable
@@ -102,7 +109,21 @@ export function ChoiceRow({
           <Text style={[styles.tick, { color: theme.onAccent }]}>✓</Text>
         ) : null}
       </View>
-      <Text style={[styles.choiceLabel, { color: theme.text }]}>{label}</Text>
+      <Text
+        {...(question === undefined ? {} : { testID: 'part:label' })}
+        style={[styles.choiceLabel, { color: theme.text }]}
+      >
+        {label}
+        {question?.required === true ? (
+          <Text
+            testID="part:required"
+            accessibilityLabel={` (${t('fill.required')})`}
+            style={{ color: theme.danger }}
+          >
+            {' *'}
+          </Text>
+        ) : null}
+      </Text>
     </Pressable>
   );
 }
@@ -156,10 +177,14 @@ export function Muted({ children }: { children: ReactNode }) {
   return <Text style={[styles.muted, { color: theme.textMuted }]}>{children}</Text>;
 }
 
-export function Problem({ children }: { children: ReactNode }) {
+export function Problem({ children, testID }: { children: ReactNode; testID?: string }) {
   const theme = useTheme();
   return (
-    <Text accessibilityLiveRegion="polite" style={[styles.muted, { color: theme.danger }]}>
+    <Text
+      accessibilityLiveRegion="polite"
+      {...(testID === undefined ? {} : { testID })}
+      style={[styles.muted, { color: theme.danger }]}
+    >
       {children}
     </Text>
   );

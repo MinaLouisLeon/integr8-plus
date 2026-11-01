@@ -107,6 +107,8 @@ export const apiErrorsEn = {
   breaking_changes_unacknowledged:
     'Publishing changes fields in ways that affect existing submissions or drafts. Review the changes, then confirm to publish.',
   build_token_rejected: 'The build token was not accepted.',
+  business_document_draft:
+    'A draft cannot be made into a PDF. Issue it first, or print it from the browser.',
   category_name_taken: 'There is already a category with this name.',
   category_not_found: 'This category does not exist. Choose another.',
   category_not_usable: 'This category is no longer in use. Choose another.',
@@ -118,6 +120,7 @@ export const apiErrorsEn = {
   code_taken: 'This code is already in use. Choose another.',
   comment_id_taken:
     'This note clashed with another one. Discard the change and write the note again.',
+  company_closed: 'This company is closed. Nothing can be copied to it.',
   completion_blocked: 'This job cannot be completed yet: something it needs is still missing.',
   component_kind: 'A component is a stock or non-stock item. Put labour in the labour cost.',
   confirmed: 'This rule set is confirmed and no longer changes. Add a new one from a later month.',
@@ -161,16 +164,30 @@ export const apiErrorsEn = {
     'Some document fields are missing or too long. Check the fields marked below.',
   document_link_unavailable:
     'Documents cannot be made yet: this server has no web address for the QR code. Ask Integr8.',
+  document_preview_failed: 'The preview could not be printed just now. Try again in a minute.',
   document_not_pdf: 'Only a PDF can be uploaded as a document. Choose a PDF file.',
+  document_not_ready: 'The PDF is not ready yet. Wait a moment and try again.',
   document_template_archived: 'This template is archived. Choose another one.',
   document_template_changed:
     'Someone else saved this template meanwhile. Open it again to see their changes.',
+  document_template_image_missing:
+    'A picture this template uses is no longer stored. Upload it again, then copy.',
   document_template_image_unusable:
     'A picture in the template is not usable. Upload it again as a PNG, JPEG or WebP image.',
   document_template_invalid: 'The template has problems. Each one is listed below.',
+  document_template_mapping_invalid:
+    'A question chosen for the copy cannot take that place. Choose another one.',
   document_template_problem: 'This part of the template needs fixing.',
+  document_template_unmatched:
+    'Some questions the template uses are not in the other form. Choose a question for each, or take out what uses it.',
+  document_template_newer:
+    'This template was saved by a newer version of the designer. Update the app to edit it.',
   document_template_wrong_form: 'This template belongs to another form.',
+  document_templates_affected:
+    'Some PDF templates use questions this version drops or changes. Confirm to publish; they will be marked to fix.',
   document_too_large: 'This PDF is larger than 20 MB. Upload a smaller one.',
+  document_too_large_to_email:
+    'This PDF is larger than 10 MB, too large to email. Download it and share it another way.',
   double_booked: 'This person is on another job at that time.',
   draft_changed:
     'The draft was saved again since you reviewed it. Review it again before publishing.',
@@ -226,10 +243,16 @@ export const apiErrorsEn = {
   export_not_ready:
     'A company is scheduled for deletion only once its export is ready. Wait for the export, then try again.',
   filter_needs_form: 'Choose a form before filtering by an answer.',
+  form_copy_same_company: 'This is the form’s own company. Use Copy in the forms list instead.',
   form_not_on_work_order: 'This form is no longer one of the job’s forms.',
   form_not_published:
     'Publish the form first; its documents are designed against the published version.',
   form_started: 'Someone has started this form for this job, so it stays on the job.',
+  form_template_builtin: 'This template ships with Integr8 Plus and cannot be changed here.',
+  form_template_key_taken: 'A library template already uses this key. Choose another key.',
+  form_template_source_gone:
+    'The form this template was saved from no longer exists. Save a form to the library again instead.',
+  form_template_title_required: 'Give the template a name in at least one language.',
   form_unknown: 'Choose a published form.',
   form_version_unavailable:
     'This version of the form is no longer available. Fill it again on the current version.',
@@ -413,6 +436,7 @@ export const apiErrorsEn = {
   quote_closed: 'This quote is no longer open.',
   quote_converted: 'This quote has already become a sales order.',
   quote_empty: 'Add at least one line before issuing.',
+  quote_link_invalid: 'This is not the quote’s live link any more. Make the PDF without it.',
   quote_unavailable:
     'This quote is no longer available online. Please contact the company that sent it.',
   quote_expired: 'This quote has expired. A new one has to be issued.',
@@ -557,4 +581,22 @@ export const apiErrorsEn = {
   year_not_ready:
     'Post or discard the draft journals, and post or set aside the waiting documents, dated in this year first.',
   year_open: 'This fiscal year is not closed.',
+
+  // Exporting and importing a form as a .integr8form file (1.3.0, decision 14).
+  form_export_no_draft: 'This form has no draft. Export its published version instead.',
+  form_export_not_published: 'This form has not been published yet. Export its draft instead.',
+  form_package_not_publishable:
+    'The form in this file would not publish, so it cannot join the library. Fix the problems listed, export it again and import the new file.',
+  package_invalid:
+    'This is not a .integr8form file, or it is damaged. Export the form again and import the new file.',
+  package_too_large: 'This file is larger than an Integr8 form file may be (50 MB).',
+  package_too_new:
+    'This file was made by a newer Integr8 Plus. Update this server first, then import it.',
+  package_entry_unexpected:
+    'This file holds something a form file has no place for. Export the form again and import the new file.',
+  package_file_mismatch:
+    'A picture in this file is missing or not the one its contents list says. Export the form again.',
+  package_image_invalid: 'A picture in this file is not a usable PNG, JPEG or WebP image.',
+  package_form_invalid: 'The form in this file cannot be read.',
+  package_template_invalid: 'A PDF template in this file cannot be read.',
 } as const;

@@ -1,11 +1,5 @@
-import {
-  type Field,
-  type FieldError,
-  formatDecimal,
-  isCalculated,
-  parseDecimal,
-} from '@integr8/form-engine';
-import { type DependentChoices, errorMessage } from '@integr8/form-input';
+import { type Field, type FieldError, isCalculated } from '@integr8/form-engine';
+import { calculatedText, type DependentChoices, errorMessage } from '@integr8/form-input';
 import { useTranslation } from '@integr8/i18n';
 import type { ReactNode } from 'react';
 import type { MediaAdapter } from './media.js';
@@ -87,7 +81,7 @@ export function FieldBlock(props: FieldBlockProps) {
 
   const required = isRequired ? (
     <>
-      <span aria-hidden="true" className="text-danger">
+      <span aria-hidden="true" data-part="required" className="text-danger">
         {' *'}
       </span>
       <span className="sr-only">{` (${t('fill.required')})`}</span>
@@ -96,7 +90,7 @@ export function FieldBlock(props: FieldBlockProps) {
 
   const help =
     field.help === undefined ? null : (
-      <p id={helpId} className="text-xs text-content-muted">
+      <p id={helpId} data-part="help" className="text-xs text-content-muted">
         {say(field.help, locale)}
       </p>
     );
@@ -116,6 +110,7 @@ export function FieldBlock(props: FieldBlockProps) {
         {errors.map((error) => (
           <li
             key={`${error.code}-${error.params.rule ?? ''}`}
+            data-part="error"
             className="text-xs font-medium text-danger"
           >
             <ErrorText field={field} error={error} locale={locale} />
@@ -127,17 +122,18 @@ export function FieldBlock(props: FieldBlockProps) {
   if (isCalculated(field)) {
     return (
       <div className="flex flex-col gap-1.5" data-question={field.id}>
-        <span id={`${id}-label`} className="text-sm font-medium text-content">
+        <span id={`${id}-label`} data-part="label" className="text-sm font-medium text-content">
           {label}
         </span>
         {help}
         <output
           id={id}
+          data-part="calculated"
           aria-labelledby={`${id}-label`}
           aria-live="polite"
           className="rounded-md bg-surface-muted px-3 py-2 text-sm text-content"
         >
-          {calculatedText(field, value) || '—'}
+          {calculatedText(field, value, locale) || '—'}
           {'unit' in field && field.unit !== undefined && value !== undefined
             ? ` ${field.unit}`
             : ''}
@@ -190,7 +186,7 @@ export function FieldBlock(props: FieldBlockProps) {
           : {})}
         {...(errors.length > 0 ? { 'aria-invalid': true } : {})}
       >
-        <legend className="mb-1 text-sm font-medium text-content">
+        <legend data-part="label" className="mb-1 text-sm font-medium text-content">
           {label}
           {required}
         </legend>
@@ -204,7 +200,7 @@ export function FieldBlock(props: FieldBlockProps) {
 
   return (
     <div className="flex flex-col gap-1.5" data-question={field.id}>
-      <label htmlFor={id} className="text-sm font-medium text-content">
+      <label htmlFor={id} data-part="label" className="text-sm font-medium text-content">
         {label}
         {required}
       </label>
@@ -251,17 +247,6 @@ function widget(props: WidgetProps): ReactNode {
     case 'gps':
       return <GpsWidget {...(props as WidgetProps<'gps'>)} />;
   }
-}
-
-function calculatedText(field: Field, value: unknown): string {
-  if (value === undefined) {
-    return '';
-  }
-  if (field.type === 'decimal' && typeof value === 'string') {
-    const parsed = parseDecimal(value);
-    return parsed === undefined ? value : formatDecimal(parsed);
-  }
-  return typeof value === 'number' || typeof value === 'string' ? String(value) : '';
 }
 
 /** A rule's own message when it has one; the catalogue's otherwise, with the engine's parameters. */

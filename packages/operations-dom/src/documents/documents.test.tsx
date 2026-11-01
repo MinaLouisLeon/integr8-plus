@@ -31,6 +31,7 @@ const document = (overrides: Partial<DocumentDetail> = {}): DocumentDetail => ({
   title: 'Gas certificate · GS-2026-0042',
   source: 'generated',
   reference: null,
+  record: null,
   customer: null,
   shareable: true,
   templateId: TEMPLATE,

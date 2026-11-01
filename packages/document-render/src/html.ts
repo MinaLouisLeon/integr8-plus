@@ -4,16 +4,26 @@ import {
   type Field,
   type FormEvaluation,
 } from '@integr8/form-engine';
-import type { Block, LeafBlock, Margins, TemplateDesign } from './design.js';
+import type { Block, BlockColour, LeafBlock, Margins, TemplateDesign } from './design.js';
 import {
   type FieldProblem,
   factValue,
   type ResolvedField,
   type SubmissionFacts,
 } from './fields.js';
+import { documentFont } from './fonts.js';
 import { type FormatContext, formatAnswer, isBlank, mediaIdsOf, say } from './format.js';
+import {
+  CHROMIUM_BAND_PADDING_MM,
+  DEFAULT_BRAND_COLOUR,
+  documentLook,
+  headerOffset,
+  type LookColours,
+  lookColours,
+  type PrintParts,
+} from './look.js';
 import { qrSvg } from './qr.js';
-import { type DocumentLocale, fill, wordsFor } from './words.js';
+import { type DocumentLocale, wordsFor } from './words.js';
 
 /**
  * A template and a submission as one HTML page (docs/documents/ADR-0001 D4).
@@ -23,6 +33,15 @@ import { type DocumentLocale, fill, wordsFor } from './words.js';
  * piece of text is escaped: nothing anyone typed, in the form or the template,
  * is ever HTML. Images arrive as data URIs or same-origin URLs the caller
  * resolved, so printing never fetches anything from the network.
+ *
+ * The header and footer are Chromium's own templates, made by the shared
+ * document look (`look.ts`); on screen they are drawn on the sheet instead.
+ *
+ * A block naming a question the form no longer has (the form was published
+ * without it, 1.3.0 decision 13) never stops a document: a block that shows
+ * one answer is left out, a table loses that row or keeps that column blank,
+ * a placeholder prints nothing. The form given is the one the submission
+ * answered, so an older submission still prints the answers it has.
  *
  * In `pdf` mode the page has no background of its own: the server draws the
  * template's backgrounds under each printed page afterwards, which is the only
@@ -55,10 +74,23 @@ export interface RenderInput {
   mode: 'pdf' | 'preview';
   /** `YYYY-MM-DD`, for any calculation that reads today. */
   today?: string;
+  /**
+   * The company's accent colour, `#rrggbb`, for a template whose brand colour
+   * is `company`; Integr8's blue when the company has none.
+   */
+  companyBrandColour?: string | null;
+  /**
+   * `@font-face` rules for the template's font, URLs resolved by the caller:
+   * data URIs on the server, the app's own files in a preview.
+   */
+  fontFaceCss?: string;
 }
 
-export interface RenderedDocument {
+/** The page as HTML, and what Chromium needs besides: its header and footer, size and margins. */
+export interface RenderedDocument extends PrintParts {
   html: string;
+  /** For Chromium's header: empty unless the template has one. */
+  headerHtml: string;
   /** For Chromium's footer: the page numbers and the template's footer text. */
   footerHtml: string;
   margins: Margins;
@@ -66,8 +98,12 @@ export interface RenderedDocument {
   hasFooter: boolean;
 }
 
-const FONT_STACK =
-  "'Noto Sans', 'Noto Sans Arabic', 'Noto Naskh Arabic', 'DejaVu Sans', 'Segoe UI', Tahoma, Arial, sans-serif";
+/** Text colours a block may choose (D9); `brand` is the template's own. */
+const BLOCK_TEXT: Readonly<Record<Exclude<BlockColour, 'brand'>, string>> = {
+  black: '#111418',
+  grey: '#5b6977',
+  red: '#b42318',
+};
 
 /** Text made safe for HTML, every character that could start markup escaped. */
 export function escapeHtml(value: string): string {
@@ -148,7 +184,7 @@ class Renderer {
     let out = '';
     let from = 0;
     for (const match of template.matchAll(placeholder)) {
-      const value = this.#placeholder(match[1] ?? '', match[2]);
+      const value = this.placeholder(match[1] ?? '', match[2]);
       out += escapeHtml(template.slice(from, match.index)) + escapeHtml(value ?? match[0]);
       from = match.index + match[0].length;
     }
@@ -156,7 +192,7 @@ class Renderer {
     return out.replace(/\n/gu, '<br>');
   }
 
-  #placeholder(scope: string, name: string | undefined): string | undefined {
+  placeholder(scope: string, name: string | undefined): string | undefined {
     const facts = this.#input.facts;
     switch (scope) {
       case 'answer': {
@@ -220,7 +256,23 @@ class Renderer {
     return `<img src="${src}" alt=""${style}>`;
   }
 
+  /** A block as HTML, inside its colour and shading when it has either. */
   block(block: Block | LeafBlock): string {
+    const html = this.#block(block);
+    const colour = 'colour' in block ? block.colour : undefined;
+    const shaded = 'shaded' in block ? block.shaded === true : false;
+    if (html === '' || (colour === undefined && !shaded)) {
+      return html;
+    }
+    const classes = [
+      'blk',
+      ...(colour === undefined ? [] : [`c-${colour}`]),
+      ...(shaded ? ['shaded'] : []),
+    ];
+    return `<div class="${classes.join(' ')}">${html}</div>`;
+  }
+
+  #block(block: Block | LeafBlock): string {
     switch (block.type) {
       case 'heading': {
         const tag = `h${String(block.level)}`;
@@ -305,9 +357,18 @@ class Renderer {
             return `<tr><th scope="row" dir="auto">${escapeHtml(this.#label(row.fieldId, row.label))}</th><td dir="auto">${this.#answerHtml(field, this.#value(row.fieldId), 30)}</td></tr>`;
           })
           .join('');
+        if (rows === '') {
+          // Every question it named is gone from the form: nothing to print.
+          return '';
+        }
         return `${this.#title(block.title)}<table class="t kv"><tbody>${rows}</tbody></table>`;
       }
       case 'repeat_table': {
+        const section = this.#input.form.elements.get(block.sectionId);
+        if (section?.kind !== 'section') {
+          // The repeating section is gone from the form: the table is left out.
+          return '';
+        }
         const entries = this.#evaluation.entries.get(block.sectionId) ?? [];
         const widths = columnWidths(block.columns.map((column) => column.width));
         const header = [
@@ -371,6 +432,21 @@ class Renderer {
             : `<span class="qr" style="${size}">${qrSvg(this.#input.qrUrl)}</span>`;
         return `<figure class="align-${block.align}">${code}${caption === '' ? '' : `<figcaption dir="auto">${this.#text(caption)}</figcaption>`}</figure>`;
       }
+      case 'information': {
+        const element = this.#input.form.elements.get(block.informationId);
+        const item = element?.information;
+        // Shown on the form for these answers, and outside repeating sections.
+        if (
+          item === undefined ||
+          element?.entries !== undefined ||
+          this.#evaluation.visible.get(item.id) !== true
+        ) {
+          return '';
+        }
+        const heading = this.#say(item.heading);
+        const body = escapeHtml(this.#say(item.body)).replace(/\n/gu, '<br>');
+        return `<div class="info info-${item.style ?? 'plain'}">${heading === '' ? '' : `<div class="info-heading" dir="auto">${escapeHtml(heading)}</div>`}<p dir="auto">${body}</p></div>`;
+      }
       case 'divider':
         return '<hr>';
       case 'spacer':
@@ -390,6 +466,18 @@ class Renderer {
     }
   }
 
+  /** Whether any block sets a colour or shading, so the page needs those rules. */
+  get usesAppearance(): boolean {
+    const visit = (blocks: readonly (Block | LeafBlock)[]): boolean =>
+      blocks.some(
+        (block) =>
+          ('colour' in block && block.colour !== undefined) ||
+          ('shaded' in block && block.shaded === true) ||
+          (block.type === 'row' && block.columns.some((column) => visit(column.blocks))),
+      );
+    return visit(this.#input.design.blocks);
+  }
+
   #title(title: Readonly<Record<string, string>> | undefined): string {
     const text = this.#say(title);
     return text === '' ? '' : `<div class="table-title" dir="auto">${this.#text(text)}</div>`;
@@ -404,16 +492,29 @@ function columnWidths(given: readonly (number | undefined)[]): string[] {
   return given.map((width) => `${(width ?? share).toFixed(2)}%`);
 }
 
+/** The template's brand colour as printed, or null for black headings (templates before 1.3.0). */
+function brandColourOf(input: RenderInput): string | null {
+  const chosen = input.design.style.brandColour;
+  if (chosen === 'company') {
+    return input.companyBrandColour ?? DEFAULT_BRAND_COLOUR;
+  }
+  return chosen;
+}
+
 function css(
-  design: TemplateDesign,
-  mode: 'pdf' | 'preview',
+  input: RenderInput,
   direction: 'ltr' | 'rtl',
-  images: RenderImages,
+  extras: { colours: LookColours; brand: string | null; appearance: boolean },
 ): string {
+  const { design, mode, images } = input;
   const { margins, fontSize } = design.page;
+  const landscape = design.page.orientation === 'landscape';
+  const pageWidth = landscape ? 297 : 210;
+  const pageHeight = landscape ? 210 : 297;
+  const font = documentFont(design.style.font);
   const start = direction === 'rtl' ? 'right' : 'left';
   const end = direction === 'rtl' ? 'left' : 'right';
-  const page = `@page { size: A4 portrait; margin: ${String(margins.top)}mm ${String(direction === 'rtl' ? margins.start : margins.end)}mm ${String(margins.bottom)}mm ${String(direction === 'rtl' ? margins.end : margins.start)}mm; }`;
+  const page = `@page { size: A4 ${design.page.orientation}; margin: ${String(margins.top)}mm ${String(direction === 'rtl' ? margins.start : margins.end)}mm ${String(margins.bottom)}mm ${String(direction === 'rtl' ? margins.end : margins.start)}mm; }`;
   const firstTop = design.page.firstPage?.topMargin ?? null;
   const firstPageRule =
     firstTop === null ? '' : `@page :first { margin-top: ${String(firstTop)}mm; }`;
@@ -440,12 +541,12 @@ function css(
     }
     if (rest !== null) {
       layers.push(`url("${rest}")`);
-      positions.push(firstPage === null ? '0 0' : '0 297mm');
+      positions.push(firstPage === null ? '0 0' : `0 ${String(pageHeight)}mm`);
       repeats.push(firstPage === null ? 'repeat-y' : 'repeat-y');
     }
-    // Page edges every 297 mm, so the designer sees roughly where pages end.
+    // Page edges every page height, so the designer sees roughly where pages end.
     layers.push(
-      'repeating-linear-gradient(to bottom, transparent 0, transparent calc(297mm - 1px), #c7cdd6 calc(297mm - 1px), #c7cdd6 297mm)',
+      `repeating-linear-gradient(to bottom, transparent 0, transparent calc(${String(pageHeight)}mm - 1px), #c7cdd6 calc(${String(pageHeight)}mm - 1px), #c7cdd6 ${String(pageHeight)}mm)`,
     );
     positions.push('0 0');
     repeats.push('repeat');
@@ -453,23 +554,25 @@ function css(
       html { background: #e9ecf1; }
       body { margin: 0; padding: 8mm 0; }
       .sheet {
-        width: 210mm; min-height: 297mm; margin: 0 auto; box-sizing: border-box;
+        width: ${String(pageWidth)}mm; min-height: ${String(pageHeight)}mm; margin: 0 auto; box-sizing: border-box; position: relative;
         padding: ${String(firstTop ?? margins.top)}mm ${String(margins.end)}mm ${String(margins.bottom)}mm ${String(margins.start)}mm;
         padding-inline-start: ${String(margins.start)}mm; padding-inline-end: ${String(margins.end)}mm;
         background-color: #ffffff; background-image: ${layers.join(', ')};
-        background-size: ${layers.map(() => '210mm 297mm').join(', ')};
+        background-size: ${layers.map(() => `${String(pageWidth)}mm ${String(pageHeight)}mm`).join(', ')};
         background-position: ${positions.join(', ')}; background-repeat: ${repeats.join(', ')};
         box-shadow: 0 1px 4px rgba(0,0,0,.15);
       }
       /* On screen a page break cannot start a new sheet; it shows where one will. */
-      .sheet .page-break { border-top: 1px dashed #9aa4b2; margin: 6mm 0; }`;
+      .sheet .page-break { border-top: 1px dashed #9aa4b2; margin: 6mm 0; }
+      /* The header and footer, drawn on the sheet as Chromium prints them in the margins. */
+      .sheet > .band { position: absolute; inset-inline: 0; }`;
   }
-  return `
+  return `${input.fontFaceCss === undefined || input.fontFaceCss === '' ? '' : `\n    ${input.fontFaceCss}`}
     ${page}
     ${firstPageRule}
     *, *::before, *::after { box-sizing: border-box; }
     html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    body { margin: 0; font-family: ${FONT_STACK}; font-size: ${String(fontSize)}pt; line-height: 1.4; color: #111418; ${mode === 'pdf' ? 'background: transparent;' : ''} }
+    body { margin: 0; font-family: ${font.text}; font-size: ${String(fontSize)}pt; line-height: 1.4; color: #111418; ${mode === 'pdf' ? 'background: transparent;' : ''} }
     ${sheet}
     h1, h2, h3 { margin: 0 0 2.5mm; line-height: 1.25; break-after: avoid; }
     h1 { font-size: 1.8em; } h2 { font-size: 1.4em; } h3 { font-size: 1.15em; }
@@ -485,6 +588,12 @@ function css(
     .box { display: inline-flex; width: 4mm; height: 4mm; flex: none; border: 0.35mm solid #111418; border-radius: 0.5mm; align-items: center; justify-content: center; }
     .box svg { width: 3.4mm; height: 3.4mm; }
     .options { margin: 0 0 2.5mm; break-inside: avoid; }
+    .info { margin: 0 0 2.5mm; break-inside: avoid; }
+    .info p { margin: 0; }
+    .info-heading { font-weight: 600; }
+    .info-tip, .info-warning { padding: 1.5mm 3mm; border-${start}: 1mm solid; }
+    .info-tip { border-color: #3b4450; background: #f2f4f7; }
+    .info-warning { border-color: #d97706; background: #fffbeb; }
     .grid.cols-1 { display: block; }
     .grid.cols-2, .grid.cols-3, .grid.cols-4 { display: grid; column-gap: 4mm; }
     .grid.cols-2 { grid-template-columns: repeat(2, 1fr); } .grid.cols-3 { grid-template-columns: repeat(3, 1fr); } .grid.cols-4 { grid-template-columns: repeat(4, 1fr); }
@@ -506,7 +615,57 @@ function css(
     .row { display: flex; gap: 5mm; align-items: flex-start; margin: 0 0 1mm; break-inside: avoid; }
     .row .col { min-width: 0; }
     .page-break { break-after: page; height: 0; }
-  `;
+  ${styleCss(input, extras)}`;
+}
+
+/**
+ * The template's style as rules after the classic ones: nothing at all for a
+ * template made before 1.3.0, so it prints exactly as it did.
+ */
+function styleCss(
+  input: RenderInput,
+  extras: { colours: LookColours; brand: string | null; appearance: boolean },
+): string {
+  const style = input.design.style;
+  const font = documentFont(style.font);
+  const { colours, brand } = extras;
+  const rules: string[] = [];
+  if (font.heading !== font.text) {
+    rules.push(`h1, h2, h3 { font-family: ${font.heading}; }`);
+  }
+  if (brand !== null) {
+    rules.push(`h1, h2, h3, .table-title { color: ${colours.brand}; }`);
+    rules.push(`hr { border-top-color: ${colours.brand}; }`);
+    if (style.headerShading) {
+      rules.push(`table.t thead th { background: ${colours.tint}; }`);
+      rules.push(`table.kv th { background: ${colours.stripe}; }`);
+    }
+  }
+  if (!style.headerShading) {
+    rules.push('table.t thead th, table.kv th { background: transparent; }');
+  }
+  if (style.tableLines === 'none') {
+    rules.push('table.t th, table.t td { border: 0; }');
+    rules.push(
+      `table.t thead th { border-bottom: 0.35mm solid ${brand === null ? '#3b4450' : colours.brand}; }`,
+    );
+  } else if (style.tableLines === 'strong') {
+    rules.push('table.t th, table.t td { border: 0.35mm solid #3b4450; }');
+  }
+  if (style.stripedRows) {
+    rules.push(`table.t tbody tr:nth-child(even) td { background: ${colours.stripe}; }`);
+  }
+  if (extras.appearance) {
+    for (const [name, value] of Object.entries(BLOCK_TEXT)) {
+      rules.push(`.blk.c-${name}, .blk.c-${name} * { color: ${value}; }`);
+    }
+    rules.push(`.blk.c-brand, .blk.c-brand * { color: ${brand ?? colours.brand}; }`);
+    rules.push(
+      `.blk.shaded { background: ${colours.tint}; padding: 2mm 3mm; margin: 0 0 3mm; border-radius: 1mm; break-inside: avoid; }`,
+    );
+    rules.push('.blk.shaded > :last-child { margin-bottom: 0; }');
+  }
+  return rules.join('\n    ');
 }
 
 /** The template filled with the submission, as a complete HTML page. */
@@ -514,23 +673,65 @@ export function renderDocumentHtml(input: RenderInput): RenderedDocument {
   const renderer = new Renderer(input);
   const direction = input.locale === 'ar' ? 'rtl' : 'ltr';
   const content = input.design.blocks.map((block) => renderer.block(block)).join('\n');
-  const words = wordsFor(input.locale);
-  const body =
-    input.mode === 'preview' ? `<main class="sheet">${content}</main>` : `<main>${content}</main>`;
-  const html = `<!doctype html><html lang="${input.locale}" dir="${direction}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(input.facts.formTitle)}</title><style>${css(input.design, input.mode, direction, input.images)}</style></head><body>${body}</body></html>`;
+  const brand = brandColourOf(input);
+  const look = documentLook(
+    {
+      brandColour: brand,
+      fontKey: input.design.style.font,
+      logo: input.images.logo,
+      header: input.design.page.header,
+      footer: input.design.page.footer,
+    },
+    {
+      locale: input.locale,
+      margins: input.design.page.margins,
+      orientation: input.design.page.orientation,
+      fontSize: input.design.page.fontSize,
+      ...(input.fontFaceCss === undefined ? {} : { fontFaceCss: input.fontFaceCss }),
+      placeholder: (scope, name) => renderer.placeholder(scope, name),
+      mode: input.mode,
+    },
+  );
+  let body = `<main>${content}</main>`;
+  if (input.mode === 'preview') {
+    const { margins } = input.design.page;
+    const header =
+      look.previewHeaderHtml === ''
+        ? ''
+        : `<div class="band" style="top:${String(CHROMIUM_BAND_PADDING_MM + headerOffset(margins.top, bandHeight(input.design.page.header)))}mm">${look.previewHeaderHtml}</div>`;
+    const footer =
+      look.previewFooterHtml === ''
+        ? ''
+        : `<div class="band" style="bottom:${String(CHROMIUM_BAND_PADDING_MM + Math.max(0, margins.bottom - 10))}mm">${look.previewFooterHtml}</div>`;
+    body = `<main class="sheet">${header}${content}${footer}</main>`;
+  }
+  const extras = {
+    colours: lookColours(brand),
+    brand,
+    appearance: renderer.usesAppearance,
+  };
+  const html = `<!doctype html><html lang="${input.locale}" dir="${direction}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(input.facts.formTitle)}</title><style>${css(input, direction, extras)}</style></head><body>${body}</body></html>`;
+  return {
+    html,
+    headerHtml: look.headerHtml,
+    footerHtml: look.footerHtml,
+    hasHeader: look.hasHeader,
+    hasFooter: look.hasFooter,
+    landscape: look.landscape,
+    margins: input.design.page.margins,
+    ...(look.firstPage === undefined ? {} : { firstPage: look.firstPage }),
+  };
+}
 
-  const footer = input.design.page.footer;
-  const footerText = say(footer.text, input.locale);
-  const pages = footer.pageNumbers
-    ? escapeHtml(words.page)
-        .replace('{{page}}', '<span class="pageNumber"></span>')
-        .replace('{{pages}}', '<span class="totalPages"></span>')
-    : '';
-  const hasFooter = footer.pageNumbers || footerText !== '';
-  const footerHtml = hasFooter
-    ? `<div dir="${direction}" style="width:100%;font-family:${FONT_STACK};font-size:8pt;color:#3b4450;padding-inline-start:${String(input.design.page.margins.start)}mm;padding-inline-end:${String(input.design.page.margins.end)}mm;box-sizing:border-box;display:flex;justify-content:space-between;gap:4mm;margin-bottom:${String(Math.max(0, input.design.page.margins.bottom - 10))}mm;"><span>${escapeHtml(fill(footerText, {}))}</span><span>${pages}</span></div>`
-    : '<span></span>';
-  return { html, footerHtml, margins: input.design.page.margins, hasFooter };
+/** The tallest place of a band, in millimetres. */
+function bandHeight(band: TemplateDesign['page']['header']): number {
+  if (band === null) {
+    return 4;
+  }
+  return Math.max(
+    4,
+    ...[band.start, band.center, band.end].map((slot) => (slot?.kind === 'logo' ? slot.height : 0)),
+  );
 }
 
 export type { FieldProblem, ResolvedField, SubmissionFacts };

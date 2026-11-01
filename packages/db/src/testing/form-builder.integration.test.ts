@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { FORM_TEMPLATES } from '@integr8/form-engine/templates';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -388,5 +389,152 @@ describe('the global template library', () => {
       ]),
     ).rejects.toThrow(/integer schemaVersion/u);
     expect(await getPlatformDataSource().formTemplates.upsert([])).toBe(0);
+  });
+});
+
+describe('staff-made library templates (0069)', () => {
+  const library = () => getPlatformDataSource().formTemplates;
+  const content = (label: string, files: { id: string; key: string }[] = []) => ({
+    definition: definition(label),
+    sourceVersionNumber: 1,
+    documents: [{ name: `${label} report`, design: { schemaVersion: 1, label } }],
+    files: files.map((file) => ({
+      id: file.id,
+      bucket: 'local-platform-library',
+      storageKey: file.key,
+      contentType: 'image/png',
+      byteSize: 10,
+      etag: null,
+    })),
+  });
+  let staffId: string;
+
+  beforeAll(async () => {
+    await syncFormTemplates();
+    staffId = (
+      await getPlatformDataSource().platformUsers.create({
+        email: `library.${randomUUID().slice(0, 8)}@platform.integr8.example`,
+        displayName: 'Library staff',
+        canManageStaff: false,
+      })
+    ).id;
+  });
+
+  it('keeps a staff template through every load of the built-in ones, even under a shipped key', async () => {
+    const shipped = FORM_TEMPLATES[0];
+    if (shipped === undefined) {
+      throw new Error('the engine ships no templates');
+    }
+    expect(
+      await library().createStaff({
+        key: 'northwind_handover',
+        title: { en: 'Handover', ar: 'تسليم' },
+        description: { en: 'From Northwind' },
+        category: 'completion',
+        origin: { tenantId: northwind.id, formId: randomUUID() },
+        content: content('Handover', [{ id: randomUUID(), key: 'library/a.png' }]),
+        by: staffId,
+      }),
+    ).toBe(true);
+    // A key that is taken, by either kind, is refused rather than overwritten.
+    expect(
+      await library().createStaff({
+        key: shipped.key,
+        title: { en: 'Mine' },
+        description: {},
+        category: 'safety',
+        origin: { tenantId: northwind.id, formId: randomUUID() },
+        content: content('Mine'),
+        by: staffId,
+      }),
+    ).toBe(false);
+
+    // A staff row that somehow holds a key the code ships later is not overwritten.
+    await owner.query(
+      `insert into form_templates (key, title, description, category, definition, definition_schema_version, source, source_tenant_id, source_form_id, created_by)
+       values ('future_builtin', '{"en":"Staff"}', '{}', 'safety', $1, 1, 'staff', $2, $3, $4)`,
+      [JSON.stringify(definition('Staff')), northwind.id, randomUUID(), staffId],
+    );
+    await library().upsert([{ ...shipped, key: 'future_builtin', title: { en: 'Code' } }]);
+    await syncFormTemplates();
+
+    expect((await library().find('future_builtin'))?.title).toEqual({ en: 'Staff' });
+    const saved = await library().find('northwind_handover');
+    expect(saved).toMatchObject({
+      source: 'staff',
+      title: { en: 'Handover', ar: 'تسليم' },
+      documentCount: 1,
+      origin: { tenantId: northwind.id, versionNumber: 1 },
+    });
+    expect(await library().files('northwind_handover')).toHaveLength(1);
+    expect(await library().documents('northwind_handover')).toMatchObject([
+      { position: 0, name: 'Handover report', designSchemaVersion: 1 },
+    ]);
+  });
+
+  it('refuses to rename, replace or retire a built-in template', async () => {
+    expect(await library().updateDetails('boiler_service', { title: { en: 'x' } }, staffId)).toBe(
+      undefined,
+    );
+    expect(await library().replaceContent('boiler_service', content('x'), staffId)).toBe(undefined);
+    expect(await library().setRetired('boiler_service', true, staffId)).toBe(undefined);
+    await expect(
+      owner.query(
+        "update form_templates set retired_at = now(), retired_by = $1 where key = 'boiler_service'",
+        [staffId],
+      ),
+    ).rejects.toThrow(/form_templates_retire_staff_only/u);
+  });
+
+  it('replaces a staff template’s content and hands back the pictures it no longer uses', async () => {
+    const before = await library().files('northwind_handover');
+    const fresh = { id: randomUUID(), key: 'library/b.png' };
+    const old = await library().replaceContent(
+      'northwind_handover',
+      { ...content('Handover v2', [fresh]), sourceVersionNumber: 2 },
+      staffId,
+    );
+    expect(old?.map((file) => file.id)).toEqual(before.map((file) => file.id));
+    expect((await library().files('northwind_handover')).map((file) => file.id)).toEqual([
+      fresh.id,
+    ]);
+    expect(await library().find('northwind_handover')).toMatchObject({
+      origin: { versionNumber: 2 },
+      definition: { title: { en: 'Handover v2' } },
+    });
+  });
+
+  it('hides a retired template from companies, and brings it back', async () => {
+    const offered = async () =>
+      (await withTenant(northwind.id, (tx) => tx.formTemplates.list())).map(
+        (template) => template.key,
+      );
+    expect(await offered()).toContain('northwind_handover');
+
+    expect((await library().setRetired('northwind_handover', true, staffId))?.retiredAt).not.toBe(
+      null,
+    );
+    expect(await offered()).not.toContain('northwind_handover');
+    expect(
+      await withTenant(northwind.id, (tx) => tx.formTemplates.find('northwind_handover')),
+    ).toBeUndefined();
+    expect((await library().list()).map((template) => template.key)).toContain(
+      'northwind_handover',
+    );
+
+    await library().setRetired('northwind_handover', false, staffId);
+    expect(await offered()).toContain('northwind_handover');
+  });
+
+  it('keeps the library’s PDF templates and pictures out of the runtime role’s reach', async () => {
+    for (const statement of [
+      'select * from form_template_documents',
+      'select * from form_template_files',
+    ]) {
+      await expect(
+        asTenant(app, northwind.id, () => app.query(statement)),
+        statement,
+      ).rejects.toThrow(/permission denied/u);
+    }
   });
 });

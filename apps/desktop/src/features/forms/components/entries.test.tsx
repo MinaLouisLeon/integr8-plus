@@ -210,7 +210,7 @@ describe('conditions and calculations across entries', () => {
     expect(markup).not.toContain('in any entry');
   });
 
-  it('offers a calculation totals, extremes and counts across a repeatable section', () => {
+  it('shows a calculation across a repeatable section as a formula that works', () => {
     const total: FieldOf<'number'> = {
       id: 'total',
       type: 'number',
@@ -228,10 +228,9 @@ describe('conditions and calculations across entries', () => {
         readOnly={false}
       />,
     );
-    expect(chosen(markup)).toContain('Largest Output across Radiators');
-    expect(markup).toContain('Number of entries in Radiators');
-    expect(markup).toContain('Total of Output across Radiators');
-    expect(markup).toContain('Smallest Output across Radiators');
+    // As a formula (1.3.0): the largest Output across the entries of Radiators.
+    expect(markup).toContain('max([Radiators], [Output])');
+    expect(markup).toContain('The formula works.');
   });
 });
 

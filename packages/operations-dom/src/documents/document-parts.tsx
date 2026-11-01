@@ -30,7 +30,7 @@ export function useDocumentAccess() {
   };
 }
 
-/** Marks an uploaded document, and one that is not shared, beside its state. */
+/** Marks an uploaded document or a business PDF's kind, and one that is not shared, beside its state. */
 export function DocumentMarks({
   document,
 }: {
@@ -42,6 +42,10 @@ export function DocumentMarks({
       {document.source === 'uploaded' ? (
         <span className="rounded-full border border-border-subtle px-2 py-0.5 text-xs font-medium text-content-muted">
           {t('documents.upload.badge')}
+        </span>
+      ) : document.source !== 'generated' ? (
+        <span className="rounded-full border border-border-subtle px-2 py-0.5 text-xs font-medium text-content-muted">
+          {t(`businessPdfs.kind.${document.source}`)}
         </span>
       ) : null}
       {document.status === 'ready' && !document.shareable ? (

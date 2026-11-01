@@ -27,9 +27,10 @@ import {
   allIds,
   duplicate,
   type Expression,
-  type Field,
   type FieldType,
-  findField,
+  findItem,
+  isInformation,
+  type SectionItem,
   type FormDefinition,
   generateId,
   type Section,
@@ -40,20 +41,21 @@ import {
   movePage,
   moveSection,
   newField,
+  newInformation,
   newPage,
   newRepeatableSection,
   newSection,
   referencesTo,
   remove,
   subtreeIds,
-  updateField,
+  updateItem,
 } from '@integr8/form-engine';
 import { type TFunction, useTranslation } from '@integr8/i18n';
 import { useState, type ReactNode } from 'react';
 import { Button } from '~/components/ui';
 import { PALETTE } from '../model/catalog';
 import type { EditorAction } from '../model/editor';
-import { fieldRuleSentences } from '../model/sentences';
+import { conditionSentence, fieldRuleSentences } from '../model/sentences';
 import { say } from '../model/text';
 import { VisibilityEditor } from './condition-builder';
 import { Dialog } from './dialog';
@@ -121,7 +123,13 @@ export function BuilderWorkspace(
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  const createField = (current: FormDefinition, type: FieldType) => {
+  const createField = (current: FormDefinition, type: PaletteType): SectionItem => {
+    if (type === 'information') {
+      return newInformation(
+        generateId('information', 'field', [...allIds(current), ...publishedIds]),
+        { [locale]: t('forms.information.defaultBody') },
+      );
+    }
     const label = t(`forms.fieldType.${type}`);
     return newField(
       type,
@@ -132,7 +140,7 @@ export function BuilderWorkspace(
   };
 
   /** Clicking a palette item: add after the selected question, or to the selected section, or at the end. */
-  const addFromPalette = (type: FieldType) => {
+  const addFromPalette = (type: PaletteType) => {
     const field = createField(definition, type);
     const target = insertionPoint(definition, selected);
     dispatch({
@@ -167,7 +175,7 @@ export function BuilderWorkspace(
 
     switch (active.kind) {
       case 'palette': {
-        const field = createField(definition, active.id as FieldType);
+        const field = createField(definition, active.id as PaletteType);
         dispatch({
           type: 'edit',
           apply: (current) => {
@@ -224,7 +232,7 @@ export function BuilderWorkspace(
       onDragCancel={() => setDragging(undefined)}
       onDragEnd={onDragEnd}
     >
-      <div className="grid min-h-0 flex-1 grid-cols-[15rem_minmax(0,1fr)_22rem] overflow-hidden">
+      <div className="grid min-h-0 flex-1 grid-cols-[15rem_minmax(0,1fr)_26rem] overflow-hidden">
         <aside className="overflow-y-auto border-e border-border-subtle bg-surface p-4">
           {readOnly ? null : <Palette onAdd={addFromPalette} />}
         </aside>
@@ -252,7 +260,9 @@ function describeDrag(
 ): string {
   const parsed = parse(id);
   if (parsed.kind === 'palette') {
-    return t(`forms.fieldType.${parsed.id as FieldType}`);
+    return parsed.id === 'information'
+      ? t('forms.information.palette')
+      : t(`forms.fieldType.${parsed.id as FieldType}`);
   }
   return nameOf(definition, parsed.id, locale, t);
 }
@@ -275,9 +285,21 @@ export function nameOf(
   if (at.kind === 'section') {
     return sectionLabel(section, locale, t);
   }
-  const field = section.fields[at.field!]!;
-  return say(field.label, locale) || field.id;
+  return itemName(section.fields[at.field!]!, locale);
 }
+
+/** A question's wording, or an Information block's heading or first words. */
+function itemName(item: SectionItem, locale: string): string {
+  if (isInformation(item)) {
+    const heading = say(item.heading, locale).trim();
+    const body = say(item.body, locale).trim().split('\n')[0] ?? '';
+    return heading || (body.length > 60 ? `${body.slice(0, 60)}…` : body) || item.id;
+  }
+  return say(item.label, locale) || item.id;
+}
+
+/** What the palette adds: a question of a type, or an Information block (schema version 2). */
+type PaletteType = FieldType | 'information';
 
 /**
  * A new repeatable section, ready to publish: repeating up to 20 times, and
@@ -331,7 +353,7 @@ function insertionPoint(
   return { section: lastPage.sections.at(-1)!.id, index: undefined };
 }
 
-function Palette({ onAdd }: { onAdd: (type: FieldType) => void }) {
+function Palette({ onAdd }: { onAdd: (type: PaletteType) => void }) {
   const { t } = useTranslation();
   return (
     <div className="flex flex-col gap-4 text-start">
@@ -351,11 +373,20 @@ function Palette({ onAdd }: { onAdd: (type: FieldType) => void }) {
           </ul>
         </section>
       ))}
+      <section className="flex flex-col gap-1.5">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-content-muted">
+          {t('forms.information.paletteGroup')}
+        </h3>
+        <ul className="flex flex-col gap-1">
+          <PaletteItem type="information" onAdd={onAdd} />
+        </ul>
+        <p className="text-xs text-content-muted">{t('forms.information.paletteHint')}</p>
+      </section>
     </div>
   );
 }
 
-function PaletteItem({ type, onAdd }: { type: FieldType; onAdd: (type: FieldType) => void }) {
+function PaletteItem({ type, onAdd }: { type: PaletteType; onAdd: (type: PaletteType) => void }) {
   const { t } = useTranslation();
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: dragId('palette', type),
@@ -373,7 +404,7 @@ function PaletteItem({ type, onAdd }: { type: FieldType; onAdd: (type: FieldType
           isDragging ? 'opacity-50' : '',
         ].join(' ')}
       >
-        {t(`forms.fieldType.${type}`)}
+        {type === 'information' ? t('forms.information.palette') : t(`forms.fieldType.${type}`)}
       </button>
     </li>
   );
@@ -592,8 +623,8 @@ function Canvas({
           dispatch({
             type: 'edit',
             apply: (current) =>
-              updateField(current, id, (field) => {
-                const { visibleWhen: _previous, ...rest } = field;
+              updateItem(current, id, (item) => {
+                const { visibleWhen: _previous, ...rest } = item;
                 return expression === undefined ? rest : { ...rest, visibleWhen: expression };
               }),
           })
@@ -622,12 +653,12 @@ function ConditionDialog({
   onChange: (fieldId: string, expression: Expression | undefined) => void;
 }) {
   const { t } = useTranslation();
-  const field = fieldId === undefined ? undefined : findField(definition, fieldId);
+  const field = fieldId === undefined ? undefined : findItem(definition, fieldId);
   return (
     <Dialog
       open={field !== undefined}
       title={t('forms.canvas.showWhenTitle', {
-        name: field === undefined ? '' : say(field.label, locale) || field.id,
+        name: field === undefined ? '' : itemName(field, locale),
       })}
       onClose={onClose}
       footer={
@@ -822,7 +853,7 @@ function FieldRow({
   first,
   last,
 }: {
-  field: Field;
+  field: SectionItem;
   definition: FormDefinition;
   locale: string;
   selected: boolean;
@@ -831,16 +862,23 @@ function FieldRow({
   last: boolean;
 }) {
   const { t } = useTranslation();
-  const name = say(field.label, locale) || field.id;
-  const badges = [
-    ...(field.required === true ? [t('forms.canvas.required')] : []),
-    ...(isCalculated(field) ? [t('forms.canvas.calculated')] : []),
-    ...((field.rules?.length ?? 0) > 0
-      ? [t('forms.canvas.checks', { count: field.rules?.length ?? 0 })]
-      : []),
-  ];
+  const name = itemName(field, locale);
+  const information = isInformation(field);
+  const badges = isInformation(field)
+    ? field.style === undefined || field.style === 'plain'
+      ? []
+      : [t(`forms.information.styles.${field.style}`)]
+    : [
+        ...(field.required === true ? [t('forms.canvas.required')] : []),
+        ...(isCalculated(field) ? [t('forms.canvas.calculated')] : []),
+        ...((field.rules?.length ?? 0) > 0
+          ? [t('forms.canvas.checks', { count: field.rules?.length ?? 0 })]
+          : []),
+      ];
   // The rules, as sentences, so nobody has to open the panel to learn why a question comes and goes.
-  const rules = fieldRuleSentences(field, definition, locale, t);
+  const rules = isInformation(field)
+    ? informationRuleSentences(field.visibleWhen, definition, locale, t)
+    : fieldRuleSentences(field, definition, locale, t);
 
   return (
     <Sortable
@@ -860,7 +898,9 @@ function FieldRow({
             className="flex min-w-0 flex-1 flex-col items-start gap-0.5 text-start"
           >
             <span className="w-full truncate text-sm font-medium text-content">{name}</span>
-            <span className="text-xs text-content-muted">{t(`forms.fieldType.${field.type}`)}</span>
+            <span className="text-xs text-content-muted">
+              {information ? t('forms.information.name') : t(`forms.fieldType.${field.type}`)}
+            </span>
           </button>
           <div className="flex flex-wrap justify-end gap-1">
             {badges.map((badge) => (
@@ -901,6 +941,17 @@ function FieldRow({
       )}
     </Sortable>
   );
+}
+
+/** "Shown when …" for an Information block, the one rule it can have. */
+function informationRuleSentences(
+  visibleWhen: Expression | undefined,
+  definition: FormDefinition,
+  locale: string,
+  t: TFunction,
+): string[] {
+  const shown = conditionSentence(visibleWhen, definition, locale, t);
+  return shown === undefined ? [] : [t('forms.canvas.rules.shown', { condition: shown })];
 }
 
 function RowActions({

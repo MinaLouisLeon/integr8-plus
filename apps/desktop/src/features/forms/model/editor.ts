@@ -1,4 +1,9 @@
-import { type EditError, type FormDefinition, isEditError } from '@integr8/form-engine';
+import {
+  type EditError,
+  type FormDefinition,
+  isEditError,
+  withRequiredSchemaVersion,
+} from '@integr8/form-engine';
 
 /**
  * The builder's editing state: the definition, what is selected, and undo.
@@ -53,7 +58,7 @@ export function initialEditor(definition: FormDefinition): EditorState {
 export function editorReducer(state: EditorState, action: EditorAction): EditorState {
   switch (action.type) {
     case 'load':
-      return initialEditor(action.definition);
+      return initialEditor(withRequiredSchemaVersion(action.definition));
 
     case 'select':
       return {
@@ -64,10 +69,13 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       };
 
     case 'edit': {
-      const result = action.apply(state.definition);
-      if (isEditError(result)) {
-        return { ...state, refused: result };
+      const applied = action.apply(state.definition);
+      if (isEditError(applied)) {
+        return { ...state, refused: applied };
       }
+      // The format the form needs follows what it uses (schema version 2), so
+      // the preview compiles it as the server will store it.
+      const result = withRequiredSchemaVersion(applied);
       if (result === state.definition) {
         return state;
       }

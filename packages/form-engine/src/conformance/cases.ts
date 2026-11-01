@@ -23,6 +23,10 @@ import type { EvaluationContext } from '../evaluate.js';
  *   them, adding, removing and reordering, and what the server refuses (P13b)
  * - a field required only when another answer says so, and choices that depend
  *   on another answer: what is offered, what is refused, and the publish errors
+ * - schema version 2: Information blocks following "Shown when", rounding,
+ *   percentages, min/max/average with blanks, differences between dates, times
+ *   (across midnight) and instants (across offsets), dates moved by months
+ *   across month ends and leap days, and what a version 1 engine is told
  *
  * Plain object literals only: this file is bundled into the Hermes run.
  */
@@ -1099,5 +1103,258 @@ export const CASES: ConformanceCase[] = [
         dependsOn: { field: 'c', options: {} },
       },
     ]),
+  },
+  {
+    name: 'schema version 2: information blocks and descriptions',
+    definition: {
+      schemaVersion: 2,
+      title: l('Conformance'),
+      pages: [
+        {
+          id: 'page_1',
+          description: l('Read before you start', 'اقرأ قبل البدء'),
+          sections: [
+            {
+              id: 'section_1',
+              description: l('Isolation'),
+              fields: [
+                { id: 'result', type: 'radio', label: l('Result'), options: opts('pass', 'fail') },
+                {
+                  id: 'isolate',
+                  type: 'information',
+                  heading: l('Warning', 'تحذير'),
+                  body: l('Isolate the supply.\nTest it is dead.', 'اعزل التغذية.\nتأكد من فصلها.'),
+                  style: 'warning',
+                  visibleWhen: cmp('eq', answer('result'), text('fail')),
+                },
+                { id: 'tip', type: 'information', body: l('Take a photo'), style: 'tip' },
+                { id: 'notes', type: 'text', label: l('Notes') },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+    steps: [set('result', 'fail'), set('notes', 'ok'), set('result', 'pass')],
+    submission: { result: 'fail', isolate: 'typed', notes: 'x' },
+  },
+  {
+    name: 'schema version 2: number extras',
+    definition: {
+      ...form([
+        { id: 'a', type: 'decimal', label: l('A'), decimalPlaces: 3 },
+        { id: 'b', type: 'decimal', label: l('B'), decimalPlaces: 3 },
+        { id: 'c', type: 'number', label: l('C') },
+        {
+          id: 'rounded',
+          type: 'decimal',
+          label: l('Rounded'),
+          decimalPlaces: 4,
+          calculation: { kind: 'round', operand: answer('a'), places: 1 },
+        },
+        {
+          id: 'negative_rounded',
+          type: 'decimal',
+          label: l('Negative rounded'),
+          decimalPlaces: 2,
+          calculation: {
+            kind: 'round',
+            operand: math('subtract', num('0'), answer('a')),
+            places: 2,
+          },
+        },
+        {
+          id: 'share',
+          type: 'decimal',
+          label: l('Share'),
+          decimalPlaces: 3,
+          calculation: { kind: 'percentage', part: answer('a'), whole: answer('b') },
+        },
+        {
+          id: 'least',
+          type: 'decimal',
+          label: l('Least'),
+          decimalPlaces: 3,
+          calculation: {
+            kind: 'statistic',
+            operator: 'min',
+            operands: [answer('a'), answer('b'), answer('c')],
+          },
+        },
+        {
+          id: 'greatest',
+          type: 'decimal',
+          label: l('Greatest'),
+          decimalPlaces: 3,
+          calculation: {
+            kind: 'statistic',
+            operator: 'max',
+            operands: [answer('a'), answer('b'), answer('c')],
+          },
+        },
+        {
+          id: 'mean',
+          type: 'decimal',
+          label: l('Mean'),
+          decimalPlaces: 5,
+          calculation: {
+            kind: 'statistic',
+            operator: 'average',
+            operands: [answer('a'), answer('b'), answer('c')],
+          },
+        },
+        {
+          id: 'bracketed',
+          type: 'number',
+          label: l('Bracketed'),
+          calculation: math(
+            'multiply',
+            math('add', answer('c'), num('2')),
+            math('subtract', answer('c'), num('1')),
+          ),
+        },
+      ]),
+      schemaVersion: 2,
+    },
+    steps: [
+      set('a', '2.345'),
+      set('c', 7),
+      set('b', '0.000'),
+      set('b', '-3.125'),
+      set('a', '-0.050'),
+    ],
+  },
+  {
+    name: 'schema version 2: date and time arithmetic',
+    context: { today: '2028-01-31', now: '2028-02-29T23:30:00+02:00' },
+    definition: {
+      ...form([
+        { id: 'serviced', type: 'date', label: l('Serviced') },
+        { id: 'months', type: 'number', label: l('Months') },
+        {
+          id: 'due',
+          type: 'date',
+          label: l('Due'),
+          calculation: {
+            kind: 'shift_date',
+            operator: 'add',
+            unit: 'months',
+            date: answer('serviced'),
+            amount: answer('months'),
+          },
+        },
+        {
+          id: 'reminder',
+          type: 'date',
+          label: l('Reminder'),
+          calculation: {
+            kind: 'shift_date',
+            operator: 'subtract',
+            unit: 'weeks',
+            date: answer('due'),
+            amount: num('2'),
+          },
+        },
+        {
+          id: 'overdue',
+          type: 'checkbox',
+          label: l('Overdue'),
+          visibleWhen: cmp('lt', answer('due'), { kind: 'today' }),
+        },
+        {
+          id: 'days_left',
+          type: 'number',
+          label: l('Days left'),
+          calculation: {
+            kind: 'difference',
+            unit: 'days',
+            from: { kind: 'today' },
+            to: answer('due'),
+          },
+        },
+        { id: 'start', type: 'time', label: l('Start') },
+        { id: 'finish', type: 'time', label: l('Finish') },
+        {
+          id: 'shift_hours',
+          type: 'decimal',
+          label: l('Shift hours'),
+          decimalPlaces: 2,
+          calculation: {
+            kind: 'difference',
+            unit: 'hours',
+            from: answer('start'),
+            to: answer('finish'),
+          },
+        },
+        { id: 'arrived', type: 'datetime', label: l('Arrived') },
+        {
+          id: 'on_site',
+          type: 'decimal',
+          label: l('On site'),
+          decimalPlaces: 3,
+          calculation: {
+            kind: 'difference',
+            unit: 'hours',
+            from: answer('arrived'),
+            to: { kind: 'now' },
+          },
+        },
+        {
+          id: 'on_site_minutes',
+          type: 'number',
+          label: l('On site, minutes'),
+          calculation: {
+            kind: 'difference',
+            unit: 'minutes',
+            from: answer('arrived'),
+            to: { kind: 'now' },
+          },
+        },
+      ]),
+      schemaVersion: 2,
+    },
+    steps: [
+      set('serviced', '2027-01-31'),
+      set('months', 13),
+      set('months', 12),
+      set('months', -1),
+      set('serviced', '2027-03-31'),
+      set('start', '22:15'),
+      set('finish', '06:00'),
+      set('finish', '23:45'),
+      set('arrived', '2028-02-29T21:00:00Z'),
+      set('arrived', '2028-02-28T23:59:00-05:30'),
+    ],
+    submission: { serviced: '2027-03-31', months: 1, due: '2000-01-01' },
+  },
+  {
+    name: 'schema version 2: publish errors and a newer format',
+    definition: {
+      ...form([
+        { id: 'd', type: 'date', label: l('D') },
+        { id: 't', type: 'time', label: l('T') },
+        {
+          id: 'mixed',
+          type: 'number',
+          label: l('Mixed'),
+          calculation: { kind: 'difference', unit: 'days', from: answer('d'), to: answer('t') },
+        },
+        {
+          id: 'wrong_result',
+          type: 'date',
+          label: l('Wrong result'),
+          calculation: num('1'),
+        },
+      ]),
+      schemaVersion: 2,
+    },
+  },
+  {
+    name: 'schema version 2: declared too low',
+    definition: form([{ id: 'note', type: 'information', body: l('Hello') }]),
+  },
+  {
+    name: 'schema version 3: an app too old',
+    definition: { ...form([{ id: 'a', type: 'text', label: l('A') }]), schemaVersion: 3 },
   },
 ];

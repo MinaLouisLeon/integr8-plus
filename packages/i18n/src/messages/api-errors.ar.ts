@@ -85,6 +85,7 @@ export const apiErrorsAr: Catalogue<typeof apiErrorsEn> = {
   breaking_changes_unacknowledged:
     'يغيّر النشر حقولًا بطرق تؤثر في الإرسالات أو المسودات الحالية. راجع التغييرات، ثم أكّد للنشر.',
   build_token_rejected: 'لم يُقبل رمز البناء.',
+  business_document_draft: 'لا يمكن تحويل المسودة إلى ملف PDF. أصدرها أولًا، أو اطبعها من المتصفح.',
   category_name_taken: 'توجد فئة بهذا الاسم بالفعل.',
   category_not_found: 'هذه الفئة غير موجودة. اختر غيرها.',
   category_not_usable: 'هذه الفئة لم تعد مستخدمة. اختر غيرها.',
@@ -94,6 +95,7 @@ export const apiErrorsAr: Catalogue<typeof apiErrorsEn> = {
   closing_journal: 'يُعكس قيد إقفال نهاية السنة بإعادة فتح سنته.',
   code_taken: 'هذا الرمز مستخدم بالفعل. اختر رمزًا آخر.',
   comment_id_taken: 'تعارضت هذه الملاحظة مع ملاحظة أخرى. تجاهل التغيير واكتب الملاحظة من جديد.',
+  company_closed: 'هذه الشركة مغلقة. لا يمكن نسخ شيء إليها.',
   completion_blocked: 'لا يمكن إكمال هذه المهمة بعد: ما زال ينقصها شيء تحتاج إليه.',
   component_kind: 'المكوّن صنف مخزني أو غير مخزني. ضع العمالة في تكلفة العمالة.',
   confirmed: 'مجموعة القواعد هذه مؤكدة ولم تعد تتغير. أضف مجموعة جديدة من شهر لاحق.',
@@ -134,15 +136,27 @@ export const apiErrorsAr: Catalogue<typeof apiErrorsEn> = {
   document_fields_invalid: 'بعض حقول المستند ناقصة أو أطول من المسموح. راجع الحقول المحددة أدناه.',
   document_link_unavailable:
     'لا يمكن إنشاء المستندات بعد: لا يوجد لهذا الخادم عنوان ويب لرمز QR. تواصل مع Integr8.',
+  document_preview_failed: 'تعذرت طباعة المعاينة الآن. حاول مرة أخرى بعد دقيقة.',
   document_not_pdf: 'لا يمكن رفع مستند إلا بصيغة PDF. اختر ملف PDF.',
+  document_not_ready: 'ملف PDF ليس جاهزًا بعد. انتظر قليلًا ثم حاول مرة أخرى.',
   document_template_archived: 'هذا القالب مؤرشف. اختر قالبًا آخر.',
   document_template_changed: 'حفظ شخص آخر هذا القالب في الأثناء. افتحه من جديد لترى تغييراته.',
+  document_template_image_missing:
+    'صورة يستخدمها هذا القالب لم تعد محفوظة. ارفعها من جديد ثم انسخ.',
   document_template_image_unusable:
     'صورة في القالب غير صالحة للاستخدام. ارفعها من جديد بصيغة PNG أو JPEG أو WebP.',
   document_template_invalid: 'في القالب مشكلات، كل منها مذكور أدناه.',
+  document_template_mapping_invalid: 'سؤال اخترته للنسخة لا يصلح لهذا المكان. اختر سؤالًا آخر.',
   document_template_problem: 'هذا الجزء من القالب يحتاج إلى تصحيح.',
+  document_template_unmatched:
+    'بعض الأسئلة التي يستخدمها القالب غير موجودة في النموذج الآخر. اختر سؤالًا لكل منها، أو احذف ما يستخدمها.',
+  document_template_newer: 'حُفظ هذا القالب بإصدار أحدث من المصمم. حدّث التطبيق لتعديله.',
   document_template_wrong_form: 'هذا القالب يخص نموذجًا آخر.',
+  document_templates_affected:
+    'بعض قوالب PDF تستخدم أسئلة يحذفها هذا الإصدار أو يغيّرها. أكّد للنشر، وستُعلَّم لإصلاحها.',
   document_too_large: 'حجم ملف PDF هذا أكبر من 20 ميجابايت. ارفع ملفًا أصغر.',
+  document_too_large_to_email:
+    'حجم ملف PDF هذا أكبر من ١٠ ميجابايت، فلا يمكن إرساله بالبريد. نزّله وشاركه بطريقة أخرى.',
   double_booked: 'هذا الشخص مكلَّف بمهمة أخرى في ذلك الوقت.',
   draft_changed: 'حُفظت المسودة مرة أخرى منذ راجعتها. راجعها من جديد قبل النشر.',
   draft_conflict:
@@ -194,9 +208,15 @@ export const apiErrorsAr: Catalogue<typeof apiErrorsEn> = {
   export_not_ready:
     'لا يُجدوَل حذف شركة إلا بعد أن يجهز تصدير بياناتها. انتظر حتى يجهز التصدير، ثم حاول مرة أخرى.',
   filter_needs_form: 'اختر نموذجًا قبل التصفية حسب إجابة.',
+  form_copy_same_company: 'هذه شركة النموذج نفسها. استخدم «نسخ» في قائمة النماذج بدلًا من ذلك.',
   form_not_on_work_order: 'لم يعد هذا النموذج من نماذج المهمة.',
   form_not_published: 'انشر النموذج أولًا؛ فمستنداته تُصمَّم على النسخة المنشورة.',
   form_started: 'بدأ أحدهم تعبئة هذا النموذج لهذه المهمة، لذا يبقى ضمنها.',
+  form_template_builtin: 'هذا القالب يأتي مع Integr8 Plus ولا يمكن تغييره هنا.',
+  form_template_key_taken: 'قالب في المكتبة يستخدم هذا المفتاح بالفعل. اختر مفتاحًا آخر.',
+  form_template_source_gone:
+    'النموذج الذي حُفظ منه هذا القالب لم يعد موجودًا. احفظ نموذجًا في المكتبة من جديد بدلًا من ذلك.',
+  form_template_title_required: 'أعطِ القالب اسمًا بلغة واحدة على الأقل.',
   form_unknown: 'اختر نموذجًا منشورًا.',
   form_version_unavailable:
     'لم يعد هذا الإصدار من النموذج متاحًا. عبّئه من جديد على الإصدار الحالي.',
@@ -367,6 +387,7 @@ export const apiErrorsAr: Catalogue<typeof apiErrorsEn> = {
   quote_closed: 'لم يعد عرض السعر هذا مفتوحًا.',
   quote_converted: 'أصبح عرض السعر هذا طلب بيع بالفعل.',
   quote_empty: 'أضف سطرًا واحدًا على الأقل قبل الإصدار.',
+  quote_link_invalid: 'لم يعد هذا رابط العرض الفعّال. أنشئ ملف PDF بدونه.',
   quote_unavailable:
     'لم يعد عرض السعر هذا متاحًا على الإنترنت. يُرجى التواصل مع الشركة التي أرسلته.',
   quote_expired: 'انتهت صلاحية عرض السعر هذا. يجب إصدار عرض جديد.',
@@ -496,4 +517,22 @@ export const apiErrorsAr: Catalogue<typeof apiErrorsEn> = {
   year_not_ready:
     'رحّل مسودات القيود أو احذفها، ورحّل المستندات المنتظرة أو استبعدها، مما يقع تاريخه في هذه السنة أولًا.',
   year_open: 'هذه السنة المالية غير مُقفلة.',
+
+  // تصدير نموذج واستيراده كملف ‎.integr8form (1.3.0، القرار 14).
+  form_export_no_draft: 'لا توجد مسودة لهذا النموذج. صدِّر نسخته المنشورة بدلًا من ذلك.',
+  form_export_not_published: 'لم يُنشر هذا النموذج بعد. صدِّر مسودته بدلًا من ذلك.',
+  form_package_not_publishable:
+    'النموذج في هذا الملف لا يمكن نشره، لذا لا يمكن إضافته إلى المكتبة. أصلح المشكلات المذكورة، ثم صدِّره من جديد واستورد الملف الجديد.',
+  package_invalid:
+    'هذا ليس ملف ‎.integr8form، أو أنه تالف. صدِّر النموذج من جديد واستورد الملف الجديد.',
+  package_too_large: 'هذا الملف أكبر مما يُسمح به لملف نماذج Integr8 ‏(50 ميغابايت).',
+  package_too_new:
+    'صُنع هذا الملف بإصدار أحدث من Integr8 Plus. حدِّث هذا الخادم أولًا، ثم استورده.',
+  package_entry_unexpected:
+    'يحتوي هذا الملف على شيء لا مكان له في ملف النماذج. صدِّر النموذج من جديد واستورد الملف الجديد.',
+  package_file_mismatch:
+    'صورة في هذا الملف مفقودة أو لا تطابق قائمة محتوياته. صدِّر النموذج من جديد.',
+  package_image_invalid: 'صورة في هذا الملف ليست صورة PNG أو JPEG أو WebP صالحة.',
+  package_form_invalid: 'تعذّرت قراءة النموذج في هذا الملف.',
+  package_template_invalid: 'تعذّرت قراءة أحد قوالب PDF في هذا الملف.',
 };

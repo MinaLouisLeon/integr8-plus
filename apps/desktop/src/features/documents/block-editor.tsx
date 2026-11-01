@@ -1,7 +1,34 @@
-import type { Block, BlockType, LeafBlock, TemplateDesign } from '@integr8/document-render';
+import {
+  closestCenter,
+  type CollisionDetection,
+  DndContext,
+  type DragEndEvent,
+  DragOverlay,
+  type DragStartEvent,
+  KeyboardSensor,
+  PointerSensor,
+  pointerWithin,
+  useDroppable,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import {
+  type Block,
+  BLOCK_COLOURS,
+  type BlockType,
+  type LeafBlock,
+  type TemplateDesign,
+} from '@integr8/document-render';
 import type { CompiledForm } from '@integr8/form-engine';
 import { useTranslation } from '@integr8/i18n';
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { Button } from '~/components/ui';
 import {
   CheckInput,
@@ -16,6 +43,7 @@ import {
   CHOICE_TYPES,
   freshBlockId,
   IMAGE_TYPES,
+  informationBlocks,
   LEAF_TYPES,
   moved,
   newBlock,
@@ -24,14 +52,24 @@ import {
   repeatingSections,
   sectionFields,
 } from './designer-model';
+import { columnContainer, locateBlock, moveBlock, ROOT } from './designer-tree';
 
 /**
  * The designer's content: the blocks of a template, one under another, each
  * opened to edit in place (docs/documents ADR-0001 D2). A row's columns hold
  * blocks of their own, edited the same way.
+ *
+ * Since 1.3.0 (decision 8) a block is dragged by its handle — within the
+ * template, into a row's column and out again — and the arrows stay for the
+ * keyboard. A block can be duplicated, or copied to paste into another of the
+ * form's templates. A block naming a question the form no longer has is
+ * marked, with what to fix.
  */
 
 type AnyBlock = Block | LeafBlock;
+
+/** How a change came about: typing joins into one undo step, anything else is a step of its own. */
+export type ChangeKind = 'typing' | 'step';
 
 const PLACEHOLDERS = [
   '{{answer.<question>}}',
@@ -45,89 +83,267 @@ const PLACEHOLDERS = [
   '{{asset.reference}}',
 ];
 
-interface Context {
+export interface Context {
   /** The whole design, for fresh ids. */
   design: TemplateDesign;
   form: CompiledForm | null;
   locale: string;
+  /** Blocks naming a question the form no longer has, with what is wrong with each. */
+  attention?: ReadonlyMap<string, string>;
+  onDuplicate?: (blockId: string) => void;
+  onCopy?: (blockId: string) => void;
 }
 
+/** Blocks that may set a text colour and shading (1.3.0 decision 9). */
+const WITH_APPEARANCE = new Set<BlockType>([
+  'heading',
+  'text',
+  'field',
+  'checkbox',
+  'options',
+  'fields_table',
+  'repeat_table',
+  'static_table',
+  'image',
+  'qr',
+]);
+
+/** Only targets that make sense for what is dragged: a block over a block, else a column. */
+const collision: CollisionDetection = (args) => {
+  const within = pointerWithin(args);
+  if (within.length > 0) {
+    // Prefer a block over the column that holds it.
+    return [...within].sort(
+      (a, b) =>
+        Number(String(a.id).startsWith('col:') || a.id === ROOT) -
+        Number(String(b.id).startsWith('col:') || b.id === ROOT),
+    );
+  }
+  return closestCenter(args);
+};
+
+/**
+ * The whole content of a template: one place to drag within, so a block can
+ * go from the template's column into a row's and back.
+ */
+export function BlockTree({
+  blocks,
+  onChange,
+  context,
+}: {
+  blocks: readonly Block[];
+  onChange: (blocks: Block[], kind: ChangeKind) => void;
+  context: Context;
+}) {
+  const { t } = useTranslation();
+  const [dragging, setDragging] = useState<AnyBlock | null>(null);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const onDragEnd = (event: DragEndEvent) => {
+    setDragging(null);
+    const over = event.over === null ? null : String(event.over.id);
+    const active = String(event.active.id);
+    if (over === null || over === active) {
+      return;
+    }
+    const target =
+      over === ROOT || over.startsWith('col:')
+        ? { container: over, index: Number.MAX_SAFE_INTEGER }
+        : locateBlock(blocks, over);
+    if (target === null) {
+      return;
+    }
+    const next = moveBlock(blocks, active, target);
+    if (next !== null) {
+      onChange(next, 'step');
+    }
+  };
+
+  return (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={collision}
+      onDragStart={(event: DragStartEvent) =>
+        setDragging(findBlock(blocks, String(event.active.id)))
+      }
+      onDragCancel={() => setDragging(null)}
+      onDragEnd={onDragEnd}
+    >
+      <BlockList
+        container={ROOT}
+        blocks={blocks}
+        context={context}
+        onChange={(next, kind) => onChange(next, kind)}
+      />
+      <DragOverlay dropAnimation={null}>
+        {dragging === null ? null : (
+          <div className="rounded-md border border-accent bg-surface px-3 py-2 text-sm font-medium text-content shadow-lg">
+            {t(`documents.designer.block.types.${dragging.type}`)}
+          </div>
+        )}
+      </DragOverlay>
+    </DndContext>
+  );
+}
+
+function findBlock(blocks: readonly Block[], id: string): AnyBlock | null {
+  for (const block of blocks) {
+    if (block.id === id) {
+      return block;
+    }
+    if (block.type === 'row') {
+      for (const column of block.columns) {
+        const found = column.blocks.find((inner) => inner.id === id);
+        if (found !== undefined) {
+          return found;
+        }
+      }
+    }
+  }
+  return null;
+}
+
+/** One column of blocks: the template's own, or a row's. Must be inside a {@link BlockTree}. */
 export function BlockList({
   blocks,
   onChange,
   context,
-  leafOnly = false,
+  container = ROOT,
 }: {
   blocks: readonly AnyBlock[];
-  onChange: (blocks: AnyBlock[]) => void;
+  onChange: (blocks: AnyBlock[], kind: ChangeKind) => void;
   context: Context;
-  leafOnly?: boolean;
+  container?: string;
 }) {
   const { t } = useTranslation();
+  const leafOnly = container !== ROOT;
   const [adding, setAdding] = useState<BlockType>(leafOnly ? 'text' : 'heading');
   const [open, setOpen] = useState<string | null>(null);
   const types = leafOnly ? LEAF_TYPES : BLOCK_TYPES;
+  const { setNodeRef, isOver } = useDroppable({ id: container });
 
   return (
     <div className="flex flex-col gap-2">
-      {blocks.map((block, index) => (
-        <div key={block.id} className="rounded-md border border-border-subtle bg-surface">
-          <div className="flex flex-wrap items-center gap-2 px-3 py-2">
-            <span className="text-sm font-medium text-content">
-              {t(`documents.designer.block.types.${block.type}`)}
-            </span>
-            <span className="min-w-0 flex-1 truncate text-xs text-content-muted" dir="auto">
-              {summary(block, context.locale)}
-            </span>
-            <Button
-              variant="ghost"
-              aria-label={t('documents.designer.block.moveUp')}
-              disabled={index === 0}
-              onClick={() => onChange(moved(blocks, index, -1))}
-            >
-              ↑
-            </Button>
-            <Button
-              variant="ghost"
-              aria-label={t('documents.designer.block.moveDown')}
-              disabled={index === blocks.length - 1}
-              onClick={() => onChange(moved(blocks, index, 1))}
-            >
-              ↓
-            </Button>
-            {hasSettings(block) ? (
-              <Button
-                variant="secondary"
-                aria-expanded={open === block.id}
-                onClick={() => setOpen(open === block.id ? null : block.id)}
-              >
-                {open === block.id
-                  ? t('documents.designer.block.done')
-                  : t('documents.designer.block.edit')}
-              </Button>
-            ) : null}
-            <Button
-              variant="ghost"
-              onClick={() => onChange(blocks.filter((candidate) => candidate.id !== block.id))}
-            >
-              {t('documents.designer.block.remove')}
-            </Button>
-          </div>
-          {open === block.id ? (
-            <div className="border-t border-border-subtle px-3 py-3">
-              <BlockEditor
-                block={block}
-                context={context}
-                onChange={(next) =>
-                  onChange(
-                    blocks.map((candidate) => (candidate.id === block.id ? next : candidate)),
-                  )
-                }
-              />
-            </div>
+      <SortableContext
+        items={blocks.map((block) => block.id)}
+        strategy={verticalListSortingStrategy}
+      >
+        <div
+          ref={setNodeRef}
+          className={[
+            'flex min-h-10 flex-col gap-2 rounded-md',
+            isOver ? 'outline-2 outline-accent outline-dashed' : '',
+          ].join(' ')}
+        >
+          {blocks.length === 0 ? (
+            <p className="px-2 py-3 text-xs text-content-muted">
+              {t('documents.pdfBuilder.blocks.dropHere')}
+            </p>
           ) : null}
+          {blocks.map((block, index) => {
+            const problem =
+              context.attention?.get(block.id) ??
+              (block.type === 'row' &&
+              block.columns.some((column) =>
+                column.blocks.some((inner) => context.attention?.has(inner.id) === true),
+              )
+                ? t('documents.pdfBuilder.attention.inRow')
+                : undefined);
+            return (
+              <SortableBlock key={block.id} id={block.id} problem={problem !== undefined}>
+                {(handle) => (
+                  <>
+                    <div className="flex flex-wrap items-center gap-2 px-3 py-2">
+                      {handle}
+                      <span className="text-sm font-medium text-content">
+                        {t(`documents.designer.block.types.${block.type}`)}
+                      </span>
+                      <span
+                        className="min-w-0 flex-1 truncate text-xs text-content-muted"
+                        dir="auto"
+                      >
+                        {summary(block, context.locale)}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        aria-label={t('documents.designer.block.moveUp')}
+                        disabled={index === 0}
+                        onClick={() => onChange(moved(blocks, index, -1), 'step')}
+                      >
+                        ↑
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        aria-label={t('documents.designer.block.moveDown')}
+                        disabled={index === blocks.length - 1}
+                        onClick={() => onChange(moved(blocks, index, 1), 'step')}
+                      >
+                        ↓
+                      </Button>
+                      {hasSettings(block) ? (
+                        <Button
+                          variant="secondary"
+                          aria-expanded={open === block.id}
+                          onClick={() => setOpen(open === block.id ? null : block.id)}
+                        >
+                          {open === block.id
+                            ? t('documents.designer.block.done')
+                            : t('documents.designer.block.edit')}
+                        </Button>
+                      ) : null}
+                      {context.onDuplicate === undefined ? null : (
+                        <Button variant="ghost" onClick={() => context.onDuplicate?.(block.id)}>
+                          {t('documents.pdfBuilder.blocks.duplicate')}
+                        </Button>
+                      )}
+                      {context.onCopy === undefined ? null : (
+                        <Button variant="ghost" onClick={() => context.onCopy?.(block.id)}>
+                          {t('documents.pdfBuilder.blocks.copy')}
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        onClick={() =>
+                          onChange(
+                            blocks.filter((candidate) => candidate.id !== block.id),
+                            'step',
+                          )
+                        }
+                      >
+                        {t('documents.designer.block.remove')}
+                      </Button>
+                    </div>
+                    {problem === undefined ? null : (
+                      <p className="border-t border-danger bg-danger-subtle px-3 py-2 text-xs text-content">
+                        {problem}
+                      </p>
+                    )}
+                    {open === block.id ? (
+                      <div className="border-t border-border-subtle px-3 py-3">
+                        <BlockEditor
+                          block={block}
+                          context={context}
+                          onChange={(next, kind = 'typing') =>
+                            onChange(
+                              blocks.map((candidate) =>
+                                candidate.id === block.id ? next : candidate,
+                              ),
+                              kind,
+                            )
+                          }
+                        />
+                      </div>
+                    ) : null}
+                  </>
+                )}
+              </SortableBlock>
+            );
+          })}
         </div>
-      ))}
+      </SortableContext>
       <div className="flex flex-wrap items-end gap-2">
         <div className="min-w-48">
           <SelectInput
@@ -147,13 +363,61 @@ export function BlockList({
               { blocks: [...context.design.blocks, ...blocks] as Block[] },
               adding,
             );
-            onChange([...blocks, newBlock(adding, id, context.form)]);
+            onChange([...blocks, newBlock(adding, id, context.form)], 'step');
             setOpen(id);
           }}
         >
           {t('documents.designer.block.add')}
         </Button>
       </div>
+    </div>
+  );
+}
+
+/** A block that can be dragged by its handle. */
+function SortableBlock({
+  id,
+  problem,
+  children,
+}: {
+  id: string;
+  problem: boolean;
+  children: (handle: ReactNode) => ReactNode;
+}) {
+  const { t } = useTranslation();
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+  const handle = (
+    <button
+      type="button"
+      ref={setActivatorNodeRef}
+      {...attributes}
+      {...listeners}
+      aria-label={t('documents.pdfBuilder.blocks.drag')}
+      className="cursor-grab touch-none rounded px-1 text-content-muted hover:bg-surface-muted"
+    >
+      ⠿
+    </button>
+  );
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Translate.toString(transform), transition }}
+      data-attention={problem ? 'true' : undefined}
+      className={[
+        'rounded-md border bg-surface',
+        problem ? 'border-danger' : 'border-border-subtle',
+        isDragging ? 'opacity-40' : '',
+      ].join(' ')}
+    >
+      {children(handle)}
     </div>
   );
 }
@@ -176,6 +440,8 @@ function summary(block: AnyBlock, locale: string): string {
       return block.rows.map((row) => row.fieldId).join(', ');
     case 'repeat_table':
       return block.sectionId;
+    case 'information':
+      return block.informationId;
     case 'image':
       return block.source.kind === 'answer' ? block.source.fieldId : block.source.kind;
     case 'row':
@@ -191,7 +457,56 @@ function BlockEditor({
   context,
 }: {
   block: AnyBlock;
-  onChange: (block: AnyBlock) => void;
+  onChange: (block: AnyBlock, kind?: ChangeKind) => void;
+  context: Context;
+}) {
+  return (
+    <div className="flex flex-col gap-3">
+      <BlockSettings block={block} onChange={onChange} context={context} />
+      {WITH_APPEARANCE.has(block.type) ? (
+        <Appearance block={block} onChange={(next) => onChange(next, 'step')} />
+      ) : null}
+    </div>
+  );
+}
+
+/** A block's text colour and shading (1.3.0 decision 9). */
+function Appearance({ block, onChange }: { block: AnyBlock; onChange: (block: AnyBlock) => void }) {
+  const { t } = useTranslation();
+  const colour = 'colour' in block ? block.colour : undefined;
+  const shaded = 'shaded' in block ? block.shaded === true : false;
+  return (
+    <div className="grid grid-cols-1 items-end gap-3 border-t border-border-subtle pt-3 lg:grid-cols-2">
+      <SelectInput
+        label={t('documents.pdfBuilder.style.blockColour')}
+        value={colour ?? 'default'}
+        options={[
+          { value: 'default', label: t('documents.pdfBuilder.style.colourDefault') },
+          ...BLOCK_COLOURS.map((value) => ({
+            value,
+            label: t(`documents.pdfBuilder.style.colours.${value}`),
+          })),
+        ]}
+        onChange={(value) =>
+          onChange(withOptional(block, 'colour', value === 'default' ? undefined : value))
+        }
+      />
+      <CheckInput
+        label={t('documents.pdfBuilder.style.shaded')}
+        checked={shaded}
+        onChange={(on) => onChange(withOptional(block, 'shaded', on ? true : undefined))}
+      />
+    </div>
+  );
+}
+
+function BlockSettings({
+  block,
+  onChange,
+  context,
+}: {
+  block: AnyBlock;
+  onChange: (block: AnyBlock, kind?: ChangeKind) => void;
   context: Context;
 }) {
   const { t } = useTranslation();
@@ -725,6 +1040,30 @@ function BlockEditor({
           )}
         </div>
       );
+    case 'information': {
+      const blocks = informationBlocks(form);
+      const language = locale.startsWith('ar') ? 'ar' : 'en';
+      const name = (text: Record<string, string> | undefined) =>
+        text?.[language] ?? text?.en ?? Object.values(text ?? {})[0] ?? '';
+      return blocks.length === 0 ? (
+        <p className="text-sm text-content-muted">{t('documents.designer.block.noInformation')}</p>
+      ) : (
+        <div className="flex flex-col gap-1">
+          <SelectInput
+            label={t('documents.designer.block.information')}
+            value={block.informationId}
+            options={blocks.map((candidate) => ({
+              value: candidate.id,
+              label: (name(candidate.heading) || name(candidate.body)).slice(0, 80) || candidate.id,
+            }))}
+            onChange={(informationId) => onChange({ ...block, informationId })}
+          />
+          <p className="text-xs text-content-muted">
+            {t('documents.designer.block.informationHint')}
+          </p>
+        </div>
+      );
+    }
     case 'spacer':
       return (
         <NumberInput
@@ -764,23 +1103,29 @@ function BlockEditor({
                   variant="ghost"
                   disabled={block.columns.length <= 2}
                   onClick={() =>
-                    onChange({ ...block, columns: block.columns.filter((_c, at) => at !== index) })
+                    onChange(
+                      { ...block, columns: block.columns.filter((_c, at) => at !== index) },
+                      'step',
+                    )
                   }
                 >
                   {t('documents.designer.block.removeItem')}
                 </Button>
               </div>
               <BlockList
-                leafOnly
+                container={columnContainer(block.id, index)}
                 blocks={column.blocks}
                 context={context}
-                onChange={(blocks) =>
-                  onChange({
-                    ...block,
-                    columns: block.columns.map((candidate, at) =>
-                      at === index ? { ...candidate, blocks: blocks as LeafBlock[] } : candidate,
-                    ),
-                  })
+                onChange={(blocks, kind) =>
+                  onChange(
+                    {
+                      ...block,
+                      columns: block.columns.map((candidate, at) =>
+                        at === index ? { ...candidate, blocks: blocks as LeafBlock[] } : candidate,
+                      ),
+                    },
+                    kind,
+                  )
                 }
               />
             </div>
@@ -790,7 +1135,10 @@ function BlockEditor({
               variant="secondary"
               disabled={block.columns.length >= 3}
               onClick={() =>
-                onChange({ ...block, columns: [...block.columns, { width: 1, blocks: [] }] })
+                onChange(
+                  { ...block, columns: [...block.columns, { width: 1, blocks: [] }] },
+                  'step',
+                )
               }
             >
               {t('documents.designer.block.addColumn')}

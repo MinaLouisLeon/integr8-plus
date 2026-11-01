@@ -47,10 +47,10 @@ owner, in this order:
    is readable by anyone. If not, make it private again and either take GitHub
    Pro ($4/month) or accept that rules 1, 2, 4 and 5 stay unenforced.
 2. **Apply the rulesets** (below), on a public repository or with Pro. Before
-   that, decide the flow: the rulesets enforce `dev → staging → main`, there is
-   no `staging` branch on the server yet, and feature branches have been merged
-   straight into `main`. Either create `staging` from `main` and follow the
-   flow, or change `main.json`'s source rule before applying it.
+   that, check the flow: the rulesets enforce `dev → staging → main`. Feature
+   branches were merged straight into `main` until 1.2.2; since 1.2.3 work goes
+   into `dev`, and `staging` was created from `dev` on 1 November 2026, so the
+   flow can be followed as written.
 
 Until then, two partial controls are in place, and neither is enforcement:
 

@@ -19,7 +19,7 @@
 
 # The exact Node release in .nvmrc, in every stage: `pnpm pins:check` fails
 # when they differ, so CI, a developer's machine and the server run the same Node.
-FROM node:22.22.2-bookworm-slim AS base
+FROM node:22.23.4-bookworm-slim AS base
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 # Husky installs git hooks on `pnpm install`; there is no repository in here.
@@ -45,14 +45,16 @@ RUN pnpm deploy --legacy --filter @integr8/api --prod /out
 # Runtime: the pruned tree, Chromium for PDFs, an unprivileged user, and
 # nothing else.
 # ---------------------------------------------------------------------------
-FROM node:22.22.2-bookworm-slim AS runtime
+FROM node:22.23.4-bookworm-slim AS runtime
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOST=0.0.0.0
 # Chromium prints PDF documents in the worker (docs/documents ADR-0001 D4), and
 # the Noto fonts give it Latin and Arabic to print with. Debian's own packages,
-# so their security fixes arrive with the base image. The API process never
-# starts Chromium; it is here because the worker is this same image.
+# so their security fixes arrive with the base image. The API process starts
+# Chromium only for the PDF designer's "Preview as PDF" (1.3.0). The Integr8
+# Media website fonts a template may use are not installed here: they are the
+# pinned @fontsource packages in node_modules, embedded into each document.
 RUN apt-get update \
   && apt-get install -y --no-install-recommends chromium fonts-noto-core fonts-dejavu-core \
   && rm -rf /var/lib/apt/lists/*

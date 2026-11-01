@@ -2,6 +2,7 @@ import {
   choiceValues,
   describeFieldType,
   type Field,
+  isQuestion,
   LIMITS,
   type LocalizedText,
   type Section,
@@ -87,7 +88,7 @@ export function withLimits<S extends SectionSettings>(section: S, draft: LimitDr
  * Not yes/no, whose answer names nothing, nor a multi-select.
  */
 export function titleCandidates(section: Pick<Section, 'fields'>): Field[] {
-  return section.fields.filter((field) => {
+  return section.fields.filter(isQuestion).filter((field) => {
     const valueType = describeFieldType(field.type).valueType;
     return (
       field.type !== 'yes_no' &&

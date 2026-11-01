@@ -4,7 +4,10 @@ import {
   evaluateForm,
   type Field,
   isAnswered,
+  isCalculated,
+  isQuestion,
   mediaReferenceSchema,
+  ownAnswer,
 } from '@integr8/form-engine';
 import { entryTitle, formatBytes, say } from '@integr8/form-input';
 import { formatDate, formatDateTime, formatList, useTranslation } from '@integr8/i18n';
@@ -14,6 +17,16 @@ import { useTheme } from '~/components/ui';
 import { imageUri, useFormMedia } from './media';
 import { references } from './widgets/files';
 import { ActionButton } from './widgets/kit';
+
+/**
+ * A calculated answer as it was stored, when it was: the server worked it out
+ * at submission, and one that reads `now` (schema version 2) would come out
+ * differently if worked out again. Otherwise the value worked out here.
+ */
+function kept(field: Field, stored: Answers, worked: unknown): unknown {
+  const value = isCalculated(field) ? ownAnswer(stored, field.id) : undefined;
+  return value === undefined ? worked : value;
+}
 
 /**
  * Answers, read back: the review before submitting, and a submitted form. Only
@@ -77,13 +90,18 @@ export function AnswerList({
                 )}
                 {section.repeat === undefined
                   ? section.fields
+                      .filter(isQuestion)
                       .filter((field) => visible.get(field.id) === true)
                       .map((field) => (
                         <View key={field.id} style={styles.answer}>
                           <Text style={[styles.question, { color: theme.textMuted }]}>
                             {say(field.label, locale) || field.id}
                           </Text>
-                          <AnswerValue field={field} value={values.get(field.id)} locale={locale} />
+                          <AnswerValue
+                            field={field}
+                            value={kept(field, answers, values.get(field.id))}
+                            locale={locale}
+                          />
                         </View>
                       ))
                   : null}
@@ -103,6 +121,7 @@ export function AnswerList({
                             : `${title.label} · ${title.name}`}
                         </Text>
                         {section.fields
+                          .filter(isQuestion)
                           .filter((field) => entry.visible.get(field.id) === true)
                           .map((field) => (
                             <View key={field.id} style={styles.answer}>

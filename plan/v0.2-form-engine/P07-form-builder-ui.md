@@ -37,7 +37,7 @@ with that reason, and P10's task list carries it.
 
 - [ ] A non-developer builds a ten-field form with two conditional rules in under fifteen minutes, unaided, observed
 - [x] Editing and republishing a form leaves every existing submission byte-identical
-- [ ] The phone preview matches what the mobile app actually renders in P13
+- [x] The phone preview matches what the mobile app actually renders in P13 — in behaviour, checked automatically; in looks, drawn from the phone's styles (1.3.0, see below)
 - [x] Publishing an invalid definition is impossible; the errors name the offending fields
 
 ## Notes
@@ -58,13 +58,25 @@ watching. It cannot be claimed from code. Everything it depends on is built and 
 through end to end in a browser (below); what is missing is the observation itself, and
 whatever it turns up.
 
-### The phone preview against P13
+### The phone preview against P13 — done in 1.3.0
 
-The phone viewport renders the engine's `viewForm` in a single column, one page at a
-time — the same derived view the mobile renderer will use. Whether it _matches_ what P13
-renders can only be checked once P13 exists. P13 should keep the page-at-a-time flow, the
-required marker, help under the label and errors under the control, or change this
-preview in the same commit.
+Owner's decision 5 (A + B), built in 1.3.0:
+
+- **A — a behaviour check.** The six library forms and a form with every question type and
+  every kind of rule, driven through a sequence of answers, Review included, in English and
+  Arabic. At every step the preview's phone and desktop view, the web filler and the phone
+  app's own screens must show the same questions, labels, required marks and errors, in the
+  same order (`@integr8/form-input/behaviour`; tests in `apps/desktop`,
+  `packages/form-renderer-dom` and `apps/mobile`). The phone's real components are rendered
+  through a React Native stand-in in jsdom. It found and fixed two differences (no required
+  mark on a phone tick box; the desktop view ignoring a format's message).
+- **B — the look.** The preview's phone is drawn from the phone app's styles: its header and
+  progress bar, page and entry flow, control sizes, type sizes, the system font, and the
+  company's colour and theme as the phone computes them.
+
+Not covered, by design: pixels (no screenshot comparison against a device), native pickers,
+camera and signature pad, and "open the draft on a real phone" (not chosen). See
+`docs/form-engine/builder.md`, "Behaviour check".
 
 ### CORS on the API
 

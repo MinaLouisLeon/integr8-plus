@@ -453,6 +453,17 @@ export const MIGRATIONS: readonly Migration[] = [
       `alter table van_stock add column lots text`,
     ],
   },
+  {
+    version: 11,
+    name: 'pull everything again once for forms written for 1.3.0',
+    statements: [
+      // Before 1.3.0 a phone cannot open a form written in format 2 (schema
+      // version 2), so the server sent it those forms' names marked "Update
+      // the app". Updated, the phone pulls everything again once — a reset
+      // pull, which replaces those names and leaves unsent work where it is.
+      `delete from meta where key = 'sync_cursor'`,
+    ],
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS.at(-1)?.version ?? 0;

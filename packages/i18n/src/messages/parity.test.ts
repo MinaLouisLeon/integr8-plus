@@ -61,6 +61,8 @@ const SAME_IN_BOTH = new Set([
   'site.brand.integr8Media',
   'site.home.apps.integr8Title',
   'site.download.staff.title',
+  // The forms AI tool's product name (it is English only).
+  'site.download.formsAi.title',
 ]);
 
 function isOnlyPlaceholdersAndPunctuation(value: string): boolean {

@@ -1,7 +1,8 @@
 import type { FormDefinition, Page, Section } from '../definition.js';
 import { type Expression, referencedFields, referencedSections } from '../expression.js';
-import { dependsOnOf, type Field } from '../field-types.js';
+import { calculationOf, dependsOnOf, type Field } from '../field-types.js';
 import type { ElementId } from '../ids.js';
+import { isQuestion, type SectionItem } from '../information.js';
 import { generateId } from './scaffold.js';
 
 /**
@@ -17,6 +18,11 @@ import { generateId } from './scaffold.js';
  * allowed to be invalid; that is what a draft is. `compileDefinition` is run
  * on every change to show the admin what is wrong, and again at publish to
  * refuse it.
+ *
+ * A section's items are its questions and its Information blocks (schema
+ * version 2). Placing, moving, duplicating and removing treat them alike — an
+ * Information block is located as a `field` — while `findField`, `fieldsOf`
+ * and `updateField` are about questions only.
  */
 
 export type EditError =
@@ -65,21 +71,30 @@ export function locate(definition: FormDefinition, id: ElementId): Located | und
   return undefined;
 }
 
-export function findField(definition: FormDefinition, id: ElementId): Field | undefined {
+/** A section's item — a question or an Information block — by id. */
+export function findItem(definition: FormDefinition, id: ElementId): SectionItem | undefined {
   for (const page of definition.pages) {
     for (const section of page.sections) {
-      const field = section.fields.find((candidate) => candidate.id === id);
-      if (field !== undefined) {
-        return field;
+      const item = section.fields.find((candidate) => candidate.id === id);
+      if (item !== undefined) {
+        return item;
       }
     }
   }
   return undefined;
 }
 
-/** Every field in reading order. */
+/** A question by id; `undefined` for anything else, an Information block included. */
+export function findField(definition: FormDefinition, id: ElementId): Field | undefined {
+  const item = findItem(definition, id);
+  return item !== undefined && isQuestion(item) ? item : undefined;
+}
+
+/** Every question in reading order. Information blocks are not among them. */
 export function fieldsOf(definition: FormDefinition): Field[] {
-  return definition.pages.flatMap((page) => page.sections.flatMap((section) => section.fields));
+  return definition.pages.flatMap((page) =>
+    page.sections.flatMap((section) => section.fields.filter(isQuestion)),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -113,7 +128,7 @@ function mapSections(
 export function addField(
   definition: FormDefinition,
   sectionId: ElementId,
-  field: Field,
+  field: SectionItem,
   index?: number,
 ): EditResult {
   if (locate(definition, sectionId)?.kind !== 'section') {
@@ -158,6 +173,18 @@ export function updateField(
   definition: FormDefinition,
   id: ElementId,
   update: (field: Field) => Field,
+): EditResult {
+  if (findField(definition, id) === undefined) {
+    return { error: 'not_found', id };
+  }
+  return updateItem(definition, id, (item) => (isQuestion(item) ? update(item) : item));
+}
+
+/** Replaces any item of a section — a question or an Information block — keeping its id. */
+export function updateItem(
+  definition: FormDefinition,
+  id: ElementId,
+  update: (item: SectionItem) => SectionItem,
 ): EditResult {
   if (locate(definition, id)?.kind !== 'field') {
     return { error: 'not_found', id };
@@ -205,7 +232,7 @@ export function moveField(
   toSectionId: ElementId,
   index: number,
 ): EditResult {
-  const field = findField(definition, id);
+  const field = findItem(definition, id);
   if (field === undefined) {
     return { error: 'not_found', id };
   }
@@ -329,11 +356,15 @@ function remapSection(section: Section, map: ReadonlyMap<ElementId, ElementId>):
   };
 }
 
-function remapField(field: Field, map: ReadonlyMap<ElementId, ElementId>): Field {
-  const copy: Record<string, unknown> = { ...field, id: map.get(field.id) ?? field.id };
-  if (field.visibleWhen !== undefined) {
-    copy.visibleWhen = remapExpression(field.visibleWhen, map);
+function remapField(item: SectionItem, map: ReadonlyMap<ElementId, ElementId>): SectionItem {
+  const copy: Record<string, unknown> = { ...item, id: map.get(item.id) ?? item.id };
+  if (item.visibleWhen !== undefined) {
+    copy.visibleWhen = remapExpression(item.visibleWhen, map);
   }
+  if (!isQuestion(item)) {
+    return copy as SectionItem;
+  }
+  const field = item;
   if (field.requiredWhen !== undefined) {
     copy.requiredWhen = remapExpression(field.requiredWhen, map);
   }
@@ -341,8 +372,9 @@ function remapField(field: Field, map: ReadonlyMap<ElementId, ElementId>): Field
   if (dependsOn !== undefined) {
     copy.dependsOn = { ...dependsOn, field: map.get(dependsOn.field) ?? dependsOn.field };
   }
-  if ('calculation' in field && field.calculation !== undefined) {
-    copy.calculation = remapExpression(field.calculation, map);
+  const calculation = calculationOf(field);
+  if (calculation !== undefined) {
+    copy.calculation = remapExpression(calculation, map);
   }
   if (field.rules !== undefined) {
     copy.rules = field.rules.map((rule) => ({
@@ -465,16 +497,18 @@ export function referencesTo(definition: FormDefinition, ids: readonly ElementId
     scan(page.id, 'visibleWhen', page.visibleWhen);
     for (const section of page.sections) {
       scan(section.id, 'visibleWhen', section.visibleWhen);
-      for (const field of section.fields) {
-        scan(field.id, 'visibleWhen', field.visibleWhen);
+      for (const item of section.fields) {
+        scan(item.id, 'visibleWhen', item.visibleWhen);
+        if (!isQuestion(item)) {
+          continue;
+        }
+        const field = item;
         scan(field.id, 'requiredWhen', field.requiredWhen);
         const parent = dependsOnOf(field)?.field;
         if (parent !== undefined && targets.has(parent) && !targets.has(field.id)) {
           found.push({ from: field.id, where: 'dependsOn', to: parent });
         }
-        if ('calculation' in field) {
-          scan(field.id, 'calculation', field.calculation);
-        }
+        scan(field.id, 'calculation', calculationOf(field));
         for (const rule of field.rules ?? []) {
           scan(field.id, 'rule', rule.assert, rule.id);
         }

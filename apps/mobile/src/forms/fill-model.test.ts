@@ -496,3 +496,67 @@ describe('entries of a repeatable section on the phone (P13b)', () => {
     expect((JSON.parse(submit!.waits_for) as { media: string[] }).media).toEqual([mediaId]);
   });
 });
+
+describe('schema version 2 on the phone', () => {
+  const form = compiled({
+    schemaVersion: 2,
+    title: label('Visit'),
+    pages: [
+      {
+        id: 'page_1',
+        description: label('On site'),
+        sections: [
+          {
+            id: 'main',
+            fields: [
+              { id: 'arrived', type: 'datetime', label: label('Arrived') },
+              {
+                id: 'note',
+                type: 'information',
+                body: label('Record when you arrived.'),
+                visibleWhen: {
+                  kind: 'not',
+                  operand: { kind: 'answered', field: 'arrived' },
+                },
+              },
+              {
+                id: 'minutes',
+                type: 'number',
+                label: label('Minutes on site'),
+                calculation: {
+                  kind: 'difference',
+                  unit: 'minutes',
+                  from: { kind: 'answer', field: 'arrived' },
+                  to: { kind: 'now' },
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  });
+  const model = (now?: string) =>
+    new FillModel({
+      newEntryId: entryIds(),
+      form,
+      answers: {},
+      context: now === undefined ? { today: '2026-09-15' } : { today: '2026-09-15', now },
+      save: () => Promise.resolve(),
+    });
+
+  it('shows an Information block by its rule, and works out a calculation that reads now', () => {
+    const fixed = model('2026-09-15T10:30:00+03:00');
+    expect(fixed.snapshot().view.visible.get('note')).toBe(true);
+    fixed.answer('arrived', '2026-09-15T10:00:00+03:00');
+    expect(fixed.snapshot().view.visible.get('note')).toBe(false);
+    expect(fixed.snapshot().view.values.get('minutes')).toBe(30);
+    expect(fixed.submission()).toEqual({ arrived: '2026-09-15T10:00:00+03:00' });
+  });
+
+  it('reads the phone’s clock for now when the screen does not fix it', () => {
+    const live = model();
+    live.answer('arrived', withOffset('2020-01-01T00:00', 0));
+    expect(live.snapshot().view.values.get('minutes')).toBeGreaterThan(0);
+  });
+});

@@ -1083,7 +1083,7 @@ export interface paths {
         get?: never;
         /**
          * Autosave the draft
-         * @description Stores the definition as it is, valid or not. `expectedRevision` is the revision the builder last saw, or `null` to start a draft when there is none. A save based on an older revision is refused with 409, so a second tab cannot overwrite the first.
+         * @description Stores the definition as it is, valid or not, except that the server sets `schemaVersion` to the lowest format that has everything the definition uses (2 for descriptions, Information blocks and the 1.3.0 calculations; otherwise 1) — the response carries the definition as stored. `expectedRevision` is the revision the builder last saw, or `null` to start a draft when there is none. A save based on an older revision is refused with 409, so a second tab cannot overwrite the first.
          */
         put: operations["saveFormDraft"];
         post?: never;
@@ -1104,7 +1104,7 @@ export interface paths {
         put?: never;
         /**
          * Validate the draft and compare it with the live version
-         * @description What publishing would decide, without publishing: every issue that would refuse it, named by field, and every change against the live version with the breaking ones marked.
+         * @description What publishing would decide, without publishing: every issue that would refuse it, named by field, every change against the live version with the breaking ones marked, and the PDF templates that use a question the draft drops or changes.
          */
         post: operations["checkFormDraft"];
         delete?: never;
@@ -1235,9 +1235,109 @@ export interface paths {
         put?: never;
         /**
          * Start a form from a template
-         * @description The new form starts as a draft of the template. The template itself never changes. Honours `Idempotency-Key`.
+         * @description The new form starts as a draft of the template. The template itself never changes. A staff-made template’s PDF templates come too unless `includeDocumentTemplates` is false, their pictures copied into the company’s storage (409 `storage_quota_exceeded` past a blocking allowance); `documentTemplatesCopied` says how many. Honours `Idempotency-Key`.
          */
         post: operations["cloneFormTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/forms/copy-targets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Companies a form can be copied to
+         * @description Integr8 staff only, acting as a company (`form.manage` and the impersonation claim). Every other company that is not closed, by name.
+         */
+        get: operations["listFormCopyTargets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/forms/{formId}/copy-to-company": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Copy a form to another company
+         * @description Integr8 staff only, acting as the company the form is in. The form’s last published version — or its draft, when it was never published — arrives in the other company as a new form with an unpublished draft, keeping its answer keys, its English and Arabic texts and its settings (who fills it, the signature rule). Never copied: job type links, submissions, answers, documents. With `includeDocumentTemplates` (needs `document.design`), its PDF templates go too, every picture copied into the other company’s storage (409 `storage_quota_exceeded` past a blocking allowance). Audited in both companies and in the platform audit log. Honours `Idempotency-Key`.
+         */
+        post: operations["copyFormToCompany"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/forms/{formId}/library-template": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Save a form as a library template
+         * @description Integr8 staff only, acting as the company the form is in. The form’s last published version becomes a staff-made library template under `key`, offered to every company beside the built-in ones. With `includeDocumentTemplates` (the default) its PDF templates that are not archived go too, their pictures copied into the platform’s library storage; a company that starts from the template gets its own copies. Renamed, replaced with a newer version and retired from the dashboard’s Templates page. 409 `form_template_key_taken` for a key in use (built-in keys included), `form_not_published` for a form never published.
+         */
+        post: operations["saveFormToLibrary"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/forms/{formId}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export a form with its PDF templates as a .integr8form file
+         * @description Integr8 staff only, acting as the company the form is in (`form.manage` and the impersonation claim; `document.design` when the form has PDF templates). The file holds the form’s last published version — or, with `source=draft`, its draft — its settings (who fills it, the signature rule), its PDF templates that are not archived and every picture they use. Never submissions, answers, customers, job type links or the company’s branding. The format is described in `docs/form-engine/package-format.md`. 409 `form_export_not_published` when nothing is published, `form_export_no_draft` when there is no draft, `document_template_image_missing` when a picture is gone from storage. Audited in the company and the platform.
+         */
+        get: operations["exportForm"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/forms/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import a .integr8form file as a new draft form
+         * @description Integr8 staff only, acting as the company to import into (`form.manage` and the impersonation claim; `document.design` when the file has PDF templates). The body is the file itself, sent as `application/vnd.integr8.form+zip`, at most 50 MB. It is read with every check of the format (`docs/form-engine/package-format.md`); a refusal answers 422 with the package's code (`package_invalid`, `package_too_large`, `package_too_new`, `package_entry_unexpected`, `package_file_mismatch`, `package_image_invalid`, `package_form_invalid`, `package_template_invalid`) and `details` naming each problem's entry and place. The file becomes a new form with an unpublished draft and the file's settings — never a change to an existing form; when a form of the same name exists, the new one is called "<name> (imported)". Its PDF templates are created with their pictures written into the company's storage under new ids (409 `storage_quota_exceeded` past a blocking allowance; nothing is kept when anything fails). `check` lists what must be fixed before the draft publishes, and warnings such as missing Arabic. Audited in the company (`form.imported`) and the platform. Honours `Idempotency-Key`.
+         */
+        post: operations["importForm"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1405,7 +1505,7 @@ export interface paths {
         head?: never;
         /**
          * Save a PDF template
-         * @description Staff only. `revision` is the one last read: a template saved meanwhile by someone else answers 409 `document_template_changed`, and nothing is overwritten. Documents already made keep the design they were printed with.
+         * @description Staff only. `revision` is the one last read: a template saved meanwhile by someone else answers 409 `document_template_changed`, and nothing is overwritten. Documents already made keep the design they were printed with. A question the form has since dropped or changed does not stop a save when the template already named it (it stays in `problems`); a save that adds a new broken reference is refused (422). A version 1 design sent over a template a newer designer saved is refused (409 `document_template_newer`).
          */
         patch: operations["updateDocumentTemplate"];
         trace?: never;
@@ -1424,6 +1524,26 @@ export interface paths {
          * @description Staff only. An archived template is no longer offered for new documents; documents made from it are untouched.
          */
         post: operations["archiveDocumentTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/document-templates/{templateId}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Print a design as a PDF, without keeping it
+         * @description Staff only (`document.design`). Prints `design` — the designer’s current one, saved or not — the way a document is printed, filled with a submission of the template’s form or, without one, with sample answers. The PDF is returned and nothing is stored or counted against the company’s storage. A few per minute per person and a cap for the whole server (429 `rate_limited`); 503 `document_preview_failed` when the printer cannot print.
+         */
+        post: operations["previewDocumentTemplate"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1553,6 +1673,90 @@ export interface paths {
          * @description Needs `document.upload`. `shareable: false` stops the QR code’s link (it answers as if the code did not exist) and the website lookup at once; `true` lets them show it again, while it is not expired. Each change is recorded in the audit log. Works the same for generated and uploaded documents.
          */
         post: operations["setDocumentShareable"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/document-templates/{templateId}/copy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Duplicate a PDF template, or copy it to another form
+         * @description Staff only (`document.design`). Without `formId` (or with the template’s own form) this is a duplicate. With another form of the company, every question the template names must be found in that form’s last published version: the same answer key where the question fits, then the same wording in English or Arabic, then `answerMap` — the target’s answer key for each reference, or `null` to take out what used it (a block, or a row or column of a table). Anything still undecided answers 422 `document_template_unmatched`, one detail per reference with the questions that could stand in, and nothing is saved. Pictures are copied under new ids (409 `storage_quota_exceeded` past a blocking allowance). Honours `Idempotency-Key`.
+         */
+        post: operations["copyDocumentTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/business-documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The PDFs printed from one quote, invoice, purchase order or job
+         * @description Newest first, at most 20, with what this seat may do with the record’s PDFs. Each kind follows its module (a quote needs `sales.read`, an invoice `finance.read`, a purchase order a seat that sees its prices, a job report the right to read the job), and every one the `documents` module. 404 for a record this seat may not read.
+         */
+        get: operations["listBusinessDocuments"];
+        put?: never;
+        /**
+         * Print a quote, invoice, purchase order or job report as a PDF
+         * @description Takes the record as this seat sees it now and asks the worker to print it in the company’s look: answers 202 with the document pending, which becomes `ready` or `failed` like any document, and is kept in the register. `language` defaults to the company’s. A draft is refused (409 `business_document_draft`). The QR code opens the PDF’s own page, which shows it only once it is shareable; `shareable: true` needs `document.upload`. For a quote, `quoteLinkToken` (the token the issue step returned) prints the customer’s quote page in the QR code instead, if it is still the quote’s live link (422 `quote_link_invalid` if not). Honours `Idempotency-Key`.
+         */
+        post: operations["createBusinessDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/business-documents/{documentId}/file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A link to a business PDF
+         * @description Five minutes long, like the register’s own link, for a seat that may see the record’s PDFs (see `listBusinessDocuments`). `disposition=attachment` saves it under its title.
+         */
+        get: operations["getBusinessDocumentFile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/business-documents/{documentId}/email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Email a business PDF to the customer or supplier
+         * @description Sends the ready PDF as an attachment, with the company’s name in the subject, in the company’s language, and replies going to the person who sent it. Who may: `sales.manage` for a quote, `finance.manage` for an invoice, `purchasing.manage` for a purchase order, `work_order.manage` for a job report. Answers whether it went: an email the provider refused is `sent: false` with the reason, not an error. Refused while the PDF is not ready (409 `document_not_ready`) or when it is larger than 10 MB (422 `document_too_large_to_email`). Recorded in the audit log. Honours `Idempotency-Key`.
+         */
+        post: operations["emailBusinessDocument"];
         delete?: never;
         options?: never;
         head?: never;
@@ -8128,7 +8332,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The global form template library */
+        /**
+         * The global form template library
+         * @description Built-in and staff-made templates, retired ones included.
+         */
         get: operations["listPlatformFormTemplates"];
         put?: never;
         post?: never;
@@ -8148,10 +8355,94 @@ export interface paths {
         /** One template, with its definition */
         get: operations["getPlatformFormTemplate"];
         /**
-         * Add a template, or replace one
-         * @description Replaces the template under this key. Forms already cloned from it are untouched — a clone is a copy, not a reference — so this changes what the next person starts from and nothing else.
+         * Add a staff-made template, or replace one
+         * @description Saves a staff-made template under this key, from a definition rather than a company’s form. Forms already cloned from it are untouched — a clone is a copy, not a reference — so this changes what the next person starts from and nothing else. A built-in template (or a key the product ships) is refused with 409 `form_template_builtin`: those change only in the code.
          */
         put: operations["upsertFormTemplate"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Rename or re-describe a staff-made template
+         * @description Its name and description in each language, and its category. A built-in template answers 409 `form_template_builtin`.
+         */
+        patch: operations["updatePlatformFormTemplate"];
+        trace?: never;
+    };
+    "/v1/platform/form-templates/{key}/retire": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Retire a staff-made template, or bring it back
+         * @description A retired template is no longer offered to companies; forms already made from it are copies and stay as they are. A built-in template answers 409 `form_template_builtin`.
+         */
+        post: operations["retirePlatformFormTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform/form-templates/{key}/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Replace a staff-made template with its form’s newer version
+         * @description Reads the form the template was saved from, in its company, again: its last published version and its PDF templates that are not archived (pictures copied into the library storage) replace the template’s. Its name, description and category stay. 409 `form_template_builtin` for a built-in template, `form_template_source_gone` when the company or form no longer exists, `form_not_published` when nothing is published.
+         */
+        post: operations["refreshPlatformFormTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform/form-templates/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import a .integr8form file into the template library
+         * @description The body is the file itself, sent as `application/vnd.integr8.form+zip`, at most 50 MB. It becomes a new staff-made library template, offered to every company, with its PDF templates and their pictures copied into the platform's library storage — exactly what "Save as library template" makes. Its key comes from the English title (`_2`, `_3` … when taken); its name is the form's title, its description empty, its category `category` (maintenance unless given): all can be changed afterwards. A file the format refuses answers 422 with the package's code (`package_invalid`, `package_too_new`, …); one whose form would not publish, or whose PDF templates would not save against it, answers 422 `form_package_not_publishable` with each problem in `details`. Audited (`form_template.imported`).
+         */
+        post: operations["importPlatformFormTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform/form-templates/{key}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export a library template as a .integr8form file
+         * @description Any template, built-in or staff-made, retired or not: its form, and a staff-made one’s PDF templates with their pictures, in the file a company form exports to. Settings are the defaults (a library template has none of its own). Audited (`form_template.exported`).
+         */
+        get: operations["exportPlatformFormTemplate"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -14727,6 +15018,25 @@ export interface operations {
                                 detail: string[];
                             }[];
                         };
+                        documentTemplates: {
+                            /** Format: uuid */
+                            templateId: string;
+                            name: string;
+                            problems: {
+                                path: string;
+                                code: string;
+                                message: string;
+                                blockId: string | null;
+                                fieldKey: string | null;
+                            }[];
+                        }[];
+                        warnings: {
+                            code: string;
+                            message: string;
+                            path: string;
+                            elements: string[];
+                            locale?: string;
+                        }[];
                     };
                 };
             };
@@ -14809,6 +15119,8 @@ export interface operations {
                     changeNote?: string;
                     /** @default false */
                     acknowledgeBreakingChanges?: boolean;
+                    /** @default false */
+                    acknowledgeTemplateChanges?: boolean;
                 };
             };
         };
@@ -14865,7 +15177,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description The draft changed since it was reviewed, or breaking changes were not acknowledged. */
+            /** @description The draft changed since it was reviewed, breaking changes were not acknowledged, or PDF templates would need attention and that was not acknowledged (`document_templates_affected`). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -15251,6 +15563,9 @@ export interface operations {
                             /** @enum {string} */
                             category: "maintenance" | "safety" | "completion";
                             fieldCount: number;
+                            /** @enum {string} */
+                            source: "builtin" | "staff";
+                            documentTemplateCount: number;
                         }[];
                     };
                 };
@@ -15339,6 +15654,9 @@ export interface operations {
                         /** @enum {string} */
                         category: "maintenance" | "safety" | "completion";
                         fieldCount: number;
+                        /** @enum {string} */
+                        source: "builtin" | "staff";
+                        documentTemplateCount: number;
                         definition: {
                             [key: string]: unknown;
                         };
@@ -15424,6 +15742,8 @@ export interface operations {
             content: {
                 "application/json": {
                     title?: string;
+                    /** @default true */
+                    includeDocumentTemplates?: boolean;
                 };
             };
         };
@@ -15492,6 +15812,7 @@ export interface operations {
                                 [key: string]: unknown;
                             };
                         } | null;
+                        documentTemplatesCopied: number;
                     };
                 };
             };
@@ -15520,14 +15841,12 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description The idempotency key is in use by a request still running, or was reused with a different body. */
+            /** @description Not enough storage for its PDF templates’ pictures. */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
+                content?: never;
             };
             /** @description The request failed validation. */
             422: {
@@ -15537,6 +15856,547 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Error"];
                 };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listFormCopyTargets: {
+        parameters: {
+            query?: {
+                search?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The companies. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            slug: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not Integr8 staff. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    copyFormToCompany: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                formId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    tenantId: string;
+                    title?: string;
+                    /** @default false */
+                    includeDocumentTemplates?: boolean;
+                    reason?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The copy, in the other company. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        tenantId: string;
+                        companyName: string;
+                        /** Format: uuid */
+                        formId: string;
+                        title: string;
+                        /** @enum {string} */
+                        copiedFrom: "published" | "draft";
+                        versionNumber: number | null;
+                        documentTemplatesCopied: number;
+                        imagesCopied: number;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not Integr8 staff, or PDF templates without `document.design`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such form or company. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The company is closed (`company_closed`), its storage is not ready (`storage_not_ready`, 503) or full (`storage_quota_exceeded`), or a picture is gone (`document_template_image_missing`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The form’s own company (`form_copy_same_company`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    saveFormToLibrary: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                formId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    key: string;
+                    title: {
+                        [key: string]: string;
+                    };
+                    /** @default {} */
+                    description?: {
+                        [key: string]: string;
+                    };
+                    /** @enum {string} */
+                    category: "maintenance" | "safety" | "completion";
+                    /** @default true */
+                    includeDocumentTemplates?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description The library template. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        key: string;
+                        title: {
+                            [key: string]: string;
+                        };
+                        description: {
+                            [key: string]: string;
+                        };
+                        /** @enum {string} */
+                        category: "maintenance" | "safety" | "completion";
+                        definitionSchemaVersion: number;
+                        /** Format: date-time */
+                        updatedAt: string;
+                        /** @enum {string} */
+                        source: "builtin" | "staff";
+                        /** Format: date-time */
+                        retiredAt: string | null;
+                        origin: {
+                            /** Format: uuid */
+                            tenantId: string;
+                            companyName: string | null;
+                            /** Format: uuid */
+                            formId: string;
+                            versionNumber: number | null;
+                        } | null;
+                        documentTemplateCount: number;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not Integr8 staff, or PDF templates without `document.design`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such form. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The key is taken, or the form was never published. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    exportForm: {
+        parameters: {
+            query?: {
+                source?: "published" | "draft";
+            };
+            header?: never;
+            path: {
+                formId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The `.integr8form` file, as an attachment named after the form. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.integr8.form+zip": string;
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not Integr8 staff, or PDF templates without `document.design`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such form. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Nothing to export from the chosen source, or a picture is missing. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    importForm: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/vnd.integr8.form+zip": string;
+            };
+        };
+        responses: {
+            /** @description The new form. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        formId: string;
+                        title: string;
+                        documentTemplatesCreated: number;
+                        imagesCopied: number;
+                        source: {
+                            app: string;
+                            version: string;
+                            createdAt: string;
+                            /** @enum {string} */
+                            exportedFrom: "published" | "draft";
+                            versionNumber: number | null;
+                        };
+                        check: {
+                            ok: boolean;
+                            problemCount: number;
+                            warningCount: number;
+                            problems: {
+                                entry: string;
+                                path: string;
+                                code: string;
+                                message: string;
+                                elements?: string[];
+                            }[];
+                            warnings: {
+                                entry: string;
+                                path: string;
+                                code: string;
+                                message: string;
+                                elements?: string[];
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not Integr8 staff, or PDF templates without `document.design`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not enough storage for its pictures (`storage_quota_exceeded`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The file is larger than the limit (`body_too_large`). */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The file is not one this server reads; `details` say why. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Rate limit exceeded. */
             429: {
@@ -16698,6 +17558,14 @@ export interface operations {
                             createdAt: string;
                             /** Format: date-time */
                             updatedAt: string;
+                            needsAttention: boolean;
+                            problems: {
+                                path: string;
+                                code: string;
+                                message: string;
+                                blockId: string | null;
+                                fieldKey: string | null;
+                            }[];
                         }[];
                     };
                 };
@@ -16802,6 +17670,14 @@ export interface operations {
                         createdAt: string;
                         /** Format: date-time */
                         updatedAt: string;
+                        needsAttention: boolean;
+                        problems: {
+                            path: string;
+                            code: string;
+                            message: string;
+                            blockId: string | null;
+                            fieldKey: string | null;
+                        }[];
                     };
                 };
             };
@@ -16905,6 +17781,14 @@ export interface operations {
                         createdAt: string;
                         /** Format: date-time */
                         updatedAt: string;
+                        needsAttention: boolean;
+                        problems: {
+                            path: string;
+                            code: string;
+                            message: string;
+                            blockId: string | null;
+                            fieldKey: string | null;
+                        }[];
                     };
                 };
             };
@@ -17013,6 +17897,14 @@ export interface operations {
                         createdAt: string;
                         /** Format: date-time */
                         updatedAt: string;
+                        needsAttention: boolean;
+                        problems: {
+                            path: string;
+                            code: string;
+                            message: string;
+                            blockId: string | null;
+                            fieldKey: string | null;
+                        }[];
                     };
                 };
             };
@@ -17041,7 +17933,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Saved meanwhile by someone else (`document_template_changed`). */
+            /** @description Saved meanwhile by someone else (`document_template_changed`), or an older designer saving over a newer design (`document_template_newer`). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -17122,6 +18014,14 @@ export interface operations {
                         createdAt: string;
                         /** Format: date-time */
                         updatedAt: string;
+                        needsAttention: boolean;
+                        problems: {
+                            path: string;
+                            code: string;
+                            message: string;
+                            blockId: string | null;
+                            fieldKey: string | null;
+                        }[];
                     };
                 };
             };
@@ -17188,6 +18088,106 @@ export interface operations {
             };
         };
     };
+    previewDocumentTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                templateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    design: {
+                        [key: string]: unknown;
+                    };
+                    /** Format: uuid */
+                    submissionId?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description The PDF. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        contentType: "application/pdf";
+                        base64: string;
+                        pageCount: number;
+                        byteSize: number;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `documents` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such template, or no such submission this person may read. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The submission is of another form (`document_template_wrong_form`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The design has problems (`document_template_invalid`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Too many previews (`rate_limited`). */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The printer could not print it (`document_preview_failed`). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     createDocument: {
         parameters: {
             query?: never;
@@ -17226,7 +18226,7 @@ export interface operations {
                         id: string;
                         title: string;
                         /** @enum {string} */
-                        source: "generated" | "uploaded";
+                        source: "generated" | "uploaded" | "quote" | "invoice" | "purchase_order" | "job_report";
                         /** Format: uuid */
                         templateId: string | null;
                         templateRevision: number | null;
@@ -17235,6 +18235,12 @@ export interface operations {
                         /** Format: uuid */
                         formId: string | null;
                         reference: string | null;
+                        record: {
+                            /** @enum {string} */
+                            kind: "quote" | "invoice" | "purchase_order" | "job_report";
+                            /** Format: uuid */
+                            id: string;
+                        } | null;
                         customer: {
                             /** Format: uuid */
                             id: string;
@@ -17356,7 +18362,7 @@ export interface operations {
                 formId?: string;
                 templateId?: string;
                 submissionId?: string;
-                source?: "generated" | "uploaded";
+                source?: "generated" | "uploaded" | "quote" | "invoice" | "purchase_order" | "job_report";
                 state?: "active" | "expired" | "pending" | "failed";
                 from?: string;
                 before?: string;
@@ -17381,7 +18387,7 @@ export interface operations {
                             id: string;
                             title: string;
                             /** @enum {string} */
-                            source: "generated" | "uploaded";
+                            source: "generated" | "uploaded" | "quote" | "invoice" | "purchase_order" | "job_report";
                             /** Format: uuid */
                             templateId: string | null;
                             templateRevision: number | null;
@@ -17390,6 +18396,12 @@ export interface operations {
                             /** Format: uuid */
                             formId: string | null;
                             reference: string | null;
+                            record: {
+                                /** @enum {string} */
+                                kind: "quote" | "invoice" | "purchase_order" | "job_report";
+                                /** Format: uuid */
+                                id: string;
+                            } | null;
                             customer: {
                                 /** Format: uuid */
                                 id: string;
@@ -17524,7 +18536,7 @@ export interface operations {
                         id: string;
                         title: string;
                         /** @enum {string} */
-                        source: "generated" | "uploaded";
+                        source: "generated" | "uploaded" | "quote" | "invoice" | "purchase_order" | "job_report";
                         /** Format: uuid */
                         templateId: string | null;
                         templateRevision: number | null;
@@ -17533,6 +18545,12 @@ export interface operations {
                         /** Format: uuid */
                         formId: string | null;
                         reference: string | null;
+                        record: {
+                            /** @enum {string} */
+                            kind: "quote" | "invoice" | "purchase_order" | "job_report";
+                            /** Format: uuid */
+                            id: string;
+                        } | null;
                         customer: {
                             /** Format: uuid */
                             id: string;
@@ -17659,7 +18677,7 @@ export interface operations {
                         id: string;
                         title: string;
                         /** @enum {string} */
-                        source: "generated" | "uploaded";
+                        source: "generated" | "uploaded" | "quote" | "invoice" | "purchase_order" | "job_report";
                         /** Format: uuid */
                         templateId: string | null;
                         templateRevision: number | null;
@@ -17668,6 +18686,12 @@ export interface operations {
                         /** Format: uuid */
                         formId: string | null;
                         reference: string | null;
+                        record: {
+                            /** @enum {string} */
+                            kind: "quote" | "invoice" | "purchase_order" | "job_report";
+                            /** Format: uuid */
+                            id: string;
+                        } | null;
                         customer: {
                             /** Format: uuid */
                             id: string;
@@ -17879,7 +18903,7 @@ export interface operations {
                         id: string;
                         title: string;
                         /** @enum {string} */
-                        source: "generated" | "uploaded";
+                        source: "generated" | "uploaded" | "quote" | "invoice" | "purchase_order" | "job_report";
                         /** Format: uuid */
                         templateId: string | null;
                         templateRevision: number | null;
@@ -17888,6 +18912,12 @@ export interface operations {
                         /** Format: uuid */
                         formId: string | null;
                         reference: string | null;
+                        record: {
+                            /** @enum {string} */
+                            kind: "quote" | "invoice" | "purchase_order" | "job_report";
+                            /** Format: uuid */
+                            id: string;
+                        } | null;
                         customer: {
                             /** Format: uuid */
                             id: string;
@@ -18106,7 +19136,7 @@ export interface operations {
                         id: string;
                         title: string;
                         /** @enum {string} */
-                        source: "generated" | "uploaded";
+                        source: "generated" | "uploaded" | "quote" | "invoice" | "purchase_order" | "job_report";
                         /** Format: uuid */
                         templateId: string | null;
                         templateRevision: number | null;
@@ -18115,6 +19145,12 @@ export interface operations {
                         /** Format: uuid */
                         formId: string | null;
                         reference: string | null;
+                        record: {
+                            /** @enum {string} */
+                            kind: "quote" | "invoice" | "purchase_order" | "job_report";
+                            /** Format: uuid */
+                            id: string;
+                        } | null;
                         customer: {
                             /** Format: uuid */
                             id: string;
@@ -18244,7 +19280,7 @@ export interface operations {
                         id: string;
                         title: string;
                         /** @enum {string} */
-                        source: "generated" | "uploaded";
+                        source: "generated" | "uploaded" | "quote" | "invoice" | "purchase_order" | "job_report";
                         /** Format: uuid */
                         templateId: string | null;
                         templateRevision: number | null;
@@ -18253,6 +19289,12 @@ export interface operations {
                         /** Format: uuid */
                         formId: string | null;
                         reference: string | null;
+                        record: {
+                            /** @enum {string} */
+                            kind: "quote" | "invoice" | "purchase_order" | "job_report";
+                            /** Format: uuid */
+                            id: string;
+                        } | null;
                         customer: {
                             /** Format: uuid */
                             id: string;
@@ -18324,6 +19366,623 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Error"];
                 };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    copyDocumentTemplate: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                templateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    formId?: string;
+                    name: string;
+                    answerMap?: {
+                        [key: string]: string | null;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description The copy. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        formId: string;
+                        name: string;
+                        design: {
+                            [key: string]: unknown;
+                        };
+                        revision: number;
+                        archived: boolean;
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** Format: date-time */
+                        updatedAt: string;
+                        needsAttention: boolean;
+                        problems: {
+                            path: string;
+                            code: string;
+                            message: string;
+                            blockId: string | null;
+                            fieldKey: string | null;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `documents` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such template or form. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The target form was never published (`form_not_published`), a picture is gone (`document_template_image_missing`), or the company is out of storage (`storage_quota_exceeded`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A question is not matched (`document_template_unmatched`), a choice in `answerMap` does not fit (`document_template_mapping_invalid`), or the result does not fit the form (`document_template_invalid`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listBusinessDocuments: {
+        parameters: {
+            query: {
+                kind: "quote" | "invoice" | "purchase_order" | "job_report";
+                recordId: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The PDFs, and what may be done. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            title: string;
+                            /** @enum {string} */
+                            source: "generated" | "uploaded" | "quote" | "invoice" | "purchase_order" | "job_report";
+                            /** Format: uuid */
+                            templateId: string | null;
+                            templateRevision: number | null;
+                            /** Format: uuid */
+                            submissionId: string | null;
+                            /** Format: uuid */
+                            formId: string | null;
+                            reference: string | null;
+                            record: {
+                                /** @enum {string} */
+                                kind: "quote" | "invoice" | "purchase_order" | "job_report";
+                                /** Format: uuid */
+                                id: string;
+                            } | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            shareable: boolean;
+                            /** @enum {string} */
+                            status: "pending" | "ready" | "failed";
+                            failureCode: string | null;
+                            linkOpens: boolean;
+                            link: string | null;
+                            publicCode: string;
+                            pageCount: number | null;
+                            byteSize: number | null;
+                            /** Format: date-time */
+                            renderedAt: string | null;
+                            /** Format: date-time */
+                            expiredAt: string | null;
+                            /** Format: date-time */
+                            expiresAt: string | null;
+                            createdBy: {
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            createdAt: string;
+                            fields: {
+                                key: string;
+                                label: {
+                                    [key: string]: string;
+                                };
+                                value: string;
+                                /** @enum {string|null} */
+                                lookupRole: "key" | "confirm" | null;
+                            }[];
+                        }[];
+                        can: {
+                            make: boolean;
+                            email: boolean;
+                            share: boolean;
+                        };
+                        email: string | null;
+                        /** @enum {string} */
+                        language: "en" | "ar";
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The module is off (`feature_disabled`) or the seat may not. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such record this seat may read. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createBusinessDocument: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    kind: "quote" | "invoice" | "purchase_order" | "job_report";
+                    /** Format: uuid */
+                    recordId: string;
+                    /** @enum {string} */
+                    language?: "en" | "ar";
+                    /** @default false */
+                    shareable?: boolean;
+                    quoteLinkToken?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The document, pending. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        title: string;
+                        /** @enum {string} */
+                        source: "generated" | "uploaded" | "quote" | "invoice" | "purchase_order" | "job_report";
+                        /** Format: uuid */
+                        templateId: string | null;
+                        templateRevision: number | null;
+                        /** Format: uuid */
+                        submissionId: string | null;
+                        /** Format: uuid */
+                        formId: string | null;
+                        reference: string | null;
+                        record: {
+                            /** @enum {string} */
+                            kind: "quote" | "invoice" | "purchase_order" | "job_report";
+                            /** Format: uuid */
+                            id: string;
+                        } | null;
+                        customer: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        shareable: boolean;
+                        /** @enum {string} */
+                        status: "pending" | "ready" | "failed";
+                        failureCode: string | null;
+                        linkOpens: boolean;
+                        link: string | null;
+                        publicCode: string;
+                        pageCount: number | null;
+                        byteSize: number | null;
+                        /** Format: date-time */
+                        renderedAt: string | null;
+                        /** Format: date-time */
+                        expiredAt: string | null;
+                        /** Format: date-time */
+                        expiresAt: string | null;
+                        createdBy: {
+                            id: string;
+                            name: string;
+                        };
+                        /** Format: date-time */
+                        createdAt: string;
+                        fields: {
+                            key: string;
+                            label: {
+                                [key: string]: string;
+                            };
+                            value: string;
+                            /** @enum {string|null} */
+                            lookupRole: "key" | "confirm" | null;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The module is off, or the seat may not make (or share) it. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such record this seat may read. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A draft (`business_document_draft`), or storage full (`storage_quota_exceeded`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The quote link is not this quote’s live link (`quote_link_invalid`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No web address for the QR link (`document_link_unavailable`). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getBusinessDocumentFile: {
+        parameters: {
+            query?: {
+                disposition?: "inline" | "attachment";
+            };
+            header?: never;
+            path: {
+                documentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The link. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        url: string;
+                        /** Format: date-time */
+                        expiresAt: string;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `documents` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such business PDF this seat may see, or it is not ready. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    emailBusinessDocument: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                documentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: email */
+                    to: string;
+                    message?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Whether it went. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        sent: boolean;
+                        problem: string | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `documents` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such business PDF this seat may email. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The PDF is not ready yet (`document_not_ready`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Too large to email (`document_too_large_to_email`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Rate limit exceeded. */
             429: {
@@ -83179,6 +84838,19 @@ export interface operations {
                             definitionSchemaVersion: number;
                             /** Format: date-time */
                             updatedAt: string;
+                            /** @enum {string} */
+                            source: "builtin" | "staff";
+                            /** Format: date-time */
+                            retiredAt: string | null;
+                            origin: {
+                                /** Format: uuid */
+                                tenantId: string;
+                                companyName: string | null;
+                                /** Format: uuid */
+                                formId: string;
+                                versionNumber: number | null;
+                            } | null;
+                            documentTemplateCount: number;
                         }[];
                     };
                 };
@@ -83260,6 +84932,19 @@ export interface operations {
                         definitionSchemaVersion: number;
                         /** Format: date-time */
                         updatedAt: string;
+                        /** @enum {string} */
+                        source: "builtin" | "staff";
+                        /** Format: date-time */
+                        retiredAt: string | null;
+                        origin: {
+                            /** Format: uuid */
+                            tenantId: string;
+                            companyName: string | null;
+                            /** Format: uuid */
+                            formId: string;
+                            versionNumber: number | null;
+                        } | null;
+                        documentTemplateCount: number;
                         definition: {
                             [key: string]: unknown;
                         };
@@ -83366,6 +85051,19 @@ export interface operations {
                         definitionSchemaVersion: number;
                         /** Format: date-time */
                         updatedAt: string;
+                        /** @enum {string} */
+                        source: "builtin" | "staff";
+                        /** Format: date-time */
+                        retiredAt: string | null;
+                        origin: {
+                            /** Format: uuid */
+                            tenantId: string;
+                            companyName: string | null;
+                            /** Format: uuid */
+                            formId: string;
+                            versionNumber: number | null;
+                        } | null;
+                        documentTemplateCount: number;
                         definition: {
                             [key: string]: unknown;
                         };
@@ -83381,12 +85079,580 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
+            /** @description A built-in template (`form_template_builtin`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description The definition is not a form this system can compile. */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    updatePlatformFormTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    title?: {
+                        [key: string]: string;
+                    };
+                    description?: {
+                        [key: string]: string;
+                    };
+                    /** @enum {string} */
+                    category?: "maintenance" | "safety" | "completion";
+                };
+            };
+        };
+        responses: {
+            /** @description The template. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        key: string;
+                        title: {
+                            [key: string]: string;
+                        };
+                        description: {
+                            [key: string]: string;
+                        };
+                        /** @enum {string} */
+                        category: "maintenance" | "safety" | "completion";
+                        definitionSchemaVersion: number;
+                        /** Format: date-time */
+                        updatedAt: string;
+                        /** @enum {string} */
+                        source: "builtin" | "staff";
+                        /** Format: date-time */
+                        retiredAt: string | null;
+                        origin: {
+                            /** Format: uuid */
+                            tenantId: string;
+                            companyName: string | null;
+                            /** Format: uuid */
+                            formId: string;
+                            versionNumber: number | null;
+                        } | null;
+                        documentTemplateCount: number;
+                    };
+                };
+            };
+            /** @description A platform session is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such template. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A built-in template (`form_template_builtin`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    retirePlatformFormTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    retired: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description The template. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        key: string;
+                        title: {
+                            [key: string]: string;
+                        };
+                        description: {
+                            [key: string]: string;
+                        };
+                        /** @enum {string} */
+                        category: "maintenance" | "safety" | "completion";
+                        definitionSchemaVersion: number;
+                        /** Format: date-time */
+                        updatedAt: string;
+                        /** @enum {string} */
+                        source: "builtin" | "staff";
+                        /** Format: date-time */
+                        retiredAt: string | null;
+                        origin: {
+                            /** Format: uuid */
+                            tenantId: string;
+                            companyName: string | null;
+                            /** Format: uuid */
+                            formId: string;
+                            versionNumber: number | null;
+                        } | null;
+                        documentTemplateCount: number;
+                    };
+                };
+            };
+            /** @description A platform session is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such template. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A built-in template (`form_template_builtin`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    refreshPlatformFormTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @default true */
+                    includeDocumentTemplates?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description The template. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        key: string;
+                        title: {
+                            [key: string]: string;
+                        };
+                        description: {
+                            [key: string]: string;
+                        };
+                        /** @enum {string} */
+                        category: "maintenance" | "safety" | "completion";
+                        definitionSchemaVersion: number;
+                        /** Format: date-time */
+                        updatedAt: string;
+                        /** @enum {string} */
+                        source: "builtin" | "staff";
+                        /** Format: date-time */
+                        retiredAt: string | null;
+                        origin: {
+                            /** Format: uuid */
+                            tenantId: string;
+                            companyName: string | null;
+                            /** Format: uuid */
+                            formId: string;
+                            versionNumber: number | null;
+                        } | null;
+                        documentTemplateCount: number;
+                    };
+                };
+            };
+            /** @description A platform session is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such template. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Built in, or its form is gone or unpublished. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    importPlatformFormTemplate: {
+        parameters: {
+            query?: {
+                category?: "maintenance" | "safety" | "completion";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/vnd.integr8.form+zip": string;
+            };
+        };
+        responses: {
+            /** @description The new library template, and what the check would like looked at. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        template: {
+                            key: string;
+                            title: {
+                                [key: string]: string;
+                            };
+                            description: {
+                                [key: string]: string;
+                            };
+                            /** @enum {string} */
+                            category: "maintenance" | "safety" | "completion";
+                            definitionSchemaVersion: number;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            /** @enum {string} */
+                            source: "builtin" | "staff";
+                            /** Format: date-time */
+                            retiredAt: string | null;
+                            origin: {
+                                /** Format: uuid */
+                                tenantId: string;
+                                companyName: string | null;
+                                /** Format: uuid */
+                                formId: string;
+                                versionNumber: number | null;
+                            } | null;
+                            documentTemplateCount: number;
+                        };
+                        source: {
+                            app: string;
+                            version: string;
+                            createdAt: string;
+                            /** @enum {string} */
+                            exportedFrom: "published" | "draft";
+                            versionNumber: number | null;
+                        };
+                        documentTemplatesCreated: number;
+                        imagesCopied: number;
+                        check: {
+                            ok: boolean;
+                            problemCount: number;
+                            warningCount: number;
+                            problems: {
+                                entry: string;
+                                path: string;
+                                code: string;
+                                message: string;
+                                elements?: string[];
+                            }[];
+                            warnings: {
+                                entry: string;
+                                path: string;
+                                code: string;
+                                message: string;
+                                elements?: string[];
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description A platform session is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The file is larger than the limit (`body_too_large`). */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The file is not one this server reads, or its form would not publish. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    exportPlatformFormTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The `.integr8form` file, as an attachment named after the template. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.integr8.form+zip": string;
+                };
+            };
+            /** @description A platform session is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such template. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A picture is gone from storage (`document_template_image_missing`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
             };
             /** @description Rate limit exceeded. */
             429: {

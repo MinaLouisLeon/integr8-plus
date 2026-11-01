@@ -91,16 +91,36 @@ const SERVICE_REPORT = {
   ],
 };
 
+/** A version 2 design (1.3.0): a header and footer, the company's colour, the website's fonts. */
 const CERTIFICATE_DESIGN = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   page: {
     size: 'A4',
-    margins: { top: 25, end: 15, bottom: 20, start: 15 },
+    orientation: 'portrait',
+    margins: { top: 28, end: 15, bottom: 20, start: 15 },
     background: null,
     firstPage: null,
     language: 'en',
     fontSize: 10,
-    footer: { pageNumbers: true },
+    header: {
+      start: { kind: 'logo', height: 11 },
+      center: { kind: 'text', text: { en: 'Job {{work_order.reference}}' }, bold: true },
+      end: { kind: 'page' },
+      notOnFirstPage: false,
+    },
+    footer: {
+      start: { kind: 'text', text: { en: '{{company.name}}' }, bold: false },
+      center: { kind: 'text', text: { en: 'Certificate {{field.certificate}}' }, bold: false },
+      end: { kind: 'page' },
+      notOnFirstPage: false,
+    },
+  },
+  style: {
+    brandColour: 'company',
+    font: 'integr8-text',
+    tableLines: 'light',
+    stripedRows: true,
+    headerShading: true,
   },
   fields: [
     {
@@ -120,7 +140,7 @@ const CERTIFICATE_DESIGN = {
     { type: 'field', id: 'location', fieldId: 'unit_location', layout: 'inline' },
     { type: 'field', id: 'temp', fieldId: 'supply_temp', layout: 'inline' },
     { type: 'field', id: 'result', fieldId: 'result', layout: 'inline' },
-    { type: 'field', id: 'notes', fieldId: 'notes', layout: 'stacked' },
+    { type: 'field', id: 'notes', fieldId: 'notes', layout: 'stacked', shaded: true },
     { type: 'qr', id: 'qr', size: 30, align: 'end' },
   ],
 };

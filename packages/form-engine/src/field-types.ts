@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { compareCodeUnits } from './canonical.js';
 import { compareDecimal, formatDecimal, fractionDigits, parseDecimal } from './decimal.js';
-import { expressionSchema } from './expression.js';
+import { type Expression, expressionSchema } from './expression.js';
 import { type ElementId, elementIdSchema, localizedTextSchema } from './ids.js';
 import { checkPattern, matchesPattern } from './pattern.js';
 import { parseDate, parseDatetime, parseTime } from './temporal.js';
@@ -165,6 +165,11 @@ export const fieldSchema = z.discriminatedUnion('type', [
     earliest: z.string().max(32).optional(),
     latest: z.string().max(32).optional(),
     default: z.string().max(32).optional(),
+    /**
+     * Worked out instead of typed (schema version 2): a date moved by days,
+     * weeks or months — "Next service due" from "Serviced on" plus 12 months.
+     */
+    calculation: expressionSchema.optional(),
     ...carry,
   }),
   z.strictObject({
@@ -308,7 +313,7 @@ export const FIELD_TYPES: readonly FieldTypeDescription[] = Object.freeze([
   { type: 'number', purpose: 'measuring', valueType: 'number', calculable: true },
   { type: 'decimal', purpose: 'measuring', valueType: 'number', calculable: true },
   { type: 'rating', purpose: 'measuring', valueType: 'number', calculable: false },
-  { type: 'date', purpose: 'scheduling', valueType: 'date', calculable: false },
+  { type: 'date', purpose: 'scheduling', valueType: 'date', calculable: true },
   { type: 'time', purpose: 'scheduling', valueType: 'time', calculable: false },
   { type: 'datetime', purpose: 'scheduling', valueType: 'datetime', calculable: false },
   { type: 'dropdown', purpose: 'choosing', valueType: 'text', calculable: false },
@@ -347,8 +352,15 @@ export function choiceValues(field: Field): readonly string[] | undefined {
   }
 }
 
+/** A field's calculation: on a number or decimal question, or (schema version 2) a date one. */
+export function calculationOf(field: Field): Expression | undefined {
+  return field.type === 'number' || field.type === 'decimal' || field.type === 'date'
+    ? field.calculation
+    : undefined;
+}
+
 export function isCalculated(field: Field): boolean {
-  return (field.type === 'number' || field.type === 'decimal') && field.calculation !== undefined;
+  return calculationOf(field) !== undefined;
 }
 
 // ---------------------------------------------------------------------------

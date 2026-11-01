@@ -23,8 +23,17 @@ the company's website. A company's own website can look a document up with a
 Nothing to configure in a normal deployment.
 
 - The API image installs Debian's Chromium at `/usr/bin/chromium` and the Noto
-  and DejaVu fonts, for Latin and Arabic. The worker uses them; the API process
-  never starts Chromium.
+  and DejaVu fonts, for Latin and Arabic. The worker prints documents with
+  them. Since 1.3.0 the API process starts its own Chromium too, only for the
+  designer's **Preview as PDF**, and closes it after five idle minutes (the
+  `api` container's memory cap is 1 GB for it).
+- **Fonts.** A template chooses one of four: `noto-sans` and `noto-naskh` are
+  the installed Noto and DejaVu fonts; `integr8-display` and `integr8-text` are
+  the Integr8 Media website's fonts (Unbounded, Alexandria, Inter, IBM Plex
+  Sans Arabic), which are not installed: they come with the API's own
+  `node_modules` (the exact-pinned `@fontsource` packages) and are embedded
+  into each document. Nothing is fetched while printing. If one of those files
+  were ever missing, the document prints in the Noto fonts instead of failing.
 - `PDF_RENDERER=chromium` is the default and the only value production
   accepts. `recording` makes a plain placeholder PDF, for tests and laptops
   without Chromium.
@@ -101,13 +110,57 @@ The document is marked **Failed** and its page says why. The codes:
 | `renderer_unavailable`   | The worker has no usable Chromium.            | Check the worker's start-up line; fix `PDF_CHROMIUM_PATH`.       |
 | `render_timeout`         | Printing took longer than the limit, 3 times. | A huge document: fewer photos, or raise `PDF_RENDER_TIMEOUT_MS`. |
 | `render_failed`          | Chromium or the PDF step failed, 3 times.     | The worker log has the error, under `Document render failed`.    |
-| `template_invalid`       | The template no longer reads as a template.   | Open it in the designer, fix what it lists, save.                |
+| `template_invalid`       | The design no longer reads as a template.     | Open it in the designer, fix what it lists, save.                |
 | `source_missing`         | The submission or template was deleted.       | Nothing to fix; delete the document.                             |
 | `storage_unavailable`    | The company's bucket could not be reached.    | Check R2; delete the document and make it again.                 |
 | `storage_quota_exceeded` | The company's storage is full.                | Free space or raise the plan, then make it again.                |
 
 A failed document is deleted from its page and made again from the
-submission.
+submission. A business PDF (below) fails with the same codes, `source_missing`
+meaning its job held no record to print; it is made again from its record's
+screen.
+
+A question dropped from the form is **not** a failure (1.3.0): the document is
+made, and what the question showed prints blank or is left out. The template
+is marked **Needs attention** in the designer instead; see below.
+
+## Templates that need attention (1.3.0)
+
+Publishing a form version that drops or changes a question a PDF template uses
+is allowed, after a confirmation that lists the templates and blocks. The
+template is then marked **Needs attention** in the PDF templates tab, with each
+block to fix outlined and explained. Meanwhile documents are still made:
+
+- a block that shows one answer (answer, checkbox, all options, a photo or
+  signature) is left out;
+- an answers table loses that row (and is left out when no row is left);
+- a repeating-group table whose group is gone is left out; a column whose
+  question is gone stays, blank;
+- a placeholder for the question prints nothing.
+
+A submission made on an earlier version prints its own answers, as before. To
+clear the mark, open the template, fix or remove each outlined block, and save:
+a template can be saved with the problems it already has, but not with new
+ones. `GET /v1/document-templates` answers `needsAttention` and `problems` for
+each template.
+
+## Preview as PDF (1.3.0)
+
+In the designer, **PDF** → **Preview as PDF** prints the design as it is on
+screen, saved or not, with a chosen submission or with sample answers. The
+PDF is shown in the designer and never stored or counted against the
+company's storage. Limits, built in:
+
+| Limit                          | Value                                  | When it is reached                                                       |
+| ------------------------------ | -------------------------------------- | ------------------------------------------------------------------------ |
+| Previews per person per minute | 6                                      | 429 `rate_limited`; the designer says to wait.                           |
+| Previews per server per minute | 30                                     | The same, for everyone, so previews never crowd out the documents queue. |
+| Previews printed at once       | `PDF_MAX_CONCURRENT` per API container | Others wait their turn.                                                  |
+
+A preview that cannot be printed (no Chromium in the API container, a
+timeout) answers 503 `document_preview_failed`; the API log has the reason
+under `Template preview failed`. Documents are printed by the worker and are
+not affected.
 
 ## Uploaded documents and sharing (1.2.4)
 
@@ -123,6 +176,28 @@ submission.
   1.2.4 stay shared. Uploads and every change of sharing are in the company's
   audit log. When a company says its QR codes "stopped working", check first
   that the document is shared.
+
+## Business PDFs (1.3.0)
+
+Quotes, invoices, purchase orders and job reports printed by the server in the
+company's look ([`BUSINESS-PDFS.md`](./BUSINESS-PDFS.md)). They need the
+documents module and the record's own module, and are made from the record's
+screen (**PDFs** panel), not from Documents; the register lists them with their
+kind, and stopping, expiry, sharing and deletion work as for any document.
+
+- **Queue:** `documents.render_business`, handled by the same worker, printer
+  and settings (`PDF_RENDERER`, `PDF_CHROMIUM_PATH`, `PDF_RENDER_TIMEOUT_MS`).
+  The worker logs `Business PDF printed` or `Business PDF failed`. No new
+  setting.
+- **"The QR code says not available"**: a new business PDF starts not shared,
+  like every document; an owner or admin shares it in Documents. A quote PDF
+  made from the issue dialog's link opens the quote page instead, which closes
+  when the quote is answered, revised or withdrawn.
+- **"The email did not arrive"**: the dialog says whether the provider took it
+  and, if not, why; the audit log has `document.emailed` with the address and
+  `sent`. PDFs over 10 MB are not emailed. Replies go to the person who sent it.
+- **Drafts** are refused (`business_document_draft`): print them from the
+  browser.
 
 ## Links, expiry and deletion
 
@@ -163,17 +238,94 @@ a document must be shared to be found.
 Give the company's website developer
 [the website developer's guide](./WEBSITE-LOOKUP.md).
 
+## Copying templates (1.3.0)
+
+Staff copy PDF templates four ways (form builder decisions 1 and 10). Every
+copy gets its own copy of every picture, under a new id, because the ledger
+ties a picture to exactly one template (that is what access and retention
+read):
+
+- **Duplicate** (designer, beside Archive): a copy beside the original, in the
+  same form. Made from the template as last saved.
+- **Copy to another form** of the same company (designer): pick a published
+  form. Every question the template names — answer blocks, check boxes and
+  option lists, table rows, a repeating section's table and its columns,
+  pictures from photo or signature answers, document fields taken from
+  answers, and `{{answer.<key>}}` placeholders in any text, the header's and
+  footer's places included — is looked for in that form's latest published
+  version: first the same answer key where the question fits (a text for a
+  text, a number for a number, a choice with the options a box ticks on, a
+  photo or signature for a picture), then the same wording in English or
+  Arabic. An **Information from the form** block is matched the same way to
+  one of that form's Information blocks outside repeating sections: the same
+  id, then the same heading. The dialog lists every one with what it
+  matched; anything left needs a question chosen, or **Take out what uses
+  it** (the block, or just the row of a table of fields or the column of a
+  section's table; a placeholder in a header or footer place is removed from
+  its text, and a place left with no text is emptied). **Nothing is saved until every one is decided**: the
+  server (`POST /v1/document-templates/:id/copy`) runs the same matching and
+  refuses with `document_template_unmatched`, listing each one, otherwise. A
+  duplicate whose template names a question the form has since lost asks the
+  same way.
+- **Copy to another company**, with its form (form builder → Copy to another
+  company, _Include its PDF templates_): every template that is not archived
+  goes, pictures copied into the other company's bucket and counted there.
+- **Library templates.** Saving a form as a library template carries its
+  templates that are not archived; their pictures are copied into the
+  platform's own bucket, `<prefix>-platform-library`, recorded in
+  `form_template_files`, and the designs in `form_template_documents` (both
+  platform tables, migration 0069). A company that starts from the library
+  form gets a copy of each template for its new form, with every picture
+  copied again into its own bucket. Replacing the library template from the
+  dashboard deletes the replaced pictures from the platform bucket. No
+  built-in library form carries templates.
+
+A company past a blocking storage allowance is refused the whole copy
+(`storage_quota_exceeded`); nothing is half-made. A picture whose file was
+deleted refuses the copy with `document_template_image_missing` — upload it to
+the template again first. Copies are audited as `document_template.copied`
+(with what was renamed and what was taken out), `form.copied_in` /
+`form.copied_to_company` and `form.started_from_library`.
+Screenshots of the matching dialog, in English and Arabic:
+`docs/screenshots/1.3.0/documents/`.
+
+**In a `.integr8form` file** (decision 14; `docs/form-engine/package-format.md`). Exporting a
+form packs its templates that are not archived with every picture they use, read from the
+company's bucket; a picture whose file is gone refuses the export with
+`document_template_image_missing`. A picture must be a real PNG, JPEG or WebP to travel: the
+designer only accepts those, and the packer refuses anything else. Importing a file into a
+company writes each picture into that company's bucket under a new id, records it in the media
+ledger tied to the first new template that uses it (two templates sharing a picture in the file
+share it here too), and counts it in the company's storage: the allowance is checked before
+anything is written, and if the import fails after the pictures are written they are deleted
+again (best effort; the storage sweep finds any left). Importing into the library writes them
+into `<prefix>-platform-library` and `form_template_files` instead, like Save as library
+template. The file's pictures are checked before any of that — real images of the kind they
+say, at most 10,000 pixels a side, matching the manifest's length and SHA-256 — so nothing
+unreadable reaches a bucket. Audited as `form.imported` / `form.exported` and
+`form_template.imported` / `.exported`.
+
 ## Storage
 
 A document's PDF counts towards the company's storage like any upload, and
 follows the plan's retention. Template backgrounds and pictures are tied to
-their template and the retention sweep leaves them alone.
+their template and the retention sweep leaves them alone. Copied pictures are
+new files of the company that holds the copy, and count there.
 
 ## Rolling back
+
+Leave migration `0069_library_templates` applied when going back to 1.2.x: the
+older code reads `form_templates` without its new columns and would offer
+retired staff-made templates again (their PDF templates would simply not be
+copied). Its `.down.sql` deletes every staff-made template.
 
 Leave migration `0048_documents` applied when going back to an older version:
 the older code ignores its tables. The same for `0067_document_uploads_and_sharing`:
 1.2.3 keeps working on it, lists uploaded documents without their reference,
 and ignores sharing (its QR links open whatever the switch says) until 1.2.4 is
 back. Its `.down.sql` drops every document and
-template and is for development databases only.
+template and is for development databases only. Leave
+`0074_business_documents` applied too: 1.2.4 lists business PDFs like any
+other document and their links open; its worker does not know their queue, so
+one asked for just before going back stays pending. Its `.down.sql` deletes the
+business PDFs' records (their files stay in the bucket).
