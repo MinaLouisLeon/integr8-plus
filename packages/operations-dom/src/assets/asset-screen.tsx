@@ -1,7 +1,7 @@
 import { apiMediaAdapter } from '@integr8/form-renderer-dom/screens';
 import { ASSET_CONDITIONS, ASSET_STATUSES } from '@integr8/core';
 import { formatCalendarDate, formatDate, formatDateTime, useTranslation } from '@integr8/i18n';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type ReactNode, useId, useMemo, useState } from 'react';
 import {
   type AssetCondition,
@@ -35,9 +35,13 @@ import { LotList } from '../inventory/lots.js';
 import { AssetTagSheet } from './asset-tag.js';
 import { AssetPlansSection } from '../maintenance/asset-plans.js';
 
+/** How much of an asset's history comes at a time; older entries follow on "Show older". */
+export const TIMELINE_PAGE = 50;
+
 /**
  * One asset (CRM/ERP plan, phase E3; ADR-0008): what it is and where, its
- * jobs, and everything it has been through, newest first — with editing,
+ * jobs, and everything it has been through, newest first, fifty at a time
+ * (Low 14) — with editing,
  * moving, retiring and a new tag for the office, and recording its condition
  * and adding a photo for whoever records assets.
  */
@@ -56,11 +60,24 @@ export function AssetScreen({ assetId }: { assetId: string }) {
     queryFn: async () =>
       (await client.GET('/v1/assets/{assetId}', { params: { path: { assetId } } })).data!,
   });
-  const timeline = useQuery({
+  const timeline = useInfiniteQuery({
     queryKey: keys.assetTimeline(assetId),
-    queryFn: async () =>
-      (await client.GET('/v1/assets/{assetId}/timeline', { params: { path: { assetId } } })).data!,
+    queryFn: async ({ pageParam }) =>
+      (
+        await client.GET('/v1/assets/{assetId}/timeline', {
+          params: {
+            path: { assetId },
+            query: { limit: TIMELINE_PAGE, ...(pageParam === '' ? {} : { before: pageParam }) },
+          },
+        })
+      ).data!,
+    initialPageParam: '',
+    getNextPageParam: (page) => page.nextCursor ?? undefined,
   });
+  const entries = useMemo(
+    () => timeline.data?.pages.flatMap((page) => page.entries) ?? [],
+    [timeline.data],
+  );
   const settle = async (next?: AssetDetail) => {
     if (next !== undefined) {
       queries.setQueryData(keys.asset(assetId), next);
@@ -276,14 +293,26 @@ export function AssetScreen({ assetId }: { assetId: string }) {
             <Loading />
           ) : timeline.isError ? (
             <Failure error={timeline.error} onRetry={() => void timeline.refetch()} />
-          ) : timeline.data.entries.length === 0 ? (
+          ) : entries.length === 0 ? (
             <p className="text-sm text-content-muted">{t('assets.noHistory')}</p>
           ) : (
-            <ol className="flex flex-col gap-0 border-s border-border-subtle ps-4">
-              {timeline.data.entries.map((entry) => (
-                <TimelineItem key={`${entry.kind}-${entry.id}`} entry={entry} />
-              ))}
-            </ol>
+            <>
+              <ol className="flex flex-col gap-0 border-s border-border-subtle ps-4">
+                {entries.map((entry) => (
+                  <TimelineItem key={`${entry.kind}-${entry.id}`} entry={entry} />
+                ))}
+              </ol>
+              {timeline.hasNextPage ? (
+                <button
+                  type="button"
+                  className={`${buttonClass.secondary} self-start`}
+                  disabled={timeline.isFetchingNextPage}
+                  onClick={() => void timeline.fetchNextPage()}
+                >
+                  {t('assets.timelinePages.showOlder')}
+                </button>
+              ) : null}
+            </>
           )}
         </section>
 

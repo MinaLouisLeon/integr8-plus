@@ -67,6 +67,8 @@ export const apiErrorsAr: Catalogue<typeof apiErrorsEn> = {
     invalid_token: 'انتهت جلستك. سجّل الدخول مرة أخرى.',
     invitation_invalid:
       'لم تعد هذه الدعوة صالحة؛ ربما استُخدمت أو سُحبت أو انتهت صلاحيتها. اطلب دعوة جديدة.',
+    invitation_password_required:
+      'اختر كلمة مرور لقبول هذه الدعوة. إن لم يكن في هذا التطبيق مكان لكلمة المرور فحدِّث التطبيق أو اقبل الدعوة من الموقع.',
     not_a_member: 'حسابك ليس عضوًا في هذه الشركة. اطلب من مالكها دعوتك.',
     refresh_token_reuse: 'أُنهيت هذه الجلسة حفاظًا على أمان حسابك. سجّل الدخول مرة أخرى.',
     session_revoked: 'سُجّل خروجك من هذه الجلسة. سجّل الدخول مرة أخرى.',
@@ -132,6 +134,7 @@ export const apiErrorsAr: Catalogue<typeof apiErrorsEn> = {
   document_fields_invalid: 'بعض حقول المستند ناقصة أو أطول من المسموح. راجع الحقول المحددة أدناه.',
   document_link_unavailable:
     'لا يمكن إنشاء المستندات بعد: لا يوجد لهذا الخادم عنوان ويب لرمز QR. تواصل مع Integr8.',
+  document_not_pdf: 'لا يمكن رفع مستند إلا بصيغة PDF. اختر ملف PDF.',
   document_template_archived: 'هذا القالب مؤرشف. اختر قالبًا آخر.',
   document_template_changed: 'حفظ شخص آخر هذا القالب في الأثناء. افتحه من جديد لترى تغييراته.',
   document_template_image_unusable:
@@ -139,6 +142,7 @@ export const apiErrorsAr: Catalogue<typeof apiErrorsEn> = {
   document_template_invalid: 'في القالب مشكلات، كل منها مذكور أدناه.',
   document_template_problem: 'هذا الجزء من القالب يحتاج إلى تصحيح.',
   document_template_wrong_form: 'هذا القالب يخص نموذجًا آخر.',
+  document_too_large: 'حجم ملف PDF هذا أكبر من 20 ميجابايت. ارفع ملفًا أصغر.',
   double_booked: 'هذا الشخص مكلَّف بمهمة أخرى في ذلك الوقت.',
   draft_changed: 'حُفظت المسودة مرة أخرى منذ راجعتها. راجعها من جديد قبل النشر.',
   draft_conflict:
@@ -196,6 +200,8 @@ export const apiErrorsAr: Catalogue<typeof apiErrorsEn> = {
   form_unknown: 'اختر نموذجًا منشورًا.',
   form_version_unavailable:
     'لم يعد هذا الإصدار من النموذج متاحًا. عبّئه من جديد على الإصدار الحالي.',
+  hr_access_owner_only:
+    'المالك وحده يستطيع فعل ذلك لشخص لديه صلاحية الموارد البشرية أو سيحصل عليها. يمكنك إيقافه في حالة الطوارئ، وسيُبلَّغ المالك.',
   hr_key_missing:
     'لا يمكن حفظ أرقام الهوية والتأمين والحسابات البنكية أو عرضها حتى يُضبط مفتاح بيانات الموارد البشرية على الخادم. اطلب من Integr8 ضبطه.',
   idempotency_key_in_progress: 'ما زال هذا الطلب قيد المعالجة. انتظر لحظة، ثم حاول مرة أخرى.',
@@ -361,6 +367,8 @@ export const apiErrorsAr: Catalogue<typeof apiErrorsEn> = {
   quote_closed: 'لم يعد عرض السعر هذا مفتوحًا.',
   quote_converted: 'أصبح عرض السعر هذا طلب بيع بالفعل.',
   quote_empty: 'أضف سطرًا واحدًا على الأقل قبل الإصدار.',
+  quote_unavailable:
+    'لم يعد عرض السعر هذا متاحًا على الإنترنت. يُرجى التواصل مع الشركة التي أرسلته.',
   quote_expired: 'انتهت صلاحية عرض السعر هذا. يجب إصدار عرض جديد.',
   quote_not_accepted: 'لا يصبح طلب بيع إلا عرض سعر مقبول.',
   quote_not_draft: 'لا يتغير إلا عرض السعر المسودة. راجع هذا العرض لتعديله.',

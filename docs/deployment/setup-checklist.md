@@ -1,6 +1,6 @@
 # Integr8 Plus Setup Checklist
 
-_Integr8 Plus 1.2.3 · everything you do, in order · Oracle Cloud edition_
+_Integr8 Plus 1.2.4 · everything you do, in order · Oracle Cloud edition_
 
 **From zero to a running deployment, in order**
 
@@ -26,6 +26,9 @@ Stage 0 creates every account and collects every key and secret before anything 
 
 > [!NOTE]
 > **New: backups that leave the machine, and a restore drill.** The nightly backup can copy each dump to an encrypted R2 bucket and tell a heartbeat monitor how every night went, and one command rehearses a restore in a throwaway container without touching the live database. The steps are in [Stage 9, part B](#b-the-database-and-backups), and in [Stage 11, part R](#r-backups-off-the-machine-and-the-restore-drill-included-in-v122) for a machine that is already running. Rolling back to an earlier release now starts it on the newer database instead of stopping at its migration step ([Stage 11, part I](#i-if-something-goes-wrong-rolling-back)).
+
+> [!NOTE]
+> **New in 1.2.3 and 1.2.4: a safer server and a new look.** The API and the worker connect with a limited database role, health checks are off the internet, and production refuses to start on an example password or address; `sh deploy/vps/check-env.sh` lists any that are left. Documents can be uploaded as PDFs and shared one by one (new ones start not shared), and the public pages and the staff dashboard take the Integr8 Media look, with a download page for every app. A new install gets all of it in the stages below; a machine that is already running needs [Stage 11, parts T](#t-a-limited-database-role-for-the-api-and-the-worker-included-in-v123) to [AB](#ab-uploaded-documents-sharing-and-the-new-public-site-included-in-v124), starting with [part AA](#aa-example-values-refused-and-the-update-button-included-in-v124)'s check.
 
 > [!TIP]
 > GitHub shows the boxes below but does not let you tick them in a file. To track your progress, copy a stage into an issue (checkboxes there can be ticked), or open the interactive page described in the [last section](#about-this-page).
@@ -64,15 +67,15 @@ Everything the stack needs from the outside world is created and written down he
 The laptop generates the signing keys, connects to the server over SSH and edits one file on GitHub. It never builds anything. Commands marked `# laptop` are typed into **PowerShell** (open the **Terminal** app from the Start menu); commands marked `# machine` are typed into the SSH session once the server exists, where the server's own Linux shell runs them. Never mix them up.
 
 - [ ] **Allow PowerShell to run scripts**, once: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`, answer `Y`.
-- [ ] **Install Git and Node** with the commands below (Node LTS is 22 or newer). Close and reopen the Terminal afterwards so the new programs are on the path.
+- [ ] **Install Git and Node** with the commands below: Node 22, release 22.22.1 or newer 22.x (22.22.2 recommended, the one in the repository's `.nvmrc`); the repository refuses to install on Node 23 or later. Close and reopen the Terminal afterwards so the new programs are on the path.
 
 ```powershell
 # laptop (PowerShell)
 winget install --id Git.Git -e
-winget install --id OpenJS.NodeJS.LTS -e
+winget install --id OpenJS.NodeJS.22 -e
 # close this window, open a new Terminal, then:
 git --version
-node --version          # v22 or v24
+node --version          # v22.22.1 or newer v22
 npm install -g pnpm@latest-10
 pnpm --version          # 10.x
 git config --global core.autocrlf false
@@ -201,7 +204,7 @@ The phone app is built by Expo's build service, told to start by GitHub. Nothing
 
 GitHub builds the server images, the desktop installers and (through Expo) the phone app. Three things to do, all on the website. The repository is public, so the build minutes are free, including macOS.
 
-- [ ] **Nothing to merge.** All changes this guide previously asked for are in `main`, now at version **1.2.3**. Its release builds include the CRM/ERP suite, AI assistant, PDF documents, ETA e-invoicing, the company website data API, the schedule, skills and certificates, contracts, maintenance and deadlines, and self-hosted sign-in, plus the API image/config fixes from v1.1.1 and the staff-app refresh button from v1.1.2. A new install sets all of it up in the stages below; a server on an older version also needs the three sign-in secrets of Stage 11 part Q and the new settings of parts T to Z. Use `main` as it is; a new install continues at Stage 3, and an older server is updated through Stage 11.
+- [ ] **Nothing to merge.** All changes this guide previously asked for are in `main`, now at version **1.2.4**. Its release builds include the CRM/ERP suite, AI assistant, PDF documents, ETA e-invoicing, the company website data API, the schedule, skills and certificates, contracts, maintenance and deadlines, and self-hosted sign-in, plus the API image/config fixes from v1.1.1 and the staff-app refresh button from v1.1.2. A new install sets all of it up in the stages below; a server on an older version also needs the three sign-in secrets of Stage 11 part Q and the new settings of parts T to AB. Use `main` as it is; a new install continues at Stage 3, and an older server is updated through Stage 11.
 - [ ] **Put the Expo Project ID into the repository.** Open `apps/mobile/app.config.ts` on GitHub, click the pencil, replace the placeholder id in **both** places shown below (the file is TypeScript now, the two values look the same), choose "Create a new branch and start a pull request", and merge it to `main`.
 
 ```text
@@ -220,7 +223,7 @@ GitHub builds the server images, the desktop installers and (through Expo) the p
 - [ ] **Know the version rule.** Every merge into `main` runs the release workflow, which reads the version from the root `package.json` and refuses to release a number it has released before. The merge that should produce installers (Stage 6) must bump it: one line in `package.json`, in the same pull request.
 
 > [!NOTE]
-> **GitHub also builds the server images**, for Intel and ARM. Each release publishes its own: release `v1.2.3` makes `ghcr.io/minalouisleon/integr8-api:v1.2.3` and `integr8-web:v1.2.3` (and moves `latest` to the newest release). Those are what production pulls. Every push to `main` and `staging` also publishes `:main` and `:staging`, which carry code that is not released yet: they are for the test box only, never for production. The web image bakes in `PUBLIC_API_URL`, `CONTACT_EMAIL` and `PUBLIC_SIGNUP`, which is why they are set here before anything is built. The machine in Stage 4 can either build its own images or pull a release's.
+> **GitHub also builds the server images**, for Intel and ARM. Each release publishes its own: release `v1.2.4` makes `ghcr.io/minalouisleon/integr8-api:v1.2.4` and `integr8-web:v1.2.4` (and moves `latest` to the newest release). Those are what production pulls. Every push to `main` and `staging` also publishes `:main` and `:staging`, which carry code that is not released yet: they are for the test box only, never for production. The web image bakes in `PUBLIC_API_URL`, `CONTACT_EMAIL` and `PUBLIC_SIGNUP`, which is why they are set here before anything is built. The machine in Stage 4 can either build its own images or pull a release's.
 
 ### L. Only if you will build the test box (Stage 10)
 
@@ -432,7 +435,7 @@ nano deploy/.env
 ```
 
 - [ ] **Mode.** `APP_ENV=staging` for now. Stage 9 flips it to `production`, which makes the API refuse to start if any service below is missing; staging mode starts anyway and only warns, which is kinder while you check each piece.
-- [ ] **Addresses.** Replace `your-domain.example` everywhere: `PUBLIC_API_URL`, `API_PUBLIC_URL`, `AUTH_ISSUER` = `https://api.integr8-media.com`; `WEB_APP_URL`, `API_UPDATE_URL` = `https://app.integr8-media.com`; `API_CORS_ORIGINS=https://app.integr8-media.com,tauri://localhost,http://tauri.localhost`. Then `PUBLIC_SIGNUP=off` and `CONTACT_EMAIL=info@integr8-media.com`: there is no public sign-up form (you create every company from the dashboard) and the contact page shows that address.
+- [ ] **Addresses.** Replace `your-domain.example` everywhere: `PUBLIC_API_URL`, `API_PUBLIC_URL`, `AUTH_ISSUER` = `https://api.integr8-media.com`; `WEB_APP_URL` = `https://app.integr8-media.com`; `API_CORS_ORIGINS=https://app.integr8-media.com,tauri://localhost,http://tauri.localhost`. Then `PUBLIC_SIGNUP=off` and `CONTACT_EMAIL=info@integr8-media.com`: there is no public sign-up form (you create every company from the dashboard) and the contact page shows that address.
 - [ ] **Database passwords, eight lines that must agree.** The four passwords from the key sheet go into `POSTGRES_PASSWORD`, `INTEGR8_APP_PASSWORD`, `INTEGR8_AUTH_PASSWORD`, `INTEGR8_PLATFORM_PASSWORD`, and again into the four connection addresses below them. An address has the shape `postgres://USER:PASSWORD@HOST:PORT/DATABASE`; replace only the `change-me-…` part of each:
 
 ```text
@@ -464,11 +467,11 @@ SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIs…       ← line 6, one long lin
 SUPABASE_AUTH_DB_PASSWORD=x7Kp2Q…                    ← line 7
 ```
 
-- [ ] **Errors and version.** The block headed `# Release identity and error reporting` comes next. `APP_VERSION` and `API_RELEASE` already say `1.2.3`, matching the root `package.json`; at every release they change to the new number (Stage 11). The three Sentry lines are empty: paste the Node.js project's DSN after `SENTRY_DSN=` and the Next.js project's DSN after **both** `WEB_SENTRY_DSN=` and `WEB_PUBLIC_SENTRY_DSN=`. Afterwards:
+- [ ] **Errors and version.** The block headed `# Release identity and error reporting` comes next. `APP_VERSION` and `API_RELEASE` already say `1.2.4`, matching the root `package.json`; at every release they change to the new number (Stage 11). The three Sentry lines are empty: paste the Node.js project's DSN after `SENTRY_DSN=` and the Next.js project's DSN after **both** `WEB_SENTRY_DSN=` and `WEB_PUBLIC_SENTRY_DSN=`. Afterwards:
 
 ```text
-APP_VERSION=1.2.3
-API_RELEASE=1.2.3
+APP_VERSION=1.2.4
+API_RELEASE=1.2.4
 SENTRY_DSN=https://a1b2c3@o123456.ingest.us.sentry.io/4501111
 WEB_SENTRY_DSN=https://d4e5f6@o123456.ingest.us.sentry.io/4502222
 WEB_PUBLIC_SENTRY_DSN=https://d4e5f6@o123456.ingest.us.sentry.io/4502222
@@ -617,15 +620,21 @@ AI_MODEL_PRICES=[{"provider":"anthropic","model":"claude-haiku-4-5","inputPerMil
 
 - [ ] **PDF documents.** Nothing to add: the template's `PDF_RENDERER=chromium` line stays as it is, and the API image brings Chromium and the fonts. Check that `WEB_APP_URL` is the web app's address, `https://app.integr8-media.com`: every document's QR code points there, and without it the API refuses to make documents. Never set `PDF_RENDERER=recording` here: it prints placeholder pages, and production refuses to start with it.
 
-- [ ] **The two lines at the very end.** `API_MIN_SUPPORTED_CLIENT=0.1.0` stays. `API_UPDATE_URL` was already changed in step 2 to `https://app.integr8-media.com/download`; check it no longer says `your-domain.example`.
-- [ ] **Check before saving.** Each database password appears on exactly two lines, no `change-me` or `example` remains, and the only key lines still commented out are `EXPO_ACCESS_TOKEN` and `SUPABASE_AUTH_URL` (plus the commented `AI_` lines you did not need):
+- [ ] **The two lines at the very end.** `API_MIN_SUPPORTED_CLIENT=0.1.0` stays. Leave `# API_UPDATE_URL=` commented out: unset, an app too old to be served is sent to `https://app.integr8-media.com/download`, the web app's download page (`WEB_APP_URL` with `/download` added). Production refuses an example address there.
+- [ ] **Check before saving.** Each database password appears on exactly two lines, and the only key lines still commented out are `EXPO_ACCESS_TOKEN`, `SUPABASE_AUTH_URL` and `API_UPDATE_URL` (plus the commented `AI_` lines you did not need):
 
 ```bash
 # machine (SSH session)
 grep -n 'PASSWORD=\|DATABASE_URL' deploy/.env
-grep -n 'change-me\|example' deploy/.env      # should print nothing
-grep -n '^# [A-Z_]*=' deploy/.env               # should print only EXPO_ACCESS_TOKEN and SUPABASE_AUTH_URL (and AI_ lines if the assistant stays off)
+grep -n '^# [A-Z_]*=' deploy/.env               # should print only EXPO_ACCESS_TOKEN, SUPABASE_AUTH_URL and API_UPDATE_URL (and AI_ lines if the assistant stays off)
 grep -n '^AI_' deploy/.env                      # the assistant's lines, as you set them
+```
+
+- [ ] **No example values left.** The command below lists, by name, every setting that still holds a value from the template: a `change-me` password, a `your-domain.example` address or any other `.example` one, a public address (such as `AUTH_ISSUER` or `WEB_APP_URL`) on a `.local` host, `your-github-owner`, or a database password shorter than 16 characters (on its own line or inside a `DATABASE_URL` address). It never prints the values, so its output is safe to paste anywhere. Fix each line it names with `nano deploy/.env` and run it again until it says `no example values left`. In production the API, the worker and the `bootstrap` and `migrate` steps refuse to start while any of these remains; in staging they start and log each one, beginning "Production would refuse".
+
+```bash
+# machine (SSH session), from /opt/integr8
+sh deploy/vps/check-env.sh
 ```
 
 > [!WARNING]
@@ -666,7 +675,7 @@ curl -sI https://app.integr8-media.com | grep -iE 'strict-transport|content-secu
 > If the API refuses to start, its log says exactly which variable is wrong or missing: `docker compose -f deploy/compose.yml --env-file deploy/.env logs api`. Fix the env file and run the same `up -d` command again. Throughout this guide, "restart" means exactly that command; it recreates only the containers whose settings changed.
 
 > [!NOTE]
-> **Pulling instead of building.** GitHub publishes the same two images for every release (Stage 0, Part K). Add `API_IMAGE=ghcr.io/minalouisleon/integr8-api:v1.2.3` and `WEB_IMAGE=ghcr.io/minalouisleon/integr8-web:v1.2.3` to `deploy/.env`, with the release you are installing, and from then on deploy with `docker compose … pull && docker compose … up -d` instead of `--build`: no ten-minute build on the machine. Always a release tag, never `:main`, `:staging` or `:latest`: those move by themselves, `:main` and `:staging` with code not released yet. A pinned tag makes each update a one-line change and a rollback "set the previous tag" (Stage 11, parts D and I). If GitHub → your profile → **Packages** shows no images for that release yet, Actions → **Publish images** → **Run workflow** with its tag builds them (30 to 60 minutes). Either way works; this guide shows `--build`.
+> **Pulling instead of building.** GitHub publishes the same two images for every release (Stage 0, Part K). Add `API_IMAGE=ghcr.io/minalouisleon/integr8-api:v1.2.4` and `WEB_IMAGE=ghcr.io/minalouisleon/integr8-web:v1.2.4` to `deploy/.env`, with the release you are installing, and from then on deploy with `docker compose … pull && docker compose … up -d` instead of `--build`: no ten-minute build on the machine. Always a release tag, never `:main`, `:staging` or `:latest`: those move by themselves, `:main` and `:staging` with code not released yet. A pinned tag makes each update a one-line change and a rollback "set the previous tag" (Stage 11, parts D and I). If GitHub → your profile → **Packages** shows no images for that release yet, Actions → **Publish images** → **Run workflow** with its tag builds them (30 to 60 minutes). Either way works; this guide shows `--build`.
 
 ---
 
@@ -742,8 +751,8 @@ _about an hour, mostly waiting_
 
 Nothing is built on your laptop or on the server. Every merge into `main` runs the release workflow: the **staff** desktop app, the one you and your colleagues install, is built on GitHub's own Windows, macOS and Linux machines and the installers attached to a GitHub release. It is called **Integr8 Plus Staff** and its sign-in screen has only the staff door: a company's people never install it. Each company gets apps of its own, desktop and phone, in Stage 8, once the company exists. Stage 0, Part K set everything the workflow needs; this stage triggers it and installs the result.
 
-- [ ] **Make the current release.** The latest release is `v1.2.3`; if Releases shows it with green jobs, skip to the next step. If a later version is already current when you set up, use its newest green release. Otherwise bump the root `package.json` version through a pull request and merge it into `main`; the **Actions** tab shows the release workflow. The Windows installer takes about 15 minutes and macOS about 25. No generic phone app is built here; company phone apps are built in Stage 8. If a job is red, open it and fix the named missing variable or secret before continuing.
-- [ ] **Desktop: install the staff app from the Releases page.** Repository → **Releases** → `v1.2.3` (or the newest green `v…`) → Assets: a `-setup.exe` and an `.msi` for Windows, a `.dmg` for macOS, a `.deb` and an `.AppImage` for Linux, named `Integr8 Plus Staff` (from the next release, `integr8-plus-staff_…`). Download the Windows `-setup.exe` and run it: it is the one that updates itself in place. If an older `Integr8 Plus` from before this change is installed, it stays as a separate app; uninstall it from Windows Settings → Apps. Until the installers are code-signed, Windows warns before it runs: the note at the end of this stage says what to click.
+- [ ] **Make the current release.** The latest release is `v1.2.4`; if Releases shows it with green jobs, skip to the next step. If a later version is already current when you set up, use its newest green release. Otherwise bump the root `package.json` version through a pull request and merge it into `main`; the **Actions** tab shows the release workflow. The Windows installer takes about 15 minutes and macOS about 25. No generic phone app is built here; company phone apps are built in Stage 8. If a job is red, open it and fix the named missing variable or secret before continuing.
+- [ ] **Desktop: install the staff app from the Releases page.** Repository → **Releases** → `v1.2.4` (or the newest green `v…`) → Assets: a `-setup.exe` and an `.msi` for Windows, a `.dmg` for macOS, a `.deb` and an `.AppImage` for Linux, named `Integr8 Plus Staff` (from the next release, `integr8-plus-staff_…`). Download the Windows `-setup.exe` and run it: it is the one that updates itself in place. If an older `Integr8 Plus` from before this change is installed, it stays as a separate app; uninstall it from Windows Settings → Apps. Until the installers are code-signed, Windows warns before it runs: the note at the end of this stage says what to click.
 - [ ] **Sign in as staff.** The staff app has one door: super admin email, password and authenticator code, then a company to open and a reason. This is the only way into the form builder, the job-type editor and the **Company branding** screen, because all three are Integr8's to run for each company; the company's own people get a desktop app whose sign-in has only their door (Stage 8). The signed-in screens are a dashboard with a side menu grouped by Work, CRM, Sales, Finance, Accounting, HR, Inventory, Operations, Set-up and Company (each business group appears only for a company with that module switched on, Stage 7); the menu shrinks to icons with the button at its foot and remembers the choice, and the language switch lives in its footer. With no companies yet, stop here and come back in Stage 7. If sign-in says "You appear to be offline" while the web app works, the installer was built before `claude/desktop-csp` was merged, or without `PUBLIC_API_URL`; check `docker compose … logs api | grep platform/auth` on the machine: no line means the request never left the app.
 - [ ] **Phone: nothing to install yet.** There is no generic phone app any more and no staff login on the phone: a phone app is built for one company, carries its name, icon and colours, opens on its website, and signs in only its people. The first one is built in Stage 8, for the test company Stage 7 creates.
 
@@ -782,10 +791,10 @@ Everything exists now: the stack, the dashboard, both apps, real email. This sta
 - [ ] **Switch on the company's modules.** Dashboard → Companies → the company → **Features**. Every company has the field work (jobs, forms, customers and sites, timesheets) from the start; the business modules are off until you switch them on, one by one, for the company that bought them: `crm` (leads, opportunities, pipelines), `sales` (quotes, sales orders, deliveries), `finance` (invoices, payments, job profitability), `ledger` (the general ledger), `inventory` (catalogue, stock, vans, counts, serial numbers and batches), `purchasing` (suppliers, purchase orders, receipts, reorder), `assets` (equipment register, QR tags, service history), `hr` (employee profiles and expense claims), `payroll` (Egyptian payroll; needs `hr`), `manufacturing` (bills of materials, assembly, planning; needs `inventory`), `documents` (PDFs made from submissions, with QR codes), `e_invoicing` (ETA e-invoicing; requires `finance` and remains test-only until validated). Switch on the modules for this test company, but leave `e_invoicing` off unless you are following its test-system steps below. Menus, phone screens and the API follow the switches at once.
 - [ ] **Build the company's forms and job types as staff.** In the installed staff desktop app, sign in, pick the company, type a reason (ten characters or more; it goes in the audit log), **Open**. A red banner says you are acting as the company. Rename the job types to match the work they do, build a form from a template, attach it to a job type, publish it. Each question card prints its rules in words ("Shown when Result is Fail") and has a **Show when…** button; a question can be **Required only when…**, and a choice question can **Depend on** another so its options narrow with the answer. The company's own people never see the builder: owners and admins read and fill forms, and ask you when something needs to change.
 - [ ] **Give the company its look, as staff.** Still acting as the company, side menu → Set-up → **Company branding**: upload a logo (PNG, JPEG or WebP) and a square **app icon** (at least 512 × 512; it becomes the installer and phone icon), pick the accent colour (`#1D4ED8` to try), the sidebar colour, the default theme (light, dark or follow the device) and check the website. The preview shows the shell as it will look before you save. From then on the web app, the company's desktop app and its phone app wear that look, and the sign-in screen remembers it on every device after the first sign-in. The company's owner sees these settings read-only under Settings → Company, with a note that Integr8 sets them; nobody in the company can change the theme.
-- [ ] **Invite the owner, now the company is ready.** Dashboard → Companies → the company → **Invitations**: the owner's address, "Waiting, until …" (or "Expired on …" if setting up took more than seven days; it does not matter). **Send invitation** emails a fresh link through Resend, from Integr8, valid for seven days; the panel says "Emailed to …", or why it could not. **Copy a new link** makes the same fresh link without sending anything, for WhatsApp or your own email. Either one stops any earlier link working. Then open the link in a private browser window, choose a name and a password of twelve characters or more, and you are the company's owner, on its dashboard in the web app, in its colours. The invitation disappears from the panel once accepted.
+- [ ] **Invite the owner, now the company is ready.** Dashboard → Companies → the company → **Invitations**: the owner's address, "Waiting, until …" (or "Expired on …" if setting up took more than seven days; it does not matter). **Send invitation** emails a fresh link through Resend, from Integr8, valid for seven days; the panel says "Emailed to …", or why it could not. **Copy a new link** makes the same fresh link without sending anything, for WhatsApp or your own email. Either one stops any earlier link working. Then open the link in a private browser window and choose a name and a password of twelve characters or more that does not contain the first part of the address (an address that already signs in to Integr8 is asked for no password and keeps its own). The page says "Done — now sign in"; its button opens sign-in with the address filled in, and once signed in you are the company's owner, on its dashboard in the web app, in its colours. The invitation disappears from the panel once accepted.
 - [ ] **Invite an engineer** as the owner, Settings → People, to a second address you can read. Accept it in another private window.
 - [ ] **Create a customer, a site and a job** from the office screens (web app or desktop app, as the owner), load the sample data if you want the screens populated, and assign the engineer. Within a minute the site's **Location** says "Placed from the address" with its coordinates: that is Mapbox. **Open in Google Maps** beside them shows the spot; if it is wrong, type the right coordinates (in Google Maps, right-click the place and click the numbers to copy them) and **Save this position**.
-- [ ] **Build the company's own apps.** Dashboard → the company's page → **Website and apps** → tick **Build apps for this company** → Save. If the machine may start builds (`APP_BUILDS=github`, Stage 8, part A), the panel says "Build started on GitHub" with a link to the run, and there is nothing more to do here. Otherwise it says to start it by hand: repository → **Actions** → **Build company apps** → **Run workflow** → type the company's short name, leave the other boxes empty, run. About 25 minutes later the Releases page has `company-<short name>-v1.2.3` with the company's desktop installers and its Android app. Stage 8 explains everything this run did and how it repeats at every release.
+- [ ] **Build the company's own apps.** Dashboard → the company's page → **Website and apps** → tick **Build apps for this company** → Save. If the machine may start builds (`APP_BUILDS=github`, Stage 8, part A), the panel says "Build started on GitHub" with a link to the run, and there is nothing more to do here. Otherwise it says to start it by hand: repository → **Actions** → **Build company apps** → **Run workflow** → type the company's short name, leave the other boxes empty, run. About 25 minutes later the Releases page has `company-<short name>-v1.2.4` with the company's desktop installers and its Android app. Stage 8 explains everything this run did and how it repeats at every release.
 - [ ] **Install the company's apps.** From that release: the Windows installer (named after the company) on your laptop, beside the staff app, and the `.apk` on the phone (open the release page on the phone, download, allow installing from this source when Android asks). The phone opens on the company's website with a **Login** button in the header; the desktop app opens on a sign-in screen in the company's colours with only the company door.
 - [ ] **Complete the job on the phone, offline.** Press Login in the company's phone app and sign in as the engineer, pull the jobs down, turn on aeroplane mode, complete the job with a photo and a signature, turn aeroplane mode off, and watch it arrive in the office. The photo lands in the company's R2 bucket. `docs/mobile/device-checklist.md` in the repository is the full list of what to try.
 - [ ] **Try in-app payment once**, only with Stripe and in test mode (with `BILLING_PROVIDER=none` the company's Billing page says it is invoiced by Integr8, and that is the check): on the company's dashboard page → Plan and billing → Billing: Pays in the app → Save. As the owner, Billing → choose a plan → Stripe's checkout → card `4242 4242 4242 4242`, any future date. The plan shows as active within seconds; dashboard → Health → Billing deliveries lists the webhook events as applied. Then switch the company back to Invoiced.
@@ -928,12 +937,13 @@ Everything above works with Stripe in test mode and the API in staging mode. Thi
 ```bash
 # machine (SSH session)
 cd /opt/integr8
+sh deploy/vps/check-env.sh      # must say: no example values left
 docker compose -f deploy/compose.yml --env-file deploy/.env up -d
 docker compose -f deploy/compose.yml --env-file deploy/.env logs api | head -40
 curl -s http://127.0.0.1:3000/health/ready; echo
 ```
 
-- [ ] **Check**: the log does not say "Refusing to start in production". If it does, it lists exactly which service is still a fake or which variable is missing; fix and `up -d` again. The health check says `ready`.
+- [ ] **Check**: the log does not say "Refusing to start in production". If it does, it lists exactly which service is still a fake, which variable is missing or which setting still holds an example value (by name, never the value); fix and `up -d` again. A refused `bootstrap` or `migrate` stops everything after it: `docker compose -f deploy/compose.yml --env-file deploy/.env logs bootstrap migrate` shows the same list. The health check says `ready`.
 
 ### B. The database and backups
 
@@ -1001,7 +1011,7 @@ docker compose -f deploy/compose.yml --env-file deploy/.env exec -T postgres psq
 ### D. GitHub, for the long run
 
 - [ ] **Protect the long-lived branches.** `dev` was deleted by GitHub's "automatically delete head branches" once already. Turn that setting off (Settings → General → Pull Requests) or add `dev` and `staging` to a ruleset that forbids deletion. The flow is feature branch → `dev` → `staging` → `main`, and the checks refuse shortcuts.
-- [ ] **Check the release images**: GitHub → your profile → **Packages** lists `integr8-api` and `integr8-web` with the current release's tag (for example `v1.2.3`) for both `amd64` and `arm64`; the version release's **Release images** job makes them. A release made before releases built their own images (`v1.2.2` is one) has none until you run Actions → **Publish images** → **Run workflow** with **tag** = `v1.2.2`, once. The ARM half runs under emulation and takes 30 to 60 minutes.
+- [ ] **Check the release images**: GitHub → your profile → **Packages** lists `integr8-api` and `integr8-web` with the current release's tag (for example `v1.2.4`) for both `amd64` and `arm64`; the version release's **Release images** job makes them. A release made before releases built their own images (`v1.2.2` is one) has none until you run Actions → **Publish images** → **Run workflow** with **tag** = `v1.2.2`, once. The ARM half runs under emulation and takes 30 to 60 minutes.
 
 ### E. The first real company
 
@@ -1082,7 +1092,7 @@ Everything on the machine, in the order that keeps it safe: make the release, ba
 
 ### A. Make the release
 
-- [ ] **Bump the version and merge into `main`.** The root `package.json` version goes up (for example `1.2.3` → `1.2.4`); the change reaches `main` through `dev` and `staging` as usual. That merge is the release.
+- [ ] **Bump the version and merge into `main`.** The root `package.json` version goes up (for example `1.2.4` → `1.2.5`); the change reaches `main` through `dev` and `staging` as usual. That merge is the release.
 - [ ] **Wait for it to finish green.** Repository → **Actions**: "Version release" builds the installers and every company's apps (about 30 minutes), then its **Release images** job builds the release's server images, `integr8-api:v…` and `integr8-web:v…` (30 to 60 minutes). Do not touch the machine until all of it is green; a red release changes nothing anywhere.
 - [ ] **Read what changed.** Repository → **Releases** → the new `v…`. Look for three things: a **new setting** (part C), a **database migration** (it runs by itself, but it is why part B exists), and a change to `deploy/vps/setup.sh` or the Caddyfile (part F).
 
@@ -1116,7 +1126,7 @@ comm -13 <(grep -oE '^[A-Z_0-9]+=' deploy/.env | sort -u) \
          <(grep -oE '^[A-Z_0-9]+=' deploy/.env.example | sort -u)
 
 # Tell the server its new version number (use the real one)
-sed -i 's/^APP_VERSION=.*/APP_VERSION=1.2.3/; s/^API_RELEASE=.*/API_RELEASE=1.2.3/' deploy/.env
+sed -i 's/^APP_VERSION=.*/APP_VERSION=1.2.4/; s/^API_RELEASE=.*/API_RELEASE=1.2.4/' deploy/.env
 grep -E '^(APP_VERSION|API_RELEASE)=' deploy/.env
 ```
 
@@ -1137,7 +1147,7 @@ docker compose -f deploy/compose.yml --env-file deploy/.env logs -f migrate api
 # — or, if deploy/.env pins API_IMAGE and WEB_IMAGE to GitHub's release images (Stage 4):
 #   put the new release's tag in both lines first (use the real one)
 cd /opt/integr8
-sed -i -E 's#^((API|WEB)_IMAGE=.*):[^:/]+$#\1:v1.2.3#' deploy/.env
+sed -i -E 's#^((API|WEB)_IMAGE=.*):[^:/]+$#\1:v1.2.4#' deploy/.env
 grep -E '^(API|WEB)_IMAGE=' deploy/.env
 docker compose -f deploy/compose.yml --env-file deploy/.env pull
 docker compose -f deploy/compose.yml --env-file deploy/.env up -d
@@ -1188,7 +1198,7 @@ sudo needs-restarting -r || echo "Reboot needed"
 
 - [ ] **Staff desktop app**: each installed copy offers the new version itself (Stage 6, desktop apps that update themselves): open it and click **Install now** in the strip under the top bar. Only a computer whose app is older than the update feed needs the new `-setup.exe` from the version's release (Releases → `v…` → Assets), installed over the old one. Signing in again is not needed.
 - [ ] **Each company's apps**: the version release built them at the same time, one release per company named `company-<short name>-v…` (Stage 8). Their installed desktop apps offer the new version themselves; send new installer links only to people whose app is older than the update feed, or who are installing for the first time. Phones that already have the company's app receive the JavaScript side over the air on their own channel within a day; the new `.apk` only matters when the release notes say the native side changed.
-- [ ] **Too-old apps.** When a release needs every app to be new, it raises `API_MIN_SUPPORTED_CLIENT` (the notes say so, and part C's check shows it). Older apps are then told to update, with a link to `API_UPDATE_URL`, instead of failing strangely.
+- [ ] **Too-old apps.** When a release needs every app to be new, it raises `API_MIN_SUPPORTED_CLIENT` (the notes say so, and part C's check shows it). Older apps then say their version is no longer supported, with an **Update** button that opens the web app's download page (`/download`, with the company filled in for a company's own app), instead of failing strangely.
 
 ### H. Clean up
 
@@ -1417,6 +1427,28 @@ docker compose -f deploy/compose.yml --env-file deploy/.env run --rm api node di
 docker compose -f deploy/compose.yml --env-file deploy/.env run --rm api node dist/platform/admin-cli.js hr-reseal COMPANY-ID
 ```
 
+### AA. Example values refused, and the Update button (included in v1.2.4)
+
+A production server used to start with the template's `change-me` passwords, its `your-domain.example` addresses or a short database password, as long as everything else was set. Now the API, the worker and the `bootstrap` and `migrate` steps refuse to, naming each setting and never its value; staging starts and logs the same list. Apps too old to be served now show an **Update** button that opens the web app's download page, and `API_UPDATE_URL` is no longer needed.
+
+- [ ] **Check the env file** during part C: `sh deploy/vps/check-env.sh` lists, by name, each setting that still holds an example value. Nothing to change when it says `no example values left`.
+- [ ] **A database password it names**, only if it names one. Make a new password (Stage 0, Part B's line) and put it in both of its lines, the password and the address that holds it. For `INTEGR8_APP_PASSWORD`, `INTEGR8_AUTH_PASSWORD`, `INTEGR8_PLATFORM_PASSWORD` and `SUPABASE_AUTH_DB_PASSWORD` that is all: `bootstrap` sets the role's password from the file at part D's `up -d`. For `POSTGRES_PASSWORD`, Postgres keeps the owner's password it was created with, so change it in the database first with the command below (it asks for the new password twice), then in `POSTGRES_PASSWORD` and `DATABASE_URL_ADMIN`.
+- [ ] **`API_UPDATE_URL`**, during part C: put `# ` in front of its line. Unset, an app too old to be served is sent to `https://app.integr8-media.com/download`; earlier versions of this guide set it to the web app's home page.
+- [ ] **No warning after part D**: `docker compose -f deploy/compose.yml --env-file deploy/.env logs api bootstrap | grep "Production would refuse"` prints nothing in staging; in production the API starts.
+
+```bash
+# machine (SSH session), from /opt/integr8; only to change POSTGRES_PASSWORD
+docker compose -f deploy/compose.yml --env-file deploy/.env exec postgres psql -U postgres -d integr8 -c '\password postgres'
+```
+
+### AB. Uploaded documents, sharing, and the new public site (included in v1.2.4)
+
+Migrations 0067 and 0068 run by themselves at part D: documents can now be uploaded as PDFs and have a sharing switch, and the server keeps an index of the files each submission uses. New documents start **not shared**, so their QR link and the company's website do not open them until someone presses **Share it**; documents made before the update stay shared. Accepting an invitation no longer signs the person in: someone new chooses a password, then signs in. The public pages and the staff dashboard take the Integr8 Media look, in English unless the visitor picks Arabic, and the web app has a download page at `/download`. No new settings.
+
+- [ ] **Migrations ran**: after part D, `docker compose -f deploy/compose.yml --env-file deploy/.env logs migrate | grep 0068` shows `applied 0068_submission_file_uses`.
+- [ ] **Tell each company using documents** that new documents start not shared: an owner or admin opens a document and presses **Share it** before handing over its QR code, or checks a website lookup that suddenly finds nothing.
+- [ ] **Open the new pages**: `https://app.integr8-media.com/` and `https://app.integr8-media.com/download?company=<a company's short name>` load in the new look, and the language switch turns them to Arabic and back.
+
 > [!NOTE]
 > **The test box (Stage 10)** updates the same way, from `staging` instead of `main`: `git pull` on its `staging` checkout, then **Pull** and **Redeploy** the stack in Arcane. Updating it first, the day before, is the cheapest rehearsal there is.
 
@@ -1565,7 +1597,7 @@ comm -23 <(grep -oE '^#? ?[A-Z][A-Z0-9_]+=' deploy/.env.example | tr -d '# ' | s
 
 _about 3 hours, mostly Stages 1 to 4_
 
-Stage 12 empties the machine and keeps it. This stage deletes the machine itself, its disk included, and makes a new one: a new operating system, a new shape, or simply a clean start on the current release (v1.2.3). Everything from Stage 0 lives outside the machine and carries over unchanged: the domain and Cloudflare, R2, Resend, Stripe, Mapbox, Sentry, Expo and every GitHub variable and secret. What dies with the machine is what was only on its disk: `deploy/.env`, the database, the backups in `/var/backups/integr8`, and the Caddy file. Part A saves the first two if you want them.
+Stage 12 empties the machine and keeps it. This stage deletes the machine itself, its disk included, and makes a new one: a new operating system, a new shape, or simply a clean start on the current release (v1.2.4). Everything from Stage 0 lives outside the machine and carries over unchanged: the domain and Cloudflare, R2, Resend, Stripe, Mapbox, Sentry, Expo and every GitHub variable and secret. What dies with the machine is what was only on its disk: `deploy/.env`, the database, the backups in `/var/backups/integr8`, and the Caddy file. Part A saves the first two if you want them.
 
 > [!NOTE]
 > **Two ways to start over.** Parts B to E delete the Oracle machine itself and make a new one. [Part F](#f-keep-the-machine-but-remove-everything-on-it-data-docker-and-the-repository) keeps the machine, its address, its firewall and your login, and removes only what Integr8 put on it: the data, Docker and the repository. Do part A first either way; then choose.
@@ -1623,7 +1655,7 @@ ssh LOGIN-USER@SERVER-IP          # yes to the new fingerprint
 
 ### D. Settings, data and the stack
 
-- [ ] **Put the env file back** from the laptop, then look for settings version 1.2.3 knows about that the kept file lacks, and set the version.
+- [ ] **Put the env file back** from the laptop, then look for settings version 1.2.4 knows about that the kept file lacks, and set the version.
 
 ```powershell
 # laptop (PowerShell)
@@ -1636,11 +1668,11 @@ cd /opt/integr8
 chmod 600 deploy/.env
 comm -23 <(grep -oE '^#? ?[A-Z][A-Z0-9_]+=' deploy/.env.example | tr -d '# ' | sort -u) \
          <(grep -oE '^#? ?[A-Z][A-Z0-9_]+=' deploy/.env | tr -d '# ' | sort -u)
-sed -i 's/^APP_VERSION=.*/APP_VERSION=1.2.3/; s/^API_RELEASE=.*/API_RELEASE=1.2.3/' deploy/.env
+sed -i 's/^APP_VERSION=.*/APP_VERSION=1.2.4/; s/^API_RELEASE=.*/API_RELEASE=1.2.4/' deploy/.env
 grep -E '^(APP_VERSION|API_RELEASE|HR_DATA_KEY)=' deploy/.env
 ```
 
-- [ ] **Every name the `comm` command printed is added** with `nano deploy/.env`, its value from the key sheet (the template's comment beside each line says what it is). `HR_DATA_KEY` is the one most likely to be missing. The last command shows the version as `1.2.3` and the HR key filled in.
+- [ ] **Every name the `comm` command printed is added** with `nano deploy/.env`, its value from the key sheet (the template's comment beside each line says what it is). `HR_DATA_KEY` is the one most likely to be missing. The last command shows the version as `1.2.4` and the HR key filled in.
 - [ ] **Starting empty?** Run Stage 4 exactly as written and go on to part E. **Keeping the data?** Do the next step instead of Stage 4's first command.
 - [ ] **Restore the dump into the new database**, before the migrations run: start only Postgres and the step that creates the database roles, load the dump, then start everything. The migrations then apply any schema additions the restored database does not yet have.
 
@@ -1857,6 +1889,6 @@ docker compose -f deploy/compose.yml --env-file deploy/.env \
 
 ## About this page
 
-Prepared for release v1.2.3 (1 November 2026) from the repository's `main` branch: `deploy/compose.yml`, `deploy/.env.example`, `deploy/vps/`, `.github/workflows/`, `docs/deployment/README.md`, `docs/auth/self-hosted-auth.md`, `docs/database/runbook-backup-and-restore.md`, `docs/ai/RUNBOOK.md`, `docs/documents/RUNBOOK.md` and `docs/e-invoicing/RUNBOOK.md`. Since the previous edition, v1.2.0 added the company website data API and v1.2.1 adds the schedule, skills and certificates, and contracts, maintenance and deadlines (Stage 11, parts M to P); v1.1.2 included the AI assistant, PDF documents and ETA e-invoicing, the v1.1.1 API image/config fixes, and the staff app refresh button from pull request 115. v1.2.3 adds self-hosted sign-in and the fixes from the October 2026 pre-production review (Stage 11, part Q): Supabase's cloud is no longer used, the stage that moved the database there is gone, and the test box runs Ubuntu with Arcane. It also adds the off-machine backup copy and the restore drill (Stage 9, part B, and Stage 11, part R), and rollbacks that start on a newer database (Stage 11, part I). The e-invoicing feature remains test-only until validated. Example model ids and prices come from the providers' pages and third-party price lists in October 2026 and were not checked on every provider's own site: confirm them there. Service dashboards move things around; when a menu is not where this says, search the service's own docs for the setting name.
+Prepared for release v1.2.4 (1 November 2026) from the repository's `main` branch: `deploy/compose.yml`, `deploy/.env.example`, `deploy/vps/`, `.github/workflows/`, `docs/deployment/README.md`, `docs/auth/self-hosted-auth.md`, `docs/database/runbook-backup-and-restore.md`, `docs/ai/RUNBOOK.md`, `docs/documents/RUNBOOK.md` and `docs/e-invoicing/RUNBOOK.md`. Since the previous edition, v1.2.0 added the company website data API and v1.2.1 adds the schedule, skills and certificates, and contracts, maintenance and deadlines (Stage 11, parts M to P); v1.1.2 included the AI assistant, PDF documents and ETA e-invoicing, the v1.1.1 API image/config fixes, and the staff app refresh button from pull request 115. v1.2.4 adds self-hosted sign-in and the fixes from the October 2026 pre-production review (Stage 11, part Q): Supabase's cloud is no longer used, the stage that moved the database there is gone, and the test box runs Ubuntu with Arcane. It also adds the off-machine backup copy and the restore drill (Stage 9, part B, and Stage 11, part R), and rollbacks that start on a newer database (Stage 11, part I). The e-invoicing feature remains test-only until validated. Example model ids and prices come from the providers' pages and third-party price lists in October 2026 and were not checked on every provider's own site: confirm them there. Service dashboards move things around; when a menu is not where this says, search the service's own docs for the setting name.
 
 This Markdown checklist is maintained alongside the interactive HTML version in `setup-checklist.html`. To use the HTML version, download it with `setup-checklist.css` and `setup-checklist.js` into one folder and open the `.html` in a browser; progress ticks are saved in that browser. Keep the Markdown and HTML content in sync; `pnpm guide:check` verifies their stages, parts, tick boxes and wording.

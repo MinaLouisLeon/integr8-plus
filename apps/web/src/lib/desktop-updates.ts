@@ -15,6 +15,10 @@
  * each release's manifest is read once. A token is needed only if the
  * repository becomes private: then GitHub's download links need it too, so
  * the manifest's links are pointed back here and the files are passed through.
+ *
+ * The same list feeds the public `/download` page (Low 6): an app's newest
+ * release with installers in it, each file linked the way the updater's are
+ * (straight to GitHub, or through this server for a private repository).
  */
 
 export interface GitHubAsset {
@@ -23,6 +27,8 @@ export interface GitHubAsset {
   /** The API address of the asset; with `accept: application/octet-stream` it is the file. */
   url: string;
   browser_download_url: string;
+  /** Bytes. GitHub always sends it; optional so a test release can leave it out. */
+  size?: number;
 }
 
 export interface GitHubRelease {
@@ -71,17 +77,32 @@ export function tagPattern(app: string): RegExp {
     : new RegExp(`^company-${app}-${SEMVER}$`, 'u');
 }
 
-/** The newest published release of one app that carries an update manifest, by version. */
+/** A release the updater can use: it carries the update manifest. */
+export function hasManifest(release: GitHubRelease): boolean {
+  return release.assets.some((asset) => asset.name === MANIFEST);
+}
+
+/** A release somebody can install from: it carries at least one installer. */
+export function hasInstaller(release: GitHubRelease): boolean {
+  return release.assets.some((asset) => installerOf(asset.name) !== undefined);
+}
+
+/**
+ * The newest published release of one app, by version, among those `accept`
+ * takes: by default the ones with an update manifest, which is what the
+ * updater needs.
+ */
 export function newestRelease(
   releases: readonly GitHubRelease[],
   app: string,
+  accept: (release: GitHubRelease) => boolean = hasManifest,
 ): GitHubRelease | undefined {
   const pattern = tagPattern(app);
   let best: { release: GitHubRelease; parts: number[] } | undefined;
   for (const release of releases) {
     const match = pattern.exec(release.tag_name);
     if (match === null || release.draft || release.prerelease) continue;
-    if (!release.assets.some((asset) => asset.name === MANIFEST)) continue;
+    if (!accept(release)) continue;
     const parts = [Number(match[1]), Number(match[2]), Number(match[3])];
     if (best === undefined || compare(parts, best.parts) > 0) {
       best = { release, parts };
@@ -96,6 +117,106 @@ function compare(a: readonly number[], b: readonly number[]): number {
     if (difference !== 0) return difference;
   }
   return 0;
+}
+
+export type InstallerPlatform = 'windows' | 'macos' | 'linux' | 'android';
+export type InstallerKind = 'exe' | 'msi' | 'dmg' | 'appimage' | 'deb' | 'rpm' | 'apk';
+export type InstallerArch = 'x64' | 'arm64' | 'universal';
+
+/** One file a person can install, as the download page lists it. */
+export interface Installer {
+  name: string;
+  /** Straight to GitHub for a public repository, through this server for a private one. */
+  url: string;
+  platform: InstallerPlatform;
+  kind: InstallerKind;
+  arch: InstallerArch | null;
+  size: number | null;
+}
+
+/** An app's newest installable release. */
+export interface AppRelease {
+  tag: string;
+  version: string;
+  installers: Installer[];
+}
+
+const INSTALLER_KINDS: readonly {
+  test: RegExp;
+  platform: InstallerPlatform;
+  kind: InstallerKind;
+}[] = [
+  { test: /\.exe$/iu, platform: 'windows', kind: 'exe' },
+  { test: /\.msi$/iu, platform: 'windows', kind: 'msi' },
+  { test: /\.dmg$/iu, platform: 'macos', kind: 'dmg' },
+  { test: /\.appimage$/iu, platform: 'linux', kind: 'appimage' },
+  { test: /\.deb$/iu, platform: 'linux', kind: 'deb' },
+  { test: /\.rpm$/iu, platform: 'linux', kind: 'rpm' },
+  // The Android app a phone installs from the link. A store bundle (.aab)
+  // is not listed: no phone can install one.
+  { test: /\.apk$/iu, platform: 'android', kind: 'apk' },
+];
+
+/**
+ * What kind of installer a release file is, or undefined for everything
+ * else: signatures, manifests, and macOS's update archive (`.app.tar.gz`),
+ * which only the updater uses.
+ */
+export function installerOf(
+  name: string,
+): { platform: InstallerPlatform; kind: InstallerKind; arch: InstallerArch | null } | undefined {
+  const found = INSTALLER_KINDS.find((entry) => entry.test.test(name));
+  if (found === undefined) {
+    return undefined;
+  }
+  const arch = /universal/iu.test(name)
+    ? 'universal'
+    : /(aarch64|arm64)/iu.test(name)
+      ? 'arm64'
+      : /(x64|x86_64|amd64)/iu.test(name)
+        ? 'x64'
+        : null;
+  return { platform: found.platform, kind: found.kind, arch };
+}
+
+const PLATFORM_ORDER: readonly InstallerPlatform[] = ['windows', 'macos', 'linux', 'android'];
+
+/** Within a platform, the installer most people want first (the setup .exe before the .msi). */
+function kindOrder(kind: InstallerKind): number {
+  return INSTALLER_KINDS.findIndex((entry) => entry.kind === kind);
+}
+
+/**
+ * The installers of one release, in the order the page shows them, each
+ * linked straight to GitHub or, with `proxyBase` (a private repository),
+ * through this server's `/desktop-updates/<app>/download/<tag>/<file>`.
+ */
+export function releaseInstallers(
+  release: GitHubRelease,
+  options: { app: string; proxyBase?: string | undefined },
+): AppRelease {
+  const installers: Installer[] = [];
+  for (const asset of release.assets) {
+    const kind = installerOf(asset.name);
+    if (kind === undefined) continue;
+    installers.push({
+      name: asset.name,
+      url:
+        options.proxyBase === undefined
+          ? asset.browser_download_url
+          : `${options.proxyBase.replace(/\/+$/u, '')}/desktop-updates/${options.app}/download/${encodeURIComponent(release.tag_name)}/${encodeURIComponent(asset.name)}`,
+      ...kind,
+      size: typeof asset.size === 'number' ? asset.size : null,
+    });
+  }
+  installers.sort(
+    (a, b) =>
+      PLATFORM_ORDER.indexOf(a.platform) - PLATFORM_ORDER.indexOf(b.platform) ||
+      kindOrder(a.kind) - kindOrder(b.kind) ||
+      a.name.localeCompare(b.name),
+  );
+  const version = /v(\d+\.\d+\.\d+)$/u.exec(release.tag_name)?.[1] ?? release.tag_name;
+  return { tag: release.tag_name, version, installers };
 }
 
 /**
@@ -152,6 +273,22 @@ export class DesktopUpdateFeed {
     return this.#token === undefined
       ? manifest
       : proxiedManifest(manifest, { app, tag: release.tag_name, origin });
+  }
+
+  /**
+   * The app's newest release that has installers in it, for the download
+   * page, or `undefined` when there is none. Links to a private repository's
+   * files go through this server, relative to it unless `origin` is given.
+   */
+  async installers(app: string, origin = ''): Promise<AppRelease | undefined> {
+    const release = newestRelease(await this.#listReleases(), app, hasInstaller);
+    if (release === undefined) {
+      return undefined;
+    }
+    return releaseInstallers(release, {
+      app,
+      proxyBase: this.#token === undefined ? undefined : origin,
+    });
   }
 
   /**

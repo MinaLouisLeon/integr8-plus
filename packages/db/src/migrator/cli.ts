@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 import pg from 'pg';
 import { loadDatabaseConfig, requireAdminConnectionString } from '../config.js';
+import { exampleValueVerdict } from './example-values.js';
 import { defaultMigrationsDir, loadMigrations } from './files.js';
 import { listMigrations, migrationProblems, Migrator } from './runner.js';
 
@@ -29,6 +30,9 @@ Commands
                          takes traffic
 
 All commands except "new" connect as DATABASE_URL_ADMIN, the schema owner.
+With APP_ENV=production, bootstrap, deploy, up and down refuse to run while a
+password or address still holds an example value (change-me, a .example or
+.local host) or a database password is shorter than 16 characters.
 `.trim();
 
 async function main(): Promise<number> {
@@ -50,6 +54,17 @@ async function main(): Promise<number> {
 
   if (command === 'new') {
     return scaffold(positionals[1]);
+  }
+
+  // Before connecting: a production database is never touched with the
+  // template's passwords, and bootstrap never makes them the roles' own.
+  const verdict = exampleValueVerdict(process.env, command);
+  for (const line of verdict.warn) {
+    console.warn(line);
+  }
+  if (verdict.refuse.length > 0) {
+    console.error(verdict.refuse.join('\n'));
+    return 1;
   }
 
   const config = loadDatabaseConfig();

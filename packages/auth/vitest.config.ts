@@ -46,6 +46,8 @@ export default defineConfig({
           environment: 'node',
           fileParallelism: false,
           testTimeout: 30_000,
+          // The invitation suite also opens the test database.
+          hookTimeout: 120_000,
         },
       },
     ],

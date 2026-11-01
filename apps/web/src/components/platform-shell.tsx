@@ -2,11 +2,13 @@
 
 import { PLATFORM_NAV_SECTIONS } from '@integr8/core';
 import { useTranslation } from '@integr8/i18n';
+import { integr8Fonts } from '@integr8/tokens';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
 import { DashboardShell, type ShellNavGroup } from '~/components/dashboard-shell';
 import { LocaleSelect } from '~/components/locale-select';
 import { SignOutIcon } from '~/components/nav-icon';
+import { LogoMark } from '~/components/site/logo';
 import { ErrorState, LoadingState } from '~/components/ui';
 import { PLATFORM_NAV_ALIASES, PLATFORM_NAV_PATHS } from '~/lib/navigation';
 import { ensurePlatformToken, signOutOfPlatform } from '~/lib/platform-session';
@@ -21,7 +23,8 @@ import { ensurePlatformToken, signOutOfPlatform } from '~/lib/platform-session';
  *
  * The shell is the customer app's, drawn with the platform's sections: one
  * group, the product's own mark, and no company colours — this is Integr8's
- * screen, not a customer's.
+ * screen, not a customer's, and it wears the Integr8 Media look (the layout
+ * sets it; the shell's tokens follow).
  */
 export function PlatformShell({
   initialCollapsed,
@@ -112,17 +115,23 @@ export function PlatformShell({
       fallbackTitle={t('platform.title')}
       brand={(collapsed) => (
         <span className="flex min-w-0 items-center gap-3">
+          {/* Integr8's mark, in the Integr8 Media look: the lime 8 on a dark tile. */}
           <span
             aria-hidden="true"
-            className="inline-flex size-9 shrink-0 items-center justify-center rounded-md bg-accent text-base font-semibold text-on-accent"
+            className="group inline-flex size-9 shrink-0 items-center justify-center rounded-xl border border-shell-border bg-site-bg text-lg font-extrabold"
+            style={{ fontFamily: integr8Fonts.display }}
           >
-            {t('common.appName').slice(0, 1)}
+            <LogoMark compact />
           </span>
           {collapsed ? (
             <span className="sr-only">{t('platform.title')}</span>
           ) : (
             <span className="flex min-w-0 flex-col leading-tight">
-              <span className="truncate text-sm font-semibold text-shell-text">
+              <span
+                className="truncate text-sm font-extrabold text-shell-text"
+                dir="ltr"
+                style={{ fontFamily: integr8Fonts.display }}
+              >
                 {t('common.appName')}
               </span>
               <span className="truncate text-xs text-shell-text-muted">{t('platform.title')}</span>

@@ -1,3 +1,4 @@
+import type { LiveSession } from '@integr8/auth';
 import type { ModuleFeature, Permission, PlatformPrincipal, Principal } from '@integr8/core';
 import { z } from 'zod';
 import type { Services } from '../composition.js';
@@ -26,6 +27,12 @@ export interface BaseRequestContext {
   services: Services;
   ipAddress: string | null;
   userAgent: string | null;
+  /**
+   * The `Accept-Language` header, for the few public answers written in the
+   * reader's language before anybody has signed in (a quote link that is no
+   * longer available). Optional so hand-built contexts in tests need not say.
+   */
+  acceptLanguage?: string | null;
   /** The `Idempotency-Key` header, if the caller sent one. */
   idempotencyKey: string | null;
   /**
@@ -42,7 +49,18 @@ export interface BaseRequestContext {
    * reaches into Fastify itself.
    */
   signatureHeader?: string | undefined;
+  /**
+   * The `x-client-app` header: what the caller says it is. Fine for logs and
+   * version checks; never for a decision a caller could gain by lying (the
+   * assistant's per-app switch reads {@link BaseRequestContext.session}).
+   */
   clientApp: ClientApp;
+  /**
+   * What the session recorded when it began — the app that signed in, and
+   * whether it is staff acting as the company. Set on authenticated requests
+   * by the liveness check, from its 30-second cache (Low 11, 1.2.4).
+   */
+  session?: LiveSession;
 }
 
 /** What an authenticated handler receives. `principal` is not nullable here. */

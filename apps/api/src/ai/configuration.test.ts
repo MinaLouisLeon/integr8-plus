@@ -98,7 +98,8 @@ describe('loading the settings', () => {
     const config = loadApiConfig(production);
     expect(() =>
       assertProductionReady(config, {
-        DATABASE_URL_PLATFORM: 'postgres://integr8_platform:x@postgres:5432/integr8',
+        DATABASE_URL_PLATFORM:
+          'postgres://integr8_platform:a-generated-password-of-32-chars@postgres:5432/integr8',
       }),
     ).not.toThrow();
     expect(aiConfiguration(config).ready).toBe(false);

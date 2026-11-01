@@ -12,8 +12,11 @@ one of those templates. The worker prints it with Chromium, draws the
 template's backgrounds under every page, and stores it in the company's own R2
 bucket. Each document has a **QR code** that opens `WEB_APP_URL/d/<code>`, where
 anyone with the link can view and download it. The company's apps list the
-documents, search them, stop their links and delete them. A company's own
-website can look a document up with a **website key**.
+documents, search them, stop their links and delete them. Owners and admins
+can also **upload a PDF** the company already has (release 1.2.4), and choose
+which documents are **shared**: only a shared document opens from its QR code or
+the company's website. A company's own website can look a document up with a
+**website key**.
 
 ## The server
 
@@ -106,6 +109,21 @@ The document is marked **Failed** and its page says why. The codes:
 A failed document is deleted from its page and made again from the
 submission.
 
+## Uploaded documents and sharing (1.2.4)
+
+- **Upload a PDF** (Documents, owners and admins: `document.upload`): a PDF of
+  at most 20 MB, checked to be a PDF by its bytes, with a title, its reference
+  number and optionally the customer it is for. It is ready at once, marked
+  **Uploaded**, with its own QR link; stopping, expiry and deletion work as for
+  a made document. The reference (and the customer's name) are what the website
+  lookup finds it by.
+- **Sharing** is a switch on every document's page, for the same people. Off,
+  the QR code's page and the website answer as if the document did not exist.
+  **New documents start not shared**, made or uploaded; documents made before
+  1.2.4 stay shared. Uploads and every change of sharing are in the company's
+  audit log. When a company says its QR codes "stopped working", check first
+  that the document is shared.
+
 ## Links, expiry and deletion
 
 - **Stop the link** stops the QR code's page and the website lookup at once.
@@ -125,10 +143,12 @@ company → **Website keys**. Other staff see the keys, their last characters an
 their use, and are refused with `staff_manager_only` if they try to change one.
 
 A key answers only while both switches for what it asks are on: Integr8's grant
-on the company's **Features** panel (`website_files`, `website_jobs`,
-`website_quotes`, `website_invoices`) and the company's own switch in
-**Settings → Website access**. Files and the document lookup also need the
-documents module, quotes the sales module and invoices the finance module.
+on the company's **Features** panel (`website_files` for documents,
+`website_jobs`, `website_quotes`, `website_invoices`) and the company's own
+switch in **Settings → Website access**. All eight are off for a new company;
+a company that had one on before 1.2.4 keeps it. Documents also need the
+documents module, quotes the sales module and invoices the finance module, and
+a document must be shared to be found.
 
 - The key is shown once. Copy it into the website server's environment as
   `INTEGR8_WEBSITE_KEY`; it never goes in the website's pages.
@@ -152,5 +172,8 @@ their template and the retention sweep leaves them alone.
 ## Rolling back
 
 Leave migration `0048_documents` applied when going back to an older version:
-the older code ignores its tables. Its `.down.sql` drops every document and
+the older code ignores its tables. The same for `0067_document_uploads_and_sharing`:
+1.2.3 keeps working on it, lists uploaded documents without their reference,
+and ignores sharing (its QR links open whatever the switch says) until 1.2.4 is
+back. Its `.down.sql` drops every document and
 template and is for development databases only.

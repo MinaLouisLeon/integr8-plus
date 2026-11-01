@@ -4,13 +4,14 @@ import {
   getPlatformDataSource,
   type UpsertAiHelpArticleInput,
 } from '@integr8/db';
-import { HELP_ARTICLES, type HelpArticleSource } from './articles.js';
+import { HELP_ARTICLES, type HelpArticleSource } from '@integr8/i18n/help';
 import { HelpIndex } from './retrieval.js';
 
 /**
  * The help library as the API holds it (docs/ai §7.2; ADR-0001 D7).
  *
- * The checked-in manifest is the source; the table is where it is served
+ * The checked-in manifest (`@integr8/i18n/help`, shared with the web app's
+ * public Help centre) is the source; the table is where it is served
  * from; the index is built from the table and rebuilt when the table changes.
  * Seeding is idempotent by content hash, so a restart that changes nothing
  * writes nothing, and an article dropped from the manifest is disabled (never

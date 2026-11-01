@@ -82,12 +82,16 @@ is the second one.
 
 ## Roles
 
-Five roles, one matrix, in `packages/core/src/permissions.ts`. Every role lists
-every permission it holds in full — no inheritance, because widening `admin`
-should not silently widen everything built on top of it.
+Seven built-in roles, one matrix, in `packages/core/src/permissions.ts`. Every
+role lists every permission it holds in full — no inheritance, because widening
+`admin` should not silently widen everything built on top of it.
 
-A test fails the build if a permission is added without deciding it for all five
-roles. That is the point of having a matrix at all: the alternative is a
+The same decisions are checked in as a table, `packages/core/src/permissions.table.md`:
+every permission against every role, `yes` or `no` in every cell, plus a
+**Staff only** column for `STAFF_ONLY_PERMISSIONS`. `permissions.test.ts` fails
+when the table and the matrix disagree in any cell, or when a permission or role
+is missing from either, so a new permission is decided for all seven roles in
+code and once more where it can be read across. That is the point of having a matrix at all: the alternative is a
 `role === 'admin'` check in three hundred files, where a missing one looks
 exactly like code nobody wrote.
 
@@ -95,7 +99,9 @@ Two rules live outside the matrix because they are relationships rather than
 capabilities:
 
 - **Nobody invites somebody at a role above their own.** Without it,
-  `member.invite` is `member.promote_self`.
+  `member.invite` is `member.promote_self`. Accepting an invitation makes the
+  membership and no session; a new address chooses its password then
+  (`docs/auth/self-hosted-auth.md`, "Accepting an invitation").
 - **A super admin holds no membership in any company.** Enforced by a trigger
   in migration 0001, so P03's exit criterion confirms an invariant rather than a
   habit.

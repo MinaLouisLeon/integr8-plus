@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { Providers } from '~/components/providers';
 import { readPreferences } from '~/lib/preferences';
+// The Integr8 Media look's faces, served by this app (no font service).
+import '@integr8/tokens/fonts.css';
 import './globals.css';
 
 export const metadata: Metadata = {

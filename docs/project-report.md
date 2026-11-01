@@ -112,46 +112,46 @@ The five company roles are `owner`, `admin`, `dispatcher`, `engineer` and `viewe
 
 ## 4. Technology stack at a glance
 
-| Layer                    | Technology                                                | Version                                |
-| ------------------------ | --------------------------------------------------------- | -------------------------------------- |
-| Language                 | TypeScript (strict)                                       | 6.0.3                                  |
-| Runtime                  | Node.js                                                   | 22 (`.nvmrc`: 22.22.2)                 |
-| Node.js type definitions | `@types/node`                                             | 26.6.4                                 |
-| Package manager          | pnpm workspaces                                           | 10.33.0                                |
-| Build orchestration      | Turborepo                                                 | 2.11.7                                 |
-| API framework            | Fastify                                                   | 5.12.3                                 |
-| Validation and schemas   | zod                                                       | 4.6.1                                  |
-| Database                 | PostgreSQL                                                | 16                                     |
-| Query builder            | Kysely                                                    | 0.28.9                                 |
-| Postgres driver          | node-postgres (`pg`)                                      | 8.16.3                                 |
-| Tokens (JWT)             | jose (EdDSA signing)                                      | 6.2.0                                  |
-| Web framework            | Next.js (App Router)                                      | 16.3.4                                 |
-| UI library               | React                                                     | 19.3.0                                 |
-| Styling                  | Tailwind CSS                                              | 4.3.3                                  |
-| Server-state caching     | TanStack Query                                            | 5.102.8                                |
-| Desktop shell            | Tauri                                                     | 2 (CLI 2.11.4, API 2.12.0)             |
-| Desktop bundler          | Vite                                                      | 8.2.2                                  |
-| Desktop routing          | React Router                                              | 8.3.1                                  |
-| Desktop native code      | Rust (edition 2021, minimum 1.77)                         | —                                      |
-| Phone framework          | Expo SDK                                                  | 58 (`expo` 58.0.14)                    |
-| Phone runtime            | React Native                                              | 0.88.0                                 |
-| Phone routing            | Expo Router                                               | 58.0.23                                |
-| Phone local database     | SQLite (`expo-sqlite`)                                    | 58.0.13                                |
-| Translation              | i18next and react-i18next                                 | 26.4.2 / 17.0.13                       |
-| Maps                     | A link to Google Maps (no map drawn)                      | —                                      |
-| Image processing         | sharp                                                     | 0.35.4                                 |
-| Object storage client    | AWS SDK v3 for S3 (talking to Cloudflare R2)              | 3.1131.0                               |
-| Error reporting          | Sentry: Node and Next.js / React (desktop) / React Native | 10.74.0 / 11.1.0 / 7.11.0              |
-| Tests                    | Vitest                                                    | 5.0.3                                  |
-| Property-based tests     | fast-check                                                | 4.10.0                                 |
-| DOM tests                | Testing Library, jsdom, axe-core                          | see Appendix A                         |
-| Linting                  | ESLint, typescript-eslint, jsx-a11y, react-hooks          | 10.12.0 / 8.71.1                       |
-| Formatting               | Prettier                                                  | 3.9.9                                  |
-| Git hooks                | Husky, lint-staged, commitlint (Conventional Commits)     | 9.1.7 / 17.6.0 / 21.2.3                |
-| Containers               | Docker, Docker Compose                                    | `node:22-bookworm-slim`, `postgres:16` |
-| Reverse proxy and TLS    | Caddy                                                     | official build                         |
-| CI/CD                    | GitHub Actions; GitHub Container Registry                 | —                                      |
-| Phone builds             | Expo Application Services (EAS)                           | —                                      |
+| Layer                    | Technology                                                | Version                                     |
+| ------------------------ | --------------------------------------------------------- | ------------------------------------------- |
+| Language                 | TypeScript (strict)                                       | 6.0.3                                       |
+| Runtime                  | Node.js                                                   | 22 (`.nvmrc`: 22.22.2)                      |
+| Node.js type definitions | `@types/node`                                             | 26.6.4                                      |
+| Package manager          | pnpm workspaces                                           | 10.33.0                                     |
+| Build orchestration      | Turborepo                                                 | 2.11.7                                      |
+| API framework            | Fastify                                                   | 5.12.3                                      |
+| Validation and schemas   | zod                                                       | 4.6.1                                       |
+| Database                 | PostgreSQL                                                | 16                                          |
+| Query builder            | Kysely                                                    | 0.28.9                                      |
+| Postgres driver          | node-postgres (`pg`)                                      | 8.16.3                                      |
+| Tokens (JWT)             | jose (EdDSA signing)                                      | 6.2.0                                       |
+| Web framework            | Next.js (App Router)                                      | 16.3.4                                      |
+| UI library               | React                                                     | 19.3.0                                      |
+| Styling                  | Tailwind CSS                                              | 4.3.3                                       |
+| Server-state caching     | TanStack Query                                            | 5.102.8                                     |
+| Desktop shell            | Tauri                                                     | 2 (CLI 2.11.4, API 2.12.0)                  |
+| Desktop bundler          | Vite                                                      | 8.2.2                                       |
+| Desktop routing          | React Router                                              | 8.3.1                                       |
+| Desktop native code      | Rust (edition 2021, minimum 1.77)                         | —                                           |
+| Phone framework          | Expo SDK                                                  | 58 (`expo` 58.0.14)                         |
+| Phone runtime            | React Native                                              | 0.88.0                                      |
+| Phone routing            | Expo Router                                               | 58.0.23                                     |
+| Phone local database     | SQLite (`expo-sqlite`)                                    | 58.0.13                                     |
+| Translation              | i18next and react-i18next                                 | 26.4.2 / 17.0.13                            |
+| Maps                     | A link to Google Maps (no map drawn)                      | —                                           |
+| Image processing         | sharp                                                     | 0.35.4                                      |
+| Object storage client    | AWS SDK v3 for S3 (talking to Cloudflare R2)              | 3.1131.0                                    |
+| Error reporting          | Sentry: Node and Next.js / React (desktop) / React Native | 10.74.0 / 11.1.0 / 7.11.0                   |
+| Tests                    | Vitest                                                    | 5.0.3                                       |
+| Property-based tests     | fast-check                                                | 4.10.0                                      |
+| DOM tests                | Testing Library, jsdom, axe-core                          | see Appendix A                              |
+| Linting                  | ESLint, typescript-eslint, jsx-a11y, react-hooks          | 10.12.0 / 8.71.1                            |
+| Formatting               | Prettier                                                  | 3.9.9                                       |
+| Git hooks                | Husky, lint-staged, commitlint (Conventional Commits)     | 9.1.7 / 17.6.0 / 21.2.3                     |
+| Containers               | Docker, Docker Compose                                    | `node:22.22.2-bookworm-slim`, `postgres:16` |
+| Reverse proxy and TLS    | Caddy                                                     | official build                              |
+| CI/CD                    | GitHub Actions; GitHub Container Registry                 | —                                           |
+| Phone builds             | Expo Application Services (EAS)                           | —                                           |
 
 ---
 
@@ -906,14 +906,14 @@ A full review of the codebase was done in October 2026 and its fixes were applie
 
 **Containers** (`deploy/compose.yml`)
 
-| Service     | Image                                            | Role                                     |
-| ----------- | ------------------------------------------------ | ---------------------------------------- |
-| `postgres`  | `postgres:16`                                    | The database, on a named volume          |
-| `bootstrap` | API image                                        | Creates the database roles once          |
-| `migrate`   | API image                                        | Applies migrations before the API starts |
-| `api`       | API image (`node:22-bookworm-slim`, multi-stage) | The API on port 3000                     |
-| `worker`    | API image                                        | Background jobs                          |
-| `web`       | Web image                                        | The Next.js app                          |
+| Service     | Image                                                 | Role                                     |
+| ----------- | ----------------------------------------------------- | ---------------------------------------- |
+| `postgres`  | `postgres:16`                                         | The database, on a named volume          |
+| `bootstrap` | API image                                             | Creates the database roles once          |
+| `migrate`   | API image                                             | Applies migrations before the API starts |
+| `api`       | API image (`node:22.22.2-bookworm-slim`, multi-stage) | The API on port 3000                     |
+| `worker`    | API image                                             | Background jobs                          |
+| `web`       | Web image                                             | The Next.js app                          |
 
 **Hosting options documented and supported**
 

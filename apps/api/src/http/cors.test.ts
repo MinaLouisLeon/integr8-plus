@@ -1,6 +1,11 @@
 import Fastify from 'fastify';
 import { afterEach, describe, expect, it } from 'vitest';
-import { registerCors } from './cors.js';
+import {
+  isReportableOrigin,
+  MAX_ORIGIN_LENGTH,
+  REFUSED_ORIGIN_MEMORY,
+  registerCors,
+} from './cors.js';
 
 /**
  * The browser-facing half of CORS: what a preflight gets back, and that a
@@ -79,5 +84,62 @@ describe('CORS', () => {
     const response = await app.inject({ method: 'GET', url: '/thing' });
     expect(response.statusCode).toBe(200);
     expect(refused).toEqual([]);
+  });
+
+  it('ignores a malformed or over-long origin: refused, never kept, never logged', async () => {
+    const refused: string[] = [];
+    const app = await server((origin) => refused.push(origin));
+    apps.push(app);
+
+    const long = `https://${'a'.repeat(MAX_ORIGIN_LENGTH)}.example.com`;
+    for (const origin of ['not an origin', 'https://app.example.com/path', 'null', long]) {
+      const response = await app.inject({
+        method: 'OPTIONS',
+        url: '/thing',
+        headers: { origin, 'access-control-request-method': 'GET' },
+      });
+      expect(response.statusCode).toBe(403);
+      expect(response.headers['access-control-allow-origin']).toBeUndefined();
+    }
+
+    expect(refused).toEqual([]);
+  });
+
+  it('remembers the last thousand refused origins, forgetting the oldest first', async () => {
+    const refused: string[] = [];
+    const app = await server((origin) => refused.push(origin));
+    apps.push(app);
+
+    const ask = (origin: string) =>
+      app.inject({ method: 'GET', url: '/thing', headers: { origin } });
+
+    for (let index = 0; index <= REFUSED_ORIGIN_MEMORY; index += 1) {
+      await ask(`https://stranger-${String(index)}.example.com`);
+    }
+    expect(refused).toHaveLength(REFUSED_ORIGIN_MEMORY + 1);
+
+    // The newest is still remembered; the very first has been forgotten, so it
+    // is reported again.
+    await ask(`https://stranger-${String(REFUSED_ORIGIN_MEMORY)}.example.com`);
+    expect(refused).toHaveLength(REFUSED_ORIGIN_MEMORY + 1);
+    await ask('https://stranger-0.example.com');
+    expect(refused).toHaveLength(REFUSED_ORIGIN_MEMORY + 2);
+  });
+});
+
+describe('which origins are reported', () => {
+  it('takes what browsers send, including the Tauri webview and a port', () => {
+    expect(isReportableOrigin('https://app.example.com')).toBe(true);
+    expect(isReportableOrigin('http://localhost:3001')).toBe(true);
+    expect(isReportableOrigin('tauri://localhost')).toBe(true);
+    expect(isReportableOrigin('http://[::1]:3000')).toBe(true);
+  });
+
+  it('leaves out anything else', () => {
+    expect(isReportableOrigin('')).toBe(false);
+    expect(isReportableOrigin('https://app.example.com/')).toBe(false);
+    expect(isReportableOrigin('https://exa mple.com')).toBe(false);
+    expect(isReportableOrigin('javascript:alert(1)')).toBe(false);
+    expect(isReportableOrigin(`https://${'a'.repeat(MAX_ORIGIN_LENGTH)}`)).toBe(false);
   });
 });

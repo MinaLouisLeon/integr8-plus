@@ -1,3 +1,4 @@
+import { EXAMPLE_VALUE_MARKER, hasExampleAddress } from '@integr8/core';
 import { z } from 'zod';
 
 /**
@@ -8,6 +9,9 @@ import { z } from 'zod';
  * than a constant somebody picked once.
  */
 
+/** The issuer a laptop uses when none is set. Production refuses it. */
+export const DEVELOPMENT_ISSUER = 'https://api.integr8.local';
+
 const positiveInt = (fallback: number) => z.coerce.number().int().positive().default(fallback);
 
 export const authConfigSchema = z.object({
@@ -16,8 +20,12 @@ export const authConfigSchema = z.object({
    *
    * Verified on every token: a token minted by staging must not be accepted by
    * production, and this is what stops it.
+   *
+   * The default is for a laptop. Production refuses it, and any other `.local`
+   * or `.example` address (the template's `api.your-domain.example`): two
+   * deployments that both kept a placeholder would accept each other's tokens.
    */
-  AUTH_ISSUER: z.string().min(1).default('https://api.integr8.local'),
+  AUTH_ISSUER: z.string().min(1).default(DEVELOPMENT_ISSUER),
 
   /** The `aud` claim. One audience for all four clients; they differ by role, not by token. */
   AUTH_AUDIENCE: z.string().min(1).default('integr8-clients'),
@@ -198,7 +206,38 @@ export function loadAuthConfig(env: NodeJS.ProcessEnv = process.env): AuthConfig
       `Invalid authentication configuration:\n${problems}\n\nSee packages/auth/.env.example, and run "pnpm --filter @integr8/auth keygen" for the keys.`,
     );
   }
+  if (env.APP_ENV === 'production') {
+    const problems = productionIssuerProblems(env.AUTH_ISSUER);
+    if (problems.length > 0) {
+      throw new Error(
+        ['Refusing to start in production:', ...problems.map((problem) => `  - ${problem}`)].join(
+          '\n',
+        ),
+      );
+    }
+  }
   return result.data;
+}
+
+/**
+ * What is wrong with the token issuer for production, if anything: unset (the
+ * laptop default), still the template's, or another placeholder host. Its
+ * own check, rather than the API's, because everything that loads this
+ * configuration mints or verifies tokens with it, the admin command included.
+ */
+export function productionIssuerProblems(issuer: string | undefined): string[] {
+  const value = (issuer ?? '').trim();
+  if (value === '') {
+    return [
+      `AUTH_ISSUER is not set, so tokens would name the development issuer ${DEVELOPMENT_ISSUER}: set it to the API's public address.`,
+    ];
+  }
+  if (value.toLowerCase().includes(EXAMPLE_VALUE_MARKER) || hasExampleAddress(value)) {
+    return [
+      "AUTH_ISSUER is an example address (a .example or .local host, or change-me): set it to the API's public address.",
+    ];
+  }
+  return [];
 }
 
 /** Milliseconds, for the many places that want a duration rather than seconds. */

@@ -13,3 +13,9 @@ ac99074d4566f49d6f05a0fab9b58abf1c9c9121:deploy/.env.example:generic-api-key:100
 # made-up UUID. The generic rule reads any `Key: <high-entropy value>` as a
 # credential. It is a client-chosen request id, never a secret.
 6ffc8e2ceeaf27689db58347f90c303126a8536d:docs/ai/INTEGR8_AI_IMPLEMENTATION_PLAN.md:generic-api-key:413
+
+# apps/api/src/check-env-script.test.ts feeds deploy/vps/check-env.sh a made-up
+# env file: a long enough fake database password, to show the check accepts it.
+# The digits are a counting pattern, not a credential.
+eec9d4520cf963c08e01c4325601a2df3a094bc7:apps/api/src/check-env-script.test.ts:generic-api-key:68
+eec9d4520cf963c08e01c4325601a2df3a094bc7:apps/api/src/check-env-script.test.ts:generic-api-key:95

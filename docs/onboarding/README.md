@@ -4,9 +4,10 @@ A stranger finds the product, pays for it and is working inside it, with nobody 
 involved (P18).
 
 ```
-apps/web  /                        landing
-        │  /features /pricing      what it does, and what it costs
-        │  /help                   fifteen answers
+apps/web  /                        landing (Integr8 Media look: docs/brand/)
+        │  /features /pricing      what it does (fifteen features), and what it costs
+        │  /help                   the help library, in the reader's language
+        │  /download               the desktop and phone apps; ?company=<slug>
         │  /sign-up                two fields, then an email
         │  /sign-up/verify         where the company is actually created
         │  /accept-invitation      where an invited engineer joins
@@ -202,8 +203,10 @@ what exists, and offering it would send somebody to a checkout that refuses them
   customers and therefore no support questions. They are written from how the product behaves,
   the help page says so at the top, and they are the first thing to replace once real questions
   exist.
-- **The marketing copy is a first draft.** The positioning is not settled, and the words on the
-  landing and features pages should be rewritten by whoever owns it.
+- **The marketing copy was rewritten for the product as it is** (Low 3, 2026-11-01): the public
+  pages wear the Integr8 Media look, their words are the `site.*` block of `@integr8/i18n` in
+  English and Arabic, and the site opens in English unless the visitor chose Arabic. See
+  [`docs/brand/`](../brand/README.md).
 - **The logo is a file like any other.** The company settings screen uploads it through the same
   three-step media flow a photo uses, and `PATCH /v1/settings` refuses anything that is not a
   stored image of that company's. It is not yet drawn on any document the product sends out,

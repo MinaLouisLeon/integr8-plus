@@ -57,6 +57,11 @@ jobs:
       - name: Dependency licences
         run: pnpm licences:check
 
+      # Exact dependency versions, and one Node release in .nvmrc, the
+      # Dockerfiles and package.json engines (scripts/pins/check.mjs).
+      - name: Exact versions
+        run: pnpm pins:check
+
       # The setup guide is kept as Markdown and as HTML, CSS and JavaScript;
       # they must say the same thing (AGENTS.md, "The setup guide").
       - name: Setup guide copies agree

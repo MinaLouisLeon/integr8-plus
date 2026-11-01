@@ -1,8 +1,10 @@
 import { formatQuoteReference, quoteExpired } from '@integr8/core';
 import { getPlatformDataSource, type TenantTransaction, withTenant } from '@integr8/db';
 import { z } from 'zod';
-import { conflict, notFound } from '../../http/errors.js';
+import { ApiError, conflict, notFound } from '../../http/errors.js';
+import { isFeatureEnabled } from '../../http/features.js';
 import { defineRoute, noSchema, type PublicRequestContext } from '../../http/routes.js';
+import { fill, messageLocale, wordsFor } from '../../notifications/words.js';
 import { addressSchema } from './operations.js';
 import {
   companyToday,
@@ -25,6 +27,14 @@ import { iso, isoOrNull } from './schemas.js';
  * cancelled or never existed answers 404 alike, so a stranger learns nothing
  * from guessing. The server's per-address rate limit covers these routes as
  * it covers every other.
+ *
+ * **With the company's sales module switched off** (Low 13, 1.2.4) a link that
+ * would otherwise open answers 410 `quote_unavailable` instead — "no longer
+ * available online, contact <company>", in English or Arabic by
+ * `Accept-Language`, with the company's name in the details for a page that
+ * writes its own words. Nothing is changed: switching sales back on restores
+ * the link, which then answers as it always did (expired, answered, or open).
+ * A link that is spent, revised or withdrawn stays the same 404 either way.
  */
 
 const TAGS = ['sales'];
@@ -72,7 +82,7 @@ export const publicQuoteSchema = z.object({
   canAnswer: z.boolean(),
 });
 
-async function quoteForToken(token: string) {
+async function quoteForToken(token: string, context: PublicRequestContext) {
   const found = await getPlatformDataSource().publicQuotes.byTokenHash(hashToken(token));
   if (found === undefined) {
     throw notFound('This link is not valid.');
@@ -81,7 +91,31 @@ async function quoteForToken(token: string) {
   if (brand === undefined) {
     throw notFound('This link is not valid.');
   }
+  if (!(await isFeatureEnabled(found.tenantId, 'sales'))) {
+    // Only a link that would open says so; one that is no longer real stays
+    // a 404, and does not name the company to whoever holds it.
+    const quote = await withTenant(found.tenantId, (tx) => tx.salesQuotes.findQuote(found.quoteId));
+    const opens =
+      quote?.issuedAt != null && ['issued', 'accepted', 'rejected'].includes(quote.status);
+    if (!opens) {
+      throw notFound('This link is not valid.');
+    }
+    throw quoteUnavailable(brand.name, context.acceptLanguage ?? null);
+  }
   return { ...found, brand };
+}
+
+/** 410 `quote_unavailable`, in the reader's language, naming the company. */
+function quoteUnavailable(company: string, acceptLanguage: string | null): ApiError {
+  const words = wordsFor(messageLocale(acceptLanguage)).publicQuote;
+  return new ApiError(410, 'quote_unavailable', fill(words.unavailable, { company }), [
+    {
+      field: 'company',
+      code: 'quote_unavailable',
+      message: company,
+      params: { company },
+    },
+  ]);
 }
 
 async function publicQuoteBody(
@@ -156,9 +190,13 @@ export const getPublicQuoteRoute = defineRoute({
   responses: {
     200: { description: 'The quote.', schema: publicQuoteSchema },
     404: { description: 'This link is not valid.' },
+    410: {
+      description:
+        'The company’s sales module is switched off, so the quote is no longer available online (`quote_unavailable`; `details[0].params.company` names the company).',
+    },
   },
-  handler: async ({ params }) => {
-    const { tenantId, quoteId, brand } = await quoteForToken(params.token);
+  handler: async ({ params }, context: PublicRequestContext) => {
+    const { tenantId, quoteId, brand } = await quoteForToken(params.token, context);
     const body = await withTenant(tenantId, (tx) => publicQuoteBody(tx, quoteId, brand));
     return { status: 200, body, headers: { 'cache-control': 'no-store' } };
   },
@@ -188,9 +226,13 @@ export const answerPublicQuoteRoute = defineRoute({
       description:
         'The quote has expired (`quote_expired`) or is no longer open (`quote_not_issued`).',
     },
+    410: {
+      description:
+        'The company’s sales module is switched off, so the quote cannot be answered online (`quote_unavailable`).',
+    },
   },
   handler: async ({ params, body }, context: PublicRequestContext) => {
-    const { tenantId, quoteId, brand } = await quoteForToken(params.token);
+    const { tenantId, quoteId, brand } = await quoteForToken(params.token, context);
     const result = await withTenant(tenantId, async (tx) => {
       const quote = await tx.salesQuotes.lockQuote(quoteId);
       if (quote === undefined) {

@@ -495,7 +495,7 @@ export interface paths {
         head?: never;
         /**
          * Change what somebody may do
-         * @description A built-in `role`, or one of the company’s own roles by `customRoleId` (ADR-0013), which ranks as its base. Nobody may grant a role above their own, for the same reason nobody may invite at one: without that rule, changing a role is a way of promoting yourself; below the owner, nobody gives a company role holding something they do not (422 `role_beyond_own`). Their sessions are ended, so the next token they get carries the new role, and an access token already issued, with the old role, is refused within thirty seconds.
+         * @description A built-in `role`, or one of the company’s own roles by `customRoleId` (ADR-0013), which ranks as its base. Nobody may grant a role above their own, for the same reason nobody may invite at one: without that rule, changing a role is a way of promoting yourself; below the owner, nobody gives a company role holding something they do not (422 `role_beyond_own`). Their sessions are ended, so the next token they get carries the new role, and an access token already issued, with the old role, is refused within thirty seconds. When the old or new role has HR access (the HR manager, or a company role holding HR permissions), only the owner may change it (403 `hr_access_owner_only`).
          */
         patch: operations["changeMemberRole"];
         trace?: never;
@@ -515,7 +515,7 @@ export interface paths {
         head?: never;
         /**
          * Suspend somebody, or let them back in
-         * @description Suspending refuses them entry and keeps everything they have ever done. It is the reversible half of removing somebody: the right answer for a lost phone or somebody between jobs. Their sessions are ended, so they cannot sign in or refresh, and an access token already in their hands is refused within thirty seconds. Letting them back in takes a seat, and is refused with 409 `seat_limit_reached` when every seat is taken.
+         * @description Suspending refuses them entry and keeps everything they have ever done. It is the reversible half of removing somebody: the right answer for a lost phone or somebody between jobs. Their sessions are ended, so they cannot sign in or refresh, and an access token already in their hands is refused within thirty seconds. Letting them back in takes a seat, and is refused with 409 `seat_limit_reached` when every seat is taken. Somebody with HR access may be suspended by an admin in an emergency — audited, and emailed to the owners — but only the owner lets them back in (403 `hr_access_owner_only`).
          */
         patch: operations["setMemberStatus"];
         trace?: never;
@@ -532,7 +532,7 @@ export interface paths {
         post?: never;
         /**
          * Remove somebody from this company
-         * @description Soft, and deliberately so: everything they filled in, signed and submitted stays, and the history still names them. What goes is their way in and the seat they were taking up. As with suspending, an access token already issued is refused within thirty seconds.
+         * @description Soft, and deliberately so: everything they filled in, signed and submitted stays, and the history still names them. What goes is their way in and the seat they were taking up. As with suspending, an access token already issued is refused within thirty seconds. Somebody with HR access, by role or grant, is removed only by the owner (403 `hr_access_owner_only`).
          */
         delete: operations["removeMember"];
         options?: never;
@@ -948,6 +948,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/invitations/inspect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * What accepting an invitation will need
+         * @description Public, for the page an invitation link opens: the address it was sent to, and whether that address has no sign-in yet and so must choose a password when accepting. Changes nothing. A POST so the token stays out of URLs and logs; an unknown, spent, withdrawn or expired token is the same 422 as at acceptance.
+         */
+        post: operations["inspectInvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/invitations/accept": {
         parameters: {
             query?: never;
@@ -958,8 +978,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Accept an invitation and sign in
-         * @description Public, because the invitee has no session yet. The company comes from the token: there is no parameter in which to name a different one.
+         * Accept an invitation
+         * @description Public, because the invitee has no session yet. The company comes from the token: there is no parameter in which to name a different one. Makes the membership and signs nobody in: the person signs in afterwards with the address returned. An address with no sign-in yet must send a `password` meeting the password policy (422 `auth.invitation_password_required` without one, `auth.weak_password` for one refused); an address that already signs in needs none, and one sent is not applied (`existingAccount`).
          */
         post: operations["acceptInvitation"];
         delete?: never;
@@ -1443,7 +1463,11 @@ export interface paths {
          */
         get: operations["listDocuments"];
         put?: never;
-        post?: never;
+        /**
+         * Add a PDF the company already has to the register
+         * @description Needs `document.upload`. Upload the PDF first (`/v1/media`, as `application/pdf`, at most 20 MB), then name it here with a title and its reference number (a certificate number, say), and optionally the customer it is for. The bytes are checked to be a PDF (422 `document_not_pdf`). It is ready at once, with its own public code and link like a generated document, and starts not shareable unless `shareable` is true. The website lookup finds it by its reference, and by the customer’s name as the second value when a customer is given. Honours `Idempotency-Key`.
+         */
+        post: operations["uploadDocument"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1515,6 +1539,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/documents/{documentId}/share": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Let a document be shown outside the company, or stop it
+         * @description Needs `document.upload`. `shareable: false` stops the QR code’s link (it answers as if the code did not exist) and the website lookup at once; `true` lets them show it again, while it is not expired. Each change is recorded in the audit log. Works the same for generated and uploaded documents.
+         */
+        post: operations["setDocumentShareable"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/public/documents/{code}": {
         parameters: {
             query?: never;
@@ -1524,7 +1568,7 @@ export interface paths {
         };
         /**
          * A document, for whoever holds its QR code
-         * @description Public. The company, the form, the title and the date. 404 for a code that is unknown, deleted or not ready; 410 `document_expired` for one the company stopped.
+         * @description Public. The company, the form, the title and the date. 404 for a code that is unknown, deleted, not ready or not shareable; 410 `document_expired` for one the company stopped.
          */
         get: operations["getPublicDocument"];
         put?: never;
@@ -1566,7 +1610,7 @@ export interface paths {
         put?: never;
         /**
          * Find one document from the company’s own website
-         * @description For a company’s website server, never a browser: `Authorization: Bearer <website key>`. `key` is the template’s lookup field and the value a visitor typed; `confirm` is the second field, required when the template asks for one. Exact after trimming and ignoring case. Answers `found: false` rather than 404, and never more than one document. Rate-limited per key (429).
+         * @description For a company’s website server, never a browser: `Authorization: Bearer <website key>`. Either `reference` (what a visitor typed, matched against any document’s lookup key, an uploaded document’s reference number included) with `customer` as the second value, or `key` (a named template field) with `confirm`. The second value is required when the document has one. Exact after trimming and ignoring case. Only documents the company has made shareable, and whose link has not expired, are found. Answers `found: false` rather than 404, and never more than one document. Needs the company’s documents switch on both sides (Integr8’s `website_files` and the company’s own). Rate-limited per key (429).
          */
         post: operations["lookupWebsiteDocument"];
         delete?: never;
@@ -1644,7 +1688,7 @@ export interface paths {
         };
         /**
          * Get short-lived links to one customer document
-         * @description Server-side website key required. The document ID must already be known to the company website. Returns five-minute links; never a file listing.
+         * @description Server-side website key required. The document ID must already be known to the company website. Only a document the company has made shareable, whose link has not expired. Returns five-minute links; never a file listing.
          */
         get: operations["getWebsiteFile"];
         put?: never;
@@ -2220,7 +2264,7 @@ export interface paths {
         };
         /**
          * A link to read a stored file
-         * @description Anyone in the company may read a file they have the id of: ids are unguessable and are only handed out inside submissions the reader can already see. Links expire in five minutes; `thumbnailUrl` is set once a thumbnail has been made.
+         * @description A file follows the record that uses it: whoever may see the submission, job, customer, expense claim, document, item, asset or certificate it belongs to may read it; the company’s logo and app icon every member; a file nothing uses yet only whoever uploaded it. Anyone else is answered 404, as for a file that does not exist. Links expire in five minutes; `thumbnailUrl` is set once a thumbnail has been made.
          */
         get: operations["getMedia"];
         /**
@@ -5029,7 +5073,7 @@ export interface paths {
         };
         /**
          * Everything an asset has been through
-         * @description Newest first: its own events, the jobs linked to it, and the submissions, parts and files that name it or whose job has no other asset. Anyone who may read the asset sees all of it, whoever did the work.
+         * @description Newest first: its own events, the jobs linked to it, and the submissions, parts and files that name it or whose job has no other asset. Anyone who may read the asset sees all of it, whoever did the work. With `limit`, one page at a time: `nextCursor` is passed back as `before` for the older entries ("Show older"), and is null on the last page. Without `limit`, the whole timeline, as before paging existed.
          */
         get: operations["getAssetTimeline"];
         put?: never;
@@ -13003,7 +13047,7 @@ export interface operations {
                             id: string;
                             name: string;
                         } | null;
-                        permissions: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                        permissions: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                         /** @description Present only while a super admin is acting as this user. */
                         impersonatedBy?: {
                             /** Format: uuid */
@@ -13645,6 +13689,69 @@ export interface operations {
             };
         };
     };
+    inspectInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    token: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The invitation, still waiting. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        email: string;
+                        passwordRequired: boolean;
+                    };
+                };
+            };
+            /** @description The invitation is unknown, spent, withdrawn or expired. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     acceptInvitation: {
         parameters: {
             query?: never;
@@ -13667,7 +13774,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Accepted, and signed in. */
+            /** @description Accepted. Sign in next. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -13676,10 +13783,12 @@ export interface operations {
                     "application/json": {
                         accepted: boolean;
                         email: string;
+                        existingAccount: boolean;
+                        signInRequired: boolean;
                     };
                 };
             };
-            /** @description The invitation is unknown, spent, withdrawn or expired. */
+            /** @description The invitation is unknown, spent, withdrawn or expired (`auth.invitation_invalid`); a new sign-in needs a password (`auth.invitation_password_required`); or the password was refused (`auth.weak_password`). */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -17116,13 +17225,22 @@ export interface operations {
                         /** Format: uuid */
                         id: string;
                         title: string;
+                        /** @enum {string} */
+                        source: "generated" | "uploaded";
                         /** Format: uuid */
-                        templateId: string;
-                        templateRevision: number;
+                        templateId: string | null;
+                        templateRevision: number | null;
                         /** Format: uuid */
-                        submissionId: string;
+                        submissionId: string | null;
                         /** Format: uuid */
-                        formId: string;
+                        formId: string | null;
+                        reference: string | null;
+                        customer: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        shareable: boolean;
                         /** @enum {string} */
                         status: "pending" | "ready" | "failed";
                         failureCode: string | null;
@@ -17238,6 +17356,7 @@ export interface operations {
                 formId?: string;
                 templateId?: string;
                 submissionId?: string;
+                source?: "generated" | "uploaded";
                 state?: "active" | "expired" | "pending" | "failed";
                 from?: string;
                 before?: string;
@@ -17261,13 +17380,22 @@ export interface operations {
                             /** Format: uuid */
                             id: string;
                             title: string;
+                            /** @enum {string} */
+                            source: "generated" | "uploaded";
                             /** Format: uuid */
-                            templateId: string;
-                            templateRevision: number;
+                            templateId: string | null;
+                            templateRevision: number | null;
                             /** Format: uuid */
-                            submissionId: string;
+                            submissionId: string | null;
                             /** Format: uuid */
-                            formId: string;
+                            formId: string | null;
+                            reference: string | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            shareable: boolean;
                             /** @enum {string} */
                             status: "pending" | "ready" | "failed";
                             failureCode: string | null;
@@ -17358,6 +17486,157 @@ export interface operations {
             };
         };
     };
+    uploadDocument: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    fileId: string;
+                    title: string;
+                    reference: string;
+                    /** Format: uuid */
+                    customerId?: string | null;
+                    /** Format: date-time */
+                    expiresAt?: string | null;
+                    /** @default false */
+                    shareable?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description The document, ready. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        title: string;
+                        /** @enum {string} */
+                        source: "generated" | "uploaded";
+                        /** Format: uuid */
+                        templateId: string | null;
+                        templateRevision: number | null;
+                        /** Format: uuid */
+                        submissionId: string | null;
+                        /** Format: uuid */
+                        formId: string | null;
+                        reference: string | null;
+                        customer: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        shareable: boolean;
+                        /** @enum {string} */
+                        status: "pending" | "ready" | "failed";
+                        failureCode: string | null;
+                        linkOpens: boolean;
+                        link: string | null;
+                        publicCode: string;
+                        pageCount: number | null;
+                        byteSize: number | null;
+                        /** Format: date-time */
+                        renderedAt: string | null;
+                        /** Format: date-time */
+                        expiredAt: string | null;
+                        /** Format: date-time */
+                        expiresAt: string | null;
+                        createdBy: {
+                            id: string;
+                            name: string;
+                        };
+                        /** Format: date-time */
+                        createdAt: string;
+                        fields: {
+                            key: string;
+                            label: {
+                                [key: string]: string;
+                            };
+                            value: string;
+                            /** @enum {string|null} */
+                            lookupRole: "key" | "confirm" | null;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `documents` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such file uploaded by this person, or no such customer. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The file is already used by something else (`media_in_use`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not a PDF (`document_not_pdf`), larger than 20 MB (`document_too_large`), or an expiry already past (`document_expiry_past`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No web address for the QR link (`document_link_unavailable`). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     getDocument: {
         parameters: {
             query?: never;
@@ -17379,13 +17658,22 @@ export interface operations {
                         /** Format: uuid */
                         id: string;
                         title: string;
+                        /** @enum {string} */
+                        source: "generated" | "uploaded";
                         /** Format: uuid */
-                        templateId: string;
-                        templateRevision: number;
+                        templateId: string | null;
+                        templateRevision: number | null;
                         /** Format: uuid */
-                        submissionId: string;
+                        submissionId: string | null;
                         /** Format: uuid */
-                        formId: string;
+                        formId: string | null;
+                        reference: string | null;
+                        customer: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        shareable: boolean;
                         /** @enum {string} */
                         status: "pending" | "ready" | "failed";
                         failureCode: string | null;
@@ -17590,13 +17878,22 @@ export interface operations {
                         /** Format: uuid */
                         id: string;
                         title: string;
+                        /** @enum {string} */
+                        source: "generated" | "uploaded";
                         /** Format: uuid */
-                        templateId: string;
-                        templateRevision: number;
+                        templateId: string | null;
+                        templateRevision: number | null;
                         /** Format: uuid */
-                        submissionId: string;
+                        submissionId: string | null;
                         /** Format: uuid */
-                        formId: string;
+                        formId: string | null;
+                        reference: string | null;
+                        customer: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        shareable: boolean;
                         /** @enum {string} */
                         status: "pending" | "ready" | "failed";
                         failureCode: string | null;
@@ -17808,13 +18105,160 @@ export interface operations {
                         /** Format: uuid */
                         id: string;
                         title: string;
+                        /** @enum {string} */
+                        source: "generated" | "uploaded";
                         /** Format: uuid */
-                        templateId: string;
-                        templateRevision: number;
+                        templateId: string | null;
+                        templateRevision: number | null;
                         /** Format: uuid */
-                        submissionId: string;
+                        submissionId: string | null;
                         /** Format: uuid */
-                        formId: string;
+                        formId: string | null;
+                        reference: string | null;
+                        customer: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        shareable: boolean;
+                        /** @enum {string} */
+                        status: "pending" | "ready" | "failed";
+                        failureCode: string | null;
+                        linkOpens: boolean;
+                        link: string | null;
+                        publicCode: string;
+                        pageCount: number | null;
+                        byteSize: number | null;
+                        /** Format: date-time */
+                        renderedAt: string | null;
+                        /** Format: date-time */
+                        expiredAt: string | null;
+                        /** Format: date-time */
+                        expiresAt: string | null;
+                        createdBy: {
+                            id: string;
+                            name: string;
+                        };
+                        /** Format: date-time */
+                        createdAt: string;
+                        fields: {
+                            key: string;
+                            label: {
+                                [key: string]: string;
+                            };
+                            value: string;
+                            /** @enum {string|null} */
+                            lookupRole: "key" | "confirm" | null;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `documents` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such document. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    setDocumentShareable: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    shareable: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description The document. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        title: string;
+                        /** @enum {string} */
+                        source: "generated" | "uploaded";
+                        /** Format: uuid */
+                        templateId: string | null;
+                        templateRevision: number | null;
+                        /** Format: uuid */
+                        submissionId: string | null;
+                        /** Format: uuid */
+                        formId: string | null;
+                        reference: string | null;
+                        customer: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        shareable: boolean;
                         /** @enum {string} */
                         status: "pending" | "ready" | "failed";
                         failureCode: string | null;
@@ -17936,6 +18380,7 @@ export interface operations {
                         document: {
                             title: string;
                             formTitle: string;
+                            reference: string | null;
                             /** Format: date-time */
                             createdAt: string;
                             pageCount: number | null;
@@ -18078,7 +18523,7 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    key: {
+                    key?: {
                         field: string;
                         value: string;
                     };
@@ -18086,6 +18531,8 @@ export interface operations {
                         field: string;
                         value: string;
                     };
+                    reference?: string;
+                    customer?: string;
                 };
             };
         };
@@ -22608,7 +23055,7 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description No such stored file, or it was deleted. */
+            /** @description No such stored file, it was deleted, or this person may not see what uses it. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -23312,6 +23759,13 @@ export interface operations {
                             bytes: number;
                             objects: number;
                         }[];
+                        overageThisMonth: {
+                            month: string;
+                            daysInMonth: number;
+                            daysOver: number;
+                            peakBytes: number;
+                            averageBytes: number;
+                        };
                     };
                 };
             };
@@ -28942,9 +29396,9 @@ export interface operations {
                         bases: {
                             /** @enum {string} */
                             role: "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
-                            permissions: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                            permissions: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                         }[];
-                        addable: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                        addable: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                     };
                 };
             };
@@ -29029,9 +29483,9 @@ export interface operations {
                             description: string | null;
                             /** @enum {string} */
                             baseRole: "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
-                            added: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
-                            removed: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
-                            permissions: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                            added: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                            removed: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                            permissions: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                             holders: number;
                             version: number;
                             /** Format: date-time */
@@ -29118,9 +29572,9 @@ export interface operations {
                     /** @default null */
                     description?: string | null;
                     /** @default [] */
-                    added?: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                    added?: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                     /** @default [] */
-                    removed?: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                    removed?: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                     /** @enum {string} */
                     baseRole: "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
                 };
@@ -29140,9 +29594,9 @@ export interface operations {
                         description: string | null;
                         /** @enum {string} */
                         baseRole: "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
-                        added: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
-                        removed: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
-                        permissions: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                        added: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                        removed: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                        permissions: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                         holders: number;
                         version: number;
                         /** Format: date-time */
@@ -29229,9 +29683,9 @@ export interface operations {
                     /** @default null */
                     description?: string | null;
                     /** @default [] */
-                    added?: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                    added?: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                     /** @default [] */
-                    removed?: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                    removed?: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                     expectedVersion: number;
                 };
             };
@@ -29250,9 +29704,9 @@ export interface operations {
                         description: string | null;
                         /** @enum {string} */
                         baseRole: "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
-                        added: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
-                        removed: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
-                        permissions: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                        added: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                        removed: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                        permissions: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                         holders: number;
                         version: number;
                         /** Format: date-time */
@@ -29360,9 +29814,9 @@ export interface operations {
                         description: string | null;
                         /** @enum {string} */
                         baseRole: "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
-                        added: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
-                        removed: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
-                        permissions: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                        added: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                        removed: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                        permissions: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                         holders: number;
                         version: number;
                         /** Format: date-time */
@@ -45256,6 +45710,13 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description The company’s sales module is switched off, so the quote is no longer available online (`quote_unavailable`; `details[0].params.company` names the company). */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description The request failed validation. */
             422: {
                 headers: {
@@ -45396,6 +45857,13 @@ export interface operations {
             };
             /** @description The quote has expired (`quote_expired`) or is no longer open (`quote_not_issued`). */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The company’s sales module is switched off, so the quote cannot be answered online (`quote_unavailable`). */
+            410: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -51290,7 +51758,10 @@ export interface operations {
     };
     getAssetTimeline: {
         parameters: {
-            query?: never;
+            query?: {
+                limit?: number;
+                before?: string;
+            };
             header?: never;
             path: {
                 assetId: string;
@@ -51299,7 +51770,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The timeline. */
+            /** @description The timeline, or one page of it. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -51510,6 +51981,7 @@ export interface operations {
                                 workOrderId: string | null;
                             };
                         })[];
+                        nextCursor: string | null;
                     };
                 };
             };
@@ -51538,14 +52010,12 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description The request failed validation. */
+            /** @description A `before` this API did not hand out (`invalid_cursor`). */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
+                content?: never;
             };
             /** @description Rate limit exceeded. */
             429: {
@@ -83821,7 +84291,9 @@ export interface operations {
     };
     getStorageOverview: {
         parameters: {
-            query?: never;
+            query?: {
+                month?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -83862,6 +84334,24 @@ export interface operations {
                             status: "matched" | "drifted" | "unavailable";
                             note: string | null;
                         }[];
+                        overAllowance: {
+                            month: string;
+                            daysInMonth: number;
+                            companies: {
+                                /** Format: uuid */
+                                tenantId: string;
+                                name: string;
+                                slug: string;
+                                /** @enum {string} */
+                                plan: "trial" | "starter" | "standard" | "enterprise";
+                                usedBytes: number;
+                                allowanceBytes: number | null;
+                                overNowBytes: number;
+                                daysOver: number;
+                                peakBytes: number;
+                                averageBytes: number;
+                            }[];
+                        };
                         tasks: {
                             task: string;
                             /** Format: date-time */

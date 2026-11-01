@@ -1,7 +1,11 @@
 import { PermissionDeniedError, type Principal } from '@integr8/core';
 import { withTenant } from '@integr8/db';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { InvitationInvalidError, WeakPasswordError } from '../errors.js';
+import {
+  InvitationInvalidError,
+  InvitationPasswordRequiredError,
+  WeakPasswordError,
+} from '../errors.js';
 import {
   buildServices,
   createMember,
@@ -139,7 +143,7 @@ describe('issuing', () => {
 });
 
 describe('accepting', () => {
-  it('creates the membership at the invited role and signs the person in', async () => {
+  it('creates the membership at the invited role, and makes no session', async () => {
     const email = uniqueEmail('accepts');
     const { token } = await services.invitations.invite(ownerPrincipal, {
       email,
@@ -153,15 +157,65 @@ describe('accepting', () => {
       clientApp: 'web',
     });
 
-    expect(accepted.tenantId).toBe(northwind.id);
-
-    const principal = await services.tokens.verifyAccessToken(accepted.tokens.accessToken);
-    expect(principal.role).toBe('dispatcher');
-    expect(principal.tenantId).toBe(northwind.id);
+    expect(accepted).toMatchObject({ tenantId: northwind.id, email, existingAccount: false });
+    expect(accepted).not.toHaveProperty('tokens');
 
     const member = await withTenant(northwind.id, (tx) => tx.tenantUsers.findByEmail(email));
     expect(member?.role).toBe('dispatcher');
     expect(member?.status).toBe('active');
+
+    // Accepting signs nobody in (Low 5): the person signs in afterwards.
+    const sessions = await withTenant(northwind.id, (tx) =>
+      tx.sessions.list({ userId: accepted.userId, includeRevoked: true, includeExpired: true }),
+    );
+    expect(sessions).toEqual([]);
+
+    // With the password they chose, through the ordinary door.
+    const signedIn = await services.signIn.signInWithPassword({
+      email,
+      password: 'a perfectly good passphrase',
+      clientApp: 'web',
+    });
+    const principal = await services.tokens.verifyAccessToken(signedIn.tokens.accessToken);
+    expect(principal).toMatchObject({ role: 'dispatcher', tenantId: northwind.id });
+  });
+
+  it('requires a password for an address with no sign-in, and creates nothing without one', async () => {
+    const email = uniqueEmail('nopassword');
+    const { token, invitation } = await services.invitations.invite(ownerPrincipal, {
+      email,
+      role: 'viewer',
+    });
+
+    await expect(services.invitations.inspect(token)).resolves.toEqual({
+      email,
+      passwordRequired: true,
+    });
+
+    // What an app older than this rule sends: no password at all.
+    await expect(
+      services.invitations.accept({ token, displayName: 'Old App', clientApp: 'mobile' }),
+    ).rejects.toThrow(InvitationPasswordRequiredError);
+
+    await expect(services.identity.findByEmail(email)).resolves.toBeUndefined();
+    const live = await withTenant(northwind.id, (tx) => tx.invitations.findLiveByEmail(email));
+    expect(live?.id).toBe(invitation.id);
+  });
+
+  it('refuses a password containing the address', async () => {
+    const email = uniqueEmail('samantha');
+    const { token } = await services.invitations.invite(ownerPrincipal, { email, role: 'viewer' });
+    const local = email.split('@')[0]!;
+
+    await expect(
+      services.invitations.accept({
+        token,
+        password: `my ${local} passphrase`,
+        displayName: 'Samantha',
+        clientApp: 'web',
+      }),
+    ).rejects.toThrow(WeakPasswordError);
+    await expect(services.identity.findByEmail(email)).resolves.toBeUndefined();
   });
 
   it('uses the identity an address already has, rather than failing to create a second', async () => {
@@ -174,8 +228,15 @@ describe('accepting', () => {
       role: 'engineer',
     });
 
+    // No password needed: they already sign in.
+    await expect(services.invitations.inspect(token)).resolves.toEqual({
+      email: contractor.email,
+      passwordRequired: false,
+    });
+
     const accepted = await services.invitations.accept({
       token,
+      // Sent anyway, and ignored.
       password: 'a different perfectly good passphrase',
       displayName: 'Sam Shared',
       clientApp: 'web',
@@ -183,6 +244,7 @@ describe('accepting', () => {
 
     // The same person, in both companies.
     expect(accepted.userId).toBe(contractor.userId);
+    expect(accepted.existingAccount).toBe(true);
     const member = await withTenant(northwind.id, (tx) =>
       tx.tenantUsers.findByEmail(contractor.email),
     );
@@ -193,6 +255,35 @@ describe('accepting', () => {
     await expect(
       services.identity.signInWithPassword(contractor.email, contractor.password),
     ).resolves.toMatchObject({ userId: contractor.userId });
+  });
+
+  it('accepts without a password for an address that already signs in', async () => {
+    const contractor = await createMember(services.identity, southgate.id, 'engineer', 'nopw');
+    const { token } = await services.invitations.invite(ownerPrincipal, {
+      email: contractor.email,
+      role: 'viewer',
+    });
+
+    const accepted = await services.invitations.accept({
+      token,
+      displayName: 'No Password',
+      clientApp: 'mobile',
+    });
+    expect(accepted).toMatchObject({ userId: contractor.userId, existingAccount: true });
+  });
+
+  it('refuses to inspect a spent or invented link, alike', async () => {
+    const email = uniqueEmail('inspected');
+    const { token } = await services.invitations.invite(ownerPrincipal, { email, role: 'viewer' });
+    await services.invitations.accept({
+      token,
+      password: 'a perfectly good passphrase',
+      displayName: 'Inspected',
+      clientApp: 'web',
+    });
+
+    await expect(services.invitations.inspect(token)).rejects.toThrow(InvitationInvalidError);
+    await expect(services.invitations.inspect('nonsense')).rejects.toThrow(InvitationInvalidError);
   });
 
   it('cannot be redeemed twice', async () => {

@@ -57,6 +57,10 @@ const SAME_IN_BOTH = new Set([
   'common.appName',
   'workspace.billing.invoicePdf',
   'platform.storage.cloudflare',
+  // Names: the company behind the product, and the staff app's product name.
+  'site.brand.integr8Media',
+  'site.home.apps.integr8Title',
+  'site.download.staff.title',
 ]);
 
 function isOnlyPlaceholdersAndPunctuation(value: string): boolean {

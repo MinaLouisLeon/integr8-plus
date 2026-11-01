@@ -1,6 +1,6 @@
 'use client';
 
-import { createClient } from '@integr8/api-client';
+import { ApiRequestError, createClient } from '@integr8/api-client';
 import { useTranslation } from '@integr8/i18n';
 import { QuoteDocument } from '@integr8/operations-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -17,7 +17,34 @@ import { messageForError } from '~/lib/errors';
  * with no account and no session, until the quote's expiry. The token is a
  * capability, so the page asks for nothing but a name, and says the same
  * thing for a spent, replaced, withdrawn and never-real link alike.
+ *
+ * While the company has its sales module switched off, a link that would
+ * otherwise open answers `quote_unavailable` with the company's name (Low 13),
+ * and the page says the quote is no longer available online and whom to
+ * contact. Switching sales back on brings the link back.
  */
+
+/** The company named by a `quote_unavailable` refusal, or null for any other failure. */
+function unavailableFrom(failure: unknown): string | null {
+  if (!(failure instanceof ApiRequestError) || failure.code !== 'quote_unavailable') {
+    return null;
+  }
+  return (
+    failure.details.find((detail) => detail.code === 'quote_unavailable')?.params?.company ?? ''
+  );
+}
+
+function Unavailable({ company }: { company: string }) {
+  const { t } = useTranslation();
+  return (
+    <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-3 px-6">
+      <h1 className="text-xl font-semibold text-content">{t('sales.public.unavailableTitle')}</h1>
+      <p role="status" className="rounded-md bg-surface-muted px-3 py-2 text-sm text-content">
+        {t('sales.public.unavailable', { company })}
+      </p>
+    </main>
+  );
+}
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3000').replace(
   /\/+$/u,
@@ -71,6 +98,12 @@ export default function PublicQuotePage() {
       <main className="mx-auto flex min-h-dvh max-w-3xl items-center justify-center px-6">
         <LoadingState />
       </main>
+    );
+  }
+  const unavailable = unavailableFrom(quote.error) ?? unavailableFrom(answer.error);
+  if (unavailable !== null) {
+    return (
+      <Unavailable company={unavailable === '' ? (quote.data?.company.name ?? '') : unavailable} />
     );
   }
   if (quote.isError) {

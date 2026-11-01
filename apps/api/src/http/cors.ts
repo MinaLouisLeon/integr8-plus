@@ -33,11 +33,42 @@ const EXPOSED_HEADERS = [
 
 const ALLOWED_METHODS = 'GET, POST, PUT, PATCH, DELETE';
 
+/**
+ * How many refused origins are remembered, so each is reported once.
+ *
+ * The `Origin` header is whatever the caller sends, so an unbounded memory of
+ * them is a slow leak anybody can feed with a loop. A thousand is far more
+ * than a deployment's real mistakes; past it the oldest is forgotten, and at
+ * worst reported a second time.
+ */
+export const REFUSED_ORIGIN_MEMORY = 1000;
+
+/** No real origin comes near this; DNS caps a host name at 253 characters. */
+export const MAX_ORIGIN_LENGTH = 255;
+
+/**
+ * `scheme://host[:port]`, which is all a browser ever sends. Written as a
+ * pattern rather than with `URL`, whose `origin` is "null" for the Tauri
+ * webview's own `tauri://localhost`.
+ */
+const ORIGIN_SHAPE = /^[a-z][a-z0-9+.-]*:\/\/(?:\[[0-9a-f:.]+\]|[a-z0-9.-]+)(?::\d{1,5})?$/iu;
+
+/**
+ * Whether an `Origin` header is worth remembering and reporting. Anything else
+ * did not come from a browser that could have been misconfigured against us:
+ * it is refused like any unknown origin, but neither kept nor logged, so a
+ * stranger cannot fill the memory or the log with text of their choosing.
+ */
+export function isReportableOrigin(origin: string): boolean {
+  return origin.length <= MAX_ORIGIN_LENGTH && ORIGIN_SHAPE.test(origin);
+}
+
 export function registerCors(
   app: FastifyInstance,
   origins: readonly string[],
   /**
-   * Called the first time each unknown origin is seen. The browser shows the
+   * Called the first time each unknown origin is seen (of the last
+   * {@link REFUSED_ORIGIN_MEMORY}; malformed and over-long ones never). The browser shows the
    * person a CORS error and the API log would otherwise show nothing at all,
    * which is how a mistyped API_CORS_ORIGINS costs an afternoon.
    */
@@ -49,7 +80,14 @@ export function registerCors(
   app.addHook('onRequest', (request, reply, done) => {
     const origin = request.headers.origin;
     if (origin === undefined || !allowed.has(origin)) {
-      if (origin !== undefined && !refused.has(origin)) {
+      if (origin !== undefined && !refused.has(origin) && isReportableOrigin(origin)) {
+        if (refused.size >= REFUSED_ORIGIN_MEMORY) {
+          // A Set keeps insertion order, so the first value is the oldest.
+          const oldest = refused.values().next();
+          if (oldest.done !== true) {
+            refused.delete(oldest.value);
+          }
+        }
         refused.add(origin);
         onRefused?.(origin);
       }

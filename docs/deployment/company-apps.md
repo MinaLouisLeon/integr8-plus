@@ -80,6 +80,16 @@ holding the Windows, macOS and Linux installers, the Android app, and links to
 the builds on Expo. The desktop download links are those release assets;
 rehost them wherever you like. The phone apps are also kept on Expo.
 
+The web app's public **download page** lists them: `/download?company=<slug>`
+shows the company's newest release with installers (Windows, macOS, Linux and the
+Android `.apk`), found through the same cached release list as the desktop update
+feed (`GITHUB_RELEASES_REPOSITORY`, and `GITHUB_RELEASES_TOKEN` for a private
+repository, when the files are passed through `/desktop-updates/<slug>/download/…`).
+`/download` alone lists the staff desktop app. A short name with no release, or no
+company, gets a sentence asking the reader to check with their administrator; a
+release with no `.apk` (store builds, or phone builds switched off) says the company
+sends the phone app. Send people that link rather than GitHub's.
+
 What a company run needs on GitHub (see `docs/contributing/branching.md`):
 `PUBLIC_API_URL`, `EXPO_TOKEN`, `EAS_BUILDS=enabled`, and for `all` the
 `BUILD_TOKEN` secret, the same value the API has in its environment.
@@ -135,6 +145,18 @@ placeholder address and must be reinstalled once.
 
 Phone apps receive over-the-air updates on their own channel,
 `production-<slug>`.
+
+When a release raises `API_MIN_SUPPORTED_CLIENT` past an app's build, the API
+refuses it with `client_too_old` and the address of the web app's download page
+(`API_UPDATE_URL`, by default `WEB_APP_URL` + `/download`). The phone shows a
+strip along the bottom of every screen, and the desktop app one across the top
+of the window, sign-in included, saying the version is no longer supported,
+with an **Update** button. It opens `/download?company=<slug>` in a company's
+own build, so the page lists that company's installers and phone app, and the
+plain `/download` in the staff and generic apps. Desktop apps normally update
+themselves before it comes to that; the button is the way out when one has not
+(an app installed before the feed existed, a feed that cannot be reached).
+Work saved on a phone stays on it and is sent once the new version is signed in.
 
 ## Installing an unsigned desktop app
 

@@ -10,15 +10,23 @@ import {
   roleSchema,
   toUserId,
 } from '@integr8/core';
-import { withTenant } from '@integr8/db';
+import { getPlatformDataSource, withTenant } from '@integr8/db';
 import { z } from 'zod';
 import { assertSeatAvailable } from '../../billing/entitlements.js';
-import { deliverInvitation } from '../../email/deliver.js';
+import { deliver, deliverInvitation } from '../../email/deliver.js';
+import { peopleUrl } from '../../email/links.js';
+import { hrSuspensionEmail } from '../../email/messages.js';
+import { messageLocale, momentFormatter } from '../../notifications/words.js';
 import { planFor } from '../../http/suspension.js';
 import { conflict, forbidden, notFound, unprocessable } from '../../http/errors.js';
 import { defineRoute, noSchema, type RequestContext } from '../../http/routes.js';
 import { invitationSchema, iso, memberSchema } from './schemas.js';
-import { assertMayAssign } from './member-rules.js';
+import {
+  assertMayAssign,
+  hrOwnerOnly,
+  memberHasHrAccess,
+  roleHasHrAccess,
+} from './member-rules.js';
 import { assertMayGiveRole, customRoleBody, customRoleNames } from './roles.js';
 import { inviterName } from './workspace.js';
 
@@ -126,6 +134,46 @@ async function memberOr404(tenantId: string, userId: string) {
   return member;
 }
 
+/**
+ * Emails every active owner that an admin suspended somebody with HR access
+ * (Low 10), in the company's language. After the change, not inside it: a
+ * failed send is logged and does not undo an emergency stop.
+ */
+async function tellOwnersOfHrSuspension(
+  context: RequestContext,
+  target: { email: string; displayName: string },
+): Promise<void> {
+  const tenantId = context.principal.tenantId;
+  const [{ owners, settings }, brand, admin] = await Promise.all([
+    withTenant(tenantId, async (tx) => ({
+      owners: (await tx.tenantUsers.list()).filter(
+        (member) => member.role === 'owner' && member.status === 'active',
+      ),
+      settings: await tx.settings.get(),
+    })),
+    getPlatformDataSource().tenantSettings.brandByTenantId(tenantId),
+    inviterName(context.principal),
+  ]);
+  const locale = messageLocale(settings.locale);
+  const when = momentFormatter(locale, settings.timezone).format(new Date());
+  for (const owner of owners) {
+    await deliver(
+      context.services.email,
+      context.logger,
+      hrSuspensionEmail({
+        to: owner.email,
+        companyName: brand?.name ?? '',
+        admin,
+        person: target.displayName === '' ? target.email : target.displayName,
+        when,
+        url: peopleUrl(context.config.WEB_APP_URL),
+        locale,
+      }),
+      { kind: 'hr_suspension', tenantId },
+    );
+  }
+}
+
 export const resendInvitationRoute = defineRoute({
   method: 'post',
   path: '/v1/members/invitations/:invitationId/resend',
@@ -204,7 +252,7 @@ export const changeMemberRoleRoute = defineRoute({
   operationId: 'changeMemberRole',
   summary: 'Change what somebody may do',
   description:
-    'A built-in `role`, or one of the company’s own roles by `customRoleId` (ADR-0013), which ranks as its base. Nobody may grant a role above their own, for the same reason nobody may invite at one: without that rule, changing a role is a way of promoting yourself; below the owner, nobody gives a company role holding something they do not (422 `role_beyond_own`). Their sessions are ended, so the next token they get carries the new role, and an access token already issued, with the old role, is refused within thirty seconds.',
+    'A built-in `role`, or one of the company’s own roles by `customRoleId` (ADR-0013), which ranks as its base. Nobody may grant a role above their own, for the same reason nobody may invite at one: without that rule, changing a role is a way of promoting yourself; below the owner, nobody gives a company role holding something they do not (422 `role_beyond_own`). Their sessions are ended, so the next token they get carries the new role, and an access token already issued, with the old role, is refused within thirty seconds. When the old or new role has HR access (the HR manager, or a company role holding HR permissions), only the owner may change it (403 `hr_access_owner_only`).',
   tags: TAGS,
   security: 'authenticated',
   permission: 'member.update_role',
@@ -229,17 +277,24 @@ export const changeMemberRoleRoute = defineRoute({
     const tenantId = context.principal.tenantId;
     const target = await memberOr404(tenantId, params.userId);
     assertOutranks(context.principal, target, 'change the role of');
-    // Making or unmaking an HR manager is the owner's alone.
-    assertMayAssign(context.principal, target.role);
 
-    const companyRole =
-      body.customRoleId === undefined
-        ? undefined
-        : await withTenant(tenantId, (tx) => tx.tenantRoles.find(body.customRoleId!));
+    const { companyRole, wasHr } = await withTenant(tenantId, async (tx) => ({
+      companyRole:
+        body.customRoleId === undefined ? undefined : await tx.tenantRoles.find(body.customRoleId),
+      wasHr: (await memberHasHrAccess(tx, target)).byRole,
+    }));
     if (body.customRoleId !== undefined && companyRole?.archivedAt !== null) {
       throw notFound('No such role in this company.');
     }
     const role: Role = companyRole?.baseRole ?? body.role!;
+
+    // Into or out of HR access — the built-in HR manager, or a company role
+    // holding HR permissions — is the owner's alone (Low 10).
+    if ((wasHr || roleHasHrAccess(role, companyRole)) && context.principal.role !== 'owner') {
+      throw hrOwnerOnly(
+        'Only the owner changes the role of somebody who has, or would have, HR access.',
+      );
+    }
 
     if (companyRole === undefined) {
       assertMayAssign(context.principal, role);
@@ -306,7 +361,7 @@ export const setMemberStatusRoute = defineRoute({
   operationId: 'setMemberStatus',
   summary: 'Suspend somebody, or let them back in',
   description:
-    'Suspending refuses them entry and keeps everything they have ever done. It is the reversible half of removing somebody: the right answer for a lost phone or somebody between jobs. Their sessions are ended, so they cannot sign in or refresh, and an access token already in their hands is refused within thirty seconds. Letting them back in takes a seat, and is refused with 409 `seat_limit_reached` when every seat is taken.',
+    'Suspending refuses them entry and keeps everything they have ever done. It is the reversible half of removing somebody: the right answer for a lost phone or somebody between jobs. Their sessions are ended, so they cannot sign in or refresh, and an access token already in their hands is refused within thirty seconds. Letting them back in takes a seat, and is refused with 409 `seat_limit_reached` when every seat is taken. Somebody with HR access may be suspended by an admin in an emergency — audited, and emailed to the owners — but only the owner lets them back in (403 `hr_access_owner_only`).',
   tags: TAGS,
   security: 'authenticated',
   permission: 'member.suspend',
@@ -330,6 +385,15 @@ export const setMemberStatusRoute = defineRoute({
       body.status === 'suspended' ? 'suspend' : 'reactivate',
     );
 
+    // Somebody with HR access: an admin may suspend them (an emergency stop,
+    // told to the owners below), but only the owner lets them back in (Low 10).
+    const hrAccess = await withTenant(tenantId, (tx) => memberHasHrAccess(tx, target));
+    const isHr = hrAccess.byRole || hrAccess.byGrant;
+    const byNonOwner = context.principal.role !== 'owner';
+    if (isHr && byNonOwner && body.status === 'active' && target.status !== 'active') {
+      throw hrOwnerOnly('Only the owner lets somebody with HR access back in.');
+    }
+
     if (body.status === 'suspended') {
       await assertNotLastOwner(tenantId, params.userId, 'suspended');
     } else if (target.status !== 'active') {
@@ -348,6 +412,18 @@ export const setMemberStatusRoute = defineRoute({
         action: body.status === 'suspended' ? 'member.suspended' : 'member.reactivated',
         resourceType: 'tenant_user',
         resourceId: params.userId,
+        requestId: context.requestId,
+        ipAddress: context.ipAddress,
+        userAgent: context.userAgent,
+        ...(isHr
+          ? {
+              metadata: {
+                hrAccess: true,
+                byOwner: !byNonOwner,
+                ...(body.status === 'suspended' && byNonOwner ? { ownersNotified: true } : {}),
+              },
+            }
+          : {}),
       });
       return member;
     });
@@ -362,6 +438,9 @@ export const setMemberStatusRoute = defineRoute({
         toUserId(params.userId),
         'membership_ended',
       );
+      if (isHr && byNonOwner && target.status === 'active') {
+        await tellOwnersOfHrSuspension(context, target);
+      }
     }
 
     const { grants, names } = await withTenant(tenantId, async (tx) => ({
@@ -378,7 +457,7 @@ export const removeMemberRoute = defineRoute({
   operationId: 'removeMember',
   summary: 'Remove somebody from this company',
   description:
-    'Soft, and deliberately so: everything they filled in, signed and submitted stays, and the history still names them. What goes is their way in and the seat they were taking up. As with suspending, an access token already issued is refused within thirty seconds.',
+    'Soft, and deliberately so: everything they filled in, signed and submitted stays, and the history still names them. What goes is their way in and the seat they were taking up. As with suspending, an access token already issued is refused within thirty seconds. Somebody with HR access, by role or grant, is removed only by the owner (403 `hr_access_owner_only`).',
   tags: TAGS,
   security: 'authenticated',
   permission: 'member.remove',
@@ -394,6 +473,14 @@ export const removeMemberRoute = defineRoute({
     const tenantId = context.principal.tenantId;
     const target = await memberOr404(tenantId, params.userId);
     assertOutranks(context.principal, target, 'remove');
+    if (context.principal.role !== 'owner') {
+      const hrAccess = await withTenant(tenantId, (tx) => memberHasHrAccess(tx, target));
+      if (hrAccess.byRole || hrAccess.byGrant) {
+        throw hrOwnerOnly(
+          'Only the owner removes somebody with HR access. An admin may suspend them.',
+        );
+      }
+    }
     await assertNotLastOwner(tenantId, params.userId, 'removed');
 
     const removed = await withTenant(tenantId, async (tx) => {

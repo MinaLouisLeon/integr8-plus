@@ -5,21 +5,22 @@ still open. Facts that are not obvious from the code and go stale. Update this f
 the end of any piece of work that changes one of them, and date each section.
 `CLAUDE.md` and `AGENTS.md` are the how-to; this is the state.
 
-## Snapshot (2026-11-01, after the audit's Medium fixes)
+## Snapshot (2026-11-01, after the audit's Low fixes)
 
-- **Version:** root `package.json` is **1.2.3** on branch `ccr-4f86fb34-8uvkk9` (not merged
-  yet); `main` is 1.2.2 (released 31 Oct from PR #136). The root `package.json` is the only
+- **Version:** root `package.json` is **1.2.4** on branch `ccr-4f86fb34-8uvkk9` (not merged
+  yet); `dev` is 1.2.3 (PR #138), `main` is 1.2.2 (released 31 Oct from PR #136). The root `package.json` is the only
   source: the phone (`app.config.ts`) and the web build (`next.config.ts`) read it, and
   `apps/api/src/app-info.ts` has a copy a test keeps equal.
-- **Migrations:** `packages/db/migrations` reaches **0066**. **0059 was never used** (workers
+- **Migrations:** `packages/db/migrations` reaches **0068**. **0059 was never used** (workers
   had reserved ranges) and the migrator does not need contiguous numbers; the next one is
-  **0067**. 1.2.2 carries 0054–0057; 1.2.3 adds 0058 and 0060–0066.
+  **0069**. 1.2.2 carries 0054–0057; 1.2.3 adds 0058 and 0060–0066; 1.2.4 adds 0067–0068.
 - **Pre-production audit (2026-10-31):** plans, docs and code compared area by area; the
   report is the claude.ai artifact https://claude.ai/artifact/FB7vANrUc691VfMXkR5h2U. Its
   6 blockers and 14 High items shipped in 1.2.2 (PR #136). The owner then reviewed the 24
   Medium items one by one (decisions in the report); all were fixed on branch
-  `ccr-4f86fb34-8uvkk9` for 1.2.3, maps by removing the map. The Low items are open, and
-  so are the owner's own steps under "Open items".
+  `ccr-4f86fb34-8uvkk9` for 1.2.3 (PR #138), maps by removing the map. The 15 Low items
+  were decided the same way and built for 1.2.4 on the same branch name, restarted from
+  `dev`. What is left is the owner's own steps under "Open items".
 - **Modules shipped:** field work (customers, sites, work orders, visits and the
   schedule, timesheets), forms and submissions, PDF documents, CRM, sales, finance,
   general ledger, inventory, purchasing, assets, HR, expenses, Egyptian payroll,
@@ -60,9 +61,9 @@ the end of any piece of work that changes one of them, and date each section.
 - The home test box is Ubuntu 24.04 with Docker, Arcane, Webmin and Samba (no longer
   ZimaOS).
 - The owner keeps a published copy of the setup guide as a claude.ai artifact:
-  https://claude.ai/artifact/HCVbJdp3u9YJT28cCaRw29. On 31 Oct it matched `main`'s HTML
-  guide; the audit branch changes the guide (parts Q–S, versions, backups, Firebase), so
-  republish it from `setup-checklist.html` once the branch is merged.
+  https://claude.ai/artifact/HCVbJdp3u9YJT28cCaRw29 (the HTML with its CSS and JS as separate
+  files). On 1 Nov it was republished from branch `ccr-4f86fb34-8uvkk9` (1.2.4, PR #139);
+  republish it from `setup-checklist.html` whenever the guide changes.
 
 ## Decisions
 
@@ -103,6 +104,22 @@ the end of any piece of work that changes one of them, and date each section.
   map is gone (coordinates + a Google Maps link); notifications follow the phone's or the
   company's language; amounts round to piastres and receipts can be reversed (accountant to
   confirm the rounding).
+- **Low fixes (2026-11-01, 1.2.4), as the owner chose them:** the public pages, `/download`
+  and the staff dashboard (and the staff desktop frame) wear the Integr8 Media website's look
+  (source: MinaLouisLeon/integr8-media-website; tokens and self-hosted fonts in
+  `packages/tokens`, `docs/brand/`), always English unless Arabic is chosen (no browser
+  negotiation); the company workspace keeps company branding. Uploaded PDF documents and a
+  per-document sharing switch (new ones start not shared, older ones stay shared; 0067);
+  files follow their owning record (`media-access.ts`, refusals are 404); a file-use index
+  (0068). Accepting an invitation creates no session, and a new sign-in must choose a
+  password. Only the owner changes, re-activates or removes somebody with HR access; an
+  admin may suspend them (audited, owners emailed). The assistant's per-app switch follows
+  the session's recorded app. Production refuses `change-me`, `.example`/public `.local`
+  addresses and database passwords under 16 characters (`deploy/vps/check-env.sh` lists
+  them). The help library lives in `@integr8/i18n/help` and feeds the public Help centre.
+  Exact versions everywhere and Node `>=22.22.1 <23` (`pnpm pins:check`); the permission
+  table `packages/core/src/permissions.table.md`; Standard storage overage listed for
+  invoicing; quote links say "no longer available online" while Sales is off.
 - **The demo seeder goes through the API**, in-process with Fastify's `inject`, as the
   company's own people (plus a staff impersonation for staff-only setup). Direct inserts
   were rejected: they skip numbering, stock, ledger postings and audit, and produce data
@@ -124,6 +141,12 @@ Update them together at each release or new migration:
 - Released versions: `gh release list`. v1.2.1 (2026-10-27) carries migrations 0051–0053.
 
 ## Open items
+
+- **Owner steps for 1.2.4 (2026-11-01):** run `sh deploy/vps/check-env.sh` and replace
+  any value it names (Stage 11 part AA), comment out `API_UPDATE_URL`; tell companies using
+  documents that new ones start not shared (part AB); the real-Auth CI suite for invitations
+  runs only in CI. Not built (no screen existed): accepting an invitation inside the
+  desktop or phone app; the email link opens the web page.
 
 - **Owner steps for 1.2.3 (2026-11-01):** run Actions → Publish images with `tag=v1.2.2`
   once; `INTEGR8_PLATFORM_PASSWORD` and `DATABASE_URL_PLATFORM` in `deploy/.env`; copy the

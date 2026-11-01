@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   assertCan,
@@ -54,6 +55,101 @@ describe('the matrix is complete', () => {
 
   it('rejects a permission that does not exist', () => {
     expect(permissionSchema.safeParse('tenant.delete').success).toBe(false);
+  });
+});
+
+/**
+ * The checked-in table (`permissions.table.md`): every permission against every
+ * role, `yes` or `no`, read across in review. The matrix and the table must
+ * say the same thing, cell for cell.
+ */
+describe('the permission table', () => {
+  const STAFF_ONLY_COLUMN = 'Staff only';
+
+  interface Table {
+    columns: string[];
+    rows: Map<string, string[]>;
+    duplicates: string[];
+  }
+
+  /** The table's rows (`| \`permission\` | yes | no | … |`), keyed by permission. */
+  function readTable(): Table {
+    const text = readFileSync(new URL('./permissions.table.md', import.meta.url), 'utf8');
+    const lines = text
+      .split(/\r?\n/u)
+      .filter((line) => line.trimStart().startsWith('|'))
+      .map((line) =>
+        line
+          .trim()
+          .replace(/^\||\|$/gu, '')
+          .split('|')
+          .map((cell) => cell.trim()),
+      );
+    const [header = [], , ...body] = lines;
+    const rows = new Map<string, string[]>();
+    const duplicates: string[] = [];
+    for (const [first = '', ...cells] of body) {
+      const permission = first.replace(/`/gu, '');
+      if (rows.has(permission)) {
+        duplicates.push(permission);
+      }
+      rows.set(permission, cells);
+    }
+    return { columns: header.slice(1), rows, duplicates };
+  }
+
+  const table = readTable();
+
+  it('has a column for every role, in order, then Staff only', () => {
+    expect(table.columns).toEqual([...ROLES, STAFF_ONLY_COLUMN]);
+  });
+
+  it('has one row for every permission, and none for a permission that does not exist', () => {
+    const known = new Set<string>(PERMISSIONS);
+    expect(table.duplicates).toEqual([]);
+    expect(PERMISSIONS.filter((permission) => !table.rows.has(permission))).toEqual([]);
+    expect([...table.rows.keys()].filter((permission) => !known.has(permission))).toEqual([]);
+  });
+
+  it('says yes or no in every cell', () => {
+    const unclear: string[] = [];
+    for (const [permission, cells] of table.rows) {
+      if (cells.length !== table.columns.length) {
+        unclear.push(`${permission}: ${cells.length} cells, expected ${table.columns.length}`);
+      }
+      cells.forEach((cell, index) => {
+        if (cell !== 'yes' && cell !== 'no') {
+          unclear.push(`${permission} / ${table.columns[index] ?? '?'}: "${cell}"`);
+        }
+      });
+    }
+    expect(unclear).toEqual([]);
+  });
+
+  it('agrees with the matrix in every cell', () => {
+    const disagreements: string[] = [];
+    for (const permission of PERMISSIONS) {
+      const cells = table.rows.get(permission) ?? [];
+      ROLES.forEach((role, index) => {
+        const matrix = can(role, permission) ? 'yes' : 'no';
+        if (cells[index] !== matrix) {
+          disagreements.push(
+            `${permission} / ${role}: table says ${cells[index] ?? 'nothing'}, matrix says ${matrix}`,
+          );
+        }
+      });
+    }
+    expect(disagreements).toEqual([]);
+  });
+
+  it('marks exactly the staff-only permissions', () => {
+    const column = ROLES.length;
+    const marked = PERMISSIONS.filter(
+      (permission) => table.rows.get(permission)?.[column] === 'yes',
+    );
+    expect(marked).toEqual(
+      PERMISSIONS.filter((permission) => STAFF_ONLY_PERMISSIONS.has(permission)),
+    );
   });
 });
 

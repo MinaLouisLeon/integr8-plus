@@ -216,6 +216,41 @@ const ROUTES = () =>
     ],
   ] as const;
 
+describe('a new company', () => {
+  it('starts with every website switch off, on Integr8’s side and its own', async () => {
+    const fresh = await getPlatformDataSource().tenants.create({
+      slug: `web-new-${randomUUID().slice(0, 8)}`,
+      name: 'Fresh Ltd',
+    });
+    const grants = await getPlatformDataSource().settings.flagsFor(fresh.id);
+    for (const grant of ['website_files', 'website_jobs', 'website_quotes', 'website_invoices']) {
+      expect(grants[grant], grant).not.toBe(true);
+    }
+    const own = await withTenant(fresh.id, (tx) => tx.settings.get());
+    expect(own).toMatchObject({
+      websiteFilesEnabled: false,
+      websiteJobsEnabled: false,
+      websiteQuotesEnabled: false,
+      websiteInvoicesEnabled: false,
+    });
+    const listed = json<{ items: { key: string; defaultEnabled: boolean }[] }>(
+      await api.call(staff.accessToken, { method: 'GET', url: '/v1/platform/flags' }),
+    );
+    expect(
+      listed.items
+        .filter((item) => item.key.startsWith('website_'))
+        .map((item) => [item.key, item.defaultEnabled]),
+    ).toEqual(
+      expect.arrayContaining([
+        ['website_files', false],
+        ['website_jobs', false],
+        ['website_quotes', false],
+        ['website_invoices', false],
+      ]),
+    );
+  });
+});
+
 describe('the website data routes', () => {
   it('answer one record each to a live key', async () => {
     const job = await website(secret, `/v1/website/jobs/${jobId}`);

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { acceptInvitationUrl, billingUrl, verifySignupUrl } from './links.js';
+import { acceptInvitationUrl, billingUrl, peopleUrl, verifySignupUrl } from './links.js';
 import {
   dunningEmail,
+  hrSuspensionEmail,
   invitationEmail,
   passwordChangedEmail,
   signInCodeEmail,
@@ -223,6 +224,29 @@ describe('the sign-in messages (P36)', () => {
     const arabic = passwordChangedEmail({ to: 'd@e.com', changedAt, locale: 'ar' });
     expect(arabic.html).toContain('dir="rtl"');
     expect(arabic.text).toContain('2026-10-31 09:30');
+  });
+});
+
+describe('the owner\u2019s HR-suspension message (Low 10)', () => {
+  it('names who suspended whom, and links to People, in either language', () => {
+    const input = {
+      to: 'owner@example.com',
+      companyName: 'Northwind',
+      admin: 'Ahmed Admin',
+      person: 'Hala HR',
+      when: '1 Nov 2026, 10:15',
+      url: peopleUrl('https://app.example.com/'),
+    };
+    const english = hrSuspensionEmail({ ...input, locale: 'en' });
+    expect(english.subject).toBe('Hala HR was suspended at Northwind');
+    expect(english.text).toContain('Ahmed Admin suspended Hala HR');
+    expect(english.text).toContain('Only you can let them back in');
+    expect(english.actionUrl).toBe('https://app.example.com/settings/people');
+
+    const arabic = hrSuspensionEmail({ ...input, locale: 'ar' });
+    expect(arabic.html).toContain('dir="rtl"');
+    expect(arabic.text).toContain('Ahmed Admin');
+    expect(arabic.text).toContain('Hala HR');
   });
 });
 

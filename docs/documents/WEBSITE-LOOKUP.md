@@ -1,33 +1,75 @@
 # Connecting a company's website to Integr8
 
-For the developer of a company's own website (Next.js on Vercel). It lets the
-company's authenticated customer see an issued document, job status, quote or
-invoice through Integr8's API.
+For the developer of a company's own website (Next.js on Vercel), and for the
+company deciding what its website may show. It lets the company's customer find
+a document by its reference (a certificate number, say), and an authenticated
+customer see a job's status, a quote or an invoice, through Integr8's API.
 
 The website's **server** asks Integr8 Plus with a **website key**. The key is a
 secret: it lives in the server's environment and never reaches a browser.
-The company website must authenticate its own customers before making requests;
-the key identifies the company website, not an individual customer.
+The company website must authenticate its own customers before asking for a
+job, a quote or an invoice; the key identifies the company website, not an
+individual customer.
 
 ## What you get from Integr8
 
 - **The key**, which starts with `i8wk_`. Integr8 shows it once; keep it in a
   password manager until it is in Vercel.
 - **The API address**, for example `https://api.integr8-media.com`.
-- **The field names** to search by, agreed with Integr8 when the company's PDF
-  template was designed: the field the visitor types (for example
-  `certificate`) and, if the template asks for one, a second field that must
-  match too (for example `customer`).
-- **Capability switches.** The company owner or admin controls its switches in
-  **Settings → Website access** (owners and admins). Integr8 controls four
-  independent grants (`website_files`, `website_jobs`, `website_quotes`, and
-  `website_invoices`) on the company's **Features** panel. Both sides must be
-  on for that capability to work.
+- **Four switches, each separate, all off to begin with.** The company website
+  can reach **documents**, **job status**, **quotes** and **invoices**, and each
+  needs two switches on:
+  - Integr8's grant on the company's **Features** panel: `website_files`
+    (documents), `website_jobs`, `website_quotes`, `website_invoices`;
+  - the company's own switch in **Settings → Website access** (owners and
+    admins).
+
+  A new company starts with all eight off. A company that had a switch on
+  before release 1.2.4 keeps it on. Documents, quotes and invoices also need
+  their module (`documents`, `sales`, `finance`) switched on.
+
 - **Key controls.** Only an Integr8 staff manager (an account made with the
   terminal command) can create, enable, disable, revoke or delete a key; other
   Integr8 staff can see that it exists and how it is used. Disabling is
   reversible; revoking stops service and leaves a record; deleting removes the
   record. A key's secret is never recoverable.
+
+## Which documents the website can find
+
+The register holds two kinds of PDF, and the website finds both the same way:
+
+- **Made from a submission** with a template Integr8 designed. Its reference is
+  the template's lookup field (a certificate number, say), and the template may
+  name a second field that must match too (the customer's name, say).
+- **Uploaded** by the company (Documents → **Upload a PDF**): a PDF it already
+  has, such as a certificate signed on paper, with a **reference number** and,
+  optionally, the **customer** it is for. The reference is what the website
+  finds it by; when a customer was chosen, the customer's name is the second
+  value and must match too.
+
+A document is found only while it is **shared** and its link is live:
+
+- Every document has a **Sharing** switch on its page in the register, turned
+  by the company's owners and admins (`document.upload`). Off, the website
+  lookup does not find it, `/v1/website/files/{documentId}` answers 404, and
+  its QR code's page says "This link is not valid", exactly as for a code that
+  never existed. On, all of them work.
+- **New documents start not shared**, made or uploaded, so nothing a company
+  makes is public until someone decides it should be. Documents made before
+  release 1.2.4 stay shared, because their QR codes are already printed.
+- Uploading, and every change of sharing, is recorded in the company's audit
+  log.
+- Stopping a document's link (**Stop the link**), its expiry date passing, or
+  deleting it hides it too, whatever the switch says.
+
+## The QR code
+
+Every document, made or uploaded, has its own page at
+`https://app.integr8-media.com/d/<code>`: the company, the title, the form (or,
+for an uploaded document, its reference) and the date, with View and Download.
+A made document carries the code on the PDF when its template has a QR block;
+every document shows its QR code on its page in the register, to print or send.
+The page opens only while the document is shared and its link is live.
 
 ## Set the environment
 
@@ -46,19 +88,35 @@ server-side module. Never pass them as props or return them in a response.
 
 ## The request
 
+By reference, with the second value when the document has one:
+
 ```http
 POST /v1/website/documents/lookup
 Authorization: Bearer i8wk_…
 Content-Type: application/json
 
+{ "reference": "GS-2026-0042", "customer": "Nile Towers" }
+```
+
+`reference` is matched against whatever field is each document's reference: an
+uploaded document's reference number, or a made document's lookup field,
+whatever its template calls it. `customer` is the second value: the customer's
+name for an uploaded document with a customer, or the template's second field.
+A document that has a second value is found only when it matches too; one
+without is found by its reference alone. Values are compared exactly, ignoring
+capitals and extra spaces.
+
+Naming the template's fields still works, for websites built before 1.2.4:
+
+```json
 {
   "key": { "field": "certificate", "value": "GS-2026-0042" },
   "confirm": { "field": "customer", "value": "Nile Towers" }
 }
 ```
 
-`confirm` is needed only when the template has a second field. Values are
-compared exactly, ignoring capitals and extra spaces.
+Send one form or the other: `reference` (with `customer`), or `key` (with
+`confirm`).
 
 ## The answer
 
@@ -92,16 +150,19 @@ Always `200` when the key is good, with one document or none:
 - `viewUrl` opens the PDF in the browser and `downloadUrl` saves it. Both stop
   working at `expiresAt`, five minutes after they were made, so use them at once
   and never store them.
-- A document the company stopped, expired or deleted is not found.
+- An uploaded document has an empty `formTitle` and no page count; its fields
+  are `reference` and, when it has a customer, `customer`.
+- A document that is not shared, was stopped, has expired or was deleted is not
+  found: the same `found: false` as for a reference nobody issued.
 
 Other answers:
 
-| Status | `error.code`          | Meaning                                                                                                                          |
-| ------ | --------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| 422    | `validation_failed`   | The body is not as above.                                                                                                        |
-| 401    | `website_key_invalid` | No key, a mistyped key, or a revoked one.                                                                                        |
-| 403    | `feature_disabled`    | Documents are switched off for the company, or Integr8's `website_files` grant or the company's own website-files switch is off. |
-| 429    | `rate_limited`        | More than 60 lookups a minute with this key; slow down.                                                                          |
+| Status | `error.code`          | Meaning                                                                                                             |
+| ------ | --------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| 422    | `validation_failed`   | The body is not as above (for example both `reference` and `key`, or neither).                                      |
+| 401    | `website_key_invalid` | No key, a mistyped key, or a revoked one.                                                                           |
+| 403    | `feature_disabled`    | The documents module is off for the company, or Integr8's `website_files` grant or the company's own switch is off. |
+| 429    | `rate_limited`        | More than 60 lookups a minute with this key; slow down.                                                             |
 
 ## A Next.js example
 
@@ -136,10 +197,7 @@ export async function findCertificate(
       authorization: `Bearer ${process.env.INTEGR8_WEBSITE_KEY}`,
       'content-type': 'application/json',
     },
-    body: JSON.stringify({
-      key: { field: 'certificate', value: number },
-      ...(customer === '' ? {} : { confirm: { field: 'customer', value: customer } }),
-    }),
+    body: JSON.stringify({ reference: number, ...(customer === '' ? {} : { customer }) }),
     cache: 'no-store',
   });
   if (!response.ok) {
@@ -205,8 +263,12 @@ export default function CertificatesPage() {
 
 ## Good practice
 
-- Ask for both fields when the template has two: a number alone is easy to
-  guess, a number and a name together are not.
+- Ask for both values: a number alone is easy to guess, a number and a name
+  together are not. Ask the company to choose the customer when it uploads a
+  document, and Integr8 to give its templates a second field, so its documents
+  need both.
+- Ask the company to share a document only once its customer may see it:
+  sharing is what lets the website and the QR code show it.
 - Show the same "not found" whatever went wrong, so the page teaches nothing
   to someone guessing numbers.
 - Add your own limit per visitor (Vercel's firewall or middleware) as well:
@@ -224,16 +286,17 @@ known record by its UUID; they do not list or search across company records.
 
 | Method | Endpoint                           | Returns                                                                                                 |
 | ------ | ---------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `POST` | `/v1/website/documents/lookup`     | One document found by the agreed template field and optional confirmation field.                        |
-| `GET`  | `/v1/website/files/{documentId}`   | Five-minute view and download links for one ready customer document.                                    |
+| `POST` | `/v1/website/documents/lookup`     | One shared document found by its reference, and the customer's name when it has one.                    |
+| `GET`  | `/v1/website/files/{documentId}`   | Five-minute view and download links for one shared, ready document.                                     |
 | `GET`  | `/v1/website/jobs/{workOrderId}`   | Customer-safe job reference, status, title and due dates.                                               |
 | `GET`  | `/v1/website/quotes/{quoteId}`     | One issued quote with customer-visible terms, totals and lines. Drafts and internal notes are excluded. |
 | `GET`  | `/v1/website/invoices/{invoiceId}` | One issued invoice summary. Drafts and internal notes are excluded.                                     |
 
-Each capability is checked separately against the company and Integr8 switches;
-documents, quotes and invoices also require their existing product module to
-be enabled. Turning off either website switch blocks new requests. Disabling a
-website key blocks all capabilities; revoking it cannot be undone.
+Each capability is checked separately against the company's switch and
+Integr8's grant, both off for a new company; documents, quotes and invoices
+also need their product module switched on. Turning off either switch blocks new
+requests for that capability only. Disabling a website key blocks every
+capability; revoking it cannot be undone.
 
 The company website is responsible for its visitor login and authorization. A
 record UUID must come from a trusted company-controlled flow. The API key is a

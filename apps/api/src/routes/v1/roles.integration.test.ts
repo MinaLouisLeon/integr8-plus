@@ -116,9 +116,12 @@ describe('company roles', () => {
         added: ['hr.manage'],
       }),
     );
+    // The only addable permissions an admin lacks are HR ones, so the refusal
+    // an admin meets is the HR rule's (Low 10); `role_beyond_own` stays the
+    // answer for anybody else who could give roles.
     expect(
       code(await call(admin, 'PATCH', `/v1/members/${other.userId}/role`, { customRoleId: hr.id })),
-    ).toBe('role_beyond_own');
+    ).toBe('hr_access_owner_only');
     expect(
       (await call(owner, 'PATCH', `/v1/members/${other.userId}/role`, { customRoleId: hr.id }))
         .statusCode,

@@ -97,6 +97,20 @@ interface LivenessAnswer {
   live: boolean;
   userId: UserId;
   checkedAt: number;
+  /** What the session recorded at sign-in; carried so no request reads it again. */
+  session?: LiveSession;
+}
+
+/**
+ * What a live session recorded when it began, as {@link SessionService.assertLive}
+ * returns it. Read from the session row, never from the request: a header can
+ * say anything (Low 11, 1.2.4).
+ */
+export interface LiveSession {
+  /** The app that signed in, as the sign-in request recorded it. */
+  clientApp: ClientApp;
+  /** Integr8 staff acting as the company through an impersonation grant. */
+  impersonated: boolean;
 }
 
 export class SessionService {
@@ -127,43 +141,60 @@ export class SessionService {
    *
    * Throws {@link SessionRevokedError}, which the API answers with the same
    * 401 as an expired token.
+   *
+   * Returns what the session recorded when it began — the app that signed in,
+   * and whether it is staff acting as the company — from the same row and the
+   * same cache, so a request that needs it (the assistant's per-app switch)
+   * costs no extra query.
    */
-  async assertLive(principal: Pick<Principal, 'tenantId' | 'userId' | 'sessionId'>): Promise<void> {
+  async assertLive(
+    principal: Pick<Principal, 'tenantId' | 'userId' | 'sessionId'>,
+  ): Promise<LiveSession> {
     const now = this.#clock();
     const cached = this.#liveness.get(principal.sessionId);
     let live: boolean;
+    let facts: LiveSession | undefined;
 
     if (cached !== undefined && now.getTime() - cached.checkedAt < this.#livenessTtlMs) {
       live = cached.live && cached.userId === principal.userId;
+      facts = cached.session;
     } else {
-      live = await withTenant(principal.tenantId, async (tx) => {
+      const answer = await withTenant(principal.tenantId, async (tx) => {
         const session = await tx.sessions.findById(principal.sessionId);
         if (
           session?.userId !== principal.userId ||
           session.revokedAt !== null ||
           session.expiresAt <= now
         ) {
-          return false;
+          return { live: false };
         }
+        const recorded: LiveSession = {
+          clientApp: session.clientApp,
+          impersonated: session.impersonationGrantId !== null,
+        };
         // Staff acting as the company may hold no membership at all (a
         // company with no members yet); their grant is checked on every
         // request by ImpersonationService instead.
-        if (session.impersonationGrantId !== null) {
-          return true;
+        if (recorded.impersonated) {
+          return { live: true, session: recorded };
         }
         const membership = await tx.tenantUsers.findByUserId(principal.userId);
-        return membership?.status === 'active';
+        return { live: membership?.status === 'active', session: recorded };
       });
+      live = answer.live;
+      facts = answer.session;
       this.#remember(principal.sessionId, {
         live,
         userId: principal.userId,
         checkedAt: now.getTime(),
+        ...(facts === undefined ? {} : { session: facts }),
       });
     }
 
-    if (!live) {
+    if (!live || facts === undefined) {
       throw new SessionRevokedError('Session is no longer live');
     }
+    return facts;
   }
 
   #remember(sessionId: string, answer: LivenessAnswer): void {

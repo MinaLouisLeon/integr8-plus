@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/reac
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { HashRouter, Navigate, Outlet, Route, Routes, useNavigate } from 'react-router';
 import { AppFrame } from '~/components/app-frame';
+import { ClientTooOldBanner } from '~/components/client-too-old-banner';
 import { CompanyBrand } from '~/components/company-brand';
 import { ContextMenuProvider } from '~/components/context-menu';
 import { ShellChromeProvider } from '~/components/shell-chrome';
@@ -272,6 +273,7 @@ export function App() {
   return (
     <I18nextProvider i18n={i18n}>
       <QueryClientProvider client={queryClient}>
+        <ClientTooOldBanner />
         <HashRouter>
           <ContextMenuProvider>
             <Routes>

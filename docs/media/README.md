@@ -107,11 +107,51 @@ are still in the bucket. So the rollup is always the sum of what is in the bucke
 
 `GET /v1/storage/usage` shows it to owners and admins (`storage.read`).
 
+## Who may read a file
+
+`GET /v1/media/:id` gives a five-minute link to a file, and only to someone who may see the
+record that uses it (Low 9, release 1.2.4). Knowing an id is not enough: ids travel in
+answers, attachments and exports. `apps/api/src/routes/v1/media-access.ts` decides, from
+every use `FilesRepository.uses` finds:
+
+| Used by                                                | Readable by                                               |
+| ------------------------------------------------------ | --------------------------------------------------------- |
+| a submission's answers, now or in its history          | whoever may read the submission (its filler; drafts only) |
+| a job: an attachment, a before/after photo, a sign-off | whoever may see the job (its crew, `work_order.read_all`) |
+| a customer or a site                                   | `customer.read`                                           |
+| an expense claim's receipt                             | its claimant and expense approvers (`expense.approve`)    |
+| a document's PDF, made or uploaded                     | `document.read`, and whoever made the document            |
+| a picture in a PDF template                            | Integr8 staff designing documents (`document.design`)     |
+| an item's picture or datasheet                         | `inventory.read`                                          |
+| an asset's picture                                     | whoever may read the asset                                |
+| a receipt for a part bought for a job                  | `inventory.read` or `inventory.consume`, and sees the job |
+| a certificate's scan                                   | its holder, and `qualification.read`                      |
+| the company's logo or app icon                         | every member                                              |
+| nothing yet                                            | only whoever uploaded it                                  |
+
+An asset's history shows everyone who may read the asset the forms filled for it and the
+files on jobs whose only asset it is (ADR-0008); those files follow it there, so an
+engineer at the machine sees the photos of the visits before theirs, on the phone too. A
+module that is switched off (assets, documents, HR, inventory) opens none of its files. One
+use that lets the reader in is enough; anyone else gets the same 404 as for an id nobody
+uploaded.
+
+## Which submissions name a file
+
+`submission_file_uses` (0068) records, for each submission, every file id its answers name
+(`source = 'answers'`, kept in step with every save, drafts included) and every one any
+submit or amendment named (`history`, from `submission_events`, never removed). A
+security-definer trigger keeps it from every path a submission is saved by, and the
+migration filled it from what was already stored. A file id counts wherever it appears
+under a `mediaId` key, at any depth. "May this file be deleted?" and "who may read it?" read
+the index by key instead of scanning every submission as text; a suite checks the two
+agree through a submission's whole life.
+
 ## Deleting
 
 `DELETE /v1/media/:id` — by the uploader, or anyone with `submission.amend` — is refused
 with `media_in_use` (409) while any submission or any entry in a submission's history names
-the file. Otherwise the file is soft-deleted with `purge_after` set `MEDIA_RESTORE_DAYS`
+the file, or it is attached to anything. Otherwise the file is soft-deleted with `purge_after` set `MEDIA_RESTORE_DAYS`
 (30) days ahead; `POST /v1/media/:id/restore` undoes it until then. After that, maintenance
 deletes the object and its thumbnail, then marks the row purged. The row stays, as the
 record that the file existed.
@@ -177,11 +217,31 @@ warning threshold, and what happens at a hundred percent:
 |         |                                                                                          |
 | ------- | ---------------------------------------------------------------------------------------- |
 | `block` | new uploads are refused, with the numbers in the error so a client can say what is wrong |
-| `allow` | uploads keep working, and the overage is recorded on that day's sample for P17 to bill   |
+| `allow` | uploads keep working, and the overage is recorded on that day's sample, to be invoiced   |
 
-Trial and starter block; standard and enterprise allow. Until P17 exists, overage on the
-larger plans **accrues unbilled** — the daily sample is what makes it billable
-retrospectively rather than lost.
+Trial and starter block; standard and enterprise allow (enterprise starts uncapped, so it
+has nothing to be over). Keeping `allow` on Standard was decided on 2026-11-01: an engineer's
+photo from a roof is never refused for a paying company's storage, and the extra is billed.
+
+### Invoicing the overage
+
+Integr8 invoices companies itself (`BILLING_PROVIDER=none`, docs/billing), so storage over an
+`allow` plan is a line somebody writes on the invoice. The number is the month's **average
+overage** in GB-months: the bytes over the line on each day's sample, added up and divided by
+the days in the month (`monthlyOverage` in `packages/core/src/storage-overage.ts`). Ten GB
+over for half of a thirty-day month is 5 GB-months. A day without a sample counts as zero, so
+the figure grows through the month and the one on its last day is the bill. Months are UTC,
+like the sampler's day.
+
+- **Staff dashboard → Storage → Over allowance** lists every company with a day over in the
+  month (this month or last month): the company, its plan, how far over it is on the latest
+  sample (or "Back under"), the days over, the peak, and the GB-months to invoice. It is read
+  from `GET /v1/platform/storage?month=YYYY-MM` (`overAllowance`), from the daily samples.
+- **The company's Storage page** shows anyone who may see it (`storage.read`) an **Over your
+  plan** notice while it is over: what it stores, by how much that passes the plan, that
+  uploads keep working, and what this month's invoice carries for it so far
+  (`GET /v1/storage/usage`, `overageThisMonth`). A company that went over earlier in the month
+  and is back under is told the month still carries the extra.
 
 The check runs at both upload entry points (`POST /v1/media` and the resumable
 `PUT /v1/media/:id`), before an intent exists or a link is signed, and the incoming bytes

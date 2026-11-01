@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   DesktopUpdateFeed,
   desktopUpdateFeed,
+  type GitHubAsset,
   type GitHubRelease,
+  hasInstaller,
+  installerOf,
   newestRelease,
   publicOrigin,
   tagPattern,
@@ -159,6 +162,110 @@ describe('the feed', () => {
       fetch: stubGitHub([release('v1.2.3')]).fetcher,
     });
     expect(await feed.download('staff', 'v1.2.3', 'latest.json')).toBeUndefined();
+  });
+});
+
+function asset(tag: string, name: string): GitHubAsset {
+  return {
+    id: name.length,
+    name,
+    url: `https://api.github.com/repos/o/r/releases/assets/${name}`,
+    browser_download_url: `https://github.com/o/r/releases/download/${tag}/${name}`,
+    size: 1024,
+  };
+}
+
+/** A company release as build-company-apps.yml makes it. */
+function companyRelease(tag: string, version: string): GitHubRelease {
+  const files = [
+    `integr8-plus-acme_${version}_x64-setup.exe`,
+    `integr8-plus-acme_${version}_x64-setup.exe.sig`,
+    `integr8-plus-acme_${version}_x64_en-US.msi`,
+    `integr8-plus-acme_${version}_aarch64.dmg`,
+    `integr8-plus-acme_${version}_aarch64.app.tar.gz`,
+    `integr8-plus-acme_${version}_aarch64.app.tar.gz.sig`,
+    `integr8-plus-acme_${version}_amd64.AppImage`,
+    `integr8-plus-acme_${version}_amd64.deb`,
+    `integr8-plus-acme-${version}-1.x86_64.rpm`,
+    `integr8-acme-${version}.apk`,
+    'updater-windows-x86_64.json',
+    'latest.json',
+  ];
+  return {
+    tag_name: tag,
+    draft: false,
+    prerelease: false,
+    assets: files.map((name) => asset(tag, name)),
+  };
+}
+
+describe('what the download page lists (Low 6)', () => {
+  it('knows an installer by its file name, and nothing else is one', () => {
+    expect(installerOf('a_1.0.0_x64-setup.exe')).toEqual({
+      platform: 'windows',
+      kind: 'exe',
+      arch: 'x64',
+    });
+    expect(installerOf('a_1.0.0_aarch64.dmg')).toEqual({
+      platform: 'macos',
+      kind: 'dmg',
+      arch: 'arm64',
+    });
+    expect(installerOf('integr8-acme-1.0.0.apk')?.platform).toBe('android');
+    for (const name of [
+      'a_1.0.0_x64-setup.exe.sig',
+      'a_1.0.0_aarch64.app.tar.gz',
+      'latest.json',
+      'integr8-acme-1.0.0.aab',
+    ]) {
+      expect(installerOf(name), name).toBeUndefined();
+    }
+  });
+
+  it('takes a company’s newest release with installers, even one without an update manifest', () => {
+    const unsigned: GitHubRelease = {
+      ...companyRelease('company-acme-v1.4.0', '1.4.0'),
+      assets: [asset('company-acme-v1.4.0', 'integr8-plus-acme_1.4.0_x64-setup.exe')],
+    };
+    const releases = [companyRelease('company-acme-v1.3.0', '1.3.0'), unsigned];
+    expect(newestRelease(releases, 'acme', hasInstaller)?.tag_name).toBe('company-acme-v1.4.0');
+    // The updater still needs the manifest.
+    expect(newestRelease(releases, 'acme')?.tag_name).toBe('company-acme-v1.3.0');
+  });
+
+  it('lists the installers in platform order with GitHub links, for a public repository', async () => {
+    const feed = new DesktopUpdateFeed({
+      repository: 'o/r',
+      fetch: () => Promise.resolve(Response.json([companyRelease('company-acme-v1.3.0', '1.3.0')])),
+    });
+    const found = await feed.installers('acme');
+    expect(found?.version).toBe('1.3.0');
+    expect(found?.installers.map((file) => file.kind)).toEqual([
+      'exe',
+      'msi',
+      'dmg',
+      'appimage',
+      'deb',
+      'rpm',
+      'apk',
+    ]);
+    expect(found?.installers[0]?.url).toBe(
+      'https://github.com/o/r/releases/download/company-acme-v1.3.0/integr8-plus-acme_1.3.0_x64-setup.exe',
+    );
+    expect(found?.installers[0]?.size).toBe(1024);
+    expect(await feed.installers('globex')).toBeUndefined();
+  });
+
+  it('links a private repository’s files through this server’s download route', async () => {
+    const feed = new DesktopUpdateFeed({
+      repository: 'o/r',
+      token: 't0ken',
+      fetch: () => Promise.resolve(Response.json([companyRelease('company-acme-v1.3.0', '1.3.0')])),
+    });
+    const found = await feed.installers('acme');
+    expect(found?.installers.find((file) => file.kind === 'apk')?.url).toBe(
+      '/desktop-updates/acme/download/company-acme-v1.3.0/integr8-acme-1.3.0.apk',
+    );
   });
 });
 

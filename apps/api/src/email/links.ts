@@ -56,3 +56,9 @@ export function deadlinesUrl(webAppUrl: string | undefined): string | null {
   const root = base(webAppUrl);
   return root === null ? null : `${root}/deadlines`;
 }
+
+/** The company's people screen (Low 10), for the owner's HR-suspension email. */
+export function peopleUrl(webAppUrl: string | undefined): string | null {
+  const root = base(webAppUrl);
+  return root === null ? null : `${root}/settings/people`;
+}

@@ -29,6 +29,10 @@ const me = (permissions: string[]) => () => ({
 const document = (overrides: Partial<DocumentDetail> = {}): DocumentDetail => ({
   id: DOCUMENT,
   title: 'Gas certificate · GS-2026-0042',
+  source: 'generated',
+  reference: null,
+  customer: null,
+  shareable: true,
   templateId: TEMPLATE,
   templateRevision: 2,
   submissionId: SUBMISSION,
@@ -91,12 +95,122 @@ describe('the documents register', () => {
     });
     renderScreen(<DocumentListScreen />, client);
     expect(
-      await screen.findByText('No documents yet. Open a submission and choose Make PDF.'),
+      await screen.findByText(
+        'No documents yet. Open a submission and choose Make PDF, or upload a PDF.',
+      ),
     ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Upload a PDF' })).not.toBeInTheDocument();
+  });
+
+  it('marks uploaded and unshared documents', async () => {
+    const { client } = fakeApi({
+      'GET /v1/me': me(['document.read']),
+      'GET /v1/documents': () => ({
+        body: {
+          items: [
+            document({
+              title: 'Lift certificate',
+              source: 'uploaded',
+              reference: 'LIFT-17',
+              shareable: false,
+              templateId: null,
+              templateRevision: null,
+              submissionId: null,
+              formId: null,
+            }),
+          ],
+          nextCursor: null,
+        },
+      }),
+    });
+    renderScreen(<DocumentListScreen />, client);
+    const item = await screen.findByRole('listitem');
+    expect(within(item).getByText('Uploaded')).toBeInTheDocument();
+    expect(within(item).getByText('Not shared')).toBeInTheDocument();
+  });
+
+  it('offers uploading to those who may, and takes only a PDF', async () => {
+    // The browser's own filter is a hint a person can switch off; the screen checks too.
+    const user = userEvent.setup({ applyAccept: false });
+    const { client } = fakeApi({
+      'GET /v1/me': me(['document.read', 'document.upload']),
+      'GET /v1/documents': () => ({ body: { items: [], nextCursor: null } }),
+    });
+    renderScreen(<DocumentListScreen />, client);
+    await user.click(await screen.findByRole('button', { name: 'Upload a PDF' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Upload a PDF document' });
+    const upload = within(dialog).getByRole('button', { name: 'Upload' });
+    expect(upload).toBeDisabled();
+    await user.upload(
+      within(dialog).getByLabelText('PDF file'),
+      new File(['not a pdf'], 'notes.txt', { type: 'text/plain' }),
+    );
+    expect(await within(dialog).findByText('Choose a PDF file.')).toBeInTheDocument();
+    await user.upload(
+      within(dialog).getByLabelText('PDF file'),
+      new File(['%PDF-1.7'], 'Lift certificate.pdf', { type: 'application/pdf' }),
+    );
+    expect(within(dialog).queryByText('Choose a PDF file.')).not.toBeInTheDocument();
+    expect(within(dialog).getByLabelText('Title')).toHaveValue('Lift certificate');
+    await user.type(within(dialog).getByLabelText('Reference number'), 'LIFT-17');
+    expect(upload).toBeEnabled();
   });
 });
 
 describe('one document', () => {
+  it('is shared and unshared by those who may upload, with its QR code shown', async () => {
+    const user = userEvent.setup();
+    const { client, calls } = fakeApi({
+      'GET /v1/me': me(['document.read', 'document.upload']),
+      'GET /v1/documents/:id': () => ({
+        body: document({
+          source: 'uploaded',
+          reference: 'LIFT-17',
+          shareable: false,
+          templateId: null,
+          templateRevision: null,
+          submissionId: null,
+          formId: null,
+        }),
+      }),
+      'POST /v1/documents/:id/share': (call) => ({
+        body: document({ shareable: (call.body as { shareable: boolean }).shareable }),
+      }),
+    });
+    const { container } = renderScreen(<DocumentScreen documentId={DOCUMENT} />, client);
+    expect(
+      await screen.findByText(
+        'Not shared: the QR code link and your company website answer as if it did not exist. Your company still sees it here.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('img', { name: 'QR code for this document’s link' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Open the submission')).not.toBeInTheDocument();
+    expect(await accessibilityViolations(container)).toEqual([]);
+    await user.click(screen.getByRole('button', { name: 'Share it' }));
+    await waitFor(() =>
+      expect(calls.find((call) => call.path.endsWith('/share'))?.body).toEqual({
+        shareable: true,
+      }),
+    );
+    expect(await screen.findByRole('button', { name: 'Stop sharing' })).toBeInTheDocument();
+  });
+
+  it('shows whether it is shared, without the switch, to a reader', async () => {
+    const { client } = fakeApi({
+      'GET /v1/me': me(['document.read']),
+      'GET /v1/documents/:id': () => ({ body: document() }),
+    });
+    renderScreen(<DocumentScreen documentId={DOCUMENT} />, client);
+    expect(
+      await screen.findByText(
+        'Shared: the QR code link and your company website can show this document.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Stop sharing' })).not.toBeInTheDocument();
+  });
+
   it('opens the PDF, copies the link, and stops it for a manager', async () => {
     const user = userEvent.setup();
     const open = vi.spyOn(window, 'open').mockReturnValue(null);

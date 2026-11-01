@@ -5,7 +5,8 @@ import {
   type StoredTokens,
   type TokenStore,
 } from '@integr8/core';
-import { ApiRequestError, createClient, type Integr8Client } from './index.js';
+import { type ClientTooOldInfo, updateUrlFrom } from './client-update.js';
+import { type ApiErrorDetail, ApiRequestError, createClient, type Integr8Client } from './index.js';
 
 /**
  * The client wiring every app shares: tokens in, tokens out, and one refresh.
@@ -43,7 +44,7 @@ export interface SessionManagerOptions {
   store: TokenStore;
   /** Called when the session ends and the person has to sign in again. */
   onSignedOut?: (reason: SignOutReason) => void;
-  onClientTooOld?: (info: { minimum: string; message: string }) => void;
+  onClientTooOld?: (info: ClientTooOldInfo) => void;
   /**
    * Checks an offline grant on the device (P03): its signature against the
    * keys built into the app, its type and its own expiry. False means it
@@ -486,27 +487,33 @@ export class SessionManager {
     let code = 'unknown_error';
     let message = `The request failed with status ${String(response.status)}.`;
     let requestId = response.headers.get('x-request-id') ?? '';
+    let details: ApiErrorDetail[] = [];
 
     try {
       const body = (await response.json()) as {
-        error?: { code?: string; message?: string; requestId?: string };
+        error?: { code?: string; message?: string; requestId?: string; details?: unknown };
       };
       code = body.error?.code ?? code;
       message = body.error?.message ?? message;
       requestId = body.error?.requestId ?? requestId;
+      details = Array.isArray(body.error?.details)
+        ? body.error.details.filter(isErrorDetail)
+        : details;
     } catch {
       // A proxy can answer with HTML. Falling back to the status is better than
       // failing while reporting a failure.
     }
 
     if (code === 'client_too_old') {
+      const updateUrl = updateUrlFrom(details);
       this.#options.onClientTooOld?.({
         minimum: response.headers.get('min-supported-client') ?? '',
         message,
+        ...(updateUrl === undefined ? {} : { updateUrl }),
       });
     }
 
-    throw new ApiRequestError(response.status, code, message, requestId);
+    throw new ApiRequestError(response.status, code, message, requestId, details);
   }
 }
 
@@ -556,4 +563,17 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
       },
     );
   });
+}
+
+/** One entry of an error's `details`, as far as this file needs to trust it. */
+function isErrorDetail(value: unknown): value is ApiErrorDetail {
+  if (value === null || typeof value !== 'object') {
+    return false;
+  }
+  const detail = value as { field?: unknown; code?: unknown; message?: unknown };
+  return (
+    typeof detail.field === 'string' &&
+    typeof detail.code === 'string' &&
+    typeof detail.message === 'string'
+  );
 }

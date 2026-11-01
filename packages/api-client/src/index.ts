@@ -1,4 +1,5 @@
 import createOpenApiClient, { type Middleware } from 'openapi-fetch';
+import { type ClientTooOldInfo, updateUrlFrom } from './client-update.js';
 import type { paths } from './generated/schema.js';
 
 /**
@@ -48,8 +49,8 @@ export interface ClientOptions {
    */
   onUnauthorised?: () => Promise<string | null>;
 
-  /** Called when this build is older than the server's minimum. */
-  onClientTooOld?: (info: { minimum: string; message: string }) => void;
+  /** Called when this build is older than the server's minimum, with where to update. */
+  onClientTooOld?: (info: ClientTooOldInfo) => void;
 
   /** Injectable for tests and for React Native's fetch. */
   fetch?: typeof globalThis.fetch;
@@ -104,6 +105,11 @@ export class ApiRequestError extends Error {
   /** True when this build is older than the server's minimum supported client. */
   get isClientTooOld(): boolean {
     return this.code === 'client_too_old';
+  }
+
+  /** Where to get the update, when this is `client_too_old` from a 1.2.4 or newer server. */
+  get updateUrl(): string | undefined {
+    return this.isClientTooOld ? updateUrlFrom(this.details) : undefined;
   }
 }
 
@@ -224,9 +230,11 @@ async function announceIfTooOld(response: Response, options: ClientOptions): Pro
 
   const body = await readErrorBody(response);
   if (body?.error.code === 'client_too_old') {
+    const updateUrl = updateUrlFrom(body.error.details);
     options.onClientTooOld({
       minimum: response.headers.get('min-supported-client') ?? '',
       message: body.error.message,
+      ...(updateUrl === undefined ? {} : { updateUrl }),
     });
   }
 }
@@ -254,6 +262,13 @@ function isApiErrorBody(value: unknown): value is ApiErrorBody {
     typeof (error as { message?: unknown }).message === 'string'
   );
 }
+
+export {
+  type ClientTooOldInfo,
+  UPDATE_URL_DETAIL,
+  updatePageUrl,
+  updateUrlFrom,
+} from './client-update.js';
 
 export {
   SessionManager,

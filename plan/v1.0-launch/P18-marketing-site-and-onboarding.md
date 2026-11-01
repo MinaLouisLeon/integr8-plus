@@ -153,6 +153,14 @@ table.
 - **A content pipeline.** Fifteen articles live in a TypeScript module. Building a CMS for them
   would be the tail wagging the dog; moving them later is a find-and-replace.
 
+## Later: the Integr8 Media look (Low 3, 2026-11-01)
+
+The public pages, sign-in and `/platform` now wear the company site's look
+(`docs/brand/README.md`), the landing, features (fifteen), pricing and help pages
+were rewritten for the product as it is, in English and Arabic (`site.*` in
+`@integr8/i18n`), the site opens in English unless Arabic was chosen (no more
+`Accept-Language`), and `/download` lists the desktop and phone apps per company.
+
 ## Found while building this
 
 - **"Signed out everywhere" does not end an access token.** A tenant access token is a stateless

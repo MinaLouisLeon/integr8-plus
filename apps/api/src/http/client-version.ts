@@ -1,3 +1,5 @@
+import { ApiError } from './errors.js';
+
 /**
  * Whether a client build is still supported.
  *
@@ -102,4 +104,31 @@ export function outdatedClientMessage(verdict: {
     `Please update to ${verdict.minimum} or later to continue.`,
     `Get the latest version at ${verdict.updateUrl}`,
   ].join(' ');
+}
+
+/**
+ * The detail code that carries where to get the update, so an app can offer an
+ * Update button rather than a sentence with an address in it. Its `message`
+ * is the address. Added in 1.2.4; older apps ignore details they do not know.
+ */
+export const UPDATE_URL_DETAIL = 'update_url';
+
+/**
+ * The refusal itself: 503 `client_too_old`, the message above, and details for
+ * the code — the version declared, the minimum, and the update address.
+ */
+export function outdatedClientError(
+  verdict: { minimum: string; declared: string },
+  updateUrl: string,
+): ApiError {
+  return new ApiError(
+    503,
+    'client_too_old',
+    outdatedClientMessage({ minimum: verdict.minimum, declared: verdict.declared, updateUrl }),
+    [
+      { field: 'header.x-client-version', code: 'unsupported', message: verdict.declared },
+      { field: 'header.min-supported-client', code: 'minimum', message: verdict.minimum },
+      { field: 'update', code: UPDATE_URL_DETAIL, message: updateUrl },
+    ],
+  );
 }

@@ -15,7 +15,9 @@ import {
   Loading,
   toLocalInput,
 } from '../ui.js';
+import { QrCode } from '../assets/asset-tag.js';
 import {
+  DocumentMarks,
   documentState,
   DocumentStateBadge,
   failureKey,
@@ -30,6 +32,8 @@ import {
  * or download, the QR code's link to copy, and — for those who manage
  * documents — stopping the link now or on a date, and deleting it. A
  * document still being made refreshes itself until it is ready or failed.
+ * Whether the QR link and the website may show it at all is its sharing
+ * switch (0067), turned by those who may upload documents.
  */
 export function DocumentScreen({ documentId }: { documentId: string }) {
   const { t } = useTranslation();
@@ -65,6 +69,16 @@ export function DocumentScreen({ documentId }: { documentId: string }) {
       ).data!,
     onSuccess: saved,
   });
+  const share = useMutation({
+    mutationFn: async (shareable: boolean) =>
+      (
+        await client.POST('/v1/documents/{documentId}/share', {
+          params: { path: { documentId } },
+          body: { shareable },
+        })
+      ).data!,
+    onSuccess: saved,
+  });
   const remove = useMutation({
     mutationFn: async () => {
       await client.DELETE('/v1/documents/{documentId}', { params: { path: { documentId } } });
@@ -95,9 +109,10 @@ export function DocumentScreen({ documentId }: { documentId: string }) {
           <h1 className="flex flex-wrap items-center gap-2 text-2xl font-semibold text-content">
             <span dir="auto">{document.title}</span>
             <DocumentStateBadge state={state} />
+            <DocumentMarks document={document} />
           </h1>
           <p className="text-sm text-content-muted">
-            {t('documents.made', {
+            {t(document.source === 'uploaded' ? 'documents.upload.made' : 'documents.made', {
               date: formatDateTime(document.createdAt, { locale }),
               name: document.createdBy.name,
             })}
@@ -170,19 +185,45 @@ export function DocumentScreen({ documentId }: { documentId: string }) {
             ))}
           </dl>
         )}
-        <p className="mt-4 text-sm">
-          <a
-            href={paths.submission(document.submissionId)}
-            className="text-accent underline-offset-4 hover:underline"
-            onClick={(event) => {
-              event.preventDefault();
-              navigate(paths.submission(document.submissionId));
-            }}
-          >
-            {t('documents.submission')}
-          </a>
-        </p>
+        {document.submissionId === null ? null : (
+          <p className="mt-4 text-sm">
+            <a
+              href={paths.submission(document.submissionId)}
+              className="text-accent underline-offset-4 hover:underline"
+              onClick={(event) => {
+                event.preventDefault();
+                navigate(paths.submission(document.submissionId!));
+              }}
+            >
+              {t('documents.submission')}
+            </a>
+          </p>
+        )}
       </section>
+
+      {document.status === 'ready' ? (
+        <section className={cardClass} aria-labelledby="document-sharing">
+          <h2 id="document-sharing" className="mb-1 text-lg font-semibold text-content">
+            {t('documents.sharing.title')}
+          </h2>
+          <p className="text-sm text-content-muted">
+            {document.shareable ? t('documents.sharing.on') : t('documents.sharing.off')}
+          </p>
+          {access.upload ? (
+            <div className="mt-3">
+              <button
+                type="button"
+                className={document.shareable ? buttonClass.secondary : buttonClass.primary}
+                disabled={share.isPending}
+                onClick={() => share.mutate(!document.shareable)}
+              >
+                {document.shareable ? t('documents.sharing.unshare') : t('documents.sharing.share')}
+              </button>
+            </div>
+          ) : null}
+          {share.isError ? <Failure error={share.error} /> : null}
+        </section>
+      ) : null}
 
       {document.link === null || document.status !== 'ready' ? null : (
         <section className={cardClass} aria-labelledby="document-link">
@@ -192,6 +233,11 @@ export function DocumentScreen({ documentId }: { documentId: string }) {
           <p className="mb-3 text-sm text-content-muted">
             {document.linkOpens ? t('documents.linkHint') : t('documents.expiredHint')}
           </p>
+          <QrCode
+            text={document.link}
+            label={t('documents.sharing.qr')}
+            className="mb-3 h-32 w-32 rounded border border-border-subtle"
+          />
           <div className="flex flex-wrap items-center gap-2">
             <code dir="ltr" className="break-all rounded bg-surface-muted px-2 py-1 text-sm">
               {document.link}

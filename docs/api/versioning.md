@@ -73,6 +73,30 @@ large piece of work rather than an escape hatch for a rename.
 | `Idempotency-Key`      | Request   | On endpoints that declare it. See below.                            |
 | `idempotent-replay`    | Response  | `true` when the response was replayed rather than freshly computed. |
 
+### The answer a build below the minimum gets
+
+`503 client_too_old`, before authentication, on every request but `/health*`,
+`/openapi*`, signed media links and payment webhooks. The `message` is a whole
+sentence an old app can show as it is, ending with where to get the update. The
+`details` say the same as data:
+
+| `code`        | `field`                       | `message`                                  |
+| ------------- | ----------------------------- | ------------------------------------------ |
+| `unsupported` | `header.x-client-version`     | The version the client declared.           |
+| `minimum`     | `header.min-supported-client` | The oldest version served.                 |
+| `update_url`  | `update`                      | Where to update (added in 1.2.4, additive) |
+
+The update address is `API_UPDATE_URL`, or the web app's download page,
+`WEB_APP_URL` + `/download`, when that is unset; production refuses an example
+address there. The phone and desktop apps read it through `@integr8/api-client`
+(`ApiRequestError.updateUrl`, and `updateUrl` in `onClientTooOld`) and show the
+too-old message with an **Update** button that opens it, adding
+`?company=<slug>` in a company's own build so the page lists that company's
+installers and phone app (`updatePageUrl`). The staff desktop app and the
+generic phone app open the plain page. Installed desktop apps normally update
+themselves first (`apps/desktop/src/lib/updates.ts`); the button is the way out
+when they have not.
+
 A client that sends no version is served. `curl`, a health check and a partner
 integration all have good reasons not to send one, and refusing them would turn
 this header into a de-facto authentication mechanism it was never designed to

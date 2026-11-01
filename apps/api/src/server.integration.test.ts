@@ -201,6 +201,12 @@ describe('an out-of-date client', () => {
     // The minimum is in the details as data, so a client can act on it without
     // parsing the sentence.
     expect(body.error.details?.some((detail) => detail.message === '1.0.0')).toBe(true);
+    // And so is where to update, which the apps open from an Update button.
+    expect(body.error.details).toContainEqual({
+      field: 'update',
+      code: 'update_url',
+      message: 'https://integr8.example/download',
+    });
   });
 
   it('is told before authentication, so an expired token is not the confusing part', async () => {

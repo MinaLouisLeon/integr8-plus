@@ -1,4 +1,4 @@
-import { getPlatformDataSource } from '@integr8/db';
+import { getPlatformDataSource, withTenant } from '@integr8/db';
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { RecordingEmailSender } from '../../email/sender.js';
@@ -93,32 +93,137 @@ describe('inviting somebody', () => {
     expect(message?.text).toContain(`${WEB}/accept-invitation?token=`);
   });
 
+  /** POSTs to an invitation route the way the web page does, with no session. */
+  function publicPost(url: string, payload: Record<string, unknown>, app = 'web') {
+    return api.app.inject({
+      method: 'POST',
+      url,
+      remoteAddress: api.remoteAddress,
+      headers: { 'x-client-version': '1.0.0', 'x-client-app': app },
+      payload,
+    });
+  }
+
   it('lets them accept, choose a password, and appear as a member', async () => {
     const to = address('joiner');
     const { token } = await invite(to);
 
-    const accepted = await api.app.inject({
-      method: 'POST',
-      url: '/v1/invitations/accept',
-      remoteAddress: api.remoteAddress,
-      headers: { 'x-client-version': '1.0.0', 'x-client-app': 'web' },
-      payload: {
-        token,
-        displayName: 'Jo Joiner',
-        password: 'a-long-enough-password',
-        clientApp: 'web',
-      },
+    const inspected = await publicPost('/v1/invitations/inspect', { token });
+    expect(inspected.statusCode, inspected.body).toBe(200);
+    expect(JSON.parse(inspected.body)).toEqual({ email: to, passwordRequired: true });
+
+    const accepted = await publicPost('/v1/invitations/accept', {
+      token,
+      displayName: 'Jo Joiner',
+      password: 'a-long-enough-password',
+      clientApp: 'web',
     });
 
     expect(accepted.statusCode, accepted.body).toBe(200);
-    const body = JSON.parse(accepted.body) as { accepted: boolean; email: string };
-    expect(body.accepted).toBe(true);
-    // Returned so the page can sign them in; still no tokens in this response.
-    expect(body.email).toBe(to);
+    expect(JSON.parse(accepted.body)).toEqual({
+      accepted: true,
+      email: to,
+      existingAccount: false,
+      signInRequired: true,
+    });
     expect(accepted.body).not.toContain('accessToken');
 
     const members = await api.call(ownerToken, { method: 'GET', url: '/v1/members' });
     expect(members.body).toContain('Jo Joiner');
+
+    // Accepting made no session (Low 5); signing in is what makes one.
+    const joiner = (
+      JSON.parse(members.body) as { items: { userId: string; email: string }[] }
+    ).items.find((member) => member.email === to);
+    const sessions = await withTenant(api.tenantId, (tx) =>
+      tx.sessions.list({ userId: joiner?.userId ?? '', includeRevoked: true }),
+    );
+    expect(sessions).toEqual([]);
+    const signedIn = await publicPost('/v1/auth/sign-in', {
+      email: to,
+      password: 'a-long-enough-password',
+      clientApp: 'web',
+    });
+    expect(signedIn.statusCode, signedIn.body).toBe(200);
+  });
+
+  it('refuses an app that sends no password for a new sign-in, with its own code', async () => {
+    const to = address('oldphone');
+    const { token } = await invite(to);
+
+    const refused = await publicPost(
+      '/v1/invitations/accept',
+      { token, displayName: 'Old Phone', clientApp: 'mobile' },
+      'mobile',
+    );
+    expect(refused.statusCode).toBe(422);
+    const error = (JSON.parse(refused.body) as { error: { code: string; message: string } }).error;
+    expect(error.code).toBe('auth.invitation_password_required');
+    // Words for an app that does not know the code: in both languages.
+    expect(error.message).toContain('update it or accept the invitation on the web');
+    expect(error.message).toContain('اقبل الدعوة');
+
+    // The link still works once a password comes with it.
+    const accepted = await publicPost('/v1/invitations/accept', {
+      token,
+      displayName: 'New Phone',
+      password: 'a-long-enough-password',
+    });
+    expect(accepted.statusCode, accepted.body).toBe(200);
+  });
+
+  it('refuses a password holding the address’s own name', async () => {
+    const to = address('rosalind');
+    const { token } = await invite(to);
+
+    const refused = await publicPost('/v1/invitations/accept', {
+      token,
+      displayName: 'Rosalind',
+      password: `${to.split('@')[0] ?? ''}-and-more`,
+    });
+    expect(refused.statusCode).toBe(422);
+    expect(refused.body).toContain('auth.weak_password');
+  });
+
+  it('needs no password from somebody who already signs in', async () => {
+    // A member of another company, say: the identity exists already.
+    const elsewhere = address('elsewhere');
+    const identity = await api.services.identity.createIdentity(
+      elsewhere,
+      'their own good passphrase',
+    );
+    const returning = {
+      userId: identity.userId,
+      email: elsewhere,
+      password: 'their own good passphrase',
+      role: 'engineer' as const,
+    };
+    const { token } = await invite(returning.email);
+
+    const inspected = await publicPost('/v1/invitations/inspect', { token });
+    expect(JSON.parse(inspected.body)).toEqual({
+      email: returning.email,
+      passwordRequired: false,
+    });
+
+    const accepted = await publicPost('/v1/invitations/accept', {
+      token,
+      displayName: 'Back Again',
+      password: 'not-applied-to-an-existing-account',
+    });
+    expect(accepted.statusCode, accepted.body).toBe(200);
+    expect(JSON.parse(accepted.body)).toMatchObject({
+      existingAccount: true,
+      signInRequired: true,
+    });
+    // Their own password still works; the one sent was not applied.
+    await expect(api.signIn(returning)).resolves.toEqual(expect.any(String));
+  });
+
+  it('answers an inspected link that is not live as acceptance does', async () => {
+    const inspected = await publicPost('/v1/invitations/inspect', { token: 'nonsense' });
+    expect(inspected.statusCode).toBe(422);
+    expect(inspected.body).toContain('auth.invitation_invalid');
   });
 
   it('refuses the same link twice', async () => {
@@ -292,6 +397,176 @@ describe('managing a member', () => {
     // nothing. What went is their way in and the seat they occupied.
     const members = await api.call(ownerToken, { method: 'GET', url: '/v1/members' });
     expect(members.body).not.toContain(person.userId);
+  });
+});
+
+describe('somebody with HR access (Low 10)', () => {
+  const code = (response: { body: string }) =>
+    (JSON.parse(response.body) as { error: { code: string } }).error.code;
+
+  let adminToken: string;
+  beforeAll(async () => {
+    adminToken = await api.signIn(await api.member('admin', 'hr-rule-admin'));
+  });
+
+  async function peopleDesk(): Promise<string> {
+    const created = await api.call(ownerToken, {
+      method: 'POST',
+      url: '/v1/roles',
+      headers: { 'idempotency-key': randomUUID() },
+      payload: {
+        name: `People desk ${randomUUID().slice(0, 6)}`,
+        baseRole: 'viewer',
+        added: ['hr.manage'],
+      },
+    });
+    expect(created.statusCode, created.body).toBe(201);
+    return (JSON.parse(created.body) as { id: string }).id;
+  }
+
+  it('is the owner’s to move into or out of a role with HR access', async () => {
+    const desk = await peopleDesk();
+    const person = await api.member('viewer', 'hr-rule-mover');
+
+    // Into it: an admin is refused, in words every app has.
+    const into = await api.call(adminToken, {
+      method: 'PATCH',
+      url: `/v1/members/${person.userId}/role`,
+      payload: { customRoleId: desk },
+    });
+    expect(into.statusCode).toBe(403);
+    expect(code(into)).toBe('hr_access_owner_only');
+
+    const byOwner = await api.call(ownerToken, {
+      method: 'PATCH',
+      url: `/v1/members/${person.userId}/role`,
+      payload: { customRoleId: desk },
+    });
+    expect(byOwner.statusCode, byOwner.body).toBe(200);
+
+    // Out of it — a company role, not the built-in HR manager — likewise.
+    const out = await api.call(adminToken, {
+      method: 'PATCH',
+      url: `/v1/members/${person.userId}/role`,
+      payload: { role: 'engineer' },
+    });
+    expect(out.statusCode).toBe(403);
+    expect(code(out)).toBe('hr_access_owner_only');
+
+    // And the built-in HR manager, as before, now with the same code.
+    const manager = await api.member('hr_manager', 'hr-rule-manager');
+    const demoted = await api.call(adminToken, {
+      method: 'PATCH',
+      url: `/v1/members/${manager.userId}/role`,
+      payload: { role: 'viewer' },
+    });
+    expect(code(demoted)).toBe('hr_access_owner_only');
+
+    // A role with no HR access in it is still the admin's to change.
+    const plain = await api.member('viewer', 'hr-rule-plain');
+    const changed = await api.call(adminToken, {
+      method: 'PATCH',
+      url: `/v1/members/${plain.userId}/role`,
+      payload: { role: 'engineer' },
+    });
+    expect(changed.statusCode, changed.body).toBe(200);
+  });
+
+  it('keeps the HR grant the owner’s to give and take', async () => {
+    const person = await api.member('dispatcher', 'hr-rule-grant');
+    const given = await api.call(adminToken, {
+      method: 'PUT',
+      url: `/v1/members/${person.userId}/grants/hr_manager`,
+    });
+    expect(code(given)).toBe('hr_access_owner_only');
+    expect(
+      (
+        await api.call(ownerToken, {
+          method: 'PUT',
+          url: `/v1/members/${person.userId}/grants/hr_manager`,
+        })
+      ).statusCode,
+    ).toBe(200);
+    const taken = await api.call(adminToken, {
+      method: 'DELETE',
+      url: `/v1/members/${person.userId}/grants/hr_manager`,
+    });
+    expect(code(taken)).toBe('hr_access_owner_only');
+  });
+
+  it('cannot be removed by an admin, by role or by grant; the owner can', async () => {
+    const manager = await api.member('hr_manager', 'hr-rule-remove');
+    const granted = await api.member('dispatcher', 'hr-rule-remove-grant');
+    await api.call(ownerToken, {
+      method: 'PUT',
+      url: `/v1/members/${granted.userId}/grants/hr_manager`,
+    });
+    for (const person of [manager, granted]) {
+      const refused = await api.call(adminToken, {
+        method: 'DELETE',
+        url: `/v1/members/${person.userId}`,
+      });
+      expect(refused.statusCode).toBe(403);
+      expect(code(refused)).toBe('hr_access_owner_only');
+    }
+    const removed = await api.call(ownerToken, {
+      method: 'DELETE',
+      url: `/v1/members/${manager.userId}`,
+    });
+    expect(removed.statusCode, removed.body).toBe(200);
+  });
+
+  it('may be suspended by an admin in an emergency, audited and told to the owner', async () => {
+    const manager = await api.member('hr_manager', 'hr-rule-suspend');
+    const suspended = await api.call(adminToken, {
+      method: 'PATCH',
+      url: `/v1/members/${manager.userId}/status`,
+      payload: { status: 'suspended' },
+    });
+    expect(suspended.statusCode, suspended.body).toBe(200);
+
+    const audit = await withTenant(api.tenantId, (tx) =>
+      tx.auditLog.list({ resourceType: 'tenant_user', resourceId: manager.userId }),
+    );
+    expect(audit.find((entry) => entry.action === 'member.suspended')?.metadata).toMatchObject({
+      hrAccess: true,
+      byOwner: false,
+      ownersNotified: true,
+    });
+
+    const told = email.lastTo(owner.email);
+    expect(told?.subject).toContain('hr-rule-suspend');
+    expect(told?.text).toContain('hr-rule-admin');
+    expect(told?.text).toContain(`${WEB}/settings/people`);
+
+    // Letting them back in is the owner's.
+    const back = await api.call(adminToken, {
+      method: 'PATCH',
+      url: `/v1/members/${manager.userId}/status`,
+      payload: { status: 'active' },
+    });
+    expect(back.statusCode).toBe(403);
+    expect(code(back)).toBe('hr_access_owner_only');
+    const byOwner = await api.call(ownerToken, {
+      method: 'PATCH',
+      url: `/v1/members/${manager.userId}/status`,
+      payload: { status: 'active' },
+    });
+    expect(byOwner.statusCode, byOwner.body).toBe(200);
+  });
+
+  it('suspended by the owner tells nobody, since the owner did it', async () => {
+    const manager = await api.member('hr_manager', 'hr-rule-quiet');
+    const before = email.sent.length;
+    const suspended = await api.call(ownerToken, {
+      method: 'PATCH',
+      url: `/v1/members/${manager.userId}/status`,
+      payload: { status: 'suspended' },
+    });
+    expect(suspended.statusCode, suspended.body).toBe(200);
+    expect(
+      email.sent.slice(before).some((message) => message.subject.includes('hr-rule-quiet')),
+    ).toBe(false);
   });
 });
 

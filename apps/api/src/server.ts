@@ -5,14 +5,14 @@ import {
   type PlatformPrincipal,
   type Principal,
 } from '@integr8/core';
-import { AuthError, InvalidTokenError, SessionRevokedError } from '@integr8/auth';
+import { AuthError, InvalidTokenError, type LiveSession, SessionRevokedError } from '@integr8/auth';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import { randomUUID } from 'node:crypto';
 import type { Services } from './composition.js';
-import { type ApiConfig, corsOrigins } from './config.js';
+import { type ApiConfig, clientUpdateUrl, corsOrigins } from './config.js';
 import { registerCors } from './http/cors.js';
 import { LocalDiskStorage, LOCAL_MEDIA_PREFIX } from './media/local-disk.js';
-import { assessClientVersion, outdatedClientMessage } from './http/client-version.js';
+import { assessClientVersion, outdatedClientError } from './http/client-version.js';
 import {
   ApiError,
   badRequest,
@@ -164,6 +164,7 @@ export function buildServer(options: BuildServerOptions): FastifyInstance {
       principal: null,
       ipAddress: request.ip === '' ? null : request.ip,
       userAgent: header(request, 'user-agent'),
+      acceptLanguage: header(request, 'accept-language'),
       idempotencyKey: header(request, 'idempotency-key'),
       bearerToken: bearer(header(request, 'authorization')),
       // Whichever provider signed it. One header per provider, and only a
@@ -213,25 +214,7 @@ export function buildServer(options: BuildServerOptions): FastifyInstance {
     // 503 rather than 400: nothing is wrong with the request. The client is
     // simply older than this deployment serves, and `Retry-After` would be a
     // lie, so the message carries the actionable part.
-    done(
-      new ApiError(
-        503,
-        'client_too_old',
-        outdatedClientMessage({
-          minimum: verdict.minimum,
-          declared: verdict.declared,
-          updateUrl: config.API_UPDATE_URL,
-        }),
-        [
-          { field: 'header.x-client-version', code: 'unsupported', message: verdict.declared },
-          {
-            field: 'header.min-supported-client',
-            code: 'minimum',
-            message: verdict.minimum,
-          },
-        ],
-      ),
-    );
+    done(outdatedClientError(verdict, clientUpdateUrl(config)));
   });
 
   // ---------------------------------------------------------------------------
@@ -302,7 +285,7 @@ export function buildServer(options: BuildServerOptions): FastifyInstance {
           // 5a. Is the token's session still live? After the impersonation
           // check, so an ended impersonation keeps its own 403 rather than a
           // bare 401.
-          await assertSessionLive(principal, services);
+          context.session = await assertSessionLive(principal, services);
 
           // 5b. Is this company still being served? A suspension refuses reads
           // as well as writes; see http/suspension.ts for why.
@@ -519,9 +502,9 @@ async function authenticate(request: FastifyRequest, services: Services): Promis
  * ending a session must stop the device well before the token lapses. The
  * answer is cached for thirty seconds per session (`SessionService.assertLive`).
  */
-async function assertSessionLive(principal: Principal, services: Services): Promise<void> {
+async function assertSessionLive(principal: Principal, services: Services): Promise<LiveSession> {
   try {
-    await services.sessions.assertLive(principal);
+    return await services.sessions.assertLive(principal);
   } catch (error) {
     if (error instanceof SessionRevokedError) {
       throw unauthorised();
@@ -607,6 +590,7 @@ function statusForAuthError(code: string): number {
     case 'auth.current_password_required':
       return 403;
     case 'auth.invitation_invalid':
+    case 'auth.invitation_password_required':
     case 'auth.weak_password':
       return 422;
     case 'auth.identity_provider_unavailable':

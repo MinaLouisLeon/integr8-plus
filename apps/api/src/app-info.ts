@@ -5,7 +5,7 @@ import { type AppInfo, appInfoSchema, optionalEnv } from '@integr8/core';
  * than imported because package.json sits outside `rootDir`; app-info.test.ts
  * fails when the two differ, so a release that bumps one has to bump both.
  */
-export const VERSION = '1.2.3';
+export const VERSION = '1.2.4';
 
 /**
  * Builds this app's identity from the environment. Fails at startup rather

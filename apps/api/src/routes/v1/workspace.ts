@@ -10,6 +10,7 @@ import { assertMayAssign } from './member-rules.js';
 import {
   acceptedSchema,
   invitationSchema,
+  invitationSummarySchema,
   iso,
   isoOrNull,
   listSchema,
@@ -423,26 +424,53 @@ export const revokeInvitationRoute = defineRoute({
   },
 });
 
+const invitationTokenSchema = z.string().min(1).max(512);
+
+export const inspectInvitationRoute = defineRoute({
+  method: 'post',
+  path: '/v1/invitations/inspect',
+  operationId: 'inspectInvitation',
+  summary: 'What accepting an invitation will need',
+  description:
+    'Public, for the page an invitation link opens: the address it was sent to, and whether that address has no sign-in yet and so must choose a password when accepting. Changes nothing. A POST so the token stays out of URLs and logs; an unknown, spent, withdrawn or expired token is the same 422 as at acceptance.',
+  tags: ['authentication'],
+  security: 'public',
+  params: noSchema,
+  query: noSchema,
+  body: z.object({ token: invitationTokenSchema }),
+  responses: {
+    200: { description: 'The invitation, still waiting.', schema: invitationSummarySchema },
+    422: { description: 'The invitation is unknown, spent, withdrawn or expired.' },
+  },
+  handler: async ({ body }, context) => {
+    const summary = await context.services.invitations.inspect(body.token);
+    return { status: 200, body: summary, headers: { 'cache-control': 'no-store' } };
+  },
+});
+
 export const acceptInvitationRoute = defineRoute({
   method: 'post',
   path: '/v1/invitations/accept',
   operationId: 'acceptInvitation',
-  summary: 'Accept an invitation and sign in',
+  summary: 'Accept an invitation',
   description:
-    'Public, because the invitee has no session yet. The company comes from the token: there is no parameter in which to name a different one.',
+    'Public, because the invitee has no session yet. The company comes from the token: there is no parameter in which to name a different one. Makes the membership and signs nobody in: the person signs in afterwards with the address returned. An address with no sign-in yet must send a `password` meeting the password policy (422 `auth.invitation_password_required` without one, `auth.weak_password` for one refused); an address that already signs in needs none, and one sent is not applied (`existingAccount`).',
   tags: ['authentication'],
   security: 'public',
   params: noSchema,
   query: noSchema,
   body: z.object({
-    token: z.string().min(1).max(512),
+    token: invitationTokenSchema,
     displayName: z.string().min(1).max(120),
     password: z.string().min(1).max(200).optional(),
     clientApp: z.enum(['web', 'desktop', 'mobile']).default('web'),
   }),
   responses: {
-    200: { description: 'Accepted, and signed in.', schema: acceptedSchema },
-    422: { description: 'The invitation is unknown, spent, withdrawn or expired.' },
+    200: { description: 'Accepted. Sign in next.', schema: acceptedSchema },
+    422: {
+      description:
+        'The invitation is unknown, spent, withdrawn or expired (`auth.invitation_invalid`); a new sign-in needs a password (`auth.invitation_password_required`); or the password was refused (`auth.weak_password`).',
+    },
   },
   handler: async ({ body }, context) => {
     const accepted = await context.services.invitations.accept({
@@ -450,15 +478,20 @@ export const acceptInvitationRoute = defineRoute({
       ...(body.password === undefined ? {} : { password: body.password }),
       displayName: body.displayName,
       clientApp: body.clientApp,
-      userAgent: context.userAgent,
-      ipAddress: context.ipAddress,
     });
 
-    // Accepting does sign the person in, but the tokens are not returned here.
-    // The invitation token travels by email and may sit in a mailbox, a proxy
-    // log or a screenshot; handing back a live session in exchange would make
-    // every one of those a way in. The client signs in normally afterwards.
-    return { status: 200, body: { accepted: true, email: accepted.email } };
+    // No tokens, and no session: the invitation token travels by email and
+    // may sit in a mailbox, a proxy log or a screenshot, so it buys a
+    // membership and nothing more. The client sends the person to sign in.
+    return {
+      status: 200,
+      body: {
+        accepted: true,
+        email: accepted.email,
+        existingAccount: accepted.existingAccount,
+        signInRequired: true,
+      },
+    };
   },
 });
 
@@ -500,6 +533,7 @@ export const workspaceRoutes = [
   inviteMemberRoute,
   listInvitationsRoute,
   revokeInvitationRoute,
+  inspectInvitationRoute,
   acceptInvitationRoute,
   revokeMemberSessionsRoute,
 ];

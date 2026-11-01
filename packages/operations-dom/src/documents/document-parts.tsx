@@ -25,7 +25,32 @@ export function useDocumentAccess() {
     read: enabled && permissions.includes('document.read'),
     create: enabled && permissions.includes('document.create'),
     manage: enabled && permissions.includes('document.manage'),
+    /** Upload a PDF, and switch any document's sharing (0067). */
+    upload: enabled && permissions.includes('document.upload'),
   };
+}
+
+/** Marks an uploaded document, and one that is not shared, beside its state. */
+export function DocumentMarks({
+  document,
+}: {
+  document: Pick<DocumentRow, 'source' | 'shareable' | 'status'>;
+}) {
+  const { t } = useTranslation();
+  return (
+    <>
+      {document.source === 'uploaded' ? (
+        <span className="rounded-full border border-border-subtle px-2 py-0.5 text-xs font-medium text-content-muted">
+          {t('documents.upload.badge')}
+        </span>
+      ) : null}
+      {document.status === 'ready' && !document.shareable ? (
+        <span className="rounded-full border border-border-subtle bg-surface-muted px-2 py-0.5 text-xs font-medium text-content-muted">
+          {t('documents.sharing.badge')}
+        </span>
+      ) : null}
+    </>
+  );
 }
 
 /** Where a document stands, as one word: its link open or stopped, being made, or failed. */

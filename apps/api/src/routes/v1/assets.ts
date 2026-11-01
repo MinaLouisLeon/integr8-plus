@@ -477,9 +477,73 @@ export async function assetTimeline(tx: TenantTransaction, asset: Asset): Promis
       attachment: { ...row, workOrderId: attachmentJob.get(row.id) ?? null },
     })),
   ];
-  return entries.sort((a, b) =>
-    a.at === b.at ? b.id.localeCompare(a.id) : b.at.localeCompare(a.at),
-  );
+  return entries.sort(newestFirst);
+}
+
+/** Newest first; among entries of the same moment, by id and then kind, so a page edge is stable. */
+function newestFirst(a: TimelineEntry, b: TimelineEntry): number {
+  return a.at !== b.at
+    ? b.at.localeCompare(a.at)
+    : a.id !== b.id
+      ? b.id.localeCompare(a.id)
+      : b.kind.localeCompare(a.kind);
+}
+
+const TIMELINE_KINDS: readonly string[] = ['event', 'job', 'submission', 'part', 'attachment'];
+
+/** Where a page of the timeline ends: the last entry shown, as an opaque string. */
+function timelineCursor(entry: TimelineEntry): string {
+  return Buffer.from(JSON.stringify([entry.at, entry.id, entry.kind])).toString('base64url');
+}
+
+function decodeTimelineCursor(cursor: string): Pick<TimelineEntry, 'at' | 'id' | 'kind'> {
+  try {
+    const decoded: unknown = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8'));
+    if (
+      Array.isArray(decoded) &&
+      decoded.length === 3 &&
+      decoded.every((part) => typeof part === 'string')
+    ) {
+      const [at, id, kind] = decoded as [string, string, string];
+      if (TIMELINE_KINDS.includes(kind) && !Number.isNaN(Date.parse(at))) {
+        return { at, id, kind: kind as TimelineEntry['kind'] };
+      }
+    }
+  } catch {
+    // Answered below, as any other malformed cursor.
+  }
+  throw unprocessable('invalid_cursor', 'This page link is not valid.', [
+    { field: 'query.before', code: 'invalid_cursor', message: cursor },
+  ]);
+}
+
+/**
+ * One page of a timeline, newest first: the entries older than `before`, at
+ * most `limit` of them. Without a limit, all of it, as before paging existed.
+ */
+export function timelinePage(
+  entries: readonly TimelineEntry[],
+  options: { limit?: number | undefined; before?: string | undefined },
+): { entries: TimelineEntry[]; nextCursor: string | null } {
+  const sorted = [...entries].sort(newestFirst);
+  let start = 0;
+  if (options.before !== undefined) {
+    const edge = decodeTimelineCursor(options.before);
+    start = sorted.findIndex((entry) => newestFirst(edge as TimelineEntry, entry) < 0);
+    if (start === -1) {
+      start = sorted.length;
+    }
+  }
+  if (options.limit === undefined) {
+    return { entries: sorted.slice(start), nextCursor: null };
+  }
+  const page = sorted.slice(start, start + options.limit);
+  const last = page.at(-1);
+  return {
+    entries: page,
+    nextCursor:
+      start + options.limit < sorted.length && last !== undefined ? timelineCursor(last) : null,
+  };
 }
 
 function serialTaken(field: string, existing: Asset | undefined): never {
@@ -829,26 +893,39 @@ export const assetTimelineRoute = defineRoute({
   operationId: 'getAssetTimeline',
   summary: 'Everything an asset has been through',
   description:
-    'Newest first: its own events, the jobs linked to it, and the submissions, parts and files that name it or whose job has no other asset. Anyone who may read the asset sees all of it, whoever did the work.',
+    'Newest first: its own events, the jobs linked to it, and the submissions, parts and files that name it or whose job has no other asset. Anyone who may read the asset sees all of it, whoever did the work. With `limit`, one page at a time: `nextCursor` is passed back as `before` for the older entries ("Show older"), and is null on the last page. Without `limit`, the whole timeline, as before paging existed.',
   tags: TAGS,
   security: 'authenticated',
   permission: 'asset.read',
   feature: ASSETS,
   params: assetParams,
-  query: noSchema,
+  query: z.object({
+    /** How many entries in a page; absent for the whole timeline. Screens ask for 50. */
+    limit: z.coerce.number().int().min(1).max(200).optional(),
+    /** The previous page's `nextCursor`: the entries older than its last one. */
+    before: z.string().max(400).optional(),
+  }),
   body: noSchema,
   responses: {
     200: {
-      description: 'The timeline.',
-      schema: z.object({ entries: z.array(timelineEntrySchema) }),
+      description: 'The timeline, or one page of it.',
+      schema: z.object({
+        entries: z.array(timelineEntrySchema),
+        /** Where the next, older page starts; null when there is none, or no `limit` was given. */
+        nextCursor: z.string().nullable(),
+      }),
     },
     404: { description: 'No such asset.' },
+    422: { description: 'A `before` this API did not hand out (`invalid_cursor`).' },
   },
-  handler: async ({ params }, context) => {
+  handler: async ({ params, query }, context) => {
     const { principal } = context;
-    const body = await withTenant(principal.tenantId, async (tx) => ({
-      entries: await assetTimeline(tx, await readableAsset(tx, principal, params.assetId)),
-    }));
+    const body = await withTenant(principal.tenantId, async (tx) =>
+      timelinePage(await assetTimeline(tx, await readableAsset(tx, principal, params.assetId)), {
+        limit: query.limit,
+        before: query.before,
+      }),
+    );
     return { status: 200, body };
   },
 });

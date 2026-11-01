@@ -89,6 +89,8 @@ export const apiErrorsEn = {
     invalid_token: 'Your session has ended. Sign in again.',
     invitation_invalid:
       'This invitation is no longer valid. It may have been used, withdrawn or expired. Ask for a new one.',
+    invitation_password_required:
+      'Choose a password to accept this invitation. If this app has no box for one, update the app or accept the invitation on the web.',
     not_a_member: 'Your account is not a member of this company. Ask its owner to invite you.',
     refresh_token_reuse: 'This session was ended to keep your account safe. Sign in again.',
     session_revoked: 'You were signed out of this session. Sign in again.',
@@ -159,6 +161,7 @@ export const apiErrorsEn = {
     'Some document fields are missing or too long. Check the fields marked below.',
   document_link_unavailable:
     'Documents cannot be made yet: this server has no web address for the QR code. Ask Integr8.',
+  document_not_pdf: 'Only a PDF can be uploaded as a document. Choose a PDF file.',
   document_template_archived: 'This template is archived. Choose another one.',
   document_template_changed:
     'Someone else saved this template meanwhile. Open it again to see their changes.',
@@ -167,6 +170,7 @@ export const apiErrorsEn = {
   document_template_invalid: 'The template has problems. Each one is listed below.',
   document_template_problem: 'This part of the template needs fixing.',
   document_template_wrong_form: 'This template belongs to another form.',
+  document_too_large: 'This PDF is larger than 20 MB. Upload a smaller one.',
   double_booked: 'This person is on another job at that time.',
   draft_changed:
     'The draft was saved again since you reviewed it. Review it again before publishing.',
@@ -229,6 +233,8 @@ export const apiErrorsEn = {
   form_unknown: 'Choose a published form.',
   form_version_unavailable:
     'This version of the form is no longer available. Fill it again on the current version.',
+  hr_access_owner_only:
+    'Only the owner can do this for somebody who has, or would have, HR access. You can suspend them in an emergency; the owner is told.',
   hr_key_missing:
     'ID, insurance and bank numbers cannot be stored or shown until the HR data key is set on the server. Ask Integr8 to set it.',
   idempotency_key_in_progress:
@@ -407,6 +413,8 @@ export const apiErrorsEn = {
   quote_closed: 'This quote is no longer open.',
   quote_converted: 'This quote has already become a sales order.',
   quote_empty: 'Add at least one line before issuing.',
+  quote_unavailable:
+    'This quote is no longer available online. Please contact the company that sent it.',
   quote_expired: 'This quote has expired. A new one has to be issued.',
   quote_not_accepted: 'Only an accepted quote becomes a sales order.',
   quote_not_draft: 'Only a draft quote changes. Revise this quote to edit it.',

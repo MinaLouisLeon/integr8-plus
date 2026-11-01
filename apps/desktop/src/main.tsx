@@ -5,6 +5,8 @@ import { App } from './App';
 import { APP_ENV, APP_VERSION, SENTRY_DSN } from './lib/env';
 import { applyRememberedTheme } from './lib/company-theme';
 import { applyPreferences, readPreferences } from './lib/preferences';
+// The Integr8 Media look's faces, bundled with the app (the staff build wears them).
+import '@integr8/tokens/fonts.css';
 import './styles.css';
 
 /**
