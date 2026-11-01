@@ -928,6 +928,47 @@ export const ar: Catalogue<Messages> = {
       submit: 'إنشاء نسخة',
     },
 
+    // Copying forms and PDF templates (form builder decisions 1 and 10, 1.3.0).
+    staffCopy: {
+      toCompany: 'نسخ إلى شركة أخرى',
+      toLibrary: 'حفظ كقالب في المكتبة',
+      companyTitle: 'نسخ «{{name}}» إلى شركة أخرى',
+      companyBody:
+        'تصل أحدث نسخة منشورة من النموذج (أو مسودته إن لم يُنشر قط) إلى الشركة الأخرى كنموذج جديد بمسودة غير منشورة. تبقى أسئلته ومفاتيح إجاباته ونصوصه العربية والإنجليزية كما هي تمامًا.',
+      search: 'ابحث عن شركة',
+      company: 'الشركة',
+      noCompanies: 'لا توجد شركة مطابقة.',
+      name: 'اسم النسخة',
+      includePdfs: 'تضمين قوالب PDF الخاصة به',
+      includePdfsHelp: 'تُنسخ صورها إلى مساحة تخزين الشركة الأخرى وتُحتسب من حصتها.',
+      reason: 'السبب (يُحفظ في سجلّي التدقيق لدى الشركتين)',
+      neverCopied:
+        'لا يُنسخ أبدًا: روابط أنواع المهام، والإرساليات، والإجابات، وأي بيانات للعملاء.',
+      companySubmit: 'نسخ إلى هذه الشركة',
+      companyDone: 'نُسخ إلى {{company}} كمسودة غير منشورة.',
+      companyDoneWithPdfs:
+        'نُسخ إلى {{company}} كمسودة غير منشورة، مع قوالب PDF الخاصة به ({{templates}}).',
+      libraryTitle: 'حفظ «{{name}}» كقالب في المكتبة',
+      libraryBody:
+        'ستتمكن كل شركة من بدء نموذج منه، إلى جانب القوالب التي تأتي مع Integr8 Plus. يُصنع من أحدث نسخة منشورة من النموذج، ولا تصل التغييرات اللاحقة إلى المكتبة إلا عند استبداله من صفحة القوالب في لوحة التحكم.',
+      libraryNotPublished: 'انشر هذا النموذج أولًا: تأخذ المكتبة نسخته المنشورة.',
+      nameEn: 'الاسم (بالإنجليزية)',
+      nameAr: 'الاسم (بالعربية)',
+      descriptionEn: 'الوصف (بالإنجليزية)',
+      descriptionAr: 'الوصف (بالعربية)',
+      key: 'المفتاح',
+      keyInvalid: 'حروف إنجليزية صغيرة وأرقام و«_»، ويبدأ بحرف.',
+      category: 'الفئة',
+      libraryPdfs: 'تضمين قوالب PDF الخاصة به',
+      libraryPdfsHelp: 'تحصل الشركة التي تبدأ من هذا القالب على نسخها الخاصة، بما فيها الصور.',
+      librarySubmit: 'حفظ في المكتبة',
+      libraryDone: 'حُفظ في المكتبة باسم «{{key}}».',
+    },
+    // Copying forms and PDF templates (form builder decisions 1 and 10, 1.3.0).
+    libraryPicker: {
+      staffMade: 'من إعداد Integr8',
+      withPdfs: 'يأتي مع قوالب PDF ({{templates}})',
+    },
     templates: {
       title: 'البدء من قالب',
       subtitle: 'نماذج جاهزة يمكنك نسخها وتغييرها. أما القوالب نفسها فتبقى كما هي.',
@@ -7625,6 +7666,39 @@ export const ar: Catalogue<Messages> = {
       copied: 'تم النسخ',
       done: 'نسخته',
     },
+    // Copying forms and PDF templates (form builder decisions 1 and 10, 1.3.0).
+    templateCopy: {
+      duplicate: 'تكرار',
+      toForm: 'نسخ إلى نموذج آخر',
+      copyName: '{{name}} (نسخة)',
+      duplicated: 'كُرّر باسم «{{name}}».',
+      savedOnly: 'تُصنع النسخ من آخر نسخة محفوظة.',
+      toFormTitle: 'نسخ «{{name}}» إلى نموذج آخر',
+      toFormBody:
+        'يُبحث عن كل سؤال يستخدمه القالب في النموذج الآخر: أولًا بمفتاح الإجابة نفسه، ثم بالصياغة نفسها بالعربية أو الإنجليزية. اختر سؤالًا لما يتبقى، أو احذف ما يستخدمه. لا يُحفظ شيء حتى يُحسم كل سؤال.',
+      repairTitle: 'تكرار «{{name}}»',
+      repairBody:
+        'بعض الأسئلة التي يستخدمها هذا القالب لم تعد في النموذج. اختر سؤالًا لكل منها، أو احذف ما يستخدمها.',
+      targetForm: 'النسخ إلى النموذج',
+      chooseForm: 'اختر نموذجًا منشورًا',
+      noForms: 'لا يوجد نموذج منشور آخر.',
+      name: 'اسم النسخة',
+      targetUnusable: 'تعذّرت قراءة النسخة المنشورة من ذلك النموذج.',
+      matchingTitle: 'الأسئلة التي يستخدمها القالب',
+      nothingToMatch: 'لا يستخدم هذا القالب أي سؤال.',
+      inTemplate: 'في هذا القالب',
+      inTarget: 'في النموذج الآخر',
+      section: 'قسم متكرر',
+      choose: 'اختر…',
+      remove: 'احذف ما يستخدمه',
+      byKey: 'طوبق بمفتاح الإجابة',
+      byWording: 'طوبق بالصياغة',
+      noCandidates: 'لا شيء في النموذج الآخر يمكن أن يحل محله.',
+      allMatched: 'حُسم كل سؤال.',
+      stillOpen: 'ما زال للحسم: {{open}}',
+      save: 'حفظ النسخة',
+      copied: 'نُسخ باسم «{{name}}» إلى {{form}}.',
+    },
     designer: {
       tab: 'قوالب PDF',
       intro: 'صمّم ملفات PDF التي تنشئها هذه الشركة من هذا النموذج. كل قالب بحجم A4 طولي.',
@@ -8392,6 +8466,35 @@ export const ar: Catalogue<Messages> = {
       category: 'الفئة',
       updated: 'آخر تحديث',
       empty: 'المكتبة فارغة.',
+    },
+    // Copying forms and PDF templates (form builder decisions 1 and 10, 1.3.0).
+    libraryTemplates: {
+      builtin: 'مدمج',
+      staffMade: 'من إعداد الفريق',
+      retired: 'موقوف',
+      source: 'من {{company}}، النسخة {{version}}',
+      sourceGone: 'من شركة لم تعد موجودة',
+      pdfs: 'قوالب PDF: {{templates}}',
+      edit: 'إعادة التسمية',
+      save: 'حفظ',
+      cancel: 'إلغاء',
+      nameEn: 'الاسم (بالإنجليزية)',
+      nameAr: 'الاسم (بالعربية)',
+      descriptionEn: 'الوصف (بالإنجليزية)',
+      descriptionAr: 'الوصف (بالعربية)',
+      category: 'الفئة',
+      refresh: 'الاستبدال بالنسخة الأحدث',
+      refreshHelp:
+        'يقرأ من جديد أحدث نسخة منشورة من النموذج المصدر وقوالب PDF الخاصة به. لا تتغير النماذج التي أُنشئت من هذا القالب من قبل.',
+      retire: 'إيقاف',
+      restore: 'إعادة',
+      retireHelp:
+        'القالب الموقوف لا يُعرض على الشركات بعد الآن، ولا تتغير النماذج التي أُنشئت منه من قبل.',
+      readOnly: 'يأتي مع Integr8 Plus ولا يتغير إلا مع المنتج.',
+      refreshed: 'يحمل «{{key}}» الآن النسخة {{version}} من نموذجه.',
+      howToAdd:
+        'لإضافة قالب، افتح نموذج شركة في تطبيق الفريق المكتبي واختر «حفظ كقالب في المكتبة».',
+      showRetired: 'عرض القوالب الموقوفة',
     },
     health: {
       title: 'ما يفشل بصمت',

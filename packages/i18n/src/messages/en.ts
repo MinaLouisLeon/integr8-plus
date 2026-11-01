@@ -994,6 +994,48 @@ export const en = {
       submit: 'Make a copy',
     },
 
+    // Copying forms and PDF templates (form builder decisions 1 and 10, 1.3.0).
+    staffCopy: {
+      toCompany: 'Copy to another company',
+      toLibrary: 'Save as library template',
+      companyTitle: 'Copy “{{name}}” to another company',
+      companyBody:
+        'The form’s latest published version (or its draft, if it was never published) arrives in the other company as a new form with an unpublished draft. Its questions, answer keys and English and Arabic texts stay exactly as they are.',
+      search: 'Find a company',
+      company: 'Company',
+      noCompanies: 'No company matches.',
+      name: 'Name of the copy',
+      includePdfs: 'Include its PDF templates',
+      includePdfsHelp:
+        'Their pictures are copied into the other company’s storage and count towards its allowance.',
+      reason: 'Reason (kept in both companies’ audit logs)',
+      neverCopied: 'Never copied: job type links, submissions, answers or any customer data.',
+      companySubmit: 'Copy to this company',
+      companyDone: 'Copied to {{company}} as an unpublished draft.',
+      companyDoneWithPdfs:
+        'Copied to {{company}} as an unpublished draft, with its PDF templates ({{templates}}).',
+      libraryTitle: 'Save “{{name}}” as a library template',
+      libraryBody:
+        'Every company will be able to start a form from it, beside the templates Integr8 Plus ships with. It is made from the form’s latest published version; later changes reach the library only when it is replaced from the dashboard’s Templates page.',
+      libraryNotPublished: 'Publish this form first: the library takes its published version.',
+      nameEn: 'Name (English)',
+      nameAr: 'Name (Arabic)',
+      descriptionEn: 'Description (English)',
+      descriptionAr: 'Description (Arabic)',
+      key: 'Key',
+      keyInvalid: 'Lowercase letters, digits and “_”, starting with a letter.',
+      category: 'Category',
+      libraryPdfs: 'Include its PDF templates',
+      libraryPdfsHelp:
+        'A company that starts from this template gets its own copies, pictures included.',
+      librarySubmit: 'Save to the library',
+      libraryDone: 'Saved to the library as “{{key}}”.',
+    },
+    // Copying forms and PDF templates (form builder decisions 1 and 10, 1.3.0).
+    libraryPicker: {
+      staffMade: 'Made by Integr8',
+      withPdfs: 'Comes with PDF templates ({{templates}})',
+    },
     templates: {
       title: 'Start from a template',
       subtitle:
@@ -7569,6 +7611,39 @@ export const en = {
       copied: 'Copied',
       done: 'I have copied it',
     },
+    // Copying forms and PDF templates (form builder decisions 1 and 10, 1.3.0).
+    templateCopy: {
+      duplicate: 'Duplicate',
+      toForm: 'Copy to another form',
+      copyName: '{{name}} (copy)',
+      duplicated: 'Duplicated as “{{name}}”.',
+      savedOnly: 'Copies are made from the last saved version.',
+      toFormTitle: 'Copy “{{name}}” to another form',
+      toFormBody:
+        'Every question the template uses is looked for in the other form: first the same answer key, then the same wording in English or Arabic. Choose a question for anything left, or take out what uses it. Nothing is saved until every question is decided.',
+      repairTitle: 'Duplicate “{{name}}”',
+      repairBody:
+        'Some questions this template uses are no longer in the form. Choose a question for each, or take out what uses it.',
+      targetForm: 'Copy to form',
+      chooseForm: 'Choose a published form',
+      noForms: 'There is no other published form.',
+      name: 'Name of the copy',
+      targetUnusable: 'That form’s published version could not be read.',
+      matchingTitle: 'Questions the template uses',
+      nothingToMatch: 'This template uses no questions.',
+      inTemplate: 'In this template',
+      inTarget: 'In the other form',
+      section: 'Repeating section',
+      choose: 'Choose…',
+      remove: 'Take out what uses it',
+      byKey: 'Matched by answer key',
+      byWording: 'Matched by wording',
+      noCandidates: 'Nothing in the other form can take its place.',
+      allMatched: 'Every question is decided.',
+      stillOpen: 'Still to decide: {{open}}',
+      save: 'Save the copy',
+      copied: 'Copied as “{{name}}” to {{form}}.',
+    },
     designer: {
       tab: 'PDF templates',
       intro: 'Design the PDFs this company makes from this form. Each template is A4 portrait.',
@@ -8353,6 +8428,35 @@ export const en = {
       category: 'Category',
       updated: 'Updated',
       empty: 'The library is empty.',
+    },
+    // Copying forms and PDF templates (form builder decisions 1 and 10, 1.3.0).
+    libraryTemplates: {
+      builtin: 'Built in',
+      staffMade: 'Made by staff',
+      retired: 'Retired',
+      source: 'From {{company}}, version {{version}}',
+      sourceGone: 'From a company that no longer exists',
+      pdfs: 'PDF templates: {{templates}}',
+      edit: 'Rename',
+      save: 'Save',
+      cancel: 'Cancel',
+      nameEn: 'Name (English)',
+      nameAr: 'Name (Arabic)',
+      descriptionEn: 'Description (English)',
+      descriptionAr: 'Description (Arabic)',
+      category: 'Category',
+      refresh: 'Replace with the newer version',
+      refreshHelp:
+        'Reads the source form’s latest published version and its PDF templates again. Forms already made from this template do not change.',
+      retire: 'Retire',
+      restore: 'Bring back',
+      retireHelp:
+        'A retired template is no longer offered to companies; forms already made from it do not change.',
+      readOnly: 'Ships with Integr8 Plus and changes only with the product.',
+      refreshed: '“{{key}}” now holds version {{version}} of its form.',
+      howToAdd:
+        'To add one, open a company’s form in the staff desktop app and choose “Save as library template”.',
+      showRetired: 'Show retired templates',
     },
     health: {
       title: 'What is failing quietly',

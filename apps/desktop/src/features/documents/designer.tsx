@@ -25,6 +25,7 @@ import {
   TextInput,
 } from './designer-inputs';
 import { moved, newField, questions } from './designer-model';
+import { TemplateCopyActions } from './template-copy';
 
 /**
  * The PDF template designer (docs/documents ADR-0001 D1–D3), a tab of the
@@ -284,6 +285,14 @@ function TemplateEditor({
           >
             {template.archived ? t('documents.designer.restore') : t('documents.designer.archive')}
           </Button>
+          <TemplateCopyActions
+            templateId={template.id}
+            templateName={template.name}
+            design={template.design}
+            formId={formId}
+            form={form}
+            dirty={dirty}
+          />
         </div>
         <p role="status" className="text-xs text-content-muted">
           {dirty ? t('documents.designer.unsaved') : justSaved ? t('documents.designer.saved') : ''}

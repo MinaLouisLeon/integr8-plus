@@ -201,8 +201,13 @@ export function FormsListRoute() {
                   className="flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4"
                 >
                   <div className="flex flex-col gap-1">
-                    <span className="text-xs uppercase tracking-wide text-content-muted">
+                    <span className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-wide text-content-muted">
                       {t(`forms.templates.category.${template.category}`)}
+                      {template.source === 'staff' ? (
+                        <span className="rounded-full bg-accent-subtle px-2 py-0.5 normal-case tracking-normal text-content">
+                          {t('forms.libraryPicker.staffMade')}
+                        </span>
+                      ) : null}
                     </span>
                     <h3 className="text-base font-semibold text-content">
                       {say(template.title, locale)}
@@ -213,6 +218,13 @@ export function FormsListRoute() {
                     <p className="text-xs text-content-muted">
                       {t('forms.templates.fields', { count: template.fieldCount })}
                     </p>
+                    {template.documentTemplateCount > 0 ? (
+                      <p className="text-xs text-content-muted">
+                        {t('forms.libraryPicker.withPdfs', {
+                          templates: String(template.documentTemplateCount),
+                        })}
+                      </p>
+                    ) : null}
                   </div>
                   <div className="mt-auto flex flex-wrap gap-2">
                     <Button variant="secondary" onClick={() => setPreviewing(template.key)}>

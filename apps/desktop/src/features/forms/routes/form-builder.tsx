@@ -24,6 +24,7 @@ import {
 } from '../model/recovery';
 import { useDraftSync } from '../use-draft-sync';
 import { DocumentDesigner } from '../../documents/designer';
+import { StaffCopyActions } from '../components/staff-copy';
 
 /**
  * The form builder.
@@ -247,6 +248,11 @@ function Builder({
               >
                 {t('forms.builder.redo')}
               </Button>
+              <StaffCopyActions
+                formId={formId}
+                formTitle={detail.form.title}
+                published={live !== null}
+              />
               <Button disabled={sync.status === 'conflict'} onClick={() => setPublishing(true)}>
                 {t('forms.builder.publish')}
               </Button>
