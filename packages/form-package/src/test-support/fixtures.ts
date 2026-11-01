@@ -1,3 +1,9 @@
+/**
+ * Packages for tests: a well-formed one (the boiler service library form with
+ * a template and two pictures) and its raw parts to tamper with. Exported as
+ * `@integr8/form-package/testing` so the API's import suites refuse exactly
+ * the files this package's own suites do.
+ */
 import { createHash } from 'node:crypto';
 import { emptyDesign, type TemplateDesign } from '@integr8/document-render';
 import type { FormDefinition } from '@integr8/form-engine';
