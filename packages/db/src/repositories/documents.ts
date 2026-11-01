@@ -84,6 +84,7 @@ export class DocumentTemplatesRepository extends TenantScopedRepository {
         form_id: input.formId,
         name: input.name,
         design: JSON.stringify(input.design),
+        design_schema_version: schemaVersionOf(input.design),
         created_by: toUserId(input.by),
         updated_by: toUserId(input.by),
       })
@@ -106,7 +107,12 @@ export class DocumentTemplatesRepository extends TenantScopedRepository {
       .updateTable('document_templates')
       .set({
         ...(change.name === undefined ? {} : { name: change.name }),
-        ...(change.design === undefined ? {} : { design: JSON.stringify(change.design) }),
+        ...(change.design === undefined
+          ? {}
+          : {
+              design: JSON.stringify(change.design),
+              design_schema_version: schemaVersionOf(change.design),
+            }),
         revision: sql<number>`revision + 1`,
         updated_by: toUserId(by),
       })
@@ -132,6 +138,12 @@ export class DocumentTemplatesRepository extends TenantScopedRepository {
       .executeTakeFirst();
     return row === undefined ? undefined : toTemplate(row);
   }
+}
+
+/** The design's own `schemaVersion`, kept beside it so a query can find old designs (1.3.0). */
+function schemaVersionOf(design: unknown): number {
+  const version = (design as { schemaVersion?: unknown } | null)?.schemaVersion;
+  return typeof version === 'number' && Number.isInteger(version) && version > 0 ? version : 1;
 }
 
 function toTemplate(row: Selectable<DocumentTemplatesTable>): DocumentTemplate {

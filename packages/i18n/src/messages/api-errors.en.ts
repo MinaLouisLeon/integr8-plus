@@ -162,6 +162,7 @@ export const apiErrorsEn = {
     'Some document fields are missing or too long. Check the fields marked below.',
   document_link_unavailable:
     'Documents cannot be made yet: this server has no web address for the QR code. Ask Integr8.',
+  document_preview_failed: 'The preview could not be printed just now. Try again in a minute.',
   document_not_pdf: 'Only a PDF can be uploaded as a document. Choose a PDF file.',
   document_template_archived: 'This template is archived. Choose another one.',
   document_template_changed:
@@ -176,7 +177,11 @@ export const apiErrorsEn = {
   document_template_problem: 'This part of the template needs fixing.',
   document_template_unmatched:
     'Some questions the template uses are not in the other form. Choose a question for each, or take out what uses it.',
+  document_template_newer:
+    'This template was saved by a newer version of the designer. Update the app to edit it.',
   document_template_wrong_form: 'This template belongs to another form.',
+  document_templates_affected:
+    'Some PDF templates use questions this version drops or changes. Confirm to publish; they will be marked to fix.',
   document_too_large: 'This PDF is larger than 20 MB. Upload a smaller one.',
   double_booked: 'This person is on another job at that time.',
   draft_changed:

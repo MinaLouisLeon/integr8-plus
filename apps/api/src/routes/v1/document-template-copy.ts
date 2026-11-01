@@ -26,7 +26,7 @@ import {
 import { conflict, type ErrorDetail, notFound, unprocessable } from '../../http/errors.js';
 import { defineRoute, noSchema } from '../../http/routes.js';
 import { mediaKey } from '../../media/storage.js';
-import { designRefused, templateBody, templateSchema } from './documents.js';
+import { designRefused, templateBodies, templateSchema } from './documents.js';
 import { compiledVersion } from './submissions.js';
 
 /**
@@ -249,9 +249,12 @@ export const copyDocumentTemplateRoute = defineRoute({
             'A picture this template uses is no longer in storage; upload it again before copying.',
           );
         }
-        return saved;
+        // Shown like any other template, checked against its form, so a copy of a
+        // template that already needed attention says so.
+        const [shown] = await templateBodies(tx, [saved]);
+        return shown!;
       });
-      return { status: 201, body: templateBody(created) };
+      return { status: 201, body: created };
     } catch (error) {
       if (store !== null) {
         await discardPictures(store, copies);

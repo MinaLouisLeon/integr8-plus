@@ -1104,7 +1104,7 @@ export interface paths {
         put?: never;
         /**
          * Validate the draft and compare it with the live version
-         * @description What publishing would decide, without publishing: every issue that would refuse it, named by field, and every change against the live version with the breaking ones marked.
+         * @description What publishing would decide, without publishing: every issue that would refuse it, named by field, every change against the live version with the breaking ones marked, and the PDF templates that use a question the draft drops or changes.
          */
         post: operations["checkFormDraft"];
         delete?: never;
@@ -1465,7 +1465,7 @@ export interface paths {
         head?: never;
         /**
          * Save a PDF template
-         * @description Staff only. `revision` is the one last read: a template saved meanwhile by someone else answers 409 `document_template_changed`, and nothing is overwritten. Documents already made keep the design they were printed with.
+         * @description Staff only. `revision` is the one last read: a template saved meanwhile by someone else answers 409 `document_template_changed`, and nothing is overwritten. Documents already made keep the design they were printed with. A question the form has since dropped or changed does not stop a save when the template already named it (it stays in `problems`); a save that adds a new broken reference is refused (422). A version 1 design sent over a template a newer designer saved is refused (409 `document_template_newer`).
          */
         patch: operations["updateDocumentTemplate"];
         trace?: never;
@@ -1484,6 +1484,26 @@ export interface paths {
          * @description Staff only. An archived template is no longer offered for new documents; documents made from it are untouched.
          */
         post: operations["archiveDocumentTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/document-templates/{templateId}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Print a design as a PDF, without keeping it
+         * @description Staff only (`document.design`). Prints `design` — the designer’s current one, saved or not — the way a document is printed, filled with a submission of the template’s form or, without one, with sample answers. The PDF is returned and nothing is stored or counted against the company’s storage. A few per minute per person and a cap for the whole server (429 `rate_limited`); 503 `document_preview_failed` when the printer cannot print.
+         */
+        post: operations["previewDocumentTemplate"];
         delete?: never;
         options?: never;
         head?: never;
@@ -14854,6 +14874,18 @@ export interface operations {
                                 detail: string[];
                             }[];
                         };
+                        documentTemplates: {
+                            /** Format: uuid */
+                            templateId: string;
+                            name: string;
+                            problems: {
+                                path: string;
+                                code: string;
+                                message: string;
+                                blockId: string | null;
+                                fieldKey: string | null;
+                            }[];
+                        }[];
                     };
                 };
             };
@@ -14936,6 +14968,8 @@ export interface operations {
                     changeNote?: string;
                     /** @default false */
                     acknowledgeBreakingChanges?: boolean;
+                    /** @default false */
+                    acknowledgeTemplateChanges?: boolean;
                 };
             };
         };
@@ -14992,7 +15026,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description The draft changed since it was reviewed, or breaking changes were not acknowledged. */
+            /** @description The draft changed since it was reviewed, breaking changes were not acknowledged, or PDF templates would need attention and that was not acknowledged (`document_templates_affected`). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -17159,6 +17193,14 @@ export interface operations {
                             createdAt: string;
                             /** Format: date-time */
                             updatedAt: string;
+                            needsAttention: boolean;
+                            problems: {
+                                path: string;
+                                code: string;
+                                message: string;
+                                blockId: string | null;
+                                fieldKey: string | null;
+                            }[];
                         }[];
                     };
                 };
@@ -17263,6 +17305,14 @@ export interface operations {
                         createdAt: string;
                         /** Format: date-time */
                         updatedAt: string;
+                        needsAttention: boolean;
+                        problems: {
+                            path: string;
+                            code: string;
+                            message: string;
+                            blockId: string | null;
+                            fieldKey: string | null;
+                        }[];
                     };
                 };
             };
@@ -17366,6 +17416,14 @@ export interface operations {
                         createdAt: string;
                         /** Format: date-time */
                         updatedAt: string;
+                        needsAttention: boolean;
+                        problems: {
+                            path: string;
+                            code: string;
+                            message: string;
+                            blockId: string | null;
+                            fieldKey: string | null;
+                        }[];
                     };
                 };
             };
@@ -17474,6 +17532,14 @@ export interface operations {
                         createdAt: string;
                         /** Format: date-time */
                         updatedAt: string;
+                        needsAttention: boolean;
+                        problems: {
+                            path: string;
+                            code: string;
+                            message: string;
+                            blockId: string | null;
+                            fieldKey: string | null;
+                        }[];
                     };
                 };
             };
@@ -17502,7 +17568,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Saved meanwhile by someone else (`document_template_changed`). */
+            /** @description Saved meanwhile by someone else (`document_template_changed`), or an older designer saving over a newer design (`document_template_newer`). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -17583,6 +17649,14 @@ export interface operations {
                         createdAt: string;
                         /** Format: date-time */
                         updatedAt: string;
+                        needsAttention: boolean;
+                        problems: {
+                            path: string;
+                            code: string;
+                            message: string;
+                            blockId: string | null;
+                            fieldKey: string | null;
+                        }[];
                     };
                 };
             };
@@ -17646,6 +17720,106 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Error"];
                 };
+            };
+        };
+    };
+    previewDocumentTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                templateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    design: {
+                        [key: string]: unknown;
+                    };
+                    /** Format: uuid */
+                    submissionId?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description The PDF. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        contentType: "application/pdf";
+                        base64: string;
+                        pageCount: number;
+                        byteSize: number;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `documents` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such template, or no such submission this person may read. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The submission is of another form (`document_template_wrong_form`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The design has problems (`document_template_invalid`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Too many previews (`rate_limited`). */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The printer could not print it (`document_preview_failed`). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

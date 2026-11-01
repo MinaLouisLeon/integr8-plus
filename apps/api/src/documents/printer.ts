@@ -12,6 +12,14 @@ import type { ApiConfig } from '../config.js';
  * preview shows them. It runs with JavaScript off and every network request
  * refused: the page is our own HTML with its images inlined, and nothing in it
  * may reach anywhere else.
+ *
+ * The header and footer are Chromium's templates (the document look in
+ * `@integr8/document-render`). A template cannot tell which page it is on, so
+ * a header or footer left off the first page is done by printing twice: the
+ * whole document with the bands every page has, and again with the first
+ * page's; the result is the second print's first page followed by the first
+ * print's others. Both prints lay out the same content in the same page box,
+ * so their pages break in the same places.
  */
 
 export interface PrintJob {
@@ -19,6 +27,13 @@ export interface PrintJob {
   footerHtml: string;
   margins: Margins;
   hasFooter: boolean;
+  /** Chromium's header template; none when absent. */
+  headerHtml?: string;
+  hasHeader?: boolean;
+  /** A4 landscape rather than portrait. The page's own `@page` rule says so too. */
+  landscape?: boolean;
+  /** The first page's own header and footer, when they differ from the other pages'. */
+  firstPage?: { headerHtml: string; footerHtml: string; hasHeader: boolean; hasFooter: boolean };
 }
 
 export type PrinterStatus = { ok: true } | { ok: false; reason: string };
@@ -75,6 +90,23 @@ export class ChromiumPrinter implements PdfPrinter {
   }
 
   async print(job: PrintJob): Promise<Uint8Array> {
+    const every = await this.#printOnce(job, {
+      headerHtml: job.headerHtml ?? EMPTY,
+      footerHtml: job.footerHtml,
+      hasHeader: job.hasHeader === true,
+      hasFooter: job.hasFooter,
+    });
+    if (job.firstPage === undefined) {
+      return every;
+    }
+    const first = await this.#printOnce(job, job.firstPage);
+    return firstPageFrom(first, every);
+  }
+
+  async #printOnce(
+    job: PrintJob,
+    bands: { headerHtml: string; footerHtml: string; hasHeader: boolean; hasFooter: boolean },
+  ): Promise<Uint8Array> {
     await this.#acquire();
     try {
       const browser = await this.#launch();
@@ -88,14 +120,15 @@ export class ChromiumPrinter implements PdfPrinter {
         page.setDefaultTimeout(this.#timeoutMs);
         const work = (async () => {
           await page.setContent(job.html, { waitUntil: 'load', timeout: this.#timeoutMs });
+          const bandsShown = bands.hasHeader || bands.hasFooter;
           return page.pdf({
             format: 'A4',
-            landscape: false,
+            landscape: job.landscape === true,
             printBackground: true,
             preferCSSPageSize: true,
-            displayHeaderFooter: job.hasFooter,
-            headerTemplate: '<span></span>',
-            footerTemplate: job.hasFooter ? job.footerHtml : '<span></span>',
+            displayHeaderFooter: bandsShown,
+            headerTemplate: bands.hasHeader ? bands.headerHtml : EMPTY,
+            footerTemplate: bands.hasFooter ? bands.footerHtml : EMPTY,
             // The margins are the page's own `@page` rule, which already
             // knows which side is the start in Arabic.
             outline: false,
@@ -197,10 +230,12 @@ export class RecordingPrinter implements PdfPrinter {
     const font = await pdf.embedFont(StandardFonts.Helvetica);
     const pages = 1 + (job.html.match(/class="page-break"/gu)?.length ?? 0);
     for (let index = 0; index < pages; index += 1) {
-      const page = pdf.addPage([A4_WIDTH_PT, A4_HEIGHT_PT]);
+      const page = pdf.addPage(
+        job.landscape === true ? [A4_HEIGHT_PT, A4_WIDTH_PT] : [A4_WIDTH_PT, A4_HEIGHT_PT],
+      );
       page.drawText(`Recorded page ${String(index + 1)} of ${String(pages)}`, {
         x: 50,
-        y: A4_HEIGHT_PT - 80,
+        y: (job.landscape === true ? A4_WIDTH_PT : A4_HEIGHT_PT) - 80,
         size: 12,
         font,
       });
@@ -216,6 +251,23 @@ export class RecordingPrinter implements PdfPrinter {
 /** A4 in PDF points. */
 export const A4_WIDTH_PT = 595.28;
 export const A4_HEIGHT_PT = 841.89;
+
+/** Chromium's empty template: without one it prints the title and the date. */
+const EMPTY = '<span></span>';
+
+/** The first print's first page, then the second print's other pages, as one PDF. */
+export async function firstPageFrom(first: Uint8Array, rest: Uint8Array): Promise<Uint8Array> {
+  const others = await PDFDocument.load(rest);
+  const opening = await PDFDocument.load(first);
+  const out = await PDFDocument.create();
+  const [page] = await out.copyPages(opening, [0]);
+  out.addPage(page);
+  const later = others.getPageIndices().slice(1);
+  for (const copied of await out.copyPages(others, later)) {
+    out.addPage(copied);
+  }
+  return out.save();
+}
 
 export function buildPdfPrinter(config: ApiConfig): PdfPrinter {
   return config.PDF_RENDERER === 'chromium'

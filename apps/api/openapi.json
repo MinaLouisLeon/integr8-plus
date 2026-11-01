@@ -11055,7 +11055,7 @@
       "post": {
         "operationId": "checkFormDraft",
         "summary": "Validate the draft and compare it with the live version",
-        "description": "What publishing would decide, without publishing: every issue that would refuse it, named by field, and every change against the live version with the breaking ones marked.",
+        "description": "What publishing would decide, without publishing: every issue that would refuse it, named by field, every change against the live version with the breaking ones marked, and the PDF templates that use a question the draft drops or changes.",
         "tags": [
           "forms"
         ],
@@ -11213,13 +11213,69 @@
                         "breaking"
                       ],
                       "additionalProperties": false
+                    },
+                    "documentTemplates": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "templateId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "problems": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "path": {
+                                  "type": "string"
+                                },
+                                "code": {
+                                  "type": "string"
+                                },
+                                "message": {
+                                  "type": "string"
+                                },
+                                "blockId": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "fieldKey": {
+                                  "nullable": true,
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "path",
+                                "code",
+                                "message",
+                                "blockId",
+                                "fieldKey"
+                              ],
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "required": [
+                          "templateId",
+                          "name",
+                          "problems"
+                        ],
+                        "additionalProperties": false
+                      }
                     }
                   },
                   "required": [
                     "revision",
                     "valid",
                     "issues",
-                    "diff"
+                    "diff",
+                    "documentTemplates"
                   ],
                   "additionalProperties": false
                 }
@@ -11336,6 +11392,10 @@
                   "acknowledgeBreakingChanges": {
                     "default": false,
                     "type": "boolean"
+                  },
+                  "acknowledgeTemplateChanges": {
+                    "default": false,
+                    "type": "boolean"
                   }
                 },
                 "required": [
@@ -11449,7 +11509,7 @@
             "description": "No such form, or no draft."
           },
           "409": {
-            "description": "The draft changed since it was reviewed, or breaking changes were not acknowledged."
+            "description": "The draft changed since it was reviewed, breaking changes were not acknowledged, or PDF templates would need attention and that was not acknowledged (`document_templates_affected`)."
           },
           "422": {
             "description": "The definition does not compile. Details name the fields."
@@ -16266,6 +16326,42 @@
                             "type": "string",
                             "format": "date-time",
                             "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          },
+                          "needsAttention": {
+                            "type": "boolean"
+                          },
+                          "problems": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "path": {
+                                  "type": "string"
+                                },
+                                "code": {
+                                  "type": "string"
+                                },
+                                "message": {
+                                  "type": "string"
+                                },
+                                "blockId": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "fieldKey": {
+                                  "nullable": true,
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "path",
+                                "code",
+                                "message",
+                                "blockId",
+                                "fieldKey"
+                              ],
+                              "additionalProperties": false
+                            }
                           }
                         },
                         "required": [
@@ -16276,7 +16372,9 @@
                           "revision",
                           "archived",
                           "createdAt",
-                          "updatedAt"
+                          "updatedAt",
+                          "needsAttention",
+                          "problems"
                         ],
                         "additionalProperties": false
                       }
@@ -16448,6 +16546,42 @@
                       "type": "string",
                       "format": "date-time",
                       "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "needsAttention": {
+                      "type": "boolean"
+                    },
+                    "problems": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "path": {
+                            "type": "string"
+                          },
+                          "code": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          },
+                          "blockId": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "fieldKey": {
+                            "nullable": true,
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "path",
+                          "code",
+                          "message",
+                          "blockId",
+                          "fieldKey"
+                        ],
+                        "additionalProperties": false
+                      }
                     }
                   },
                   "required": [
@@ -16458,7 +16592,9 @@
                     "revision",
                     "archived",
                     "createdAt",
-                    "updatedAt"
+                    "updatedAt",
+                    "needsAttention",
+                    "problems"
                   ],
                   "additionalProperties": false
                 }
@@ -16593,6 +16729,42 @@
                       "type": "string",
                       "format": "date-time",
                       "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "needsAttention": {
+                      "type": "boolean"
+                    },
+                    "problems": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "path": {
+                            "type": "string"
+                          },
+                          "code": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          },
+                          "blockId": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "fieldKey": {
+                            "nullable": true,
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "path",
+                          "code",
+                          "message",
+                          "blockId",
+                          "fieldKey"
+                        ],
+                        "additionalProperties": false
+                      }
                     }
                   },
                   "required": [
@@ -16603,7 +16775,9 @@
                     "revision",
                     "archived",
                     "createdAt",
-                    "updatedAt"
+                    "updatedAt",
+                    "needsAttention",
+                    "problems"
                   ],
                   "additionalProperties": false
                 }
@@ -16683,7 +16857,7 @@
       "patch": {
         "operationId": "updateDocumentTemplate",
         "summary": "Save a PDF template",
-        "description": "Staff only. `revision` is the one last read: a template saved meanwhile by someone else answers 409 `document_template_changed`, and nothing is overwritten. Documents already made keep the design they were printed with.",
+        "description": "Staff only. `revision` is the one last read: a template saved meanwhile by someone else answers 409 `document_template_changed`, and nothing is overwritten. Documents already made keep the design they were printed with. A question the form has since dropped or changed does not stop a save when the template already named it (it stays in `problems`); a save that adds a new broken reference is refused (422). A version 1 design sent over a template a newer designer saved is refused (409 `document_template_newer`).",
         "tags": [
           "documents"
         ],
@@ -16771,6 +16945,42 @@
                       "type": "string",
                       "format": "date-time",
                       "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "needsAttention": {
+                      "type": "boolean"
+                    },
+                    "problems": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "path": {
+                            "type": "string"
+                          },
+                          "code": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          },
+                          "blockId": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "fieldKey": {
+                            "nullable": true,
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "path",
+                          "code",
+                          "message",
+                          "blockId",
+                          "fieldKey"
+                        ],
+                        "additionalProperties": false
+                      }
                     }
                   },
                   "required": [
@@ -16781,7 +16991,9 @@
                     "revision",
                     "archived",
                     "createdAt",
-                    "updatedAt"
+                    "updatedAt",
+                    "needsAttention",
+                    "problems"
                   ],
                   "additionalProperties": false
                 }
@@ -16812,7 +17024,7 @@
             "description": "No such template."
           },
           "409": {
-            "description": "Saved meanwhile by someone else (`document_template_changed`)."
+            "description": "Saved meanwhile by someone else (`document_template_changed`), or an older designer saving over a newer design (`document_template_newer`)."
           },
           "422": {
             "description": "The design has problems (`document_template_invalid`)."
@@ -16935,6 +17147,42 @@
                       "type": "string",
                       "format": "date-time",
                       "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "needsAttention": {
+                      "type": "boolean"
+                    },
+                    "problems": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "path": {
+                            "type": "string"
+                          },
+                          "code": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          },
+                          "blockId": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "fieldKey": {
+                            "nullable": true,
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "path",
+                          "code",
+                          "message",
+                          "blockId",
+                          "fieldKey"
+                        ],
+                        "additionalProperties": false
+                      }
                     }
                   },
                   "required": [
@@ -16945,7 +17193,9 @@
                     "revision",
                     "archived",
                     "createdAt",
-                    "updatedAt"
+                    "updatedAt",
+                    "needsAttention",
+                    "problems"
                   ],
                   "additionalProperties": false
                 }
@@ -17014,6 +17264,143 @@
                 }
               }
             }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/document-templates/{templateId}/preview": {
+      "post": {
+        "operationId": "previewDocumentTemplate",
+        "summary": "Print a design as a PDF, without keeping it",
+        "description": "Staff only (`document.design`). Prints `design` — the designer’s current one, saved or not — the way a document is printed, filled with a submission of the template’s form or, without one, with sample answers. The PDF is returned and nothing is stored or counted against the company’s storage. A few per minute per person and a cap for the whole server (429 `rate_limited`); 503 `document_preview_failed` when the printer cannot print.",
+        "tags": [
+          "documents"
+        ],
+        "parameters": [
+          {
+            "name": "templateId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "design": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  "submissionId": {
+                    "nullable": true,
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  }
+                },
+                "required": [
+                  "design"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The PDF.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "contentType": {
+                      "type": "string",
+                      "enum": [
+                        "application/pdf"
+                      ]
+                    },
+                    "base64": {
+                      "type": "string"
+                    },
+                    "pageCount": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "byteSize": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "contentType",
+                    "base64",
+                    "pageCount",
+                    "byteSize"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller lacks the required permission, or the company does not have the `documents` module switched on (`feature_disabled`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such template, or no such submission this person may read."
+          },
+          "409": {
+            "description": "The submission is of another form (`document_template_wrong_form`)."
+          },
+          "422": {
+            "description": "The design has problems (`document_template_invalid`)."
+          },
+          "429": {
+            "description": "Too many previews (`rate_limited`)."
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The printer could not print it (`document_preview_failed`)."
           }
         },
         "security": [

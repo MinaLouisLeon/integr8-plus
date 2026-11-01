@@ -8,6 +8,7 @@ import {
   withTenant,
 } from '@integr8/db';
 import {
+  type CompiledForm,
   compileDefinition,
   type DefinitionIssue,
   diffDefinitions,
@@ -21,6 +22,7 @@ import {
   discardPictures,
   libraryTemplatesFor,
 } from '../../documents/template-copies.js';
+import { type AffectedTemplate, templatesAffected } from '../../documents/attention.js';
 import { conflict, type ErrorDetail, notFound, unprocessable } from '../../http/errors.js';
 import { defineRoute, noSchema, type RequestContext } from '../../http/routes.js';
 import { iso, isoOrNull, listSchema } from './schemas.js';
@@ -144,12 +146,49 @@ const diffSchema = z.object({
   breaking: z.array(breakingSchema),
 });
 
+/** A PDF template the new version would leave needing attention (1.3.0 decision 13). */
+const affectedTemplateSchema = z.object({
+  templateId: z.uuid(),
+  name: z.string(),
+  /** Each block or document field naming a question the new version drops or changes. */
+  problems: z.array(
+    z.object({
+      path: z.string(),
+      code: z.string(),
+      message: z.string(),
+      blockId: z.string().nullable(),
+      fieldKey: z.string().nullable(),
+    }),
+  ),
+});
+
 const checkSchema = z.object({
   revision: z.number().int(),
   valid: z.boolean(),
   issues: z.array(issueSchema),
   diff: diffSchema,
+  /**
+   * PDF templates that use a question this version drops or changes. Publishing
+   * needs `acknowledgeTemplateChanges` (or `acknowledgeBreakingChanges`) when
+   * there are any; documents keep being made from them meanwhile.
+   */
+  documentTemplates: z.array(affectedTemplateSchema),
 });
+
+/** The form's PDF templates the draft would leave needing attention. */
+async function affectedTemplates(
+  tx: TenantTransaction,
+  formId: string,
+  live: FormVersion | undefined,
+  next: CompiledForm,
+): Promise<AffectedTemplate[]> {
+  const templates = await tx.documentTemplates.list({ formId });
+  if (templates.length === 0) {
+    return [];
+  }
+  const liveForm = live === undefined ? undefined : compileDefinition(live.definition);
+  return templatesAffected(templates, liveForm?.ok === true ? liveForm.form : undefined, next);
+}
 
 const templateSummarySchema = z.object({
   key: z.string(),
@@ -591,7 +630,7 @@ export const checkDraftRoute = defineRoute({
   operationId: 'checkFormDraft',
   summary: 'Validate the draft and compare it with the live version',
   description:
-    'What publishing would decide, without publishing: every issue that would refuse it, named by field, and every change against the live version with the breaking ones marked.',
+    'What publishing would decide, without publishing: every issue that would refuse it, named by field, every change against the live version with the breaking ones marked, and the PDF templates that use a question the draft drops or changes.',
   tags: TAGS,
   security: 'authenticated',
   permission: 'form.manage',
@@ -605,6 +644,11 @@ export const checkDraftRoute = defineRoute({
   handler: async ({ params }, context) => {
     const { draft, live } = await draftAndLive(context, params.formId);
     const compiled = compileDefinition(draft.definition);
+    const documentTemplates = compiled.ok
+      ? await withTenant(context.principal.tenantId, (tx) =>
+          affectedTemplates(tx, params.formId, live, compiled.form),
+        )
+      : [];
 
     return {
       status: 200,
@@ -615,6 +659,7 @@ export const checkDraftRoute = defineRoute({
         diff: compiled.ok
           ? diffDefinitions(liveDefinition(live), compiled.form.definition)
           : { titleChanged: false, changes: [], breaking: [] },
+        documentTemplates,
       },
     };
   },
@@ -636,13 +681,19 @@ export const publishDraftRoute = defineRoute({
     expectedRevision: z.number().int().min(1),
     changeNote: z.string().trim().max(2000).optional(),
     acknowledgeBreakingChanges: z.boolean().default(false),
+    /**
+     * The person saw the PDF templates the check listed and publishes anyway
+     * (1.3.0). `acknowledgeBreakingChanges` counts too: dropping or changing a
+     * question is almost always a breaking change already.
+     */
+    acknowledgeTemplateChanges: z.boolean().default(false),
   }),
   responses: {
     200: { description: 'The new version.', schema: versionSummarySchema },
     404: { description: 'No such form, or no draft.' },
     409: {
       description:
-        'The draft changed since it was reviewed, or breaking changes were not acknowledged.',
+        'The draft changed since it was reviewed, breaking changes were not acknowledged, or PDF templates would need attention and that was not acknowledged (`document_templates_affected`).',
     },
     422: { description: 'The definition does not compile. Details name the fields.' },
   },
@@ -678,6 +729,18 @@ export const publishDraftRoute = defineRoute({
         );
       }
 
+      const affected = await affectedTemplates(tx, params.formId, live, compiled.form);
+      if (
+        affected.length > 0 &&
+        !body.acknowledgeTemplateChanges &&
+        !body.acknowledgeBreakingChanges
+      ) {
+        throw conflict(
+          'document_templates_affected',
+          `Publishing leaves ${String(affected.length)} PDF template(s) using questions this version drops or changes. Confirm to publish; they will be marked to fix.`,
+        );
+      }
+
       const published = await tx.forms.publishDraft(draft.id, context.principal.userId, {
         changeNote: body.changeNote ?? null,
         changes: diff as unknown as Record<string, unknown>,
@@ -704,6 +767,7 @@ export const publishDraftRoute = defineRoute({
           versionNumber: published.versionNumber,
           breakingChanges: diff.breaking.length,
           acknowledged: body.acknowledgeBreakingChanges,
+          documentTemplatesAffected: affected.map((template) => template.templateId),
         },
       });
 
