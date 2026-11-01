@@ -224,7 +224,7 @@ export function BuilderWorkspace(
       onDragCancel={() => setDragging(undefined)}
       onDragEnd={onDragEnd}
     >
-      <div className="grid min-h-0 flex-1 grid-cols-[15rem_minmax(0,1fr)_22rem] overflow-hidden">
+      <div className="grid min-h-0 flex-1 grid-cols-[15rem_minmax(0,1fr)_26rem] overflow-hidden">
         <aside className="overflow-y-auto border-e border-border-subtle bg-surface p-4">
           {readOnly ? null : <Palette onAdd={addFromPalette} />}
         </aside>

@@ -46,7 +46,8 @@ import {
 } from '../model/repeat';
 import { keyFromWording } from '../model/rename';
 import { subjectsFor } from '../model/subjects';
-import { say, withText } from '../model/text';
+import { say } from '../model/text';
+import { BilingualTextInput } from './bilingual-text-input';
 import {
   completeExpression,
   ConditionBuilder,
@@ -107,7 +108,8 @@ export function ConfigPanel({
           dispatch({ type: 'edit', apply: (current) => updateField(current, field.id, update) })
         }
         onWordingSettled={() => {
-          const renamed = keyFromWording(definition, field.id, locale, publishedIds);
+          // The key follows the English wording: Arabic gives no Latin letters to make one from.
+          const renamed = keyFromWording(definition, field.id, 'en', publishedIds);
           if (renamed !== undefined) {
             dispatch({
               type: 'edit',
@@ -147,12 +149,10 @@ export function ConfigPanel({
         {at.kind === 'section' ? t('forms.config.section') : t('forms.config.page')}
       </h2>
       <Group title={t('forms.config.groups.basics')}>
-        <TextInput
+        <BilingualTextInput
           label={t('forms.config.title')}
-          value={say(container.title, locale)}
-          onChange={(value) =>
-            apply((element) => optional('title', withText(element.title, locale, value)))
-          }
+          value={container.title}
+          onChange={(value) => apply(() => optional('title', value))}
         />
       </Group>
       {at.kind === 'section' ? (
@@ -220,18 +220,22 @@ function FieldPanel({
       <h2 className="text-base font-semibold text-content">{t('forms.config.field')}</h2>
 
       <Group title={t('forms.config.groups.basics')}>
-        <TextInput
+        <BilingualTextInput
           label={t('forms.config.label')}
-          value={say(field.label, locale)}
-          onChange={(value) => set({ label: withText(field.label, locale, value) ?? {} })}
-          onBlur={onWordingSettled}
+          value={field.label}
+          onChange={(value) => set({ label: value ?? {} })}
+          onBlur={(language) => {
+            if (language === 'en') {
+              onWordingSettled();
+            }
+          }}
         />
-        <TextInput
+        <BilingualTextInput
           label={t('forms.config.help')}
           placeholder={t('forms.config.helpPlaceholder')}
-          value={say(field.help, locale)}
+          value={field.help}
           multiline
-          onChange={(value) => set({ help: withText(field.help, locale, value) })}
+          onChange={(value) => set({ help: value })}
         />
         <ReadOnlyValue label={t('forms.config.type')} value={t(`forms.fieldType.${field.type}`)} />
         <ReadOnlyValue
@@ -511,7 +515,8 @@ function RepeatEditor({
     minEntries: current.repeat?.minEntries === undefined ? '' : String(current.repeat.minEntries),
     maxEntries: String(current.repeat?.maxEntries ?? DEFAULT_MAX_ENTRIES),
   });
-  const [label, setLabel] = useState(() => say(repeat?.entryLabel, locale));
+  // Held here while it is being typed: an entry label cannot be empty, so a cleared one waits.
+  const [label, setLabel] = useState<LocalizedText | undefined>(() => repeat?.entryLabel);
   const [limits, setLimits] = useState(() => draftOf(section));
   const problem = limitProblem(limits);
 
@@ -528,25 +533,24 @@ function RepeatEditor({
           label={t('forms.config.repeat.toggle')}
           checked={repeat !== undefined}
           onChange={(checked) => {
-            const entryLabel = label.trim() === '' ? t('forms.canvas.defaultEntryLabel') : label;
+            const entryLabel = label ?? { [locale]: t('forms.canvas.defaultEntryLabel') };
             setLabel(entryLabel);
             setLimits({ minEntries: '', maxEntries: String(DEFAULT_MAX_ENTRIES) });
-            onChange((current) => withRepeat(current, checked, { [locale]: entryLabel }));
+            onChange((current) => withRepeat(current, checked, entryLabel));
           }}
         />
         <p className="text-xs text-content-muted">{t('forms.config.repeat.hint')}</p>
       </div>
       {repeat === undefined ? null : (
         <>
-          <TextInput
+          <BilingualTextInput
             label={t('forms.config.repeat.entryLabel')}
             hint={t('forms.config.repeat.entryLabelHint')}
             value={label}
             onChange={(value) => {
               setLabel(value);
-              const entryLabel = withText(repeat.entryLabel, locale, value.trim());
-              if (value.trim() !== '' && entryLabel !== undefined) {
-                onChange((current) => withEntryLabel(current, entryLabel));
+              if (value !== undefined) {
+                onChange((current) => withEntryLabel(current, value));
               }
             }}
           />
@@ -732,7 +736,6 @@ function PropertyInput({
         <PatternEditor
           label={label}
           value={value as PatternValue | undefined}
-          locale={locale}
           onChange={onChange}
         />
       );
@@ -831,24 +834,22 @@ function OptionsEditor({
       <ol className="flex flex-col gap-2">
         {options.map((option, index) => (
           <li key={option.value} className="flex flex-col gap-0.5">
+            <BilingualTextInput
+              hideLabel
+              label={t('forms.config.options.label', { number: index + 1 })}
+              value={option.label}
+              onChange={(value) =>
+                onChange(
+                  options.map((current, at) =>
+                    at === index ? { ...current, label: value ?? {} } : current,
+                  ),
+                )
+              }
+            />
             <div className="flex items-center gap-1">
-              <input
-                aria-label={t('forms.config.options.label', { number: index + 1 })}
-                value={say(option.label, locale)}
-                onChange={(event) =>
-                  onChange(
-                    options.map((current, at) =>
-                      at === index
-                        ? {
-                            ...current,
-                            label: withText(current.label, locale, event.target.value) ?? {},
-                          }
-                        : current,
-                    ),
-                  )
-                }
-                className="min-w-0 flex-1 rounded-md border border-border-subtle bg-surface px-2 py-1.5 text-sm"
-              />
+              <span className="min-w-0 flex-1 truncate font-mono text-xs text-content-muted">
+                {t('forms.config.options.storedAs', { value: option.value })}
+              </span>
               <Button
                 variant="ghost"
                 aria-label={t('forms.canvas.moveUp')}
@@ -874,9 +875,6 @@ function OptionsEditor({
                 ✕
               </Button>
             </div>
-            <span className="font-mono text-xs text-content-muted">
-              {t('forms.config.options.storedAs', { value: option.value })}
-            </span>
           </li>
         ))}
       </ol>
@@ -914,12 +912,10 @@ interface PatternValue {
 function PatternEditor({
   label,
   value,
-  locale,
   onChange,
 }: {
   label: string;
   value: PatternValue | undefined;
-  locale: string;
   onChange: (value: PatternValue | undefined) => void;
 }) {
   const { t } = useTranslation();
@@ -945,10 +941,10 @@ function PatternEditor({
             checked={value.caseInsensitive === true}
             onChange={(checked) => update({ caseInsensitive: checked ? true : undefined })}
           />
-          <TextInput
+          <BilingualTextInput
             label={t('forms.config.pattern.message')}
-            value={say(value.message, locale)}
-            onChange={(text) => update({ message: withText(value.message, locale, text) })}
+            value={value.message}
+            onChange={(message) => update({ message })}
           />
         </>
       )}
@@ -1254,18 +1250,14 @@ function ChecksEditor({
               }
             />
           )}
-          <TextInput
+          <BilingualTextInput
             label={t('forms.checks.message')}
             placeholder={t('forms.checks.messagePlaceholder')}
-            value={say(draft.message, locale)}
+            value={draft.message}
             error={draft.message === undefined ? t('forms.checks.messageRequired') : undefined}
-            onChange={(text) =>
+            onChange={(message) =>
               commit(
-                drafts.map((current, at) =>
-                  at === index
-                    ? { ...current, message: withText(current.message, locale, text) }
-                    : current,
-                ),
+                drafts.map((current, at) => (at === index ? { ...current, message } : current)),
               )
             }
           />

@@ -12,6 +12,7 @@ import { ConfigPanel } from '../components/config-panel';
 import { Dialog } from '../components/dialog';
 import { HistoryPanel, SettingsPanel } from '../components/history-settings';
 import { PreviewPanel } from '../components/preview-panel';
+import { TranslationsPanel } from '../components/translations-panel';
 import { editorReducer, initialEditor } from '../model/editor';
 import { issueElement, issueText } from '../model/issues';
 import {
@@ -84,7 +85,7 @@ export function FormBuilderRoute() {
   );
 }
 
-type Tab = 'build' | 'preview' | 'changes' | 'history' | 'settings' | 'pdf';
+type Tab = 'build' | 'translations' | 'preview' | 'changes' | 'history' | 'settings' | 'pdf';
 
 function Builder({
   detail,
@@ -119,6 +120,12 @@ function Builder({
   const [tab, setTab] = useState<Tab>('build');
   // The PDF designer stays open once visited, so its unsaved work survives a look at another tab.
   const [pdfOpened, setPdfOpened] = useState(false);
+  // Opening Translations from the publish check shows only the texts with no Arabic.
+  const [onlyMissing, setOnlyMissing] = useState(false);
+  const openTranslations = () => {
+    setOnlyMissing(true);
+    setTab('translations');
+  };
   const [publishing, setPublishing] = useState(false);
   const [notice, setNotice] = useState<string | undefined>(undefined);
   const [live, setLive] = useState(detail.live);
@@ -213,8 +220,8 @@ function Builder({
 
   const tabs: Tab[] = [
     ...(manage
-      ? (['build', 'preview', 'changes', 'history', 'settings'] as const)
-      : (['build', 'preview', 'history'] as const)),
+      ? (['build', 'translations', 'preview', 'changes', 'history', 'settings'] as const)
+      : (['build', 'translations', 'preview', 'history'] as const)),
     ...(documents.design ? (['pdf'] as const) : []),
   ];
   const problems = compiled.ok ? 0 : compiled.issues.length;
@@ -279,6 +286,7 @@ function Builder({
             role="tab"
             aria-selected={tab === name}
             onClick={() => {
+              setOnlyMissing(false);
               setTab(name);
               if (name === 'pdf') {
                 setPdfOpened(true);
@@ -360,6 +368,18 @@ function Builder({
         />
       ) : null}
 
+      {tab === 'translations' ? (
+        <TranslationsPanel
+          key={onlyMissing ? 'missing' : 'all'}
+          definition={editor.definition}
+          locale={locale}
+          readOnly={!manage}
+          dispatch={dispatch}
+          onShow={show}
+          initiallyOnlyMissing={onlyMissing}
+        />
+      ) : null}
+
       {tab === 'preview' ? (
         compiled.ok ? (
           <PreviewPanel
@@ -418,6 +438,7 @@ function Builder({
           hasLive={live !== null}
           flush={sync.flush}
           onShow={show}
+          onTranslations={openTranslations}
         />
       ) : null}
 
@@ -452,6 +473,10 @@ function Builder({
           flush={sync.flush}
           onClose={() => setPublishing(false)}
           onShow={show}
+          onTranslations={() => {
+            setPublishing(false);
+            openTranslations();
+          }}
           onPublished={(version) => {
             setPublishing(false);
             setLive({

@@ -1059,6 +1059,7 @@ export const en = {
         changes: 'Changes',
         history: 'History',
         settings: 'Settings',
+        translations: 'Translations',
       },
       save: {
         saved: 'All changes saved',
@@ -1472,6 +1473,44 @@ export const en = {
       affects: {
         reporting: 'Affects reports',
         drafts: 'Affects unfinished drafts',
+      },
+    },
+
+    // The form builder in two languages (1.3.0): English and Arabic side by
+    // side in the settings panel, and every text in one table.
+    bilingual: {
+      en: 'English',
+      ar: 'Arabic',
+      missingArabic: 'No Arabic yet',
+    },
+    translations: {
+      title: 'Translations',
+      intro:
+        'Every text in this form, in English and Arabic. A text with only one language shows that one to everybody. Changes are saved with the draft and can be undone like any other.',
+      missingCount_one: '{{count}} text has no Arabic',
+      missingCount_other: '{{count}} texts have no Arabic',
+      allTranslated: 'Every text has Arabic.',
+      nothingMissing: 'Nothing is missing Arabic.',
+      onlyMissing: 'Only texts with no Arabic',
+      where: 'Text',
+      done: 'Done',
+      page: 'Page: {{name}}',
+      section: 'Section: {{name}}',
+      open: 'Open Translations',
+      warningHint: 'You can still publish. Engineers using the app in Arabic see the English.',
+      property: {
+        formTitle: 'Form title',
+        pageTitle: 'Page title',
+        sectionTitle: 'Section title',
+        title: 'Title',
+        label: 'Question',
+        help: 'Help text',
+        description: 'Description',
+        option: 'Option',
+        ruleMessage: 'Check message',
+        patternMessage: 'Format message',
+        entryLabel: 'What one entry is called',
+        other: 'Text',
       },
     },
 

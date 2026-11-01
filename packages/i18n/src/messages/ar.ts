@@ -995,6 +995,7 @@ export const ar: Catalogue<Messages> = {
         changes: 'التغييرات',
         history: 'السجل',
         settings: 'الإعدادات',
+        translations: 'الترجمات',
       },
       save: {
         saved: 'تم حفظ جميع التغييرات',
@@ -1403,6 +1404,49 @@ export const ar: Catalogue<Messages> = {
       affects: {
         reporting: 'يؤثر في التقارير',
         drafts: 'يؤثر في المسودات غير المكتملة',
+      },
+    },
+
+    // The form builder in two languages (1.3.0): English and Arabic side by
+    // side in the settings panel, and every text in one table.
+    bilingual: {
+      en: 'الإنجليزية',
+      ar: 'العربية',
+      missingArabic: 'لا توجد عربية بعد',
+    },
+    translations: {
+      title: 'الترجمات',
+      intro:
+        'كل نصوص هذا النموذج بالإنجليزية والعربية. النص المكتوب بلغة واحدة يظهر بها للجميع. تُحفظ التغييرات مع المسودة ويمكن التراجع عنها مثل أي تغيير آخر.',
+      missingCount_zero: 'لا توجد نصوص بدون عربية',
+      missingCount_one: 'نص واحد بدون عربية',
+      missingCount_two: 'نصان بدون عربية',
+      missingCount_few: '{{count}} نصوص بدون عربية',
+      missingCount_many: '{{count}} نصًا بدون عربية',
+      missingCount_other: '{{count}} نص بدون عربية',
+      allTranslated: 'كل النصوص لها عربية.',
+      nothingMissing: 'لا يوجد نص ينقصه العربية.',
+      onlyMissing: 'النصوص التي بدون عربية فقط',
+      where: 'النص',
+      done: 'تم',
+      page: 'الصفحة: {{name}}',
+      section: 'القسم: {{name}}',
+      open: 'فتح الترجمات',
+      warningHint:
+        'لا يزال بإمكانك النشر. المهندسون الذين يستخدمون التطبيق بالعربية سيرون الإنجليزية.',
+      property: {
+        formTitle: 'عنوان النموذج',
+        pageTitle: 'عنوان الصفحة',
+        sectionTitle: 'عنوان القسم',
+        title: 'العنوان',
+        label: 'السؤال',
+        help: 'نص المساعدة',
+        description: 'الوصف',
+        option: 'خيار',
+        ruleMessage: 'رسالة التحقق',
+        patternMessage: 'رسالة الصيغة',
+        entryLabel: 'اسم الإدخال الواحد',
+        other: 'نص',
       },
     },
 

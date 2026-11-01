@@ -73,6 +73,7 @@ export function ChangesPanel({
   hasLive,
   flush,
   onShow,
+  onTranslations,
 }: {
   formId: string;
   definition: FormDefinition;
@@ -80,6 +81,8 @@ export function ChangesPanel({
   hasLive: boolean;
   flush: () => Promise<number | null>;
   onShow: (elementId: string) => void;
+  /** Opens the Translations tab on the texts with no Arabic. */
+  onTranslations: () => void;
 }) {
   const { t } = useTranslation();
   const { state, run } = useCheck(formId, flush);
@@ -107,6 +110,7 @@ export function ChangesPanel({
           locale={locale}
           hasLive={hasLive}
           onShow={onShow}
+          onTranslations={onTranslations}
         />
       ) : null}
     </div>
@@ -119,12 +123,14 @@ function CheckReport({
   locale,
   hasLive,
   onShow,
+  onTranslations,
 }: {
   check: DraftCheck;
   definition: FormDefinition;
   locale: string;
   hasLive: boolean;
   onShow?: (elementId: string) => void;
+  onTranslations: () => void;
 }) {
   const { t } = useTranslation();
   return (
@@ -142,6 +148,7 @@ function CheckReport({
           />
         )}
       </section>
+      <TranslationWarning check={check} onOpen={onTranslations} />
       {check.valid ? (
         <>
           <BreakingList diff={check.diff} definition={definition} locale={locale} />
@@ -150,6 +157,37 @@ function CheckReport({
         </>
       ) : null}
     </>
+  );
+}
+
+/**
+ * "12 texts have no Arabic": a warning, never a reason publishing is refused
+ * (owner's decision, 1.3.0). The server counts with the same function the
+ * Translations tab lists with, so the number matches the rows there.
+ */
+export function TranslationWarning({ check, onOpen }: { check: DraftCheck; onOpen: () => void }) {
+  const { t } = useTranslation();
+  // A server from before 1.3.0 sends no warnings.
+  const warnings = (check as { warnings?: DraftCheck['warnings'] }).warnings ?? [];
+  const missing = warnings.filter((warning) => warning.code === 'missing_translation').length;
+  if (missing === 0) {
+    return null;
+  }
+  return (
+    <section
+      role="status"
+      className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-warning bg-warning-subtle px-3 py-2 text-sm text-content"
+    >
+      <span className="flex flex-col gap-0.5">
+        <span className="font-medium">
+          {t('forms.translations.missingCount', { count: missing })}
+        </span>
+        <span className="text-xs text-content-muted">{t('forms.translations.warningHint')}</span>
+      </span>
+      <Button variant="secondary" onClick={onOpen}>
+        {t('forms.translations.open')}
+      </Button>
+    </section>
   );
 }
 
@@ -300,6 +338,7 @@ export function PublishDialog({
   onClose,
   onPublished,
   onShow,
+  onTranslations,
 }: {
   formId: string;
   definition: FormDefinition;
@@ -310,6 +349,7 @@ export function PublishDialog({
   onClose: () => void;
   onPublished: (version: VersionSummary) => void;
   onShow: (elementId: string) => void;
+  onTranslations: () => void;
 }) {
   const { t } = useTranslation();
   const queries = useQueryClient();
@@ -405,6 +445,7 @@ export function PublishDialog({
       ) : null}
       {check?.valid === true ? (
         <>
+          <TranslationWarning check={check} onOpen={onTranslations} />
           <BreakingList diff={check.diff} definition={definition} locale={locale} />
           {breaking ? (
             <label className="flex items-start gap-2 font-medium">
