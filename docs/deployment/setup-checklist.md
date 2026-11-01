@@ -340,13 +340,25 @@ Oracle's Always Free tier gives every account an ARM machine with up to 4 cores 
 
 Oracle blocks everything but SSH in two places: the console's security list and the machine's own firewall (iptables on Ubuntu, firewalld on Oracle Linux). You open the first here; the setup script opens the second and detects which operating system it is on.
 
-- [ ] **Open 80 and 443 in the security list.** ☰ menu → **Networking** → **Virtual cloud networks** → the network Stage 1 created with the machine (if the list is empty, pick your root compartment in the list filter) → its security lists (the **Security** tab, or **Security Lists** in older consoles) → **Default Security List for …** → its rules (the **Security rules** tab, or **Ingress Rules** in older consoles) → **Add Ingress Rules**. Leave **Stateless** unticked; Source Type **CIDR**, Source CIDR `0.0.0.0/0`, IP Protocol **TCP**, Source Port Range empty, Destination Port Range `80`. Then **+ Another Ingress Rule**, the same with `443`, and **Add Ingress Rules**. The ingress list now shows 80 and 443 beside the rule for 22 (SSH) that was already there.
+- [ ] **Open 80 and 443 in the security list.** ☰ menu → **Networking** → **Virtual cloud networks** → the network Stage 1 created with the machine (if the list is empty, pick your root compartment in the list filter) → its security lists (the **Security** tab, or **Security Lists** in older consoles) → **Default Security List for …** → its rules (the **Security rules** tab, or **Ingress Rules** in older consoles) → **Add Ingress Rules**. Use the **Ingress rules** list and its button: a form titled **Egress Rule**, which asks for a **Destination CIDR**, is the wrong one, so close it without saving. Leave **Stateless** unticked; Source Type **CIDR**, Source CIDR `0.0.0.0/0`, IP Protocol **TCP**, Source Port Range empty, Destination Port Range `80`. Then **+ Another Ingress Rule**, the same with `443`, and **Add Ingress Rules**. The ingress list now shows 80 and 443 beside the rule for 22 (SSH) that was already there.
 - [ ] **Connect and run the setup script.** It opens the machine's firewall, installs Docker and Caddy (the HTTPS proxy, explained in Stage 2), turns on automatic security updates, and is safe to run twice. On Oracle Linux it also removes the preinstalled `podman`, which conflicts with Docker.
 
 ```powershell
 # laptop (PowerShell). LOGIN-USER is opc on Oracle Linux, ubuntu on Ubuntu.
 ssh LOGIN-USER@SERVER-IP
 # type yes at the fingerprint question. The prompt changes to the server's: you are now "on the machine".
+```
+
+> [!NOTE]
+> **"Bad permissions" or "UNPROTECTED PRIVATE KEY FILE"** when you connect: Windows lets other accounts read the key file, and SSH refuses to use such a key. It happens most with a key Oracle made that you downloaded (used as `ssh -i <file> LOGIN-USER@SERVER-IP`) or a key kept on the Desktop. Run the commands below on the key file so only you can read it, then connect again. If the last line still lists another account, remove it with `icacls $k /remove "<the account it names>"`.
+
+```powershell
+# laptop (PowerShell): only if SSH says "bad permissions"; put your key's path in the first line
+$k = "$env:USERPROFILE\.ssh\id_ed25519"
+icacls $k /reset
+icacls $k /inheritance:r
+icacls $k /grant:r "${env:USERNAME}:R"
+icacls $k          # lists only your own account
 ```
 
 ```bash
