@@ -72,6 +72,17 @@
   --duration-slow: 320ms;
   --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --site-bg: #07060b;
+  --site-bg-soft: #100e18;
+  --site-fg: #f4f2ff;
+  --site-muted: #9a96b0;
+  --site-line: rgba(255, 255, 255, 0.08);
+  --site-violet: #7c5cff;
+  --site-cyan: #22d3ee;
+  --site-lime: #c6ff3d;
+  --site-pink: #ff4fd8;
+  --site-gradient: linear-gradient(90deg, #7c5cff, #22d3ee 50%, #c6ff3d);
+  --font-site-display: 'Unbounded Variable', 'Alexandria Variable', system-ui, sans-serif;
 }
 
 [data-theme='dark'] {
@@ -134,6 +145,59 @@
   }
 }
 
+/*
+ * The Integr8 Media look (Integr8's own pages: public site, /platform, the
+ * staff desktop frame). Inside it the semantic tokens are the company site's,
+ * so shared components follow; a company's workspace never carries it.
+ */
+[data-look='integr8'] {
+  --colour-background: #07060b;
+  --colour-surface: #100e18;
+  --colour-surface-muted: #17141f;
+  --colour-border: rgba(255, 255, 255, 0.08);
+  --colour-border-strong: rgba(255, 255, 255, 0.16);
+  --colour-text: #f4f2ff;
+  --colour-text-muted: #9a96b0;
+  --colour-text-inverted: #07060b;
+  --colour-accent: #c6ff3d;
+  --colour-accent-hover: #d6ff73;
+  --colour-accent-subtle: rgba(198, 255, 61, 0.12);
+  --colour-on-accent: #07060b;
+  --colour-success: #4ade80;
+  --colour-success-subtle: rgba(74, 222, 128, 0.12);
+  --colour-warning: #fbbf24;
+  --colour-warning-subtle: rgba(251, 191, 36, 0.12);
+  --colour-danger: #f87171;
+  --colour-danger-hover: #fca5a5;
+  --colour-danger-subtle: rgba(248, 113, 113, 0.14);
+  --colour-focus: #c6ff3d;
+  --colour-shell: #0b0a11;
+  --colour-shell-hover: rgba(255, 255, 255, 0.05);
+  --colour-shell-active: rgba(198, 255, 61, 0.12);
+  --colour-shell-text: #f4f2ff;
+  --colour-shell-text-muted: #9a96b0;
+  --colour-shell-border: rgba(255, 255, 255, 0.08);
+  --font-sans: 'Inter Variable', 'IBM Plex Sans Arabic', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-site-display: 'Unbounded Variable', 'Alexandria Variable', system-ui, sans-serif;
+  background-color: var(--colour-background);
+  color: var(--colour-text);
+  font-family: var(--font-sans);
+  color-scheme: dark;
+}
+
+/* Arabic pages: Alexandria for headings, IBM Plex Sans Arabic for text. */
+[data-look='integr8']:lang(ar) {
+  --font-sans: 'IBM Plex Sans Arabic', 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-site-display: 'Alexandria Variable', 'Unbounded Variable', system-ui, sans-serif;
+}
+
+/* The gradient runs from the start of the line, whichever side that is. */
+[dir='rtl'] [data-look='integr8'],
+[data-look='integr8'][dir='rtl'] {
+  --site-gradient: linear-gradient(270deg, #7c5cff, #22d3ee 50%, #c6ff3d);
+}
+
 /* Tailwind v4 reads these, so bg-surface and text-muted are real utilities. */
 @theme inline {
   --color-background: var(--colour-background);
@@ -165,6 +229,17 @@
 
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
+  --font-display: var(--font-site-display);
+
+  --color-site-bg: var(--site-bg);
+  --color-site-soft: var(--site-bg-soft);
+  --color-site-fg: var(--site-fg);
+  --color-site-muted: var(--site-muted);
+  --color-site-line: var(--site-line);
+  --color-violet: var(--site-violet);
+  --color-cyan: var(--site-cyan);
+  --color-lime: var(--site-lime);
+  --color-pink: var(--site-pink);
 
   --radius-sm: var(--radius-sm);
   --radius-md: var(--radius-md);
