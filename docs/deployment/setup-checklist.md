@@ -208,18 +208,10 @@ The phone app is built by Expo's build service, told to start by GitHub. Nothing
 GitHub builds the server images, the desktop installers and (through Expo) the phone app. Three things to do, all on the website. The repository is public, so the build minutes are free, including macOS.
 
 - [ ] **Nothing to merge.** All changes this guide previously asked for are in `main`, now at version **1.3.0**. Its release builds include the CRM/ERP suite, AI assistant, PDF documents, ETA e-invoicing, the company website data API, the schedule, skills and certificates, contracts, maintenance and deadlines, and self-hosted sign-in, plus the API image/config fixes from v1.1.1 and the staff-app refresh button from v1.1.2. A new install sets all of it up in the stages below; a server on an older version also needs the three sign-in secrets of Stage 11 part Q and the new settings of parts T to AD. Use `main` as it is; a new install continues at Stage 3, and an older server is updated through Stage 11.
-- [ ] **Put the Expo Project ID into the repository.** Open `apps/mobile/app.config.ts` on GitHub, click the pencil, replace the placeholder id in **both** places shown below (the file is TypeScript now, the two values look the same), choose "Create a new branch and start a pull request", and merge it to `main`.
+- [ ] **Check the Expo Project ID in the repository.** It is one line near the top of `apps/mobile/app.config.ts`, `const EAS_PROJECT_ID = '…';`, and the file uses it for both the build and the update address. If it already holds your Project ID, there is nothing to do. Otherwise change only the id between the quotes on that one line, in a pull request into `dev`, never by editing `main` directly; leave the rest of the file as it is.
 
 ```text
-"extra": {
-  "eas": {
-    "projectId": "00000000-0000-0000-0000-000000000000"      ← your Project ID
-  }
-},
-"runtimeVersion": { "policy": "fingerprint" },
-"updates": {
-  "url": "https://u.expo.dev/00000000-0000-0000-0000-000000000000",   ← the same id, after u.expo.dev/
-  ...
+const EAS_PROJECT_ID = 'b950cc9e-9e26-477a-905f-4c216767fde4';   ← your Project ID, between the quotes
 ```
 
 - [ ] **Actions variables and secrets**: repository → Settings → Secrets and variables → Actions. Under **Variables**: `PUBLIC_API_URL` = `https://api.integr8-media.com`; `STAGING_PUBLIC_API_URL` = `https://api.integr8-media.com` for now (Stage 10 changes it to the test box's address); `CONTACT_EMAIL` = `info@integr8-media.com`; `PUBLIC_SIGNUP` = `off`; `WEB_PUBLIC_SENTRY_DSN` and `DESKTOP_PUBLIC_SENTRY_DSN` from I; `EAS_BUILDS` = `enabled`. Do **not** set `EAS_PLATFORMS`: without it phone builds are Android only, which is right until an Apple developer account is connected to Expo (then set it to `all`). Do not set `STORE_SUBMIT` or `COMPANY_APPS` either: unset, company phone builds are not sent to the stores, and the version release builds every company's apps (Stage 8). Under **Secrets**: `EXPO_TOKEN` from J and `BUILD_TOKEN` from B. Make sure no variable named `DESKTOP_BUILDS` is set to `disabled`.
@@ -307,7 +299,7 @@ Every value, where it came from, and where it goes. `deploy/.env` is the one fil
 | `SENTRY_DSN`, `WEB_SENTRY_DSN`, `WEB_PUBLIC_SENTRY_DSN`                                                                                        | Part I                                | `deploy/.env`; the public one also GitHub                                                             |
 | `DESKTOP_PUBLIC_SENTRY_DSN`                                                                                                                    | Part I                                | GitHub variable                                                                                       |
 | `EXPO_PUBLIC_SENTRY_DSN`                                                                                                                       | Part I                                | Expo environment variable (Stage 8)                                                                   |
-| Expo Project ID                                                                                                                                | Part J                                | `apps/mobile/app.config.ts`, two places (Part K)                                                      |
+| Expo Project ID                                                                                                                                | Part J                                | `apps/mobile/app.config.ts`, the `EAS_PROJECT_ID` line (Part K)                                       |
 | `EXPO_TOKEN`                                                                                                                                   | Part J                                | GitHub secret                                                                                         |
 | `google-services.json`, the FCM key                                                                                                            | Part J                                | Expo: the file as `GOOGLE_SERVICES_JSON`, the key under Credentials (Stage 8)                         |
 | `PUBLIC_API_URL`, `STAGING_PUBLIC_API_URL`, `CONTACT_EMAIL`, `PUBLIC_SIGNUP`, `EAS_BUILDS`                                                     | Part K, chosen                        | GitHub variables                                                                                      |

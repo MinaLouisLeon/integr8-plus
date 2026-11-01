@@ -180,17 +180,9 @@ $k = New-Object byte[] 32; [Security.Cryptography.RandomNumberGenerator]::Create
         <p>GitHub builds the server images, the desktop installers and (through Expo) the phone app. Three things to do, all on the website. The repository is public, so the build minutes are free, including macOS.</p>
         <ul class="check" data-stage="a10">
           <li><input type="checkbox" id="a10-1"><label for="a10-1"><b>Nothing to merge.</b> All changes this guide previously asked for are in <code>main</code>, now at version <b>1.3.0</b>. Its release builds include the CRM/ERP suite, AI assistant, PDF documents, ETA e-invoicing, the company website data API, the schedule, skills and certificates, contracts, maintenance and deadlines, and self-hosted sign-in, plus the API image/config fixes from v1.1.1 and the staff-app refresh button from v1.1.2. A new install sets all of it up in the stages below; a server on an older version also needs the three sign-in secrets of Stage 11 part Q and the new settings of parts T to AD. Use <code>main</code> as it is; a new install continues at Stage 3, and an older server is updated through Stage 11.</label></li>
-          <li><input type="checkbox" id="a10-2"><label for="a10-2"><b>Put the Expo Project ID into the repository.</b> Open <code>apps/mobile/app.config.ts</code> on GitHub, click the pencil, replace the placeholder id in <b>both</b> places shown below (the file is TypeScript now, the two values look the same), choose "Create a new branch and start a pull request", and merge it to <code>main</code>.</label></li>
+          <li><input type="checkbox" id="a10-2"><label for="a10-2"><b>Check the Expo Project ID in the repository.</b> It is one line near the top of <code>apps/mobile/app.config.ts</code>, <code>const EAS_PROJECT_ID = '…';</code>, and the file uses it for both the build and the update address. If it already holds your Project ID, there is nothing to do. Otherwise change only the id between the quotes on that one line, in a pull request into <code>dev</code>, never by editing <code>main</code> directly; leave the rest of the file as it is.</label></li>
         </ul>
-        <pre><code>"extra": {
-  "eas": {
-    "projectId": "00000000-0000-0000-0000-000000000000"      ← your Project ID
-  }
-},
-"runtimeVersion": { "policy": "fingerprint" },
-"updates": {
-  "url": "https://u.expo.dev/00000000-0000-0000-0000-000000000000",   ← the same id, after u.expo.dev/
-  ...</code></pre>
+        <pre><code>const EAS_PROJECT_ID = 'b950cc9e-9e26-477a-905f-4c216767fde4';   ← your Project ID, between the quotes</code></pre>
         <ul class="check" data-stage="a10b">
           <li><input type="checkbox" id="a10-3"><label for="a10-3"><b>Actions variables and secrets</b>: repository → Settings → Secrets and variables → Actions. Under <b>Variables</b>: <code>PUBLIC_API_URL</code> = <code>https://api.integr8-media.com</code>; <code>STAGING_PUBLIC_API_URL</code> = <code>https://api.integr8-media.com</code> for now (Stage 10 changes it to the test box's address); <code>CONTACT_EMAIL</code> = <code>info@integr8-media.com</code>; <code>PUBLIC_SIGNUP</code> = <code>off</code>; <code>WEB_PUBLIC_SENTRY_DSN</code> and <code>DESKTOP_PUBLIC_SENTRY_DSN</code> from I; <code>EAS_BUILDS</code> = <code>enabled</code>. Do <b>not</b> set <code>EAS_PLATFORMS</code>: without it phone builds are Android only, which is right until an Apple developer account is connected to Expo (then set it to <code>all</code>). Do not set <code>STORE_SUBMIT</code> or <code>COMPANY_APPS</code> either: unset, company phone builds are not sent to the stores, and the version release builds every company's apps (Stage 8). Under <b>Secrets</b>: <code>EXPO_TOKEN</code> from J and <code>BUILD_TOKEN</code> from B. Make sure no variable named <code>DESKTOP_BUILDS</code> is set to <code>disabled</code>.</label></li>
           <li><input type="checkbox" id="a10-4"><label for="a10-4"><b>Know the version rule.</b> Every merge into <code>main</code> runs the release workflow, which reads the version from the root <code>package.json</code> and refuses to release a number it has released before. The merge that should produce installers (Stage 6) must bump it: one line in <code>package.json</code>, in the same pull request.</label></li>
@@ -281,7 +273,7 @@ $k = New-Object byte[] 32; [Security.Cryptography.RandomNumberGenerator]::Create
             <tr><td><code>SENTRY_DSN</code>, <code>WEB_SENTRY_DSN</code>, <code>WEB_PUBLIC_SENTRY_DSN</code></td><td>Part I</td><td><code>deploy/.env</code>; the public one also GitHub</td></tr>
             <tr><td><code>DESKTOP_PUBLIC_SENTRY_DSN</code></td><td>Part I</td><td>GitHub variable</td></tr>
             <tr><td><code>EXPO_PUBLIC_SENTRY_DSN</code></td><td>Part I</td><td>Expo environment variable (Stage 8)</td></tr>
-            <tr><td>Expo Project ID</td><td>Part J</td><td><code>apps/mobile/app.config.ts</code>, two places (Part K)</td></tr>
+            <tr><td>Expo Project ID</td><td>Part J</td><td><code>apps/mobile/app.config.ts</code>, the <code>EAS_PROJECT_ID</code> line (Part K)</td></tr>
             <tr><td><code>EXPO_TOKEN</code></td><td>Part J</td><td>GitHub secret</td></tr>
             <tr><td><code>google-services.json</code>, the FCM key</td><td>Part J</td><td>Expo: the file as <code>GOOGLE_SERVICES_JSON</code>, the key under Credentials (Stage 8)</td></tr>
             <tr><td><code>PUBLIC_API_URL</code>, <code>STAGING_PUBLIC_API_URL</code>, <code>CONTACT_EMAIL</code>, <code>PUBLIC_SIGNUP</code>, <code>EAS_BUILDS</code></td><td>Part K, chosen</td><td>GitHub variables</td></tr>
