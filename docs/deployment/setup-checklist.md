@@ -70,7 +70,7 @@ Everything the stack needs from the outside world is created and written down he
 The laptop generates the signing keys, connects to the server over SSH and edits one file on GitHub. It never builds anything. Commands marked `# laptop` are typed into **PowerShell** (open the **Terminal** app from the Start menu); commands marked `# machine` are typed into the SSH session once the server exists, where the server's own Linux shell runs them. Never mix them up.
 
 - [ ] **Allow PowerShell to run scripts**, once: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`, answer `Y`.
-- [ ] **Install Git and Node** with the commands below: Node 22, release 22.22.1 or newer 22.x (22.22.2 recommended, the one in the repository's `.nvmrc`); the repository refuses to install on Node 23 or later. Close and reopen the Terminal afterwards so the new programs are on the path.
+- [ ] **Install Git and Node** with the commands below: Node 22, release 22.22.1 or newer 22.x (22.23.4 recommended, the one in the repository's `.nvmrc`); the repository refuses to install on Node 23 or later. Close and reopen the Terminal afterwards so the new programs are on the path.
 
 ```powershell
 # laptop (PowerShell)

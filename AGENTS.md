@@ -21,7 +21,7 @@ Current project state and known gotchas: `MEMORY.md`.
 
 ## Workspace
 
-pnpm 10 workspaces + Turborepo, Node 22.22.1 or newer 22.x (22.22.2 recommended, see `.nvmrc`), TypeScript 6.0.3 (pinned on purpose —
+pnpm 10 workspaces + Turborepo, Node 22.22.1 or newer 22.x (22.23.4 recommended, see `.nvmrc`), TypeScript 6.0.3 (pinned on purpose —
 see `CONTRIBUTING.md`), Vitest, ESLint (type-aware, flat config), Prettier. Every dependency
 is pinned to an exact version.
 

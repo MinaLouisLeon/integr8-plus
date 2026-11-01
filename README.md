@@ -233,7 +233,7 @@ and [`docs/mobile/company-builds.md`](./docs/mobile/company-builds.md).
                          Supabase Auth (self-hosted) · Stripe · Resend · Mapbox · Expo push · Sentry
 ```
 
-pnpm workspaces and Turborepo; Node 22 (22.22.1 or newer 22.x, 22.22.2 recommended); TypeScript everywhere; Vitest; ESLint
+pnpm workspaces and Turborepo; Node 22 (22.22.1 or newer 22.x, 22.23.4 recommended); TypeScript everywhere; Vitest; ESLint
 with type-aware rules; Prettier.
 
 ### Apps
@@ -301,7 +301,7 @@ with the same Tailwind classes.
 
 | Tool     | Version  | Notes                                                                |
 | -------- | -------- | -------------------------------------------------------------------- |
-| Node     | 22.22.1+ | 22.22.1 or newer 22.x (22.22.2 recommended, see `.nvmrc`; `nvm use`) |
+| Node     | 22.22.1+ | 22.22.1 or newer 22.x (22.23.4 recommended, see `.nvmrc`; `nvm use`) |
 | pnpm     | 10.x     | `corepack enable` picks up the version in `package.json`             |
 | Postgres | 16       | Only for the API and the integration tests; local or Docker          |
 | Rust     | stable   | Only to run the desktop app as a native window (`tauri:dev`)         |
