@@ -129,9 +129,9 @@ grouped so each pull request covers one concern.
   `save-exact=true`, so `pnpm add` writes exact versions by itself.
 - `peerDependencies` may hold ranges: a peer range says what a shared package works with
   (`react >=19`) and installs nothing; the app that installs React pins it.
-- **Node is one release.** Use Node 22.22.1 or newer 22.x (22.22.2 recommended, see
+- **Node is one release.** Use Node 22.22.1 or newer 22.x (22.23.4 recommended, see
   `.nvmrc`). `.nvmrc` names it and CI reads it; every `FROM node:` in the Dockerfiles is that
-  exact release (`node:22.22.2-bookworm-slim`); and it must satisfy the root `package.json`
+  exact release (`node:22.23.4-bookworm-slim`); and it must satisfy the root `package.json`
   `engines.node` (`>=22.22.1 <23`), which `engine-strict` makes pnpm enforce. 22.22.1 is
   lint-staged's minimum; Node 23 and later are not supported by this release. Moving Node
   means changing `.nvmrc` and both Dockerfiles in one change (Dependabot's base-image PR

@@ -115,7 +115,7 @@ The five company roles are `owner`, `admin`, `dispatcher`, `engineer` and `viewe
 | Layer                    | Technology                                                | Version                                     |
 | ------------------------ | --------------------------------------------------------- | ------------------------------------------- |
 | Language                 | TypeScript (strict)                                       | 6.0.3                                       |
-| Runtime                  | Node.js                                                   | 22 (`.nvmrc`: 22.22.2)                      |
+| Runtime                  | Node.js                                                   | 22 (`.nvmrc`: 22.23.4)                      |
 | Node.js type definitions | `@types/node`                                             | 26.6.4                                      |
 | Package manager          | pnpm workspaces                                           | 10.33.0                                     |
 | Build orchestration      | Turborepo                                                 | 2.11.7                                      |
@@ -148,7 +148,7 @@ The five company roles are `owner`, `admin`, `dispatcher`, `engineer` and `viewe
 | Linting                  | ESLint, typescript-eslint, jsx-a11y, react-hooks          | 10.12.0 / 8.71.1                            |
 | Formatting               | Prettier                                                  | 3.9.9                                       |
 | Git hooks                | Husky, lint-staged, commitlint (Conventional Commits)     | 9.1.7 / 17.6.0 / 21.2.3                     |
-| Containers               | Docker, Docker Compose                                    | `node:22.22.2-bookworm-slim`, `postgres:16` |
+| Containers               | Docker, Docker Compose                                    | `node:22.23.4-bookworm-slim`, `postgres:16` |
 | Reverse proxy and TLS    | Caddy                                                     | official build                              |
 | CI/CD                    | GitHub Actions; GitHub Container Registry                 | —                                           |
 | Phone builds             | Expo Application Services (EAS)                           | —                                           |
@@ -911,7 +911,7 @@ A full review of the codebase was done in October 2026 and its fixes were applie
 | `postgres`  | `postgres:16`                                         | The database, on a named volume          |
 | `bootstrap` | API image                                             | Creates the database roles once          |
 | `migrate`   | API image                                             | Applies migrations before the API starts |
-| `api`       | API image (`node:22.22.2-bookworm-slim`, multi-stage) | The API on port 3000                     |
+| `api`       | API image (`node:22.23.4-bookworm-slim`, multi-stage) | The API on port 3000                     |
 | `worker`    | API image                                             | Background jobs                          |
 | `web`       | Web image                                             | The Next.js app                          |
 

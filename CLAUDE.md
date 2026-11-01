@@ -43,7 +43,7 @@ staff from the platform dashboard; there is no public sign-up by default.
 ## Commands
 
 ```bash
-pnpm install                     # Node 22.22.1 or newer 22.x (22.22.2 recommended, see .nvmrc)
+pnpm install                     # Node 22.22.1 or newer 22.x (22.23.4 recommended, see .nvmrc)
 pnpm build | lint | typecheck | test     # whole workspace; add --filter @integr8/<pkg>
 pnpm test:integration            # needs a disposable Postgres (see below)
 pnpm format:check                # Prettier, what CI runs

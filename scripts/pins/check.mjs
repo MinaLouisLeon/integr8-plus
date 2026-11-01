@@ -101,7 +101,7 @@ export function nodeProblems({ nvmrc, engines, dockerfiles }) {
   const problems = [];
   const node = nvmrc.trim().replace(/^v/u, '');
   if (!EXACT.test(node)) {
-    problems.push(`.nvmrc is "${nvmrc.trim()}"; name one exact Node release (22.22.2)`);
+    problems.push(`.nvmrc is "${nvmrc.trim()}"; name one exact Node release (22.23.4)`);
   }
   if (engines === undefined) {
     problems.push('package.json: engines.node is missing');
