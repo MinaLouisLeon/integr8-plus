@@ -1225,6 +1225,14 @@ docker compose -f deploy/compose.yml --env-file deploy/.env exec postgres psql -
           <li><input type="checkbox" id="s12-ac2"><label for="s12-ac2"><b>Print one</b>: in a company with Documents and Sales on, open an issued quote, press <b>Make PDF</b>, and after a few seconds <b>View</b> opens it with the company's logo and colour; <code>docker compose -f deploy/compose.yml --env-file deploy/.env logs worker | grep "Business PDF printed"</code> shows it.</label></li>
         </ul>
 
+        <h3 id="builders-update">AD. The form builder and the PDF designer: library templates, phones and printing memory (included in v1.3.0)</h3>
+        <p>Migration 0069 runs by itself at part D: staff can save a form as a library template (dashboard → <b>Templates</b>) and copy forms between companies. Forms can now hold descriptions, Information blocks and date and number calculations; a phone opens such a form only once it has the 1.3.0 app. Phones get that over the air, on their own, within a day of the version release (part G), and pull all their data again once when they do. Until then an older phone lists the form with "Update the app to open this form" after its name and the engineer cannot start it, so tell companies to wait a day after the update before publishing a form that uses the new features. The PDF designer's <b>Preview as PDF</b> starts the printer on the API itself, so the <code>api</code> container's memory cap is now 1 GB instead of 768 MB (in <code>deploy/compose.yml</code>, applied by part D). The website's fonts are embedded in the PDFs that use them: no new image, no new settings.</p>
+        <ul class="check" data-stage="s12ad">
+          <li><input type="checkbox" id="s12-ad1"><label for="s12-ad1"><b>Migration ran</b>: after part D, <code>docker compose -f deploy/compose.yml --env-file deploy/.env logs migrate | grep 0069</code> shows <code>applied 0069_library_templates</code>.</label></li>
+          <li><input type="checkbox" id="s12-ad2"><label for="s12-ad2"><b>The new memory cap is in force</b>: <code>docker stats --no-stream</code> shows <code>1GiB</code> as the limit of the <code>api</code> container.</label></li>
+          <li><input type="checkbox" id="s12-ad3"><label for="s12-ad3"><b>Preview a PDF</b>: in a company with Documents on, open a PDF template in the designer and press <b>Preview as PDF</b>; the PDF opens after a few seconds.</label></li>
+        </ul>
+
         <div class="note"><p><b>The test box (Stage 10)</b> updates the same way, from <code>staging</code> instead of <code>main</code>: <code>git pull</code> on its <code>staging</code> checkout, then <b>Pull</b> and <b>Redeploy</b> the stack in Arcane. Updating it first, the day before, is the cheapest rehearsal there is.</p></div>
       </section>
 

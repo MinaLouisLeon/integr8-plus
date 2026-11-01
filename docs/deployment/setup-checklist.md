@@ -1468,6 +1468,14 @@ Migration 0074 runs by itself at part D. The quote, invoice, purchase order and 
 - [ ] **Migration ran**: after part D, `docker compose -f deploy/compose.yml --env-file deploy/.env logs migrate | grep 0074` shows `applied 0074_business_documents`.
 - [ ] **Print one**: in a company with Documents and Sales on, open an issued quote, press **Make PDF**, and after a few seconds **View** opens it with the company's logo and colour; `docker compose -f deploy/compose.yml --env-file deploy/.env logs worker | grep "Business PDF printed"` shows it.
 
+### AD. The form builder and the PDF designer: library templates, phones and printing memory (included in v1.3.0)
+
+Migration 0069 runs by itself at part D: staff can save a form as a library template (dashboard → **Templates**) and copy forms between companies. Forms can now hold descriptions, Information blocks and date and number calculations; a phone opens such a form only once it has the 1.3.0 app. Phones get that over the air, on their own, within a day of the version release (part G), and pull all their data again once when they do. Until then an older phone lists the form with "Update the app to open this form" after its name and the engineer cannot start it, so tell companies to wait a day after the update before publishing a form that uses the new features. The PDF designer's **Preview as PDF** starts the printer on the API itself, so the `api` container's memory cap is now 1 GB instead of 768 MB (in `deploy/compose.yml`, applied by part D). The website's fonts are embedded in the PDFs that use them: no new image, no new settings.
+
+- [ ] **Migration ran**: after part D, `docker compose -f deploy/compose.yml --env-file deploy/.env logs migrate | grep 0069` shows `applied 0069_library_templates`.
+- [ ] **The new memory cap is in force**: `docker stats --no-stream` shows `1GiB` as the limit of the `api` container.
+- [ ] **Preview a PDF**: in a company with Documents on, open a PDF template in the designer and press **Preview as PDF**; the PDF opens after a few seconds.
+
 > [!NOTE]
 > **The test box (Stage 10)** updates the same way, from `staging` instead of `main`: `git pull` on its `staging` checkout, then **Pull** and **Redeploy** the stack in Arcane. Updating it first, the day before, is the cheapest rehearsal there is.
 
