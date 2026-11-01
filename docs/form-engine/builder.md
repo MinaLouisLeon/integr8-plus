@@ -54,6 +54,21 @@ apps/api  routes/v1/forms.ts        the only way to a published version
 | `POST /v1/forms/:id/copy-to-company`       | staff only   | The form in another company as a draft (1.3.0)          |
 | `POST /v1/forms/:id/library-template`      | staff only   | The form saved as a staff-made library template (1.3.0) |
 
+| Route                                      | Who          | What                                                       |
+| ------------------------------------------ | ------------ | ---------------------------------------------------------- |
+| `GET /v1/forms`                            | everyone     | Forms; drafts and unpublished forms only for builders      |
+| `POST /v1/forms`                           | owner, admin | A new form with an empty draft (idempotent)                |
+| `GET /v1/forms/:id`                        | everyone     | The form, its live version, and its draft for builders     |
+| `PATCH /v1/forms/:id`                      | owner, admin | Title, who may fill it, whether a signature is required    |
+| `POST /v1/forms/:id/clone`                 | owner, admin | A copy with no history (idempotent)                        |
+| `PUT /v1/forms/:id/draft`                  | owner, admin | Autosave on `expectedRevision`                             |
+| `POST /v1/forms/:id/draft/check`           | owner, admin | Every issue, the diff, and warnings (texts with no Arabic) |
+| `POST /v1/forms/:id/draft/publish`         | owner, admin | The new immutable version, with change note and summary    |
+| `POST /v1/forms/:id/draft/test-submission` | owner, admin | The server's verdict on a test fill; `stored: false`       |
+| `GET /v1/forms/:id/versions[/:versionId]`  | everyone     | Published history, and any one version read-only           |
+| `GET /v1/form-templates[/:key]`            | everyone     | The global template library                                |
+| `POST /v1/form-templates/:key/clone`       | owner, admin | A new form from a template (idempotent)                    |
+
 Every publish is written to the audit log as `form.published`, with the version number and
 how many breaking changes were acknowledged.
 
@@ -158,21 +173,24 @@ Screenshots, in English and Arabic: `docs/screenshots/1.3.0/forms/` (the two dia
 
 `apps/desktop/src/features/forms`:
 
-| Path                               | Responsibility                                                                   |
-| ---------------------------------- | -------------------------------------------------------------------------------- |
-| `model/editor.ts`                  | The editing reducer: definition, selection, bounded undo and redo                |
-| `model/catalog.ts`                 | Palette groups and property editors, read from the engine's type registry        |
-| `model/calculation.ts`             | Calculations as a left-to-right chain, and back                                  |
-| `model/recovery.ts`                | The local copy that survives a crash, and what to offer on reopening             |
-| `model/rename.ts`                  | A new question's answer key following its wording, until something depends on it |
-| `model/issues.ts`                  | Which element to open for a compile issue                                        |
-| `use-draft-sync.ts`                | Autosave, retry, conflict detection                                              |
-| `model/sentences.ts`               | A question's rules read out as sentences for its card on the canvas              |
-| `components/canvas.tsx`            | Palette and drag-and-drop canvas (dnd-kit), with keyboard and button moves       |
-| `components/config-panel.tsx`      | Everything about the selected question, section or page                          |
-| `components/condition-builder.tsx` | "Show this when…", "Required when…" and custom checks, as sentences              |
-| `components/form-renderer.tsx`     | The preview: `viewForm` rendered for desktop and phone                           |
-| `components/changes-panel.tsx`     | The server's check, the diff, and the publish dialog                             |
+| Path                                  | Responsibility                                                                     |
+| ------------------------------------- | ---------------------------------------------------------------------------------- |
+| `model/editor.ts`                     | The editing reducer: definition, selection, bounded undo and redo                  |
+| `model/catalog.ts`                    | Palette groups and property editors, read from the engine's type registry          |
+| `model/calculation.ts`                | Calculations as a left-to-right chain, and back                                    |
+| `model/recovery.ts`                   | The local copy that survives a crash, and what to offer on reopening               |
+| `model/rename.ts`                     | A new question's answer key following its wording, until something depends on it   |
+| `model/issues.ts`                     | Which element to open for a compile issue                                          |
+| `use-draft-sync.ts`                   | Autosave, retry, conflict detection                                                |
+| `model/sentences.ts`                  | A question's rules read out as sentences for its card on the canvas                |
+| `components/canvas.tsx`               | Palette and drag-and-drop canvas (dnd-kit), with keyboard and button moves         |
+| `components/config-panel.tsx`         | Everything about the selected question, section or page                            |
+| `components/condition-builder.tsx`    | "Show this when…", "Required when…" and custom checks, as sentences                |
+| `components/form-renderer.tsx`        | The preview's desktop view: `viewForm` rendered, every page at once                |
+| `components/phone-preview.tsx`        | The preview's phone, drawn the way the phone app draws the form                    |
+| `components/bilingual-text-input.tsx` | One text typed in English and Arabic side by side; every text in the panel uses it |
+| `components/translations-panel.tsx`   | The Translations tab: every text of the draft, English beside Arabic               |
+| `components/changes-panel.tsx`        | The server's check, the diff, and the publish dialog                               |
 
 ### Conditions as sentences
 
@@ -217,6 +235,118 @@ after the last change. A failed save retries with backoff and shows "Not saved y
 conflict stops and offers to load the other version. On opening a form, a local copy that
 never reached the server is offered back — with a warning if somebody has saved since. The
 copy is removed as soon as the server has the same definition.
+
+### Two languages side by side
+
+A form carries its own words (`LocalizedText`, `{ en, ar }`), and each engineer fills it in
+the language their phone is set to; a text with only one language shows that one to
+everybody. So every text in the settings panel — a page's or section's title, a question's
+wording and help, each option, a custom check's message, a format's message, what one entry
+of a repeating section is called — has an English box and an Arabic box side by side,
+whatever language the builder itself is in (owner's decision, 1.3.0). The Arabic box is
+right-to-left and is outlined in amber, with "No Arabic yet", while the English has words
+and it has none. Emptying both boxes removes an optional text (help) and leaves a required
+one empty, which the compiler then names as a problem. A question's answer key follows its
+**English** wording (Arabic gives no Latin letters to make a key from).
+
+`BilingualTextInput` is the one component for this; a new kind of text (a description, an
+information block) uses it too. A question's unit (`bar`, `W`) is a plain string in the
+definition, not a `LocalizedText`, so it stays one box: making it bilingual would change the
+format every phone reads.
+
+The settings panel in English and in Arabic (1.3.0):
+[English](../screenshots/1.3.0/form-builder/settings-panel-en.png),
+[Arabic](../screenshots/1.3.0/form-builder/settings-panel-ar.png).
+
+### The Translations tab
+
+One table of every text in the draft, grouped by page and section, with what each text is
+("Question", "Help text", "Option · fail", "Check message · check_1") and whose it is, and
+English and Arabic columns edited in place. Each change is an ordinary edit of the draft, so
+it autosaves and Undo takes it back. "Only texts with no Arabic" narrows the table to those;
+a row stays while it is being filled in and is marked "Done", so it does not vanish at the
+first letter. "Show" opens the item in Build.
+
+The texts come from `collectTexts` in `@integr8/form-engine` (`authoring/translations.ts`),
+which walks the definition **by its schema** and stops at every `localizedTextSchema`: a text
+added to the format later appears here, and in the check below, without a list to update.
+
+Screenshots: [English](../screenshots/1.3.0/form-builder/translations-en.png),
+[Arabic](../screenshots/1.3.0/form-builder/translations-ar.png),
+[only texts with no Arabic](../screenshots/1.3.0/form-builder/translations-missing-en.png).
+
+### Texts with no Arabic in the publish check
+
+`POST /draft/check` returns `warnings`, one `missing_translation` per text with no Arabic
+(`missingTranslations(definition, 'ar')`, the same walk). The Changes tab and the publish
+dialog say "12 texts have no Arabic" with a button to the Translations tab, filtered. It is a
+warning only: publishing is never refused for it, because an English-only company is a
+normal customer. A server from before 1.3.0 sends no `warnings`, and the builder then says
+nothing.
+
+### The phone in Preview
+
+The phone beside the desktop view is drawn the way the phone app draws a form
+(`apps/mobile/src/forms`): the header with the form's title and the progress bar, one page at
+a time with "Page 2 of 4", sections as cards, a large label with the red required mark, help
+under it, a red edge and bold red errors under the control, choices as whole-width rows,
+yes/no and ratings as big segments, every control at least 56 points tall, a repeating
+section as a list of its entries opened one at a time, and Review jumping to the first
+problem. It uses the phone's system font and type sizes, and the company's brand colour and
+theme computed the way the phone computes them (`colourVariables` and `brandAccentVariables`
+from `@integr8/tokens`, the values the phone's `useTheme` reads); a company on "system"
+follows the desktop's own theme. The camera, signature pad, location and native date pickers
+are stood in for, as before ("Simulate").
+
+Screenshots, after Review on an empty form, in a teal company colour:
+[English](../screenshots/1.3.0/form-builder/phone-preview-en.png),
+[Arabic](../screenshots/1.3.0/form-builder/phone-preview-ar.png).
+
+### Behaviour check
+
+Three renderers draw a form from one engine: the builder's preview (desktop view and phone),
+the web filler (`@integr8/form-renderer-dom`, also used by the desktop app) and the phone app.
+An automated check holds all of them to the same thing at every step:
+
+- **Forms:** the six library forms, plus `EVERYTHING_FORM` — every question type and every
+  kind of rule: "Show when" on a question, a section and a page, "Required only when",
+  options that depend on another answer, custom checks and a format with their own
+  messages, calculations (one summing a repeating section), and a repeating section with a
+  minimum, a title question, a check inside an entry and checks across its entries (count,
+  every).
+- **Steps:** opened; Review pressed on an empty form; first options and plain values,
+  before and after Review; last options and values the rules refuse; two entries added,
+  before and after Review; and five steps of the every-type form that trigger one rule each.
+  In English and in Arabic.
+- **What is compared:** every section shown (title; for a repeating section its entries'
+  titles and its own problems) and every question shown, page after page and entry after
+  entry — its words, its help, whether it has the required mark, and every error message in
+  the words shown — or that the review screen shows when nothing is wrong.
+
+The expectation is written from the engine's view by `expectedScreen`
+(`@integr8/form-input/behaviour`, with the forms and steps). Each renderer's test reads its
+own screen through the same markers (`data-section`, `data-question`, `data-part`; `testID`s
+on the phone) with `readScreen`, and compares:
+
+| Test                                                                    | Renderer                                                                                    |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `apps/desktop/src/features/forms/components/preview.behaviour.test.tsx` | The preview's phone, pressed through like a phone; its desktop view                         |
+| `packages/form-renderer-dom/src/behaviour.test.tsx`                     | The web filler, page by page through its navigation                                         |
+| `apps/mobile/src/forms/behaviour.test.tsx`                              | The phone app's own screens (`FormFiller`, `FieldBlock`, entries, widgets) with `FillModel` |
+
+The phone's components are real; React Native itself is replaced in that test by a small
+stand-in that draws its components as DOM (`apps/mobile/src/testing/react-native.tsx`), and
+the device parts (camera, files, location, signature pad, media storage) by empty ones.
+
+What it cannot see: how anything looks — pixels, fonts, spacing, colours — the native pickers,
+the camera and signature pad, option lists inside a closed dropdown, and typing into a control
+(each renderer's own widget tests cover input). The answers are given to each renderer the way
+it opens a saved form (the phone from its stored row, the web from a draft), then Review is
+pressed on screen. The look of the preview's phone was matched to the phone app by reading
+its styles, not by comparing screenshots.
+
+When it was first run it found two differences, both fixed: the phone showed no required mark
+on a required tick box, and the preview's desktop view ignored a format's own error message.
 
 ### Adding a property to a field type
 

@@ -8,7 +8,6 @@ import {
 } from '@integr8/form-engine';
 import { type TFunction, useTranslation } from '@integr8/i18n';
 import { useMemo, useState } from 'react';
-import { Button } from '~/components/ui';
 import type { EditorAction } from '../model/editor';
 import { nameOf } from './canvas';
 import { FORM_LANGUAGES, type FormLanguage } from './bilingual-text-input';
@@ -190,24 +189,29 @@ function Row({
   return (
     <tr className="border-b border-border-subtle align-top">
       <th scope="row" className="px-2 py-2 text-start font-normal">
-        <span className="flex flex-col gap-0.5">
-          <span className="font-medium text-content">
-            {what}
-            {done ? (
-              <span className="ms-2 text-xs font-normal text-success">
-                {t('forms.translations.done')}
-              </span>
-            ) : null}
-          </span>
-          {owner === undefined ? null : (
-            <span className="truncate text-xs text-content-muted">{owner}</span>
-          )}
-          {text.element === undefined ? null : (
-            <span>
-              <Button variant="ghost" onClick={() => onShow(text.element!)}>
-                {t('forms.changes.show')}
-              </Button>
+        <span className="flex items-start justify-between gap-2">
+          <span className="flex min-w-0 flex-col gap-0.5 pt-1.5">
+            <span className="font-medium text-content">
+              {what}
+              {done ? (
+                <span className="ms-2 text-xs font-normal text-success">
+                  {t('forms.translations.done')}
+                </span>
+              ) : null}
             </span>
+            {owner === undefined ? null : (
+              <span className="truncate text-xs text-content-muted">{owner}</span>
+            )}
+          </span>
+          {text.element === undefined ? null : (
+            <button
+              type="button"
+              className="shrink-0 rounded-md px-2 py-1.5 text-xs text-content-muted hover:bg-surface-muted hover:text-content"
+              aria-label={`${t('forms.changes.show')} · ${nameOf(definition, text.element, locale, t)}`}
+              onClick={() => onShow(text.element!)}
+            >
+              {t('forms.changes.show')}
+            </button>
           )}
         </span>
       </th>
