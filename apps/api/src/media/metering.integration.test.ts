@@ -377,3 +377,126 @@ describe('retention', () => {
     );
   });
 });
+
+describe('storage over the allowance, on a plan that allows it (Low 2)', () => {
+  interface OverAllowanceBody {
+    overAllowance: {
+      month: string;
+      daysInMonth: number;
+      companies: {
+        tenantId: string;
+        name: string;
+        slug: string;
+        plan: string;
+        usedBytes: number;
+        allowanceBytes: number | null;
+        overNowBytes: number;
+        daysOver: number;
+        peakBytes: number;
+        averageBytes: number;
+      }[];
+    };
+  }
+
+  it('lists the company on the staff dashboard with the month’s overage to invoice', async () => {
+    const metering = getPlatformDataSource().metering;
+    // A month long past, so nothing else writes to it: 1,000 bytes allowed,
+    // over by 300 on the 1st to the 10th and by 900 on the 11th.
+    for (let day = 1; day <= 11; day += 1) {
+      await metering.recordSample({
+        tenantId: api.tenantId,
+        sampledOn: `2021-04-${String(day).padStart(2, '0')}`,
+        bytes: day === 11 ? 1_900 : 1_300,
+        objects: 3,
+        byCategory: {},
+        allowanceBytes: 1_000,
+      });
+    }
+    // And a day under the line, which adds nothing.
+    await metering.recordSample({
+      tenantId: api.tenantId,
+      sampledOn: '2021-04-12',
+      bytes: 900,
+      objects: 3,
+      byCategory: {},
+      allowanceBytes: 1_000,
+    });
+
+    const response = await api.call(admin.accessToken, {
+      method: 'GET',
+      url: '/v1/platform/storage?month=2021-04',
+    });
+    expect(response.statusCode).toBe(200);
+    const body = JSON.parse(response.body) as OverAllowanceBody;
+    expect(body.overAllowance.month).toBe('2021-04');
+    expect(body.overAllowance.daysInMonth).toBe(30);
+
+    const tenant = await getPlatformDataSource().tenants.findById(api.tenantId);
+    const row = body.overAllowance.companies.find((company) => company.tenantId === api.tenantId);
+    expect(row).toMatchObject({
+      name: tenant?.name,
+      slug: tenant?.slug,
+      daysOver: 11,
+      peakBytes: 900,
+      // (10 × 300 + 900) / 30 days.
+      averageBytes: 130,
+    });
+  });
+
+  it('refuses a month that is not one', async () => {
+    const response = await api.call(admin.accessToken, {
+      method: 'GET',
+      url: '/v1/platform/storage?month=2021-13',
+    });
+    expect(response.statusCode).toBe(422);
+  });
+
+  it('shows the company it is over its plan, and what this month adds up to', async () => {
+    const member = await api.member('owner', 'over-plan');
+    const token = await api.signIn(member);
+    await planWith('standard', { storageBytes: 1, overage: 'allow' });
+    await storeFile(token, 2048);
+
+    const today = dayOf(new Date());
+    const usage = await api.call(token, { method: 'GET', url: '/v1/storage/usage' });
+    const used = (JSON.parse(usage.body) as { totalBytes: number }).totalBytes;
+    await getPlatformDataSource().metering.recordSample({
+      tenantId: api.tenantId,
+      sampledOn: today,
+      bytes: used,
+      objects: 1,
+      byCategory: {},
+      allowanceBytes: 1,
+    });
+
+    const response = await api.call(token, { method: 'GET', url: '/v1/storage/usage' });
+    expect(response.statusCode).toBe(200);
+    const body = JSON.parse(response.body) as {
+      quota: { state: string; overage: string; overageBytes: number };
+      overageThisMonth: {
+        month: string;
+        daysInMonth: number;
+        daysOver: number;
+        peakBytes: number;
+        averageBytes: number;
+      };
+    };
+    expect(body.quota).toMatchObject({ state: 'over', overage: 'allow' });
+    expect(body.quota.overageBytes).toBe(used - 1);
+    expect(body.overageThisMonth.month).toBe(today.slice(0, 7));
+    expect(body.overageThisMonth.daysOver).toBeGreaterThanOrEqual(1);
+    expect(body.overageThisMonth.peakBytes).toBeGreaterThanOrEqual(used - 1);
+    expect(body.overageThisMonth.averageBytes).toBeGreaterThan(0);
+
+    // And the staff list for this month names it, over now.
+    const overview = await api.call(admin.accessToken, {
+      method: 'GET',
+      url: '/v1/platform/storage',
+    });
+    const listed = (JSON.parse(overview.body) as OverAllowanceBody).overAllowance.companies.find(
+      (company) => company.tenantId === api.tenantId,
+    );
+    expect(listed?.overNowBytes).toBe(used - 1);
+    expect(listed?.plan).toBe('standard');
+  });
+});

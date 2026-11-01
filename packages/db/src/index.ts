@@ -218,6 +218,7 @@ export {
 export {
   StorageMeteringRepository,
   TenantStorageHistory,
+  type OverageSample,
   type PlanAllowance,
   type Reconciliation,
   type SampleCategories,

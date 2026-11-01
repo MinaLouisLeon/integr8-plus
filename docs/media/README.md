@@ -177,11 +177,31 @@ warning threshold, and what happens at a hundred percent:
 |         |                                                                                          |
 | ------- | ---------------------------------------------------------------------------------------- |
 | `block` | new uploads are refused, with the numbers in the error so a client can say what is wrong |
-| `allow` | uploads keep working, and the overage is recorded on that day's sample for P17 to bill   |
+| `allow` | uploads keep working, and the overage is recorded on that day's sample, to be invoiced   |
 
-Trial and starter block; standard and enterprise allow. Until P17 exists, overage on the
-larger plans **accrues unbilled** — the daily sample is what makes it billable
-retrospectively rather than lost.
+Trial and starter block; standard and enterprise allow (enterprise starts uncapped, so it
+has nothing to be over). Keeping `allow` on Standard was decided on 2026-11-01: an engineer's
+photo from a roof is never refused for a paying company's storage, and the extra is billed.
+
+### Invoicing the overage
+
+Integr8 invoices companies itself (`BILLING_PROVIDER=none`, docs/billing), so storage over an
+`allow` plan is a line somebody writes on the invoice. The number is the month's **average
+overage** in GB-months: the bytes over the line on each day's sample, added up and divided by
+the days in the month (`monthlyOverage` in `packages/core/src/storage-overage.ts`). Ten GB
+over for half of a thirty-day month is 5 GB-months. A day without a sample counts as zero, so
+the figure grows through the month and the one on its last day is the bill. Months are UTC,
+like the sampler's day.
+
+- **Staff dashboard → Storage → Over allowance** lists every company with a day over in the
+  month (this month or last month): the company, its plan, how far over it is on the latest
+  sample (or "Back under"), the days over, the peak, and the GB-months to invoice. It is read
+  from `GET /v1/platform/storage?month=YYYY-MM` (`overAllowance`), from the daily samples.
+- **The company's Storage page** shows anyone who may see it (`storage.read`) an **Over your
+  plan** notice while it is over: what it stores, by how much that passes the plan, that
+  uploads keep working, and what this month's invoice carries for it so far
+  (`GET /v1/storage/usage`, `overageThisMonth`). A company that went over earlier in the month
+  and is back under is told the month still carries the extra.
 
 The check runs at both upload entry points (`POST /v1/media` and the resumable
 `PUT /v1/media/:id`), before an intent exists or a link is signed, and the incoming bytes

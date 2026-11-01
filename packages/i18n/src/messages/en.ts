@@ -305,8 +305,16 @@ export const en = {
         'You have used {{percent}}% of your storage. Delete what you no longer need, or ask about a larger plan.',
       full: 'You have used all of your storage. New uploads will be refused until you free some space.',
       fullSoon: 'Uploads will be refused once this is full.',
-      overage:
-        'You are over your allowance by {{amount}}. Uploads still work, and the extra is billed.',
+      // Low 2: a plan that keeps accepting uploads past its allowance.
+      overPlan: {
+        title: 'Over your plan',
+        body: 'You are storing {{used}}, which is {{amount}} more than your plan’s {{allowance}}. Uploads keep working.',
+        billing:
+          'Storage over your plan is added to your Integr8 invoice as the average amount over during the month. So far this month: {{average}} on average, {{peak}} at most.',
+        action: 'Delete files you no longer need, or ask Integr8 about a larger plan.',
+        earlier:
+          'You went over your plan’s storage earlier this month. About {{average}} of extra storage, averaged over the month, will be on this month’s invoice.',
+      },
     },
     billing: {
       title: 'Billing',
@@ -8421,6 +8429,23 @@ export const en = {
       lastRun: 'Last started',
       lastFinished: 'Last finished',
       neverFinished: 'Did not finish',
+      // Low 2: companies past their allowance on a plan that allows it, for invoicing.
+      overAllowance: {
+        title: 'Over allowance',
+        description:
+          'Companies whose plan keeps accepting uploads past its allowance. Invoice the month’s average overage in GB-months: the bytes over the line each day, added up and divided by the days in the month. It grows through the month; the figure on the last day is the bill.',
+        month: 'Month',
+        thisMonth: 'This month',
+        lastMonth: 'Last month',
+        company: 'Company',
+        plan: 'Plan',
+        overNow: 'Over now',
+        backUnder: 'Back under',
+        daysOver: 'Days over',
+        peak: 'Peak',
+        toInvoice: 'To invoice (GB-months)',
+        none: 'No company went over its allowance in this month.',
+      },
     },
     billingMode: {
       self_serve: 'Pays in the app',

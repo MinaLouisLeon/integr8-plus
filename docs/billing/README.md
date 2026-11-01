@@ -88,6 +88,11 @@ thing is taken:
 | Submissions | starting a submission, **and** submitting one                                          | 409 `submission_limit_reached` |
 | Storage     | requesting an upload (P16)                                                             | 409 `storage_quota_exceeded`   |
 
+Storage is refused only on a plan whose overage policy is `block` (Trial, Starter). Standard
+keeps `allow`: uploads go through past the allowance and the month's average overage, in
+GB-months, is invoiced; the staff dashboard's Storage page lists it under **Over allowance**
+(docs/media, "Invoicing the overage").
+
 **Seats per company.** The seat number is the plan's, unless Integr8 staff have set the
 company's own (`tenants.seats`, the Seats field on the company's page and when onboarding). When
 set, it **replaces** the plan's number, higher or lower; left empty, the plan's applies. A null on

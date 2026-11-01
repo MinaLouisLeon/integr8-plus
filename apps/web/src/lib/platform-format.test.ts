@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   formatBytes,
   formatDuration,
+  formatGbMonths,
   formatWhen,
   isValidSlug,
   pickMessage,
@@ -24,6 +25,15 @@ describe('formatBytes', () => {
   it('answers a dash rather than NaN for nonsense', () => {
     expect(formatBytes(Number.NaN)).toBe('—');
     expect(formatBytes(-1)).toBe('—');
+  });
+});
+
+describe('formatGbMonths', () => {
+  it('turns byte-months into GB-months, to two places', () => {
+    expect(formatGbMonths(5_000_000_000)).toBe('5.00');
+    expect(formatGbMonths(130_000_000)).toBe('0.13');
+    expect(formatGbMonths(0)).toBe('0.00');
+    expect(formatGbMonths(-1)).toBe('—');
   });
 });
 

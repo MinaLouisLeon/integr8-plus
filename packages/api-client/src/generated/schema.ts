@@ -23397,6 +23397,13 @@ export interface operations {
                             bytes: number;
                             objects: number;
                         }[];
+                        overageThisMonth: {
+                            month: string;
+                            daysInMonth: number;
+                            daysOver: number;
+                            peakBytes: number;
+                            averageBytes: number;
+                        };
                     };
                 };
             };
@@ -83920,7 +83927,9 @@ export interface operations {
     };
     getStorageOverview: {
         parameters: {
-            query?: never;
+            query?: {
+                month?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -83961,6 +83970,24 @@ export interface operations {
                             status: "matched" | "drifted" | "unavailable";
                             note: string | null;
                         }[];
+                        overAllowance: {
+                            month: string;
+                            daysInMonth: number;
+                            companies: {
+                                /** Format: uuid */
+                                tenantId: string;
+                                name: string;
+                                slug: string;
+                                /** @enum {string} */
+                                plan: "trial" | "starter" | "standard" | "enterprise";
+                                usedBytes: number;
+                                allowanceBytes: number | null;
+                                overNowBytes: number;
+                                daysOver: number;
+                                peakBytes: number;
+                                averageBytes: number;
+                            }[];
+                        };
                         tasks: {
                             task: string;
                             /** Format: date-time */

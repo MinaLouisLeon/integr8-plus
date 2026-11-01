@@ -647,3 +647,13 @@ export {
   LEGAL_OPERATOR,
   missingOperatorDetails,
 } from './legal.js';
+
+export {
+  MONTH_PATTERN,
+  monthBounds,
+  monthlyOverage,
+  utcMonthOf,
+  previousMonth,
+  type MonthlyOverage,
+  type OverageDay,
+} from './storage-overage.js';

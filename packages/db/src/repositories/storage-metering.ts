@@ -53,6 +53,19 @@ export interface StorageSample {
   classBOperations: number | null;
 }
 
+/** A day a company spent over its allowance, with who the company is, for the overage list. */
+export interface OverageSample {
+  tenantId: string;
+  tenantName: string;
+  tenantSlug: string;
+  plan: TenantPlan;
+  /** `YYYY-MM-DD`. */
+  sampledOn: string;
+  bytes: number;
+  allowanceBytes: number;
+  overageBytes: number;
+}
+
 export interface Reconciliation {
   id: string;
   tenantId: string;
@@ -233,6 +246,45 @@ export class StorageMeteringRepository {
         .orderBy('sampled_on', 'desc')
         .execute()
     ).map(toSample);
+  }
+
+  /**
+   * Every day from `first` to `last` (inclusive, `YYYY-MM-DD`) on which a
+   * company was over its allowance, with the company's name: what the staff
+   * dashboard's "Over allowance" list is invoiced from (Low 2). Only days with
+   * overage, so a quiet month is a short read.
+   */
+  async overageBetween(first: string, last: string): Promise<OverageSample[]> {
+    const rows = await this.db
+      .selectFrom('tenant_storage_samples as s')
+      .innerJoin('tenants as t', 't.id', 's.tenant_id')
+      .select([
+        's.tenant_id',
+        's.sampled_on',
+        's.bytes',
+        's.allowance_bytes',
+        's.overage_bytes',
+        't.name',
+        't.slug',
+        't.plan',
+      ])
+      .where('s.sampled_on', '>=', first)
+      .where('s.sampled_on', '<=', last)
+      .where('s.overage_bytes', '>', sql<string>`0`)
+      .orderBy('s.tenant_id')
+      .orderBy('s.sampled_on')
+      .execute();
+
+    return rows.map((row) => ({
+      tenantId: row.tenant_id,
+      tenantName: row.name,
+      tenantSlug: row.slug,
+      plan: row.plan,
+      sampledOn: dayString(row.sampled_on),
+      bytes: Number(row.bytes),
+      allowanceBytes: Number(row.allowance_bytes ?? 0),
+      overageBytes: Number(row.overage_bytes ?? 0),
+    }));
   }
 
   // -------------------------------------------------------------------------

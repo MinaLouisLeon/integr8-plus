@@ -40,6 +40,21 @@ export function formatBytes(bytes: number, locale = 'en'): string {
 }
 
 /**
+ * Byte-months as GB-months, the unit storage overage is invoiced in (Low 2):
+ * powers of 1000 like {@link formatBytes}, always two decimal places, so a
+ * small overage still shows and a column of them lines up.
+ */
+export function formatGbMonths(byteMonths: number, locale = 'en'): string {
+  if (!Number.isFinite(byteMonths) || byteMonths < 0) {
+    return '—';
+  }
+  return (byteMonths / 1_000_000_000).toLocaleString(locale, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+/**
  * How long a grant lasted, in the coarsest unit that is still true.
  *
  * Impersonation lasts minutes, so seconds matter at the short end and nothing

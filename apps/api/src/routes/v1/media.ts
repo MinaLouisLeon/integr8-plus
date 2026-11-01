@@ -1,4 +1,4 @@
-import { holds } from '@integr8/core';
+import { holds, monthlyOverage, utcMonthOf } from '@integr8/core';
 import { type FileRecord, withTenant } from '@integr8/db';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
@@ -488,6 +488,19 @@ export const storageUsageRoute = defineRoute({
             objects: z.number().int(),
           }),
         ),
+        /**
+         * This month (UTC) over the plan's allowance, as Integr8 invoices it
+         * (Low 2): days over, the peak, and the daily overage averaged over
+         * the month's days (byte-months; 10⁹ is one GB-month). All zero when
+         * the company stayed under.
+         */
+        overageThisMonth: z.object({
+          month: z.string(),
+          daysInMonth: z.number().int(),
+          daysOver: z.number().int(),
+          peakBytes: z.number().int(),
+          averageBytes: z.number().int(),
+        }),
       }),
     },
   },
@@ -517,6 +530,10 @@ export const storageUsageRoute = defineRoute({
           bytes: sample.bytes,
           objects: sample.objects,
         })),
+        overageThisMonth: monthlyOverage(
+          trend.map((sample) => ({ day: sample.sampledOn, overageBytes: sample.overageBytes })),
+          utcMonthOf(new Date()),
+        ),
       },
     };
   },
