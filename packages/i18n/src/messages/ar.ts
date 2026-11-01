@@ -840,6 +840,12 @@ export const ar: Catalogue<Messages> = {
     unexpected: 'حدث خطأ غير متوقع.',
   },
 
+  clientUpdate: {
+    needed: 'لم يعد هذا الإصدار من التطبيق مدعومًا. حدِّثه لتواصل العمل.',
+    desktopHint: 'إذا لم يُحدِّث التطبيق نفسه خلال بضع دقائق، فنزِّل الإصدار الجديد.',
+    button: 'تحديث',
+  },
+
   apiErrors: apiErrorsAr,
 
   legal: legalAr,

@@ -1,6 +1,8 @@
 import { SessionManager, type SignOutReason } from '@integr8/api-client';
 import * as Sentry from '@sentry/react-native';
 import Constants from 'expo-constants';
+import { reportClientTooOld } from './client-update';
+import { COMPANY } from './company';
 import { API_BASE_URL, AUTH_VERIFICATION_KEYS } from './env';
 import { checkOfflineGrant, type GrantKey, parseVerificationKeys } from './offline-grant';
 import { SecureTokenStore } from './platform';
@@ -89,6 +91,10 @@ export function session(): SessionManager {
     verifyOfflineGrant: offlineGrantCheck(),
     onSignedOut: (reason) => {
       onSignedOut?.(reason);
+    },
+    // Any refusal of this build, from any screen, shows the Update strip.
+    onClientTooOld: (info) => {
+      reportClientTooOld(info, COMPANY?.slug);
     },
   });
 

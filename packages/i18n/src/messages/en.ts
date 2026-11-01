@@ -882,6 +882,15 @@ export const en = {
     unexpected: 'An unexpected error occurred.',
   },
 
+  // The phone and desktop apps when the server no longer serves this build:
+  // a strip with an Update button that opens the web app's download page,
+  // with the company filled in for a company's own app (Low 6, 1.2.4).
+  clientUpdate: {
+    needed: 'This version of the app is no longer supported. Update it to keep working.',
+    desktopHint: 'If the app does not update itself in a few minutes, download the new version.',
+    button: 'Update',
+  },
+
   // One message per error code the API can return (ADR-0012), in their own
   // file because there are so many. `API_ERROR_CODES` is the contract.
   apiErrors: apiErrorsEn,

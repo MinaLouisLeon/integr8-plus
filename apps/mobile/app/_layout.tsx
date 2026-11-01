@@ -10,6 +10,7 @@ import { AppState, I18nManager } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppLock } from '~/components/app-lock';
 import { BrandProvider } from '~/components/brand';
+import { UpdateRequired } from '~/components/update-required';
 import { refreshBrand } from '~/lib/brand-cache';
 import { COMPANY } from '~/lib/company';
 import { APP_ENV, SENTRY_DSN } from '~/lib/env';
@@ -128,6 +129,7 @@ function RootLayout() {
             <RouteMemory />
             <WarrantyAlerts />
             <Stack screenOptions={{ headerShown: false }} />
+            <UpdateRequired />
           </BrandProvider>
         </AppLock>
       </I18nextProvider>
