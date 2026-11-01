@@ -3334,8 +3334,12 @@ export interface AiHelpArticlesTable {
 // ---------------------------------------------------------------------------
 
 export type DocumentStatus = 'pending' | 'ready' | 'failed';
-/** Made from a submission with a template, or a PDF a person uploaded (0067). */
-export type DocumentSource = 'generated' | 'uploaded';
+/**
+ * Where a document came from: a submission and a template, an upload (0067),
+ * or one of the records the server prints in the company's look (0074).
+ */
+export type DocumentSource =
+  'generated' | 'uploaded' | 'quote' | 'invoice' | 'purchase_order' | 'job_report';
 export type DocumentLookupRole = 'key' | 'confirm';
 
 export interface DocumentTemplatesTable {
@@ -3365,8 +3369,13 @@ export interface DocumentsTable {
   source: Generated<DocumentSource>;
   /** An uploaded document's reference number (0067). */
   reference: string | null;
-  /** The customer an uploaded document is for (0067). */
+  /** The customer an uploaded document or a business PDF is for (0067, 0074). */
   customer_id: string | null;
+  /** The record a business PDF was printed from: exactly one, by its source (0074). */
+  quote_id: Generated<string | null>;
+  invoice_id: Generated<string | null>;
+  purchase_order_id: Generated<string | null>;
+  work_order_id: Generated<string | null>;
   /** Whether its QR link and the company website may show it (0067). */
   shareable: Generated<boolean>;
   title: string;

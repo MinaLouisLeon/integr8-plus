@@ -498,6 +498,9 @@ export {
   SalesQuotesRepository,
 } from './repositories/sales-quotes.js';
 export {
+  BUSINESS_DOCUMENT_KINDS,
+  type BusinessDocumentKind,
+  type BusinessDocumentRecord,
   type DocumentFieldValue,
   type DocumentListQuery,
   type DocumentRecord,
@@ -505,6 +508,7 @@ export {
   type WebsiteKey,
   DocumentsRepository,
   DocumentTemplatesRepository,
+  isBusinessDocumentKind,
   linkOpens,
   MAX_LIVE_WEBSITE_KEYS,
   normalizeFieldValue,
