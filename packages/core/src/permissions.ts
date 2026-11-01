@@ -325,6 +325,14 @@ export const PERMISSIONS = [
   /** Expire, renew and delete generated PDFs. */
   'document.manage',
   /**
+   * Upload a PDF the company already has into the register, and switch any
+   * document's sharing on or off: whether its QR code's link and the company
+   * website may show it (0067). Owners and admins (product decision,
+   * 2026-11-01): what leaves the company is answered for by the people who
+   * answer for the company.
+   */
+  'document.upload',
+  /**
    * Design a form's PDF templates. Staff-only (see
    * {@link STAFF_ONLY_PERMISSIONS}), like the forms themselves.
    */
@@ -451,6 +459,7 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'document.read',
     'document.create',
     'document.manage',
+    'document.upload',
     'document.design',
     'eta.read',
     'eta.prepare',
@@ -531,6 +540,7 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'document.read',
     'document.create',
     'document.manage',
+    'document.upload',
     'document.design',
     'eta.read',
     'eta.prepare',
