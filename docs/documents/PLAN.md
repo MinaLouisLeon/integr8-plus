@@ -18,15 +18,16 @@ key that only the terminal-created platform account can issue.
 
 ## Phases
 
-| Phase | Status   | What it covers                                                                                                                                         |
-| ----- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| A     | Complete | This plan; ADR-0001.                                                                                                                                   |
-| B     | Complete | Permissions, the `documents` module flag, navigation, migration 0048 (templates, documents, field values, website keys), repositories, retention rule. |
-| C     | Complete | `@integr8/document-render`: the template schema and the HTML renderer shared by the designer's preview and the server.                                 |
-| D     | Complete | The PDF pipeline (Chromium, backgrounds), the render job, routes for templates, documents, the public link, the website lookup and website keys.       |
-| E     | Complete | The desktop designer, the Documents register and export in the apps, the `/d/<code>` page, the dashboard's website-key panel, the phone's list.        |
-| F     | Complete | Runbook, the website developer's guide, the setup guide (every copy), full checks, the pull request.                                                   |
-| G     | Complete | 1.2.4: uploaded PDFs, the sharing switch (new documents start unshared), the lookup by reference, files readable only through their record (0067).     |
+| Phase | Status   | What it covers                                                                                                                                                                        |
+| ----- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A     | Complete | This plan; ADR-0001.                                                                                                                                                                  |
+| B     | Complete | Permissions, the `documents` module flag, navigation, migration 0048 (templates, documents, field values, website keys), repositories, retention rule.                                |
+| C     | Complete | `@integr8/document-render`: the template schema and the HTML renderer shared by the designer's preview and the server.                                                                |
+| D     | Complete | The PDF pipeline (Chromium, backgrounds), the render job, routes for templates, documents, the public link, the website lookup and website keys.                                      |
+| E     | Complete | The desktop designer, the Documents register and export in the apps, the `/d/<code>` page, the dashboard's website-key panel, the phone's list.                                       |
+| F     | Complete | Runbook, the website developer's guide, the setup guide (every copy), full checks, the pull request.                                                                                  |
+| G     | Complete | 1.2.4: uploaded PDFs, the sharing switch (new documents start unshared), the lookup by reference, files readable only through their record (0067).                                    |
+| H     | Complete | 1.3.0: header and three-place footer, landscape, style and fonts, drag and drop, undo, copy and paste, recovery, Preview as PDF, templates that survive form versions (ADR addendum). |
 
 ## Verification log
 
@@ -47,3 +48,8 @@ Commands actually run, with their outcome. "Not run" means not run.
 | Phase E | The `/d/<code>` page against a mock API, in a browser                                                    | Correct on a phone and a desktop, in English and Arabic, and for a stopped link.                             |
 | Phase F | `pnpm guide:check`                                                                                       | 15 stages, 62 parts, 263 tick boxes, in step; the published guide republished as version 38.                 |
 | Phase F | `pnpm format:check`, `pnpm licences:check`, `pnpm turbo run typecheck lint build`, `pnpm turbo run test` | All pass: 49 build, lint and typecheck tasks, 28 test tasks.                                                 |
+| Phase H | `pnpm --filter @integr8/document-render test`, `lint`, `typecheck`                                       | 33 tests pass; clean. Version 1 designs print the same HTML and footer, and the same pixels, as before.      |
+| Phase H | `pnpm --filter @integr8/api exec vitest run --project unit src/documents` (with Chromium)                | Passes, including landscape and a header left off the first page.                                            |
+| Phase H | API integration: `documents`, `documents-designer`, `forms` suites                                       | 58 tests pass.                                                                                               |
+| Phase H | `pnpm --filter @integr8/desktop test`, `lint`, `typecheck`, `vite build`                                 | 143 tests pass; clean; pdf.js bundled as a lazy chunk and its worker.                                        |
+| Phase H | Sample PDFs through the real printer path; the designer in a harness against a mocked API                | English and Arabic, portrait and landscape: `docs/screenshots/1.3.0/pdf/`.                                   |

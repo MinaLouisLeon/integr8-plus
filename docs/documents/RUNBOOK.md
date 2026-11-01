@@ -23,8 +23,17 @@ the company's website. A company's own website can look a document up with a
 Nothing to configure in a normal deployment.
 
 - The API image installs Debian's Chromium at `/usr/bin/chromium` and the Noto
-  and DejaVu fonts, for Latin and Arabic. The worker uses them; the API process
-  never starts Chromium.
+  and DejaVu fonts, for Latin and Arabic. The worker prints documents with
+  them. Since 1.3.0 the API process starts its own Chromium too, only for the
+  designer's **Preview as PDF**, and closes it after five idle minutes (the
+  `api` container's memory cap is 1 GB for it).
+- **Fonts.** A template chooses one of four: `noto-sans` and `noto-naskh` are
+  the installed Noto and DejaVu fonts; `integr8-display` and `integr8-text` are
+  the Integr8 Media website's fonts (Unbounded, Alexandria, Inter, IBM Plex
+  Sans Arabic), which are not installed: they come with the API's own
+  `node_modules` (the exact-pinned `@fontsource` packages) and are embedded
+  into each document. Nothing is fetched while printing. If one of those files
+  were ever missing, the document prints in the Noto fonts instead of failing.
 - `PDF_RENDERER=chromium` is the default and the only value production
   accepts. `recording` makes a plain placeholder PDF, for tests and laptops
   without Chromium.
@@ -101,13 +110,55 @@ The document is marked **Failed** and its page says why. The codes:
 | `renderer_unavailable`   | The worker has no usable Chromium.            | Check the worker's start-up line; fix `PDF_CHROMIUM_PATH`.       |
 | `render_timeout`         | Printing took longer than the limit, 3 times. | A huge document: fewer photos, or raise `PDF_RENDER_TIMEOUT_MS`. |
 | `render_failed`          | Chromium or the PDF step failed, 3 times.     | The worker log has the error, under `Document render failed`.    |
-| `template_invalid`       | The template no longer reads as a template.   | Open it in the designer, fix what it lists, save.                |
+| `template_invalid`       | The design no longer reads as a template.     | Open it in the designer, fix what it lists, save.                |
 | `source_missing`         | The submission or template was deleted.       | Nothing to fix; delete the document.                             |
 | `storage_unavailable`    | The company's bucket could not be reached.    | Check R2; delete the document and make it again.                 |
 | `storage_quota_exceeded` | The company's storage is full.                | Free space or raise the plan, then make it again.                |
 
 A failed document is deleted from its page and made again from the
 submission.
+
+A question dropped from the form is **not** a failure (1.3.0): the document is
+made, and what the question showed prints blank or is left out. The template
+is marked **Needs attention** in the designer instead; see below.
+
+## Templates that need attention (1.3.0)
+
+Publishing a form version that drops or changes a question a PDF template uses
+is allowed, after a confirmation that lists the templates and blocks. The
+template is then marked **Needs attention** in the PDF templates tab, with each
+block to fix outlined and explained. Meanwhile documents are still made:
+
+- a block that shows one answer (answer, checkbox, all options, a photo or
+  signature) is left out;
+- an answers table loses that row (and is left out when no row is left);
+- a repeating-group table whose group is gone is left out; a column whose
+  question is gone stays, blank;
+- a placeholder for the question prints nothing.
+
+A submission made on an earlier version prints its own answers, as before. To
+clear the mark, open the template, fix or remove each outlined block, and save:
+a template can be saved with the problems it already has, but not with new
+ones. `GET /v1/document-templates` answers `needsAttention` and `problems` for
+each template.
+
+## Preview as PDF (1.3.0)
+
+In the designer, **PDF** → **Preview as PDF** prints the design as it is on
+screen, saved or not, with a chosen submission or with sample answers. The
+PDF is shown in the designer and never stored or counted against the
+company's storage. Limits, built in:
+
+| Limit                          | Value                                  | When it is reached                                                       |
+| ------------------------------ | -------------------------------------- | ------------------------------------------------------------------------ |
+| Previews per person per minute | 6                                      | 429 `rate_limited`; the designer says to wait.                           |
+| Previews per server per minute | 30                                     | The same, for everyone, so previews never crowd out the documents queue. |
+| Previews printed at once       | `PDF_MAX_CONCURRENT` per API container | Others wait their turn.                                                  |
+
+A preview that cannot be printed (no Chromium in the API container, a
+timeout) answers 503 `document_preview_failed`; the API log has the reason
+under `Template preview failed`. Documents are printed by the worker and are
+not affected.
 
 ## Uploaded documents and sharing (1.2.4)
 

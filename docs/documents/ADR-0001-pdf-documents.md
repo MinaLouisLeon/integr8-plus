@@ -241,3 +241,117 @@ release 1.3.0.
   `form-copy.integration.test.ts` (duplicate, copy to another form refused
   until matched, copies to another company and through the library with their
   pictures in the right buckets and ledgers).
+
+## Addendum: the template builder for 1.3.0 (1 November 2026)
+
+Decided by the owner (form and PDF builder round, decisions 6–9, 12 and 13);
+built for release 1.3.0. Template designs are now **version 2**
+(`DESIGN_SCHEMA_VERSION = 2`). A version 1 design is upgraded whenever it is
+read (`upgradeDesign`): portrait, no header, the plain Noto fonts, black
+headings, and its footer — page numbers at the end, its line of text at the
+start — in the new three places. The HTML and footer an upgraded design prints
+are byte for byte what version 1 printed (checked by rendering the same
+designs before and after, pixel for pixel). The API refuses a version 1 design
+saved over a template a newer designer saved (409 `document_template_newer`):
+an older desktop app reads a newer design as an empty one.
+
+- **D3 widened: a header, and a footer in three places** (decision 6). Each has
+  a start, a centre and an end place, mirrored in Arabic; each place is the
+  company logo (a height in millimetres), text with placeholders
+  (`{{page.number}}`, `{{page.count}}`, `{{work_order.reference}}`,
+  `{{document.date}}`, `{{field.<key>}}`, `{{answer.<question>}}`,
+  `{{company.name}}`, …), "Page X of Y", or nothing. Either may be set "not on
+  the first page". They are Chromium's header and footer templates, which see
+  none of the page's styles: everything is inlined, the logo is a data URI and
+  the fonts are embedded again. A template cannot know its page number, so a
+  band left off the first page is done by printing twice — once with the bands
+  every page has, once with the first page's — and taking the first page of
+  the second print and the rest of the first (`firstPageFrom`). Both prints
+  lay out the same content in the same page box, so they break the same way.
+- **D3 widened: landscape** (decision 7). A4 portrait or landscape per template
+  (`page.orientation`); `@page`, Chromium and the preview follow it, and
+  backgrounds are prepared at 3508 × 2480 pixels for landscape (2480 × 3508
+  for portrait). The designer says which size to upload.
+- **Style** (decision 9). Per template: a brand colour — the company's accent
+  colour at the time of printing (the default for new templates), one of its
+  own, or none — for headings, table titles, table header rows and dividers;
+  table lines none, light (as before) or strong; shaded table header rows;
+  striped rows; and a font. Per block: a text colour from black, grey, brand
+  and red, and light shading. Older templates keep `brandColour: null`.
+- **Fonts.** Four keys, each covering English and Arabic: `noto-sans` (Noto
+  Sans and Noto Sans Arabic, the stack every template had), `noto-naskh` (Noto
+  Serif, Noto Naskh Arabic, DejaVu Serif), `integr8-display` (Unbounded and
+  Alexandria headings, Inter and IBM Plex Sans Arabic text) and `integr8-text`
+  (Inter and IBM Plex Sans Arabic). The Noto and DejaVu fonts are installed in
+  the API image. The website's fonts are the exact-pinned `@fontsource` files
+  (5.3.0) the web and desktop apps already ship: the API reads them from its
+  own `node_modules` and embeds them in the page and in the header and footer
+  as `@font-face` rules with data URIs (`documentFontFaces`), because Chromium
+  prints offline and does not read WOFF2 files installed as system fonts.
+  Variable fonts come out as Type 3 fonts in the PDF; text stays selectable.
+- **The shared document look.** The header, footer, colour and font are one
+  shape, `DocumentLook` in `@integr8/document-render`
+  (`{ brandColour, fontKey, logo?, header?, footer? }`), turned by
+  `documentLook(look, { locale, margins, orientation, fontSize, fontFaceCss,
+placeholder, mode })` into base CSS and the printer's header and footer
+  templates. Templates use it, and so do the server's other branded PDFs.
+- **D2 editing** (decision 8). Blocks are dragged by a handle within the
+  template and into and out of a row's columns (rows and page breaks stay at
+  the top level); the arrows remain for the keyboard. Undo and redo (Ctrl+Z,
+  Ctrl+Y or Ctrl+Shift+Z) keep 100 steps, typing joined into one step while it
+  continues. A block can be duplicated, or copied and pasted into another
+  template of the same form (the clipboard is kept on the device per company
+  and form; pasted blocks get fresh ids, and a page break or row is not pasted
+  into a column). Unsaved work is written to the device as it is made, in the
+  form builder's recovery format, and offered back when the template is opened
+  again; leaving it — another template, a link elsewhere in the app, closing
+  the window — asks first. The PDF tab stays open, unsaved work and all, while
+  the form builder shows another tab.
+- **Preview as PDF** (decision 12). `POST /v1/document-templates/:id/preview`
+  prints the design it is sent, saved or not, exactly as a document is printed
+  — the company's pictures, fonts, header, footer and backgrounds — filled with
+  a submitted submission of the form or, without one, with made-up answers to
+  every question (`sampleAnswers`). The PDF is returned as base64 and nothing
+  is stored or counted against storage. Staff only (`document.design`), and
+  limited to 6 a minute per person and 30 a minute for the whole server
+  (`rate_limited`), so previews cannot crowd out documents. It is printed by
+  the API process's own Chromium, at most `PDF_MAX_CONCURRENT` at once per
+  process, closed again after five idle minutes. The desktop app
+  shows the PDF with pdf.js (`pdfjs-dist` 4.10.38, its legacy build), drawing
+  pages on canvases: not every desktop webview shows a PDF in a frame, and the
+  app's content security policy keeps frames and plugins shut. The live HTML
+  preview shows the header and footer, the orientation and the style; it uses
+  the fonts the app already serves (its frame shares the app's origin, scripts
+  still off).
+- **Templates and form versions** (decision 13). A template names questions by
+  id. The publish check (`POST /v1/forms/:id/draft/check`) lists, as
+  `documentTemplates`, every non-archived template and block that would name a
+  question the new version drops or changes — a problem it does not already
+  have — and publishing then needs `acknowledgeTemplateChanges` (or
+  `acknowledgeBreakingChanges`, which a dropped or retyped question already
+  needs), otherwise 409 `document_templates_affected`. Afterwards the template
+  answers `needsAttention: true` with its `problems`, each naming its block or
+  document field, and the designer marks it in the list and outlines the
+  blocks (a row whose column holds one too).
+- **Making documents keeps working.** A design is never checked against the
+  form when a document is made or printed, so `template_invalid` now only means
+  a design that no longer reads at all. The form printed is the one the
+  submission answered, so a submission from an earlier version prints its own
+  answers. Where a question is gone: a block showing one answer (answer,
+  checkbox, all options, a photo or signature image) is left out; an answers
+  table loses that row, and is left out when it has none; a repeating-group
+  table whose group is gone is left out, and a column whose question is gone
+  stays with blank cells; a placeholder prints nothing; a document field taken
+  from it is empty and is not stored.
+- **Saving with broken references is allowed** for references the stored
+  template already had, so fixing one block never waits on the others; a save
+  that adds a new broken reference is still refused (422
+  `document_template_invalid`). The problems stay listed until fixed.
+- Proven by `look.test.ts` and `render.test.ts` (`@integr8/document-render`),
+  `printer.test.ts` (Chromium: landscape, a header left off the first page),
+  `documents-designer.integration.test.ts` (the preview: staff only, unsaved,
+  sample answers, a submission, nothing stored, the rate limit; version 2 and
+  `document_template_newer`; the check, the confirmation, needs attention,
+  saving, and a document made from an older submission) and the desktop's
+  `designer.test.tsx` (moving, duplicating, pasting, undo). Sample PDFs printed
+  by the real printer path are in `docs/screenshots/1.3.0/pdf/`.
