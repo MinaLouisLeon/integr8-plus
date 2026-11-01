@@ -95,7 +95,9 @@ Two rules live outside the matrix because they are relationships rather than
 capabilities:
 
 - **Nobody invites somebody at a role above their own.** Without it,
-  `member.invite` is `member.promote_self`.
+  `member.invite` is `member.promote_self`. Accepting an invitation makes the
+  membership and no session; a new address chooses its password then
+  (`docs/auth/self-hosted-auth.md`, "Accepting an invitation").
 - **A super admin holds no membership in any company.** Enforced by a trigger
   in migration 0001, so P03's exit criterion confirms an invariant rather than a
   habit.
