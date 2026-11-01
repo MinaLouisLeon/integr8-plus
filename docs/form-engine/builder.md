@@ -231,6 +231,11 @@ choice, choosing a file, the import result) and `docs/screenshots/1.3.0/platform
 (the dashboard's import, made and refused). They were rendered from the real components with
 sample data, not from a running server.
 
+Staff can have an AI coding tool write one: **Integr8 Forms for AI** (`apps/forms-ai`) is an
+offline MCP server with the format guide, the examples, the publish check, PDF previews and
+saving, installed into Claude Code, Codex, Cursor, VS Code and others by double-clicking one
+downloaded file. See [docs/forms-ai](../forms-ai/README.md).
+
 ## In the desktop app
 
 `apps/desktop/src/features/forms`:

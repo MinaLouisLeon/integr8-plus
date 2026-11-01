@@ -238,12 +238,13 @@ with type-aware rules; Prettier.
 
 ### Apps
 
-| App            | Package            | What it is                                                                                                           |
-| -------------- | ------------------ | -------------------------------------------------------------------------------------------------------------------- |
-| `apps/api`     | `@integr8/api`     | Fastify service: versioned `/v1` routes, generated OpenAPI, idempotency, rate limits, the background worker, the CLI |
-| `apps/web`     | `@integr8/web`     | Next.js: marketing pages, the company's office app, billing, the platform dashboard. Port 3001                       |
-| `apps/desktop` | `@integr8/desktop` | React SPA in Tauri v2: form builder, branding, operations, submissions. Staff and per-company flavours. Port 3002    |
-| `apps/mobile`  | `@integr8/mobile`  | Expo Router, offline-first: the engineer's day; one build per company                                                |
+| App             | Package             | What it is                                                                                                                                                                   |
+| --------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/api`      | `@integr8/api`      | Fastify service: versioned `/v1` routes, generated OpenAPI, idempotency, rate limits, the background worker, the CLI                                                         |
+| `apps/web`      | `@integr8/web`      | Next.js: marketing pages, the company's office app, billing, the platform dashboard. Port 3001                                                                               |
+| `apps/desktop`  | `@integr8/desktop`  | React SPA in Tauri v2: form builder, branding, operations, submissions. Staff and per-company flavours. Port 3002                                                            |
+| `apps/mobile`   | `@integr8/mobile`   | Expo Router, offline-first: the engineer's day; one build per company                                                                                                        |
+| `apps/forms-ai` | `@integr8/forms-ai` | Integr8 Forms for AI: offline MCP server and terminal installer that let AI coding tools build `.integr8form` files; one executable per OS ([docs](docs/forms-ai/README.md)) |
 
 ### Shared packages
 

@@ -30,6 +30,7 @@ staff from the platform dashboard; there is no public sign-up by default.
 | `apps/web`             | Next.js: marketing site, company workspace `(app)/…`, platform dashboard `platform/…`                                                |
 | `apps/desktop`         | React + Tauri (staff app and per-company branded builds)                                                                             |
 | `apps/mobile`          | Expo / React Native, local SQLite, queued sync                                                                                       |
+| `apps/forms-ai`        | Integr8 Forms for AI: offline MCP server + terminal installer for AI coding tools writing `.integr8form` files (`docs/forms-ai/`)    |
 | `packages/core`        | Domain rules: roles, permissions matrix, state machines, money, payroll, etc.                                                        |
 | `packages/db`          | Postgres via Kysely: `migrations/NNNN_name.{up,down}.sql`, `schema.ts`, repositories, migrator, RLS                                  |
 | `packages/auth`        | Tokens, sessions, impersonation, invitations, the identity provider (self-hosted Supabase Auth)                                      |

@@ -31,6 +31,7 @@ is pinned to an exact version.
 | `apps/web`                   | `@integr8/web`               | Next.js: marketing, office app, billing, platform dashboard. Port 3001          |
 | `apps/desktop`               | `@integr8/desktop`           | React + Vite SPA in Tauri v2; `staff` / `company` flavours. Port 3002           |
 | `apps/mobile`                | `@integr8/mobile`            | Expo Router, offline-first (SQLCipher); one build per company                   |
+| `apps/forms-ai`              | `@integr8/forms-ai`          | Offline MCP server + installer for AI tools writing `.integr8form`; Node SEA    |
 | `packages/core`              | `@integr8/core`              | Domain types, zod schemas, permission matrix, navigation model                  |
 | `packages/db`                | `@integr8/db`                | Migrations, repositories, tenant isolation, seeds — the only place SQL runs     |
 | `packages/auth`              | `@integr8/auth`              | Sessions, EdDSA tokens, refresh rotation, impersonation, offline grants         |
