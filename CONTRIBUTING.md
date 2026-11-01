@@ -71,7 +71,7 @@ commit time and again in CI.
 Types: `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `perf`, `build`, `ci`, `revert`.
 
 Scopes (the `scope-enum` in `commitlint.config.js`, which is authoritative): `api`, `web`,
-`desktop`, `mobile`, `core`, `form-engine`, `form-renderer`, `form-input`, `operations`,
+`desktop`, `mobile`, `core`, `form-engine`, `form-renderer`, `form-input`, `forms-ai`, `operations`,
 `crm`, `erp`, `offline`, `db`, `auth`, `config`, `ci`, `deps`, `plan`, `repo`. The scope
 may be left out, as in `docs: …`.
 

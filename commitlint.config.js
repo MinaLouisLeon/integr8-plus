@@ -14,6 +14,7 @@ export default {
         'form-engine',
         'form-renderer',
         'form-input',
+        'forms-ai',
         'operations',
         'crm',
         'erp',
