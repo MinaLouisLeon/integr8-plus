@@ -290,7 +290,7 @@ export async function seedDocuments(ctx: DemoContext): Promise<void> {
       .slice(0, 2)
       .entries()) {
       try {
-        const document = await ctx.attempt<unknown>(
+        const document = await ctx.attempt<{ id: string }>(
           'owner',
           'POST',
           `/v1/submissions/${submission.id}/documents`,
@@ -301,6 +301,13 @@ export async function seedDocuments(ctx: DemoContext): Promise<void> {
         );
         if (document !== undefined) {
           documents += 1;
+          // New documents start not shared (0067): share the first, so its QR
+          // code opens, and leave the second to show the switch.
+          if (index === 0) {
+            await ctx.attempt('owner', 'POST', `/v1/documents/${document.id}/share`, {
+              shareable: true,
+            });
+          }
         }
       } catch (error) {
         // 503 when the server cannot make PDFs (no WEB_APP_URL, say): the rest stands.
