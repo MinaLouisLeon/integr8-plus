@@ -4,13 +4,15 @@ import {
   findField,
   type FormEvent,
   type FormState,
+  requiredSchemaVersion,
   toSubmission,
   transition,
   viewForm,
 } from '@integr8/form-engine';
+import { localNow } from '@integr8/form-input';
 import { SectionProblem } from '@integr8/form-renderer-dom';
 import { apiErrorMessage, useTranslation } from '@integr8/i18n';
-import { useMemo, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 import { Button } from '~/components/ui';
 import { type TestSubmission, testSubmission } from '../api';
 import { say } from '../model/text';
@@ -54,7 +56,15 @@ export function PreviewPanel({
   const [result, setResult] = useState<TestSubmission | undefined>(undefined);
   const [failure, setFailure] = useState<string | undefined>(undefined);
   const [checking, setChecking] = useState(false);
-  const context = useMemo(() => ({ today }), [today]);
+  const [olderApp, setOlderApp] = useState(false);
+  const olderAppHint = useId();
+  // `now` is the clock, read again at every change, as the phone and the web read it.
+  const context = useMemo(
+    () => ({ today, now: localNow() }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `state` is what refreshes the clock
+    [today, state],
+  );
+  const newerFormat = requiredSchemaVersion(form.definition) > 1;
   const view = useMemo(() => viewForm(form, state, context), [form, state, context]);
 
   const onEvent = (event: FormEvent) => {
@@ -213,8 +223,25 @@ export function PreviewPanel({
             locale={locale}
             context={context}
             brand={brand}
+            olderApp={newerFormat && olderApp}
           />
           <p className="text-xs text-content-muted">{t('forms.phonePreview.note')}</p>
+          {newerFormat ? (
+            <div className="flex flex-col gap-1 text-start">
+              <label className="flex items-center gap-2 text-sm text-content">
+                <input
+                  type="checkbox"
+                  checked={olderApp}
+                  onChange={(event) => setOlderApp(event.target.checked)}
+                  aria-describedby={olderAppHint}
+                />
+                {t('forms.phonePreview.olderApp')}
+              </label>
+              <p id={olderAppHint} className="text-xs text-content-muted">
+                {t('forms.phonePreview.olderAppHint')}
+              </p>
+            </div>
+          ) : null}
         </Viewport>
       </div>
     </div>

@@ -7,11 +7,12 @@ import {
   type FormEvent,
   type FormState,
   type FormView,
-  formatDecimal,
+  type Information,
   isAnswered,
   isCalculated,
+  isInformation,
+  type LocalizedText,
   ownAnswer,
-  parseDecimal,
   type Section,
   storedEntries,
   touchKey,
@@ -19,6 +20,7 @@ import {
   viewForm,
 } from '@integr8/form-engine';
 import {
+  calculatedText,
   canAddEntry,
   type DependentChoices,
   dependentChoices,
@@ -27,7 +29,9 @@ import {
   entryTitle,
   errorMessage,
   firstPerField,
+  informationText,
   isRequiredNow,
+  needsNewerApp,
   offeredOptions,
   pageIndexOfField,
   progressFraction,
@@ -59,6 +63,13 @@ import { type CSSProperties, type ReactNode, useState } from 'react';
  * (`phone-preview.behaviour.test.tsx` here, `behaviour.test.tsx` in the
  * mobile app; docs/form-engine/builder.md).
  *
+ * Text that is not a question (form format 2) is drawn as the phone draws it
+ * (`apps/mobile/src/forms/information.tsx`): descriptions under page and
+ * section titles, Information blocks in their plain, tip or warning style; a
+ * calculated date is written as the phone writes one. A form too new for the
+ * app — or, at the builder's choice, this form opened by an app from before
+ * 1.3.0 — shows the phone's "Update the app" screen instead of the form.
+ *
  * Controlled like the desktop view beside it: both share one set of answers.
  */
 
@@ -79,6 +90,12 @@ export interface PhonePreviewProps {
   brand: PhoneBrand;
   /** Makes the id of an added entry. A UUID unless a test says otherwise. */
   newEntryId?: (() => string) | undefined;
+  /**
+   * Shows the form as an app too old for it would: the phone's "Update the
+   * app" screen. For a form that uses what form format 2 added, which an app
+   * from before 1.3.0 does not open.
+   */
+  olderApp?: boolean | undefined;
 }
 
 /** The phone's colours and font, as custom properties for everything inside the frame. */
@@ -127,6 +144,25 @@ export function PhonePreview(props: PhonePreviewProps) {
     setOpen(undefined);
   };
 
+  if (props.olderApp === true || needsNewerApp(form.definition)) {
+    return (
+      <Frame locale={locale} brand={brand}>
+        <div className="flex flex-col gap-4 px-4 pb-16 pt-4">
+          <div>
+            <ActionButton label={t('mobile.back')} decorative />
+          </div>
+          <div
+            data-part="update-app"
+            className="flex flex-col gap-2 rounded-xl border border-border-subtle bg-surface p-6"
+          >
+            <p className="text-xl font-semibold">{t('fill.updateApp.title')}</p>
+            <p className="text-sm text-content-muted">{t('fill.updateApp.body')}</p>
+          </div>
+        </div>
+      </Frame>
+    );
+  }
+
   const progressLabel =
     view.progress.requiredTotal === 0 ||
     view.progress.requiredAnswered === view.progress.requiredTotal
@@ -137,20 +173,7 @@ export function PhonePreview(props: PhonePreviewProps) {
         });
 
   return (
-    <div
-      dir={isRtl(locale) ? 'rtl' : 'ltr'}
-      lang={locale}
-      style={phoneStyle(brand)}
-      className="mx-auto flex w-[24.5rem] max-w-full flex-col overflow-hidden rounded-[2.75rem] border-[10px] border-[#0b0f19] bg-background text-start text-content shadow-xl"
-    >
-      <div
-        aria-hidden="true"
-        className="flex items-center justify-between bg-surface px-6 pb-1 pt-2 text-xs font-semibold text-content"
-      >
-        <span dir="ltr">9:41</span>
-        <span className="h-5 w-24 rounded-full bg-[#0b0f19]" />
-        <span dir="ltr">5G ▮</span>
-      </div>
+    <Frame locale={locale} brand={brand}>
       <header className="flex flex-col gap-2 border-b border-border-subtle bg-surface px-4 pb-3 pt-2">
         <div className="flex items-center justify-between gap-3">
           <ActionButton tone="quiet" label={t('mobile.back')} decorative />
@@ -218,7 +241,7 @@ export function PhonePreview(props: PhonePreviewProps) {
               </div>
             </div>
           ) : page === undefined ? null : (
-            <div className="flex flex-col gap-4">
+            <div data-page={page.id} className="flex flex-col gap-4">
               <div>
                 {pages.length > 1 ? (
                   <Muted>
@@ -230,6 +253,7 @@ export function PhonePreview(props: PhonePreviewProps) {
                     {say(page.title, locale) || t('fill.nav.page', { number: current + 1 })}
                   </p>
                 ) : null}
+                <Description text={page.description} locale={locale} of="page" />
               </div>
 
               {openEntry === undefined ? null : (
@@ -257,25 +281,31 @@ export function PhonePreview(props: PhonePreviewProps) {
                             {say(section.title, locale)}
                           </p>
                         )}
+                        <Description text={section.description} locale={locale} of="section" />
                         {section.repeat === undefined ? (
                           section.fields
                             .filter((field) => view.visible.get(field.id) === true)
-                            .map((field) => (
-                              <Question
-                                key={field.id}
-                                {...props}
-                                field={field}
-                                value={
-                                  view.values.get(field.id) ?? ownAnswer(state.answers, field.id)
-                                }
-                                errors={view.shownErrors.filter(
-                                  (error) => error.field === field.id && error.entry === undefined,
-                                )}
-                                required={isRequiredNow(view, field)}
-                                choices={dependentChoices(form, view, field, locale)}
-                                entry={undefined}
-                              />
-                            ))
+                            .map((field) =>
+                              isInformation(field) ? (
+                                <InformationBlock key={field.id} item={field} locale={locale} />
+                              ) : (
+                                <Question
+                                  key={field.id}
+                                  {...props}
+                                  field={field}
+                                  value={
+                                    view.values.get(field.id) ?? ownAnswer(state.answers, field.id)
+                                  }
+                                  errors={view.shownErrors.filter(
+                                    (error) =>
+                                      error.field === field.id && error.entry === undefined,
+                                  )}
+                                  required={isRequiredNow(view, field)}
+                                  choices={dependentChoices(form, view, field, locale)}
+                                  entry={undefined}
+                                />
+                              ),
+                            )
                         ) : (
                           <EntryList {...props} section={section} onOpen={setOpen} />
                         )}
@@ -308,7 +338,88 @@ export function PhonePreview(props: PhonePreviewProps) {
           )}
         </div>
       </div>
+    </Frame>
+  );
+}
+
+/** The phone's frame: its outline, status bar, direction, colours and font. */
+function Frame({
+  locale,
+  brand,
+  children,
+}: {
+  locale: string;
+  brand: PhoneBrand;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      dir={isRtl(locale) ? 'rtl' : 'ltr'}
+      lang={locale}
+      style={phoneStyle(brand)}
+      className="mx-auto flex w-[24.5rem] max-w-full flex-col overflow-hidden rounded-[2.75rem] border-[10px] border-[#0b0f19] bg-background text-start text-content shadow-xl"
+    >
+      <div
+        aria-hidden="true"
+        className="flex items-center justify-between bg-surface px-6 pb-1 pt-2 text-xs font-semibold text-content"
+      >
+        <span dir="ltr">9:41</span>
+        <span className="h-5 w-24 rounded-full bg-[#0b0f19]" />
+        <span dir="ltr">5G ▮</span>
+      </div>
+      {children}
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Text that is not a question (form format 2), as the phone draws it
+// ---------------------------------------------------------------------------
+
+/** An Information block: plain, or boxed with a coloured edge for a tip or a warning. */
+function InformationBlock({ item, locale }: { item: Information; locale: string }) {
+  const { t } = useTranslation();
+  const { heading, lines, style } = informationText(item, locale);
+  return (
+    <div
+      role={style === 'warning' ? 'note' : undefined}
+      data-information={item.id}
+      data-style={style}
+      className={[
+        'flex flex-col gap-1',
+        style === 'plain' ? '' : 'rounded-md border-s-4 p-3',
+        style === 'tip' ? 'border-accent bg-accent-subtle' : '',
+        style === 'warning' ? 'border-warning bg-warning-subtle' : '',
+      ].join(' ')}
+    >
+      {style === 'plain' ? null : <span className="sr-only">{t(`fill.information.${style}`)}</span>}
+      {heading === undefined ? null : (
+        <p data-part="information-heading" className="text-base font-semibold">
+          {heading}
+        </p>
+      )}
+      <p data-part="information-body" className="whitespace-pre-line text-base">
+        {lines.join('\n')}
+      </p>
+    </div>
+  );
+}
+
+/** A page's or section's description, under its title. Nothing when it has none. */
+function Description({
+  text,
+  locale,
+  of,
+}: {
+  text: LocalizedText | undefined;
+  locale: string;
+  of: 'page' | 'section';
+}) {
+  const said = say(text, locale).trim();
+  return said === '' ? null : (
+    <p data-part={`${of}-description`} className="whitespace-pre-line text-sm text-content-muted">
+      {said}
+    </p>
   );
 }
 
@@ -411,20 +522,24 @@ function EntryView(
       <div className="flex flex-col gap-5 rounded-lg border border-border-subtle bg-surface p-4">
         {section.fields
           .filter((field) => entry.visible.get(field.id) === true)
-          .map((field) => (
-            <Question
-              key={field.id}
-              {...props}
-              field={field}
-              value={entry.values.get(field.id) ?? stored?.values[field.id]}
-              errors={view.shownErrors.filter(
-                (error) => error.field === field.id && error.entry === entryId,
-              )}
-              required={isRequiredNow(view, field, entryId)}
-              choices={dependentChoices(form, view, field, locale, entryId)}
-              entry={entryId}
-            />
-          ))}
+          .map((field) =>
+            isInformation(field) ? (
+              <InformationBlock key={field.id} item={field} locale={locale} />
+            ) : (
+              <Question
+                key={field.id}
+                {...props}
+                field={field}
+                value={entry.values.get(field.id) ?? stored?.values[field.id]}
+                errors={view.shownErrors.filter(
+                  (error) => error.field === field.id && error.entry === entryId,
+                )}
+                required={isRequiredNow(view, field, entryId)}
+                choices={dependentChoices(form, view, field, locale, entryId)}
+                entry={entryId}
+              />
+            ),
+          )}
       </div>
       <div className="flex flex-wrap justify-between gap-3">
         <ActionButton
@@ -537,8 +652,8 @@ function Question(props: QuestionProps) {
       >
         {heading}
         {help}
-        <p className="rounded-md bg-surface-muted p-3 text-lg">
-          {calculatedText(field, value) || '—'}
+        <p data-part="calculated" className="rounded-md bg-surface-muted p-3 text-lg">
+          {calculatedText(field, value, locale) || '—'}
           {'unit' in field && field.unit !== undefined && value !== undefined
             ? ` ${field.unit}`
             : ''}
@@ -980,17 +1095,6 @@ function translateError(t: ReturnType<typeof useTranslation>['t'], error: FieldE
   // One key chosen at run time from the engine's codes, as the phone does.
   const translate = t as unknown as Translate;
   return translate(`form.errors.${error.code}`, { ...error.params });
-}
-
-function calculatedText(field: Field, value: unknown): string {
-  if (value === undefined) {
-    return '';
-  }
-  if (field.type === 'decimal' && typeof value === 'string') {
-    const parsed = parseDecimal(value);
-    return parsed === undefined ? value : formatDecimal(parsed);
-  }
-  return typeof value === 'number' || typeof value === 'string' ? String(value) : '';
 }
 
 /** `+03:00` for a local date and time on this device, which the engine requires. */

@@ -1570,6 +1570,10 @@ export const en = {
     },
     phonePreview: {
       note: 'Drawn the way the phone app draws it, in the company’s colours and theme. Fonts and the date and photo pickers come from the phone itself, so a real phone can differ slightly.',
+      // 1.3.0: a form that uses form format 2, as an app from before 1.3.0 opens it.
+      olderApp: 'Open as an app older than 1.3.0',
+      olderAppHint:
+        'This form uses something added in 1.3.0 (a description, an Information block or a newer calculation). A phone with an older app asks the engineer to update the app before opening it.',
     },
     translations: {
       title: 'Translations',

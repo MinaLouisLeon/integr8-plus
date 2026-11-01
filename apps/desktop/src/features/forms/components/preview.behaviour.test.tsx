@@ -13,9 +13,11 @@ import {
   entryIds,
   expectedScreen,
   joinScreens,
+  readInformation,
   readQuestions,
   readScreen,
   type Screen,
+  type ScreenInformation,
   type ScreenQuestion,
   stateOf,
   type Translate,
@@ -135,10 +137,12 @@ describe.each(LOCALES)('the builder’s preview shows what the engine says (%s)'
           for (;;) {
             const page = readScreen(container);
             const questions: ScreenQuestion[] = [];
+            const information: ScreenInformation[] = [];
             for (const section of page.sections) {
               questions.push(
                 ...page.questions.filter((question) => question.section === section.id),
               );
+              information.push(...page.information.filter((block) => block.section === section.id));
               const rows = () =>
                 Array.from(
                   container.querySelectorAll(
@@ -150,10 +154,11 @@ describe.each(LOCALES)('the builder’s preview shows what the engine says (%s)'
                 press(rows()[index]!.closest('button'));
                 const open = container.querySelector('[data-entry]')!;
                 questions.push(...readQuestions(open, section.id));
+                information.push(...readInformation(open, section.id));
                 press(open.querySelector('button'));
               }
             }
-            pages.push({ ...page, questions });
+            pages.push({ ...page, questions, information });
             const next = button(container, 'fill.actions.next');
             if (next === null) {
               break;
@@ -188,4 +193,30 @@ describe.each(LOCALES)('the builder’s preview shows what the engine says (%s)'
       });
     });
   }
+});
+
+describe('the builder’s phone and an app too old for the form', () => {
+  it('shows the phone’s “Update the app” screen instead of the form', () => {
+    const i18n = createI18n({ locale: 'en' });
+    const everything = behaviourCases().at(-1)!;
+    const state = stateOf(everything.form, everything.steps[0]!);
+    const { container } = render(
+      <I18nextProvider i18n={i18n}>
+        <PhonePreview
+          form={everything.form}
+          state={state}
+          view={viewForm(everything.form, state, context)}
+          onEvent={() => undefined}
+          locale="en"
+          context={context}
+          brand={{ colour: null, theme: 'light' }}
+          olderApp
+        />
+      </I18nextProvider>,
+    );
+    expect(container.querySelector('[data-part="update-app"]')?.textContent).toContain(
+      i18n.t('fill.updateApp.title'),
+    );
+    expect(container.querySelector('[data-question]')).toBeNull();
+  });
 });

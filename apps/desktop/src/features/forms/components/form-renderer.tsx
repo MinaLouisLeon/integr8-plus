@@ -20,7 +20,7 @@ import {
   offeredOptions,
   toggleOffered,
 } from '@integr8/form-renderer-dom';
-import { errorMessage } from '@integr8/form-input';
+import { calculatedText, errorMessage } from '@integr8/form-input';
 import { useTranslation } from '@integr8/i18n';
 import { useId, useState, type ReactNode } from 'react';
 import { Button } from '~/components/ui';
@@ -78,11 +78,11 @@ export function FormRenderer(props: FormRendererProps) {
       ) : null}
 
       {shown.map((page) => (
-        <div key={page.id} className="flex flex-col gap-6">
+        <div key={page.id} data-page={page.id} className="flex flex-col gap-6">
           {page.title === undefined ? null : (
             <h3 className="text-lg font-semibold text-content">{say(page.title, locale)}</h3>
           )}
-          <Description text={page.description} locale={locale} />
+          <Description text={page.description} locale={locale} of="page" />
           {page.sections
             .filter((section) => view.visible.get(section.id) === true)
             .map((section) => (
@@ -100,7 +100,7 @@ export function FormRenderer(props: FormRendererProps) {
                     {say(section.title, locale)}
                   </legend>
                 )}
-                <Description text={section.description} locale={locale} />
+                <Description text={section.description} locale={locale} of="section" />
                 {section.repeat === undefined ? (
                   section.fields
                     .filter((field) => view.visible.get(field.id) === true)
@@ -445,6 +445,21 @@ function FieldControl(
         />
       );
       break;
+  }
+  if (calculated) {
+    // Written out as the fillers and the phone write it: a date as the language
+    // writes dates, a unit after a number, a dash while it cannot be worked out.
+    control = (
+      <output
+        id={id}
+        data-part="calculated"
+        aria-live="polite"
+        className="rounded-md bg-surface-muted px-3 py-2 text-sm text-content"
+      >
+        {calculatedText(field, value, locale) || '—'}
+        {'unit' in field && field.unit !== undefined && value !== undefined ? ` ${field.unit}` : ''}
+      </output>
+    );
   }
 
   return (
