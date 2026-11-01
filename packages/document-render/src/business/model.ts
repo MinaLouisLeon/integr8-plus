@@ -1,4 +1,4 @@
-import type { DocumentLook } from './look.js';
+import type { DocumentLook } from '../look.js';
 
 /**
  * What a business PDF is made from: a snapshot of the record as the person who

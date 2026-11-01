@@ -1,5 +1,4 @@
-// The document look (`./look.js`) is a temporary copy of the shared one and is
-// deliberately not exported: the shared look is.
+// The look (brand colour, font, header and footer) is the shared one, `../look.js`.
 export {
   type BusinessAddress,
   type BusinessDocumentData,

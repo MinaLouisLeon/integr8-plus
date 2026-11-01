@@ -25,11 +25,13 @@ and tax number from the finance settings (the invoice keeps the issuer frozen wh
 was issued), its brand colour on headings, table headers and rules, Noto Sans (both
 scripts), a running header with the company's name and the document's title, a running
 footer with the reference and **Page X of Y**, and the company's footer text (finance
-settings) at the end. The look comes from the shared document look the PDF template
-builder introduces in the same release (`DocumentLook`, `documentLook`); until the
-two branches meet, `business/look.ts` is a temporary copy of its names and shapes,
-not exported, deleted at merge. A company's PDFs use its accent colour and Noto Sans
-until a font choice is stored for business documents.
+settings) at the end. The look is the shared document look of the PDF template
+builder (`DocumentLook`, `documentLook` in `@integr8/document-render`), so the bands
+are drawn, placed and printed exactly as a template's (three places each, mirrored in
+Arabic, a band left off the first page printed on its own), and the font's faces are
+embedded the same way (`documentFontFaces`; none are needed for Noto Sans, which the
+image has installed). A company's PDFs use its accent colour and Noto Sans until a
+font choice is stored for business documents.
 
 | Kind               | Content                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

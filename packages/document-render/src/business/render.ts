@@ -2,8 +2,14 @@ import { ar, type Catalogue, en } from '@integr8/i18n/core';
 import { escapeHtml } from '../html.js';
 import { qrSvg } from '../qr.js';
 import { fill } from '../words.js';
-import type { Margins } from '../design.js';
-import { type DocumentLook, documentLook, type PrintParts } from './look.js';
+import {
+  DEFAULT_BRAND_COLOUR,
+  type DocumentLook,
+  documentLook,
+  type HeaderFooterSlot,
+  type Margins,
+  type PrintParts,
+} from '../look.js';
 import type {
   BusinessAddress,
   BusinessDocumentData,
@@ -832,7 +838,7 @@ function bodyOf(page: Page, data: BusinessDocumentData): { title: string; body: 
 /** A colour safe to put in CSS, else Integr8's blue. */
 function brandOf(value: string | null): string {
   const trimmed = value?.trim() ?? '';
-  return /^#(?:[0-9a-fA-F]{3}){1,2}$/u.test(trimmed) ? trimmed.toLowerCase() : '#1d4ed8';
+  return /^#(?:[0-9a-fA-F]{3}){1,2}$/u.test(trimmed) ? trimmed.toLowerCase() : DEFAULT_BRAND_COLOUR;
 }
 
 function styles(base: string, look: DocumentLook): string {
@@ -910,9 +916,10 @@ export function renderBusinessDocumentHtml(input: BusinessRenderInput): Rendered
   const direction = input.locale === 'ar' ? 'rtl' : 'ltr';
   const { title, body } = bodyOf(page, input.data);
   // The company's name and the document along the top, its number and the
-  // page numbers along the bottom, unless the look says otherwise.
-  const text = (value: string) => ({
-    kind: 'text' as const,
+  // page numbers along the bottom, unless the look says otherwise. The texts
+  // are the record's own, so a `{{…}}` typed into a name is printed as typed.
+  const text = (value: string): HeaderFooterSlot => ({
+    kind: 'text',
     text: { [input.locale]: value },
     bold: false,
   });
@@ -927,15 +934,28 @@ export function renderBusinessDocumentHtml(input: BusinessRenderInput): Rendered
     footer: input.look.footer ?? {
       start: text(input.data.reference),
       center: null,
-      end: text(wordsFor(input.locale).page),
+      end: { kind: 'page' },
       notOnFirstPage: false,
     },
   };
-  const { css, ...parts } = documentLook(look, {
+  const made = documentLook(look, {
     locale: input.locale,
     margins: BUSINESS_MARGINS,
     ...(input.fontFaceCss === undefined ? {} : { fontFaceCss: input.fontFaceCss }),
+    // Nothing but page numbers is filled in the bands: anything else stays as typed.
+    placeholder: () => undefined,
   });
+  // Only what the printer takes: the look's colours and preview bands are not for it.
+  const parts: PrintParts = {
+    headerHtml: made.headerHtml,
+    footerHtml: made.footerHtml,
+    hasHeader: made.hasHeader,
+    hasFooter: made.hasFooter,
+    landscape: made.landscape,
+    margins: made.margins,
+    ...(made.firstPage === undefined ? {} : { firstPage: made.firstPage }),
+  };
+  const css = made.css;
   const html = `<!doctype html><html lang="${input.locale}" dir="${direction}"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>${styles(css, look)}</style></head><body><main>${body}</main></body></html>`;
   return { html, parts, title };
 }

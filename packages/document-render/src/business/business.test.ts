@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { type DocumentLook, documentLook } from './look.js';
+import { DEFAULT_BRAND_COLOUR, type DocumentLook } from '../look.js';
 import type { BusinessDocumentKind, BusinessLocale, BusinessRenderInput } from './model.js';
 import { renderBusinessDocumentHtml } from './render.js';
 import {
@@ -18,7 +18,7 @@ import {
 
 const PNG = 'data:image/png;base64,iVBORw0KGgo=';
 
-/** The company's look, as the server makes it before the shared one carries a font choice. */
+/** The company's look, as the server makes it: its colour and logo, in Noto Sans. */
 const look = (brandColour: string | null, logo: string | null = null): DocumentLook => ({
   brandColour,
   fontKey: 'noto-sans',
@@ -307,36 +307,53 @@ describe('safety', () => {
       input({ data: sampleQuote('en'), look: look('red; background: url(x)') }),
     );
     expect(bad.html).not.toContain('url(x)');
-    expect(bad.html).toContain('--brand: #1d4ed8');
+    expect(bad.html).toContain(`--brand: ${DEFAULT_BRAND_COLOUR}`);
   });
 });
 
 describe('the look', () => {
-  it('puts the bands in three places, page numbers included, escaped', () => {
-    const parts = documentLook(
-      {
-        brandColour: '#123456',
-        fontKey: 'noto-naskh',
-        header: {
-          start: { kind: 'text', text: { ar: '<Company>' }, bold: true },
-          center: null,
-          end: { kind: 'page' },
-          notOnFirstPage: false,
-        },
-        footer: null,
-      },
-      {
+  it('prints a look’s own bands in three places, page numbers included, escaped', () => {
+    const page = renderBusinessDocumentHtml(
+      input({
+        data: sampleInvoice('ar'),
         locale: 'ar',
-        margins: { top: 20, end: 15, bottom: 20, start: 15 },
-        pageWords: 'صفحة {{page.number}} من {{page.count}}',
-      },
+        look: {
+          brandColour: '#123456',
+          fontKey: 'noto-naskh',
+          header: {
+            start: { kind: 'text', text: { ar: '<Company> {{field.x}}' }, bold: true },
+            center: null,
+            end: { kind: 'page' },
+            notOnFirstPage: true,
+          },
+        },
+        fontFaceCss: '@font-face { font-family: "Probe"; }',
+      }),
     );
-    expect(parts.headerHtml).toContain('<b>&lt;Company&gt;</b>');
+    const { parts } = page;
+    // A placeholder other than the page's is printed as typed.
+    expect(parts.headerHtml).toContain('<b>&lt;Company&gt; {{field.x}}</b>');
     expect(parts.headerHtml).toContain('<span class="pageNumber"></span>');
     expect(parts.headerHtml).toContain('<span class="totalPages"></span>');
     expect(parts.headerHtml).toContain('dir="rtl"');
-    expect(parts).toMatchObject({ hasHeader: true, hasFooter: false, landscape: false });
-    expect(parts.footerHtml).toBe('<span></span>');
-    expect(parts.css).toContain('Noto Naskh Arabic');
+    expect(parts.headerHtml).toContain('font-family: "Probe"');
+    expect(parts).toMatchObject({ hasHeader: true, hasFooter: true, landscape: false });
+    // No footer of its own: the document's number and the page numbers.
+    expect(parts.footerHtml).toContain(sampleInvoice('ar').reference);
+    expect(parts.footerHtml).toContain('<span class="totalPages"></span>');
+    // Header left off the first page: the printer prints that page with its own bands.
+    expect(parts.firstPage).toMatchObject({ hasHeader: false, hasFooter: true });
+    expect(page.html).toContain('Noto Naskh Arabic');
+    expect(page.html).toContain('font-family: "Probe"');
+    // Only what the printer takes.
+    expect(Object.keys(parts).sort()).toEqual([
+      'firstPage',
+      'footerHtml',
+      'hasFooter',
+      'hasHeader',
+      'headerHtml',
+      'landscape',
+      'margins',
+    ]);
   });
 });

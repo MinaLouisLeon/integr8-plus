@@ -9,6 +9,7 @@ import {
   sampleJobReport,
 } from '@integr8/document-render';
 import sharp from 'sharp';
+import { documentFontFaces } from './fonts.js';
 import { inlineImage } from './images.js';
 import { ChromiumPrinter } from './printer.js';
 
@@ -101,6 +102,7 @@ async function main(): Promise<void> {
           qrOpensQuote: kind === 'quote',
           images: { logo: logo ?? null, media },
           look: { brandColour: '#0e7490', fontKey: 'noto-sans', logo: logo ?? null },
+          fontFaceCss: await documentFontFaces('noto-sans'),
         });
         const pdf = await printer.print({ html: rendered.html, ...rendered.parts });
         const file = join(out, `${kind.replace('_', '-')}-${locale}.pdf`);

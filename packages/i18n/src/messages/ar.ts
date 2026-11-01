@@ -8216,7 +8216,6 @@ export const ar: Catalogue<Messages> = {
       reply: 'إن كان لديك سؤال عنه، فراسل {{company}} مباشرة.',
     },
     render: {
-      page: 'صفحة {{page.number}} من {{page.count}}',
       description: 'الوصف',
       quantity: 'الكمية',
       unitPrice: 'سعر الوحدة',

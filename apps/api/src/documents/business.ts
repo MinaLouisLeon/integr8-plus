@@ -8,6 +8,7 @@ import {
 import {
   type BusinessDocumentData,
   type BusinessLocale,
+  type DocumentLook,
   renderBusinessDocumentHtml,
 } from '@integr8/document-render';
 import { ApiError } from '../http/errors.js';
@@ -16,6 +17,7 @@ import { assertUploadFits } from '../media/quota.js';
 import type { ObjectStore } from '../media/storage.js';
 import { getStorage, StorageNotReadyError } from '../media/tenant-storage.js';
 import { underlayBackgrounds } from './backgrounds.js';
+import { documentFontFaces } from './fonts.js';
 import { inlineImage } from './images.js';
 import { PrinterUnavailableError, PrintTimeoutError } from './printer.js';
 import {
@@ -212,7 +214,11 @@ async function print(
     }
   }
 
-  // 3. Print.
+  // 3. Print. The company's colour and logo, in Noto Sans (both scripts; there
+  // is no company-wide font choice, only a PDF template's). The font's faces
+  // are embedded in the page and its bands like a template's: none for a font
+  // the image has installed, the files for one it has not.
+  const look: DocumentLook = { brandColour: input.brandColour, fontKey: 'noto-sans', logo };
   const rendered = renderBusinessDocumentHtml({
     data: job.data,
     locale: job.locale,
@@ -220,10 +226,8 @@ async function print(
     qrUrl: job.qrUrl,
     qrOpensQuote: job.qrOpensQuote,
     images: { logo, media },
-    // The company's colour and logo, in Noto Sans (both scripts). When the
-    // shared look carries a font choice, its faces go in as `fontFaceCss`
-    // (`documentFontFaces(look.fontKey)`).
-    look: { brandColour: input.brandColour, fontKey: 'noto-sans', logo },
+    look,
+    fontFaceCss: await documentFontFaces(look.fontKey),
   });
   const status = await deps.pdf.status();
   if (!status.ok) {
