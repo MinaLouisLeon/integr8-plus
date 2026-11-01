@@ -37,3 +37,21 @@
     }
   }
 }
+
+/*
+ * The Integr8 Media look, worn by the staff build's frame and sign-in (Low 3,
+ * `~/lib/look`). The tokens switch inside `data-look="integr8"`; these are the
+ * few rules that are not tokens.
+ */
+html:has(body > #root > [data-look='integr8']) {
+  background-color: var(--site-bg);
+}
+
+[data-look='integr8'] h1 {
+  font-family: var(--font-site-display);
+}
+
+[data-look='integr8'] ::selection {
+  background: var(--site-lime);
+  color: var(--site-bg);
+}
