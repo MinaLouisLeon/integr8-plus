@@ -333,20 +333,32 @@ Oracle's Always Free tier gives every account an ARM machine with up to 4 cores 
 - [ ] **SSH key.** **Paste public keys** → paste the key from Stage 0, Part A (`Get-Content $env:USERPROFILE\.ssh\id_ed25519.pub | Set-Clipboard` puts it on the clipboard again).
 - [ ] **Boot volume.** Tick "Specify a custom boot volume size", enter `100` GB (the free allowance is 200 GB in total). **Create**.
 - [ ] **If it says "Out of host capacity"**: nothing is wrong with your account. Try again in an hour, try 2 OCPUs and 12 GB (also free), or a different time of day.
-- [ ] **Note the public IP address** from the instance page once it is Running. This is **SERVER-IP** below.
-- [ ] **Reserve that IP now**, so it survives recreating the instance and your DNS records never go stale: Networking → IP Management → **Reserved public IPs** → Reserve, then on the instance's VNIC → IPv4 Addresses → Edit → switch the ephemeral address to the reserved one. Done now, the address does not change.
+- [ ] **Note the public IP address** from the instance page once it is Running. It is temporary: the next step swaps it for a reserved one, and that reserved address is **SERVER-IP** below.
+- [ ] **Give the machine a reserved address now**, so it survives recreating the instance and your DNS records never go stale. Oracle cannot turn the temporary address into a reserved one, so the address changes once, here, and never again. First Networking → IP Management → **Reserved public IPs** → **Reserve**. Then the instance page → **Networking** tab → under **Attached VNICs**, the primary VNIC's name → its list of IP addresses (the **IP administration** tab, or **IP addresses** in older consoles) → on the primary private IP's row, **⋮** → **Edit** → Public IP type **No public IP** → **Update**. Oracle refuses to go straight from the temporary address to the reserved one, which is why it is removed first. Then **⋮** → **Edit** again → **Reserved public IP** → the address you reserved → **Update**. The reserved address is **SERVER-IP** from here on; an SSH session to the old address drops, so connect again to the new one.
 
 ### Two firewalls
 
 Oracle blocks everything but SSH in two places: the console's security list and the machine's own firewall (iptables on Ubuntu, firewalld on Oracle Linux). You open the first here; the setup script opens the second and detects which operating system it is on.
 
-- [ ] **Open 80 and 443 in the security list.** Instance page → under "Primary VNIC" click the **subnet** → **Security Lists** → **Default Security List** → **Add Ingress Rules**: Source CIDR `0.0.0.0/0`, TCP, destination port `80`. A second rule the same way for `443`.
+- [ ] **Open 80 and 443 in the security list.** ☰ menu → **Networking** → **Virtual cloud networks** → the network Stage 1 created with the machine (if the list is empty, pick your root compartment in the list filter) → its security lists (the **Security** tab, or **Security Lists** in older consoles) → **Default Security List for …** → its rules (the **Security rules** tab, or **Ingress Rules** in older consoles) → **Add Ingress Rules**. Use the **Ingress rules** list and its button: a form titled **Egress Rule**, which asks for a **Destination CIDR**, is the wrong one, so close it without saving. Leave **Stateless** unticked; Source Type **CIDR**, Source CIDR `0.0.0.0/0`, IP Protocol **TCP**, Source Port Range empty, Destination Port Range `80`. Then **+ Another Ingress Rule**, the same with `443`, and **Add Ingress Rules**. The ingress list now shows 80 and 443 beside the rule for 22 (SSH) that was already there.
 - [ ] **Connect and run the setup script.** It opens the machine's firewall, installs Docker and Caddy (the HTTPS proxy, explained in Stage 2), turns on automatic security updates, and is safe to run twice. On Oracle Linux it also removes the preinstalled `podman`, which conflicts with Docker.
 
 ```powershell
 # laptop (PowerShell). LOGIN-USER is opc on Oracle Linux, ubuntu on Ubuntu.
 ssh LOGIN-USER@SERVER-IP
 # type yes at the fingerprint question. The prompt changes to the server's: you are now "on the machine".
+```
+
+> [!NOTE]
+> **"Bad permissions" or "UNPROTECTED PRIVATE KEY FILE"** when you connect: Windows lets other accounts read the key file, and SSH refuses to use such a key. It happens most with a key Oracle made that you downloaded (used as `ssh -i <file> LOGIN-USER@SERVER-IP`) or a key kept on the Desktop. Run the commands below on the key file so only you can read it, then connect again. If the last line still lists another account, remove it with `icacls $k /remove "<the account it names>"`.
+
+```powershell
+# laptop (PowerShell): only if SSH says "bad permissions"; put your key's path in the first line
+$k = "$env:USERPROFILE\.ssh\id_ed25519"
+icacls $k /reset
+icacls $k /inheritance:r
+icacls $k /grant:r "${env:USERNAME}:R"
+icacls $k          # lists only your own account
 ```
 
 ```bash
@@ -1642,7 +1654,7 @@ scp "LOGIN-USER@SERVER-IP:/var/backups/integr8/*.sql.gz" $env:USERPROFILE\Downlo
 
 ### C. The new machine: Stages 1 and 2 again
 
-- [ ] **Stage 1, with two differences.** Under Networking choose **Select existing virtual cloud network** and its public subnet instead of creating new ones; the security list already lets 80 and 443 in. Once the instance is Running, give it the reserved address: the instance's VNIC → **IPv4 Addresses** → Edit → **No public IP** → Update, then Edit again → **Reserved public IP** → the kept address → Update. Then the setup script, the second SSH login and the clone, as written.
+- [ ] **Stage 1, with two differences.** Under Networking choose **Select existing virtual cloud network** and its public subnet instead of creating new ones; the security list already lets 80 and 443 in. Once the instance is Running, give it the reserved address as in Stage 1: the instance page → **Networking** tab → the primary VNIC → its list of IP addresses (**IP administration**, or **IP addresses** in older consoles) → the primary private IP's **⋮** → **Edit** → **No public IP** → **Update**, then **Edit** again → **Reserved public IP** → the kept address → **Update**. Then the setup script, the second SSH login and the clone, as written.
 - [ ] **The laptop will refuse to connect at first**, with "REMOTE HOST IDENTIFICATION HAS CHANGED": the address is the same, the machine behind it is new. That is expected here and only here. Forget the old machine's fingerprint and connect again:
 
 ```powershell
