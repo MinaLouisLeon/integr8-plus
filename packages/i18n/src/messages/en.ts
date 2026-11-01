@@ -19,6 +19,7 @@
 
 import { apiErrorsEn } from './api-errors.en.js';
 import { legalEn } from './legal.en.js';
+import { siteEn } from './site.en.js';
 
 export const en = {
   common: {
@@ -168,31 +169,11 @@ export const en = {
       contact: 'Talk to us',
     },
     hero: {
-      title: 'Paperwork that finishes itself',
-      subtitle:
-        'Job sheets, safety checks and certificates, filled in on a phone — including in a basement with no signal. Your office sees them the moment the engineer has a bar again.',
       cta: 'Start a free trial',
       note: 'Fourteen days. No card needed.',
       // When public sign-up is off: companies are set up by Integr8.
       ctaClosed: 'Talk to us about getting set up',
       noteClosed: 'We set your company up with you: forms, job types and the apps.',
-    },
-    // Three claims, each one a thing the product actually does. If a line here
-    // stops being true, it is a bug in the product or a lie on the page.
-    points: {
-      offlineTitle: 'Works with no signal',
-      offlineBody:
-        'Forms are filled in on the device and sent when there is signal. Nothing is lost in a plant room, a loft or a lift shaft.',
-      formsTitle: 'Your forms, not ours',
-      formsBody:
-        'We turn the forms you already use on paper into the app, for you. Published versions are frozen, so a job filled in last March still reads the way it was signed.',
-      evidenceTitle: 'Evidence that stands up',
-      evidenceBody:
-        'Photos, signatures and timestamps attached to the job, kept for as long as your plan says, and exportable whenever you ask.',
-    },
-    features: {
-      title: 'What it does',
-      subtitle: 'The whole product, without the adjectives.',
     },
     pricing: {
       title: 'Pricing',
@@ -898,6 +879,10 @@ export const en = {
   // The terms of service, privacy policy and data processing terms, in their
   // own file because they are long. Pages under /legal on the website.
   legal: legalEn,
+
+  // The public site in the Integr8 Media look (Low 3): home, features,
+  // pricing, help, download, and the frame around them. In its own file.
+  site: siteEn,
 
   states: {
     emptyTitle: 'Nothing here yet',

@@ -22,6 +22,7 @@
 import type { Messages } from './en.js';
 import { apiErrorsAr } from './api-errors.ar.js';
 import { legalAr } from './legal.ar.js';
+import { siteAr } from './site.ar.js';
 
 /**
  * A translation of `Messages`.
@@ -164,28 +165,10 @@ export const ar: Catalogue<Messages> = {
       contact: 'تحدّث إلينا',
     },
     hero: {
-      title: 'أوراق عمل تُنجز نفسها',
-      subtitle:
-        'كشوف المهام وفحوصات السلامة والشهادات، تُملأ على الهاتف — حتى في قبو بلا إشارة. ويراها مكتبك لحظة عودة الإشارة إلى هاتف المهندس.',
       cta: 'ابدأ فترة تجريبية مجانية',
       note: 'أربعة عشر يومًا. دون الحاجة إلى بطاقة.',
       ctaClosed: 'تحدّث إلينا عن إعداد شركتك',
       noteClosed: 'نُعدّ شركتك معك: النماذج وأنواع المهام والتطبيقات.',
-    },
-    points: {
-      offlineTitle: 'يعمل دون إشارة',
-      offlineBody:
-        'تُملأ النماذج على الجهاز وتُرسل عند توفر الإشارة. لا يُفقد شيء في غرفة المعدات أو العلّية أو بئر المصعد.',
-      formsTitle: 'نماذجكم أنتم، لا نماذجنا',
-      formsBody:
-        'نحوّل النماذج الورقية التي تستخدمونها اليوم إلى نماذج في التطبيق، نيابةً عنكم. الإصدارات المنشورة ثابتة لا تتغيّر، فالمهمة التي مُلئت في مارس الماضي تُقرأ اليوم كما وُقّعت.',
-      evidenceTitle: 'أدلة يُعتمد عليها',
-      evidenceBody:
-        'صور وتوقيعات وطوابع زمنية مرفقة بالمهمة، تُحفظ طوال المدة التي تحددها خطتك، ويمكن تصديرها متى شئتم.',
-    },
-    features: {
-      title: 'ما الذي يفعله',
-      subtitle: 'المنتج بكامله، دون مبالغات.',
     },
     pricing: {
       title: 'الأسعار',
@@ -849,6 +832,8 @@ export const ar: Catalogue<Messages> = {
   apiErrors: apiErrorsAr,
 
   legal: legalAr,
+
+  site: siteAr,
 
   states: {
     emptyTitle: 'لا شيء هنا بعد',

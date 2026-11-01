@@ -178,7 +178,7 @@
   --colour-shell-text-muted: #9a96b0;
   --colour-shell-border: rgba(255, 255, 255, 0.08);
   --font-sans: 'Inter Variable', 'IBM Plex Sans Arabic', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-mono: 'JetBrains Mono Variable', 'IBM Plex Sans Arabic', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --font-site-display: 'Unbounded Variable', 'Alexandria Variable', system-ui, sans-serif;
   background-color: var(--colour-background);
   color: var(--colour-text);

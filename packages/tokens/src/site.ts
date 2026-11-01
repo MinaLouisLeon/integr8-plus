@@ -56,7 +56,7 @@ export const integr8Gradient = {
 export const integr8Fonts = {
   display: "'Unbounded Variable', 'Alexandria Variable', system-ui, sans-serif",
   body: "'Inter Variable', 'IBM Plex Sans Arabic', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
-  mono: "'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+  mono: "'JetBrains Mono Variable', 'IBM Plex Sans Arabic', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
   displayArabic: "'Alexandria Variable', 'Unbounded Variable', system-ui, sans-serif",
   bodyArabic:
     "'IBM Plex Sans Arabic', 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif",
