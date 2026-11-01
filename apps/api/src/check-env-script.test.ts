@@ -42,7 +42,8 @@ function templateEnv(): Record<string, string> {
   return env;
 }
 
-describe.skipIf(!hasSh)('the env file check', () => {
+// Each test runs a shell script; on a busy machine that can take several seconds.
+describe.skipIf(!hasSh)('the env file check', { timeout: 30_000 }, () => {
   it('lists every setting of the untouched template that production would refuse', () => {
     const { status, out } = run(template);
     expect(status).toBe(1);
