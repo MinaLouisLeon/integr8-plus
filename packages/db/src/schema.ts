@@ -670,6 +670,17 @@ export interface SubmissionValuesTable {
   submitted_at: ColumnType<Date, never, never>;
 }
 
+/** Where a submission names a file: its answers now, or its history (0068). */
+export type SubmissionFileUseSource = 'answers' | 'history';
+
+/** Which files each submission names (0068). Written only by trigger; the runtime role may read it. */
+export interface SubmissionFileUsesTable {
+  tenant_id: ColumnType<string, never, never>;
+  file_id: ColumnType<string, never, never>;
+  submission_id: ColumnType<string, never, never>;
+  source: ColumnType<SubmissionFileUseSource, never, never>;
+}
+
 export const MEDIA_CATEGORIES = ['image', 'video', 'document', 'other'] as const;
 export type MediaCategory = (typeof MEDIA_CATEGORIES)[number];
 
@@ -3288,6 +3299,8 @@ export interface AiHelpArticlesTable {
 // ---------------------------------------------------------------------------
 
 export type DocumentStatus = 'pending' | 'ready' | 'failed';
+/** Made from a submission with a template, or a PDF a person uploaded (0067). */
+export type DocumentSource = 'generated' | 'uploaded';
 export type DocumentLookupRole = 'key' | 'confirm';
 
 export interface DocumentTemplatesTable {
@@ -3309,10 +3322,18 @@ export interface DocumentTemplatesTable {
 export interface DocumentsTable {
   id: string;
   tenant_id: string;
-  template_id: string;
-  template_revision: number;
-  submission_id: string;
-  form_id: string;
+  /** Null for an uploaded document (0067); set for every generated one. */
+  template_id: string | null;
+  template_revision: number | null;
+  submission_id: string | null;
+  form_id: string | null;
+  source: Generated<DocumentSource>;
+  /** An uploaded document's reference number (0067). */
+  reference: string | null;
+  /** The customer an uploaded document is for (0067). */
+  customer_id: string | null;
+  /** Whether its QR link and the company website may show it (0067). */
+  shareable: Generated<boolean>;
   title: string;
   /** The QR link's key (D7). */
   public_code: string;
@@ -3553,6 +3574,7 @@ export interface Database {
   submissions: SubmissionsTable;
   submission_events: SubmissionEventsTable;
   submission_values: SubmissionValuesTable;
+  submission_file_uses: SubmissionFileUsesTable;
   tenant_storage: TenantStorageTable;
   upload_intents: UploadIntentsTable;
   files: FilesTable;
@@ -3817,6 +3839,9 @@ export const SECURITY_DEFINER_FUNCTIONS = [
   // Writes submission history and reportable values, which the runtime role
   // cannot write itself; see 0008.
   'record_submission_change',
+  // Keeps which files each submission names, which the runtime role can only
+  // read; see 0068.
+  'record_submission_file_uses',
   // Keeps the storage usage rollup, which the runtime role can only read; see 0009.
   'record_file_usage',
   // Hands out work order references from a counter the runtime role cannot write; see 0010.
@@ -3931,6 +3956,7 @@ const TENANT_SCOPED: Readonly<Record<TenantScopedTable, true>> = {
   submissions: true,
   submission_events: true,
   submission_values: true,
+  submission_file_uses: true,
   tenant_storage: true,
   upload_intents: true,
   files: true,
