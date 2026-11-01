@@ -387,11 +387,13 @@ function Matching({
                   ].join(' ')}
                 >
                   <td className="py-2 pe-3 align-top">
-                    <span dir="auto" className="font-medium text-content">
-                      {labelOf(source, id, locale)}
-                    </span>
-                    <span dir="ltr" className="ms-2 font-mono text-xs text-content-muted">
-                      {id}
+                    <span className="flex flex-wrap items-baseline gap-x-2">
+                      <span dir="auto" className="font-medium text-content">
+                        {labelOf(source, id, locale)}
+                      </span>
+                      <span dir="ltr" className="font-mono text-xs text-content-muted">
+                        {id}
+                      </span>
                     </span>
                     {entry.reference.kind === 'section' ? (
                       <span className="block text-xs text-content-muted">
