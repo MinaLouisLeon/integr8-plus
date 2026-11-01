@@ -136,6 +136,18 @@ placeholder address and must be reinstalled once.
 Phone apps receive over-the-air updates on their own channel,
 `production-<slug>`.
 
+When a release raises `API_MIN_SUPPORTED_CLIENT` past an app's build, the API
+refuses it with `client_too_old` and the address of the web app's download page
+(`API_UPDATE_URL`, by default `WEB_APP_URL` + `/download`). The phone shows a
+strip along the bottom of every screen, and the desktop app one across the top
+of the window, sign-in included, saying the version is no longer supported,
+with an **Update** button. It opens `/download?company=<slug>` in a company's
+own build, so the page lists that company's installers and phone app, and the
+plain `/download` in the staff and generic apps. Desktop apps normally update
+themselves before it comes to that; the button is the way out when one has not
+(an app installed before the feed existed, a feed that cannot be reached).
+Work saved on a phone stays on it and is sent once the new version is signed in.
+
 ## Installing an unsigned desktop app
 
 Until the operating-system code-signing secrets exist (setup guide, Stage 6,

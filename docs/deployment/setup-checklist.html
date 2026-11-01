@@ -378,7 +378,7 @@ cp deploy/.env.example deploy/.env
 nano deploy/.env</code></pre>
         <ul class="check" data-stage="s3">
           <li><input type="checkbox" id="s3-1"><label for="s3-1"><b>Mode.</b> <code>APP_ENV=staging</code> for now. Stage 9 flips it to <code>production</code>, which makes the API refuse to start if any service below is missing; staging mode starts anyway and only warns, which is kinder while you check each piece.</label></li>
-          <li><input type="checkbox" id="s3-2"><label for="s3-2"><b>Addresses.</b> Replace <code>your-domain.example</code> everywhere: <code>PUBLIC_API_URL</code>, <code>API_PUBLIC_URL</code>, <code>AUTH_ISSUER</code> = <code>https://api.integr8-media.com</code>; <code>WEB_APP_URL</code>, <code>API_UPDATE_URL</code> = <code>https://app.integr8-media.com</code>; <code>API_CORS_ORIGINS=https://app.integr8-media.com,tauri://localhost,http://tauri.localhost</code>. Then <code>PUBLIC_SIGNUP=off</code> and <code>CONTACT_EMAIL=info@integr8-media.com</code>: there is no public sign-up form (you create every company from the dashboard) and the contact page shows that address.</label></li>
+          <li><input type="checkbox" id="s3-2"><label for="s3-2"><b>Addresses.</b> Replace <code>your-domain.example</code> everywhere: <code>PUBLIC_API_URL</code>, <code>API_PUBLIC_URL</code>, <code>AUTH_ISSUER</code> = <code>https://api.integr8-media.com</code>; <code>WEB_APP_URL</code> = <code>https://app.integr8-media.com</code>; <code>API_CORS_ORIGINS=https://app.integr8-media.com,tauri://localhost,http://tauri.localhost</code>. Then <code>PUBLIC_SIGNUP=off</code> and <code>CONTACT_EMAIL=info@integr8-media.com</code>: there is no public sign-up form (you create every company from the dashboard) and the contact page shows that address.</label></li>
           <li><input type="checkbox" id="s3-3"><label for="s3-3"><b>Database passwords, eight lines that must agree.</b> The four passwords from the key sheet go into <code>POSTGRES_PASSWORD</code>, <code>INTEGR8_APP_PASSWORD</code>, <code>INTEGR8_AUTH_PASSWORD</code>, <code>INTEGR8_PLATFORM_PASSWORD</code>, and again into the four connection addresses below them. An address has the shape <code>postgres://USER:PASSWORD@HOST:PORT/DATABASE</code>; replace only the <code>change-me-…</code> part of each:</label></li>
         </ul>
         <pre><code>POSTGRES_PASSWORD=aaaa…                 ┐ same value
@@ -522,14 +522,18 @@ AI_MODEL_PRICES=[{"provider":"anthropic","model":"claude-haiku-4-5","inputPerMil
           <li><input type="checkbox" id="s3-doc1"><label for="s3-doc1"><b>PDF documents.</b> Nothing to add: the template's <code>PDF_RENDERER=chromium</code> line stays as it is, and the API image brings Chromium and the fonts. Check that <code>WEB_APP_URL</code> is the web app's address, <code>https://app.integr8-media.com</code>: every document's QR code points there, and without it the API refuses to make documents. Never set <code>PDF_RENDERER=recording</code> here: it prints placeholder pages, and production refuses to start with it.</label></li>
         </ul>
         <ul class="check" data-stage="s3i">
-          <li><input type="checkbox" id="s3-9c"><label for="s3-9c"><b>The two lines at the very end.</b> <code>API_MIN_SUPPORTED_CLIENT=0.1.0</code> stays. <code>API_UPDATE_URL</code> was already changed in step 2 to <code>https://app.integr8-media.com/download</code>; check it no longer says <code>your-domain.example</code>.</label></li>
-          <li><input type="checkbox" id="s3-10"><label for="s3-10"><b>Check before saving.</b> Each database password appears on exactly two lines, no <code>change-me</code> or <code>example</code> remains, and the only key lines still commented out are <code>EXPO_ACCESS_TOKEN</code> and <code>SUPABASE_AUTH_URL</code> (plus the commented <code>AI_</code> lines you did not need):</label></li>
+          <li><input type="checkbox" id="s3-9c"><label for="s3-9c"><b>The two lines at the very end.</b> <code>API_MIN_SUPPORTED_CLIENT=0.1.0</code> stays. Leave <code># API_UPDATE_URL=</code> commented out: unset, an app too old to be served is sent to <code>https://app.integr8-media.com/download</code>, the web app's download page (<code>WEB_APP_URL</code> with <code>/download</code> added). Production refuses an example address there.</label></li>
+          <li><input type="checkbox" id="s3-10"><label for="s3-10"><b>Check before saving.</b> Each database password appears on exactly two lines, and the only key lines still commented out are <code>EXPO_ACCESS_TOKEN</code>, <code>SUPABASE_AUTH_URL</code> and <code>API_UPDATE_URL</code> (plus the commented <code>AI_</code> lines you did not need):</label></li>
         </ul>
         <pre><button class="copy" type="button">Copy</button><code># machine (SSH session)
 grep -n 'PASSWORD=\|DATABASE_URL' deploy/.env
-grep -n 'change-me\|example' deploy/.env      # should print nothing
-grep -n '^# [A-Z_]*=' deploy/.env               # should print only EXPO_ACCESS_TOKEN and SUPABASE_AUTH_URL (and AI_ lines if the assistant stays off)
+grep -n '^# [A-Z_]*=' deploy/.env               # should print only EXPO_ACCESS_TOKEN, SUPABASE_AUTH_URL and API_UPDATE_URL (and AI_ lines if the assistant stays off)
 grep -n '^AI_' deploy/.env                      # the assistant's lines, as you set them</code></pre>
+        <ul class="check" data-stage="s3j">
+          <li><input type="checkbox" id="s3-10b"><label for="s3-10b"><b>No example values left.</b> The command below lists, by name, every setting that still holds a value from the template: a <code>change-me</code> password, a <code>your-domain.example</code> address or any other <code>.example</code> or <code>.local</code> one, <code>your-github-owner</code>, or a database password shorter than 16 characters (on its own line or inside a <code>DATABASE_URL</code> address). It never prints the values, so its output is safe to paste anywhere. Fix each line it names with <code>nano deploy/.env</code> and run it again until it says <code>no example values left</code>. In production the API, the worker and the <code>bootstrap</code> and <code>migrate</code> steps refuse to start while any of these remains; in staging they start and log each one, beginning "Production would refuse".</label></li>
+        </ul>
+        <pre><button class="copy" type="button">Copy</button><code># machine (SSH session), from /opt/integr8
+sh deploy/vps/check-env.sh</code></pre>
         <div class="note warn"><p>If a password pair does not match, Stage 4 fails at <code>bootstrap</code> with <code>password authentication failed for user "postgres"</code> (first pair) or the API refuses to start with the same message for <code>integr8_app</code> or <code>integr8_auth</code>. Postgres keeps the password it was first created with, so after fixing <code>POSTGRES_PASSWORD</code> reset the empty database before starting again: <code>docker compose -f deploy/compose.yml --env-file deploy/.env down -v</code>, then the normal <code>up -d</code>. That throws away the data volume, which is fine before any data exists and never afterwards.</p></div>
       </section>
 
@@ -774,11 +778,12 @@ docker compose -f deploy/compose.yml --env-file deploy/.env \
         </ul>
         <pre><button class="copy" type="button">Copy</button><code># machine (SSH session)
 cd /opt/integr8
+sh deploy/vps/check-env.sh      # must say: no example values left
 docker compose -f deploy/compose.yml --env-file deploy/.env up -d
 docker compose -f deploy/compose.yml --env-file deploy/.env logs api | head -40
 curl -s http://127.0.0.1:3000/health/ready; echo</code></pre>
         <ul class="check" data-stage="s8a2">
-          <li><input type="checkbox" id="s8-4"><label for="s8-4"><b>Check</b>: the log does not say "Refusing to start in production". If it does, it lists exactly which service is still a fake or which variable is missing; fix and <code>up -d</code> again. The health check says <code>ready</code>.</label></li>
+          <li><input type="checkbox" id="s8-4"><label for="s8-4"><b>Check</b>: the log does not say "Refusing to start in production". If it does, it lists exactly which service is still a fake, which variable is missing or which setting still holds an example value (by name, never the value); fix and <code>up -d</code> again. A refused <code>bootstrap</code> or <code>migrate</code> stops everything after it: <code>docker compose -f deploy/compose.yml --env-file deploy/.env logs bootstrap migrate</code> shows the same list. The health check says <code>ready</code>.</label></li>
         </ul>
 
         <h3 id="backups">B. The database and backups</h3>
@@ -997,7 +1002,7 @@ sudo needs-restarting -r || echo "Reboot needed"</code></pre>
         <ul class="check" data-stage="s12g">
           <li><input type="checkbox" id="s12-19"><label for="s12-19"><b>Staff desktop app</b>: each installed copy offers the new version itself (Stage 6, desktop apps that update themselves): open it and click <b>Install now</b> in the strip under the top bar. Only a computer whose app is older than the update feed needs the new <code>-setup.exe</code> from the version's release (Releases → <code>v…</code> → Assets), installed over the old one. Signing in again is not needed.</label></li>
           <li><input type="checkbox" id="s12-20"><label for="s12-20"><b>Each company's apps</b>: the version release built them at the same time, one release per company named <code>company-&lt;short name&gt;-v…</code> (Stage 8). Their installed desktop apps offer the new version themselves; send new installer links only to people whose app is older than the update feed, or who are installing for the first time. Phones that already have the company's app receive the JavaScript side over the air on their own channel within a day; the new <code>.apk</code> only matters when the release notes say the native side changed.</label></li>
-          <li><input type="checkbox" id="s12-21"><label for="s12-21"><b>Too-old apps.</b> When a release needs every app to be new, it raises <code>API_MIN_SUPPORTED_CLIENT</code> (the notes say so, and part C's check shows it). Older apps are then told to update, with a link to <code>API_UPDATE_URL</code>, instead of failing strangely.</label></li>
+          <li><input type="checkbox" id="s12-21"><label for="s12-21"><b>Too-old apps.</b> When a release needs every app to be new, it raises <code>API_MIN_SUPPORTED_CLIENT</code> (the notes say so, and part C's check shows it). Older apps then say their version is no longer supported, with an <b>Update</b> button that opens the web app's download page (<code>/download</code>, with the company filled in for a company's own app), instead of failing strangely.</label></li>
         </ul>
 
         <h3>H. Clean up</h3>
@@ -1185,6 +1190,17 @@ docker compose -f deploy/compose.yml --env-file deploy/.env exec worker printenv
 docker compose -f deploy/compose.yml --env-file deploy/.env run --rm api node dist/platform/admin-cli.js hr-reseal
 # one company only, to try it first:
 docker compose -f deploy/compose.yml --env-file deploy/.env run --rm api node dist/platform/admin-cli.js hr-reseal COMPANY-ID</code></pre>
+
+        <h3 id="example-values-update">AA. Example values refused, and the Update button (included in v1.2.4)</h3>
+        <p>A production server used to start with the template's <code>change-me</code> passwords, its <code>your-domain.example</code> addresses or a short database password, as long as everything else was set. Now the API, the worker and the <code>bootstrap</code> and <code>migrate</code> steps refuse to, naming each setting and never its value; staging starts and logs the same list. Apps too old to be served now show an <b>Update</b> button that opens the web app's download page, and <code>API_UPDATE_URL</code> is no longer needed.</p>
+        <ul class="check" data-stage="s12aa">
+          <li><input type="checkbox" id="s12-aa1"><label for="s12-aa1"><b>Check the env file</b> during part C: <code>sh deploy/vps/check-env.sh</code> lists, by name, each setting that still holds an example value. Nothing to change when it says <code>no example values left</code>.</label></li>
+          <li><input type="checkbox" id="s12-aa2"><label for="s12-aa2"><b>A database password it names</b>, only if it names one. Make a new password (Stage 0, Part B's line) and put it in both of its lines, the password and the address that holds it. For <code>INTEGR8_APP_PASSWORD</code>, <code>INTEGR8_AUTH_PASSWORD</code>, <code>INTEGR8_PLATFORM_PASSWORD</code> and <code>SUPABASE_AUTH_DB_PASSWORD</code> that is all: <code>bootstrap</code> sets the role's password from the file at part D's <code>up -d</code>. For <code>POSTGRES_PASSWORD</code>, Postgres keeps the owner's password it was created with, so change it in the database first with the command below (it asks for the new password twice), then in <code>POSTGRES_PASSWORD</code> and <code>DATABASE_URL_ADMIN</code>.</label></li>
+          <li><input type="checkbox" id="s12-aa3"><label for="s12-aa3"><b><code>API_UPDATE_URL</code></b>, during part C: put <code># </code> in front of its line. Unset, an app too old to be served is sent to <code>https://app.integr8-media.com/download</code>; earlier versions of this guide set it to the web app's home page.</label></li>
+          <li><input type="checkbox" id="s12-aa4"><label for="s12-aa4"><b>No warning after part D</b>: <code>docker compose -f deploy/compose.yml --env-file deploy/.env logs api bootstrap | grep "Production would refuse"</code> prints nothing in staging; in production the API starts.</label></li>
+        </ul>
+        <pre><button class="copy" type="button">Copy</button><code># machine (SSH session), from /opt/integr8; only to change POSTGRES_PASSWORD
+docker compose -f deploy/compose.yml --env-file deploy/.env exec postgres psql -U postgres -d integr8 -c '\password postgres'</code></pre>
 
         <div class="note"><p><b>The test box (Stage 10)</b> updates the same way, from <code>staging</code> instead of <code>main</code>: <code>git pull</code> on its <code>staging</code> checkout, then <b>Pull</b> and <b>Redeploy</b> the stack in Arcane. Updating it first, the day before, is the cheapest rehearsal there is.</p></div>
       </section>

@@ -432,7 +432,7 @@ nano deploy/.env
 ```
 
 - [ ] **Mode.** `APP_ENV=staging` for now. Stage 9 flips it to `production`, which makes the API refuse to start if any service below is missing; staging mode starts anyway and only warns, which is kinder while you check each piece.
-- [ ] **Addresses.** Replace `your-domain.example` everywhere: `PUBLIC_API_URL`, `API_PUBLIC_URL`, `AUTH_ISSUER` = `https://api.integr8-media.com`; `WEB_APP_URL`, `API_UPDATE_URL` = `https://app.integr8-media.com`; `API_CORS_ORIGINS=https://app.integr8-media.com,tauri://localhost,http://tauri.localhost`. Then `PUBLIC_SIGNUP=off` and `CONTACT_EMAIL=info@integr8-media.com`: there is no public sign-up form (you create every company from the dashboard) and the contact page shows that address.
+- [ ] **Addresses.** Replace `your-domain.example` everywhere: `PUBLIC_API_URL`, `API_PUBLIC_URL`, `AUTH_ISSUER` = `https://api.integr8-media.com`; `WEB_APP_URL` = `https://app.integr8-media.com`; `API_CORS_ORIGINS=https://app.integr8-media.com,tauri://localhost,http://tauri.localhost`. Then `PUBLIC_SIGNUP=off` and `CONTACT_EMAIL=info@integr8-media.com`: there is no public sign-up form (you create every company from the dashboard) and the contact page shows that address.
 - [ ] **Database passwords, eight lines that must agree.** The four passwords from the key sheet go into `POSTGRES_PASSWORD`, `INTEGR8_APP_PASSWORD`, `INTEGR8_AUTH_PASSWORD`, `INTEGR8_PLATFORM_PASSWORD`, and again into the four connection addresses below them. An address has the shape `postgres://USER:PASSWORD@HOST:PORT/DATABASE`; replace only the `change-me-…` part of each:
 
 ```text
@@ -617,15 +617,21 @@ AI_MODEL_PRICES=[{"provider":"anthropic","model":"claude-haiku-4-5","inputPerMil
 
 - [ ] **PDF documents.** Nothing to add: the template's `PDF_RENDERER=chromium` line stays as it is, and the API image brings Chromium and the fonts. Check that `WEB_APP_URL` is the web app's address, `https://app.integr8-media.com`: every document's QR code points there, and without it the API refuses to make documents. Never set `PDF_RENDERER=recording` here: it prints placeholder pages, and production refuses to start with it.
 
-- [ ] **The two lines at the very end.** `API_MIN_SUPPORTED_CLIENT=0.1.0` stays. `API_UPDATE_URL` was already changed in step 2 to `https://app.integr8-media.com/download`; check it no longer says `your-domain.example`.
-- [ ] **Check before saving.** Each database password appears on exactly two lines, no `change-me` or `example` remains, and the only key lines still commented out are `EXPO_ACCESS_TOKEN` and `SUPABASE_AUTH_URL` (plus the commented `AI_` lines you did not need):
+- [ ] **The two lines at the very end.** `API_MIN_SUPPORTED_CLIENT=0.1.0` stays. Leave `# API_UPDATE_URL=` commented out: unset, an app too old to be served is sent to `https://app.integr8-media.com/download`, the web app's download page (`WEB_APP_URL` with `/download` added). Production refuses an example address there.
+- [ ] **Check before saving.** Each database password appears on exactly two lines, and the only key lines still commented out are `EXPO_ACCESS_TOKEN`, `SUPABASE_AUTH_URL` and `API_UPDATE_URL` (plus the commented `AI_` lines you did not need):
 
 ```bash
 # machine (SSH session)
 grep -n 'PASSWORD=\|DATABASE_URL' deploy/.env
-grep -n 'change-me\|example' deploy/.env      # should print nothing
-grep -n '^# [A-Z_]*=' deploy/.env               # should print only EXPO_ACCESS_TOKEN and SUPABASE_AUTH_URL (and AI_ lines if the assistant stays off)
+grep -n '^# [A-Z_]*=' deploy/.env               # should print only EXPO_ACCESS_TOKEN, SUPABASE_AUTH_URL and API_UPDATE_URL (and AI_ lines if the assistant stays off)
 grep -n '^AI_' deploy/.env                      # the assistant's lines, as you set them
+```
+
+- [ ] **No example values left.** The command below lists, by name, every setting that still holds a value from the template: a `change-me` password, a `your-domain.example` address or any other `.example` or `.local` one, `your-github-owner`, or a database password shorter than 16 characters (on its own line or inside a `DATABASE_URL` address). It never prints the values, so its output is safe to paste anywhere. Fix each line it names with `nano deploy/.env` and run it again until it says `no example values left`. In production the API, the worker and the `bootstrap` and `migrate` steps refuse to start while any of these remains; in staging they start and log each one, beginning "Production would refuse".
+
+```bash
+# machine (SSH session), from /opt/integr8
+sh deploy/vps/check-env.sh
 ```
 
 > [!WARNING]
@@ -928,12 +934,13 @@ Everything above works with Stripe in test mode and the API in staging mode. Thi
 ```bash
 # machine (SSH session)
 cd /opt/integr8
+sh deploy/vps/check-env.sh      # must say: no example values left
 docker compose -f deploy/compose.yml --env-file deploy/.env up -d
 docker compose -f deploy/compose.yml --env-file deploy/.env logs api | head -40
 curl -s http://127.0.0.1:3000/health/ready; echo
 ```
 
-- [ ] **Check**: the log does not say "Refusing to start in production". If it does, it lists exactly which service is still a fake or which variable is missing; fix and `up -d` again. The health check says `ready`.
+- [ ] **Check**: the log does not say "Refusing to start in production". If it does, it lists exactly which service is still a fake, which variable is missing or which setting still holds an example value (by name, never the value); fix and `up -d` again. A refused `bootstrap` or `migrate` stops everything after it: `docker compose -f deploy/compose.yml --env-file deploy/.env logs bootstrap migrate` shows the same list. The health check says `ready`.
 
 ### B. The database and backups
 
@@ -1188,7 +1195,7 @@ sudo needs-restarting -r || echo "Reboot needed"
 
 - [ ] **Staff desktop app**: each installed copy offers the new version itself (Stage 6, desktop apps that update themselves): open it and click **Install now** in the strip under the top bar. Only a computer whose app is older than the update feed needs the new `-setup.exe` from the version's release (Releases → `v…` → Assets), installed over the old one. Signing in again is not needed.
 - [ ] **Each company's apps**: the version release built them at the same time, one release per company named `company-<short name>-v…` (Stage 8). Their installed desktop apps offer the new version themselves; send new installer links only to people whose app is older than the update feed, or who are installing for the first time. Phones that already have the company's app receive the JavaScript side over the air on their own channel within a day; the new `.apk` only matters when the release notes say the native side changed.
-- [ ] **Too-old apps.** When a release needs every app to be new, it raises `API_MIN_SUPPORTED_CLIENT` (the notes say so, and part C's check shows it). Older apps are then told to update, with a link to `API_UPDATE_URL`, instead of failing strangely.
+- [ ] **Too-old apps.** When a release needs every app to be new, it raises `API_MIN_SUPPORTED_CLIENT` (the notes say so, and part C's check shows it). Older apps then say their version is no longer supported, with an **Update** button that opens the web app's download page (`/download`, with the company filled in for a company's own app), instead of failing strangely.
 
 ### H. Clean up
 
@@ -1415,6 +1422,20 @@ From v1.2.3 production refuses to start without `HR_DATA_KEY`, and the key can b
 docker compose -f deploy/compose.yml --env-file deploy/.env run --rm api node dist/platform/admin-cli.js hr-reseal
 # one company only, to try it first:
 docker compose -f deploy/compose.yml --env-file deploy/.env run --rm api node dist/platform/admin-cli.js hr-reseal COMPANY-ID
+```
+
+### AA. Example values refused, and the Update button (included in v1.2.4)
+
+A production server used to start with the template's `change-me` passwords, its `your-domain.example` addresses or a short database password, as long as everything else was set. Now the API, the worker and the `bootstrap` and `migrate` steps refuse to, naming each setting and never its value; staging starts and logs the same list. Apps too old to be served now show an **Update** button that opens the web app's download page, and `API_UPDATE_URL` is no longer needed.
+
+- [ ] **Check the env file** during part C: `sh deploy/vps/check-env.sh` lists, by name, each setting that still holds an example value. Nothing to change when it says `no example values left`.
+- [ ] **A database password it names**, only if it names one. Make a new password (Stage 0, Part B's line) and put it in both of its lines, the password and the address that holds it. For `INTEGR8_APP_PASSWORD`, `INTEGR8_AUTH_PASSWORD`, `INTEGR8_PLATFORM_PASSWORD` and `SUPABASE_AUTH_DB_PASSWORD` that is all: `bootstrap` sets the role's password from the file at part D's `up -d`. For `POSTGRES_PASSWORD`, Postgres keeps the owner's password it was created with, so change it in the database first with the command below (it asks for the new password twice), then in `POSTGRES_PASSWORD` and `DATABASE_URL_ADMIN`.
+- [ ] **`API_UPDATE_URL`**, during part C: put `# ` in front of its line. Unset, an app too old to be served is sent to `https://app.integr8-media.com/download`; earlier versions of this guide set it to the web app's home page.
+- [ ] **No warning after part D**: `docker compose -f deploy/compose.yml --env-file deploy/.env logs api bootstrap | grep "Production would refuse"` prints nothing in staging; in production the API starts.
+
+```bash
+# machine (SSH session), from /opt/integr8; only to change POSTGRES_PASSWORD
+docker compose -f deploy/compose.yml --env-file deploy/.env exec postgres psql -U postgres -d integr8 -c '\password postgres'
 ```
 
 > [!NOTE]

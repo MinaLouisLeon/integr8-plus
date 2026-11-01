@@ -54,6 +54,17 @@ with tick boxes that remember your progress: download
   push, Stripe, Resend, `WEB_APP_URL`, `API_CORS_ORIGINS` and `API_RELEASE` are
   all configured. The refusal lists exactly what is missing.
 
+Example values from `deploy/.env.example` are refused in production too, by the
+API, the worker and the `bootstrap` and `migrate` steps: a password, key, token
+or address that still contains `change-me`, an address on a `.example` or
+`.local` host (the template's `your-domain.example` lines, or `AUTH_ISSUER` left
+unset at its development default), and a database password shorter than 16
+characters, on its own line or inside a `DATABASE_URL*`. Each refusal names the
+setting and never its value. Staging starts and logs the same list, each line
+beginning "Production would refuse". `sh deploy/vps/check-env.sh` lists, by name
+only, every setting in `deploy/.env` that still holds an example value; run it
+after filling the file and before switching to production.
+
 ## First deployment, step by step
 
 1. **A machine with Docker** (2 vCPU, 4 GB is plenty for testing) and two DNS

@@ -15,8 +15,14 @@ One HTTP service in front of Postgres. Clients never query Supabase directly.
 Ordered so the cheapest rejection happens first and nothing expensive runs for a
 request that was never going to be served.
 
+0. **CORS** — an allow-listed browser origin gets its headers; any other is
+   refused at preflight and logged once. The memory of refused origins holds
+   the last 1,000, and a malformed `Origin` or one over 255 characters is
+   refused without being remembered or logged, so a stranger cannot grow
+   either (`http/cors.ts`).
 1. **Context and request id** — so everything after it can be traced.
-2. **Client version** — an unsupported build is told once, clearly.
+2. **Client version** — an unsupported build is told once, clearly, with where
+   to update (`docs/api/versioning.md`).
 3. **Per-IP rate limit** — before any database work.
 4. **Validation** — zod, against the schema in the route definition.
 5. **Authentication** — verify the bearer token, then (after an impersonation
