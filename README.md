@@ -254,6 +254,7 @@ with type-aware rules; Prettier.
 | `@integr8/auth`              | Sign-in, sessions, refresh rotation, impersonation, offline grants, platform sessions, key generation         |
 | `@integr8/api-client`        | Typed client generated from the OpenAPI document, plus the session manager every app uses                     |
 | `@integr8/form-engine`       | The form definition, compiler, evaluator, validation, versioning diff and conformance suite. No UI, no I/O    |
+| `@integr8/form-package`      | The `.integr8form` file: a form, its PDF templates and pictures packed, read strictly and checked             |
 | `@integr8/form-input`        | Turning engine state into what a filler shows: navigation, entries, prefill, dependent choices                |
 | `@integr8/form-renderer-dom` | The form renderer and submission screens for web and desktop                                                  |
 | `@integr8/operations-dom`    | Customer, site, job type, work order, import and timesheet screens for web and desktop                        |

@@ -169,6 +169,14 @@ platform log; renaming, replacing and retiring write `form_template.renamed`, `.
 Screenshots, in English and Arabic: `docs/screenshots/1.3.0/forms/` (the two dialogs) and
 `docs/screenshots/1.3.0/platform/` (the dashboard's Templates page).
 
+### In a file: `.integr8form`
+
+A form can also travel as a file — between servers, or written by the forms AI tool (decisions
+14 and 15): one ZIP holding the definition with its settings, its PDF templates and their
+pictures, and a manifest with the format's version. The format, its limits and its errors are
+specified in [package-format.md](package-format.md); `@integr8/form-package` writes, reads and
+checks it.
+
 ## In the desktop app
 
 `apps/desktop/src/features/forms`:

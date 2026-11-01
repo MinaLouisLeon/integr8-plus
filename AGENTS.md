@@ -36,6 +36,7 @@ is pinned to an exact version.
 | `packages/auth`              | `@integr8/auth`              | Sessions, EdDSA tokens, refresh rotation, impersonation, offline grants         |
 | `packages/api-client`        | `@integr8/api-client`        | Typed client generated from `apps/api/openapi.json`                             |
 | `packages/form-engine`       | `@integr8/form-engine`       | Pure form engine + conformance suite (Node and Hermes must agree byte-for-byte) |
+| `packages/form-package`      | `@integr8/form-package`      | The `.integr8form` file: pack, strict unpack, publish-level check (Node only)   |
 | `packages/form-input`        | `@integr8/form-input`        | Engine state → what a form filler shows                                         |
 | `packages/form-renderer-dom` | `@integr8/form-renderer-dom` | Form/submission screens for web + desktop                                       |
 | `packages/operations-dom`    | `@integr8/operations-dom`    | Operations screens shared by web + desktop                                      |
