@@ -1483,6 +1483,9 @@ export const en = {
       ar: 'Arabic',
       missingArabic: 'No Arabic yet',
     },
+    phonePreview: {
+      note: 'Drawn the way the phone app draws it, in the company’s colours and theme. Fonts and the date and photo pickers come from the phone itself, so a real phone can differ slightly.',
+    },
     translations: {
       title: 'Translations',
       intro:

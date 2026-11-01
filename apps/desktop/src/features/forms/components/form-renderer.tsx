@@ -17,6 +17,7 @@ import {
   offeredOptions,
   toggleOffered,
 } from '@integr8/form-renderer-dom';
+import { errorMessage } from '@integr8/form-input';
 import { useTranslation } from '@integr8/i18n';
 import { useId, useState, type ReactNode } from 'react';
 import { Button } from '~/components/ui';
@@ -83,10 +84,15 @@ export function FormRenderer(props: FormRendererProps) {
             .map((section) => (
               <fieldset
                 key={section.id}
+                data-section={section.id}
+                data-repeat={section.repeat === undefined ? undefined : ''}
                 className="flex flex-col gap-5 rounded-lg border border-border-subtle bg-surface p-4"
               >
                 {section.title === undefined ? null : (
-                  <legend className="px-1 text-sm font-semibold text-content">
+                  <legend
+                    data-part="section-title"
+                    className="px-1 text-sm font-semibold text-content"
+                  >
                     {say(section.title, locale)}
                   </legend>
                 )}
@@ -373,7 +379,14 @@ function FieldControl(
             onBlur={touch}
             aria-describedby={describedBy}
           />
-          {say(field.label, locale)}
+          <span data-part="label">
+            {say(field.label, locale)}
+            {required ? (
+              <span aria-hidden="true" data-part="required" className="text-danger">
+                {' *'}
+              </span>
+            ) : null}
+          </span>
         </label>
       );
       break;
@@ -424,19 +437,24 @@ function FieldControl(
   }
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-1.5" data-question={field.id}>
       {field.type === 'checkbox' ? null : (
-        <label id={`${id}-label`} htmlFor={id} className="text-sm font-medium text-content">
+        <label
+          id={`${id}-label`}
+          htmlFor={id}
+          data-part="label"
+          className="text-sm font-medium text-content"
+        >
           {say(field.label, locale)}
           {required ? (
-            <span aria-hidden="true" className="text-danger">
+            <span aria-hidden="true" data-part="required" className="text-danger">
               {' *'}
             </span>
           ) : null}
         </label>
       )}
       {field.help === undefined ? null : (
-        <p id={`${id}-help`} className="text-xs text-content-muted">
+        <p id={`${id}-help`} data-part="help" className="text-xs text-content-muted">
           {say(field.help, locale)}
         </p>
       )}
@@ -454,7 +472,11 @@ function FieldControl(
       {errors.length === 0 ? null : (
         <ul id={`${id}-errors`} role="alert" className="flex flex-col gap-0.5">
           {errors.map((error) => (
-            <li key={`${error.code}-${error.params.rule ?? ''}`} className="text-xs text-danger">
+            <li
+              key={`${error.code}-${error.params.rule ?? ''}`}
+              data-part="error"
+              className="text-xs text-danger"
+            >
               <ErrorText field={field} error={error} locale={locale} />
             </li>
           ))}
@@ -469,7 +491,11 @@ function sectionOf(props: FormRendererProps & { field: Field }): string {
   return props.form.elements.get(props.field.id)?.entries ?? '';
 }
 
-/** A rule's own message when it has one; the catalogue's otherwise. */
+/**
+ * The words for an error: the admin's own message for a custom check or a
+ * format, the catalogue's otherwise — `errorMessage` from `@integr8/form-input`,
+ * as the web filler and the phone word it.
+ */
 export function ErrorText({
   field,
   error,
@@ -480,17 +506,11 @@ export function ErrorText({
   locale: string;
 }) {
   const { t } = useTranslation();
-  if (error.code === 'rule_failed') {
-    const rule = field.rules?.find((candidate) => candidate.id === error.params.rule);
-    if (rule !== undefined) {
-      return <>{say(rule.message, locale)}</>;
-    }
-  }
   // The engine sends a different parameter set per code, which the typed catalogue cannot
   // relate to one key chosen at run time. The i18n package's test checks every code has a
   // message and every parameter is one the engine sends.
   const translate = t as unknown as (key: string, options: Record<string, string>) => string;
-  return <>{translate(`form.errors.${error.code}`, { ...error.params })}</>;
+  return <>{errorMessage(field, error, locale, translate)}</>;
 }
 
 function UnitWrap({ unit, children }: { unit: string | undefined; children: ReactNode }) {

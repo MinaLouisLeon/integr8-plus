@@ -16,6 +16,7 @@ import { type TestSubmission, testSubmission } from '../api';
 import { say } from '../model/text';
 import { nameOf } from './canvas';
 import { ErrorText, FormRenderer } from './form-renderer';
+import { type PhoneBrand, PhonePreview } from './phone-preview';
 
 /** A fresh test fill: a repeatable section that needs entries opens with that many. */
 const freshState = (form: CompiledForm) =>
@@ -36,10 +37,13 @@ export function PreviewPanel({
   locale,
   canTest,
   flush,
+  brand,
 }: {
   form: CompiledForm;
   formId: string;
   locale: string;
+  /** The company's colour and theme, which the phone app wears. */
+  brand: PhoneBrand;
   /** Test fill checks the server's copy of the draft, so there must be one. */
   canTest: boolean;
   flush: () => Promise<number | null>;
@@ -201,18 +205,16 @@ export function PreviewPanel({
           </div>
         </Viewport>
         <Viewport label={t('forms.preview.phone')}>
-          <div className="mx-auto w-[24.5rem] max-w-full rounded-[2rem] border-8 border-content/80 bg-background">
-            <div className="h-[44rem] overflow-y-auto rounded-[1.5rem] p-4">
-              <FormRenderer
-                form={form}
-                state={state}
-                view={view}
-                onEvent={onEvent}
-                viewport="phone"
-                locale={locale}
-              />
-            </div>
-          </div>
+          <PhonePreview
+            form={form}
+            state={state}
+            view={view}
+            onEvent={onEvent}
+            locale={locale}
+            context={context}
+            brand={brand}
+          />
+          <p className="text-xs text-content-muted">{t('forms.phonePreview.note')}</p>
         </Viewport>
       </div>
     </div>

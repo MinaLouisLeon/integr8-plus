@@ -12,6 +12,7 @@ import { ConfigPanel } from '../components/config-panel';
 import { Dialog } from '../components/dialog';
 import { HistoryPanel, SettingsPanel } from '../components/history-settings';
 import { PreviewPanel } from '../components/preview-panel';
+import { useResolvedTheme } from '~/components/company-brand';
 import { TranslationsPanel } from '../components/translations-panel';
 import { editorReducer, initialEditor } from '../model/editor';
 import { issueElement, issueText } from '../model/issues';
@@ -81,6 +82,10 @@ export function FormBuilderRoute() {
         brandColour: me.data.company?.brandColour ?? null,
         logoMediaId: me.data.company?.logoMediaId ?? null,
       }}
+      brand={{
+        colour: me.data.company?.brandColour ?? null,
+        theme: me.data.company?.defaultTheme ?? 'system',
+      }}
     />
   );
 }
@@ -92,10 +97,13 @@ function Builder({
   tenantId,
   manage,
   documents,
+  brand,
 }: {
   detail: FormDetail;
   tenantId: string;
   manage: boolean;
+  /** The company's colour and theme, for the phone in the preview. */
+  brand: { colour: string | null; theme: 'light' | 'dark' | 'system' };
   /** PDF templates (docs/documents): whether this seat designs them, and whether the company has them. */
   documents: {
     design: boolean;
@@ -108,6 +116,9 @@ function Builder({
   const { t, i18n } = useTranslation();
   const locale = i18n.language;
   const queries = useQueryClient();
+  // A company on "system" has phones that follow their own setting; the preview follows this screen's.
+  const screenTheme = useResolvedTheme();
+  const phoneTheme = brand.theme === 'system' ? screenTheme : brand.theme;
   const formId = detail.form.id;
   const source = (detail.draft ?? detail.live)!;
   const key = recoveryKey(tenantId, formId);
@@ -388,6 +399,7 @@ function Builder({
             locale={locale}
             canTest={manage && (sync.revision !== null || sync.status !== 'saved')}
             flush={sync.flush}
+            brand={{ colour: brand.colour, theme: phoneTheme }}
           />
         ) : (
           <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 p-6 text-start">
