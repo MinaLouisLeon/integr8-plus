@@ -19,9 +19,10 @@
 -- approved records are printed, so `on delete restrict` never stands in the way
 -- of discarding a draft.
 --
--- Expand-only. The previous release reads these rows but does not know their
--- `source`; its register would refuse to describe them, so a rollback past
--- this release should run the down migration, which removes them.
+-- Expand-only. The previous release keeps working on this schema: it never
+-- writes these columns, and it lists a business PDF like any other document,
+-- whose file and link still open. Its worker has no handler for the new queue,
+-- so a PDF asked for just before going back is dead-lettered and stays pending.
 
 alter table documents
   add column quote_id          uuid,
