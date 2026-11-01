@@ -16,6 +16,7 @@ import {
   type FormDefinition,
   missingTranslations,
   validateSubmission,
+  withRequiredSchemaVersion,
 } from '@integr8/form-engine';
 import { z } from 'zod';
 import {
@@ -270,14 +271,19 @@ function versionBody(version: FormVersion) {
   return { ...summaryBody(version), definition: version.definition };
 }
 
+/** Questions only: an Information block (schema version 2) is not one. */
 function fieldCount(definition: Record<string, unknown>): number {
   const pages = Array.isArray(definition.pages)
-    ? (definition.pages as { sections?: { fields?: unknown[] }[] }[])
+    ? (definition.pages as { sections?: { fields?: { type?: unknown }[] }[] }[])
     : [];
   return pages.reduce(
     (total, page) =>
       total +
-      (page.sections ?? []).reduce((sum, section) => sum + (section.fields?.length ?? 0), 0),
+      (page.sections ?? []).reduce(
+        (sum, section) =>
+          sum + (section.fields ?? []).filter((item) => item.type !== 'information').length,
+        0,
+      ),
     0,
   );
 }
@@ -322,7 +328,7 @@ async function createFormWithDraft(
   });
   const draft = await tx.forms.createDraft({
     formId: form.id,
-    definition: input.definition,
+    definition: withRequiredSchemaVersion(input.definition),
     createdBy: context.principal.userId,
   });
   return { form: formBody(form), draft: versionBody(draft), live: null };
@@ -581,7 +587,7 @@ export const saveDraftRoute = defineRoute({
   operationId: 'saveFormDraft',
   summary: 'Autosave the draft',
   description:
-    'Stores the definition as it is, valid or not. `expectedRevision` is the revision the builder last saw, or `null` to start a draft when there is none. A save based on an older revision is refused with 409, so a second tab cannot overwrite the first.',
+    'Stores the definition as it is, valid or not, except that the server sets `schemaVersion` to the lowest format that has everything the definition uses (2 for descriptions, Information blocks and the 1.3.0 calculations; otherwise 1) — the response carries the definition as stored. `expectedRevision` is the revision the builder last saw, or `null` to start a draft when there is none. A save based on an older revision is refused with 409, so a second tab cannot overwrite the first.',
   tags: TAGS,
   security: 'authenticated',
   permission: 'form.manage',
@@ -599,9 +605,11 @@ export const saveDraftRoute = defineRoute({
   handler: async ({ params, body }, context) => {
     const result = await withTenant(context.principal.tenantId, async (tx) => {
       await requireForm(tx, params.formId);
+      // The format the draft needs is the server's to say (schema version 2):
+      // an older app is told by it, before it tries, that it cannot open the form.
       return tx.forms.saveDraft(
         params.formId,
-        body.definition,
+        withRequiredSchemaVersion(body.definition),
         body.expectedRevision,
         context.principal.userId,
       );
@@ -845,11 +853,10 @@ export const testSubmissionRoute = defineRoute({
       );
     }
 
-    const check = validateSubmission(
-      compiled.form,
-      body.answers,
-      body.today === undefined ? {} : { today: body.today },
-    );
+    const check = validateSubmission(compiled.form, body.answers, {
+      ...(body.today === undefined ? {} : { today: body.today }),
+      now: `${new Date().toISOString().slice(0, 19)}Z`,
+    });
     return {
       status: 200,
       body: {

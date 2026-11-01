@@ -1083,7 +1083,7 @@ export interface paths {
         get?: never;
         /**
          * Autosave the draft
-         * @description Stores the definition as it is, valid or not. `expectedRevision` is the revision the builder last saw, or `null` to start a draft when there is none. A save based on an older revision is refused with 409, so a second tab cannot overwrite the first.
+         * @description Stores the definition as it is, valid or not, except that the server sets `schemaVersion` to the lowest format that has everything the definition uses (2 for descriptions, Information blocks and the 1.3.0 calculations; otherwise 1) — the response carries the definition as stored. `expectedRevision` is the revision the builder last saw, or `null` to start a draft when there is none. A save based on an older revision is refused with 409, so a second tab cannot overwrite the first.
          */
         put: operations["saveFormDraft"];
         post?: never;

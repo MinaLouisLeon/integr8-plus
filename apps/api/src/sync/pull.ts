@@ -10,6 +10,7 @@ import { peopleOf } from '../routes/v1/operations.js';
 import { myQualificationsBody } from '../routes/v1/qualifications.js';
 import { carryOverFor, mayRead } from '../routes/v1/submissions.js';
 import { detailBody } from '../routes/v1/work-orders.js';
+import { appReadsFormat, definitionFormat, markedTitle } from './form-formats.js';
 
 /**
  * What changed for this person since their phone last asked (P12).
@@ -99,6 +100,11 @@ export async function pullPage(
     now: Date;
     /** Where the web app lives, for the asset tag links the phone shows. */
     webAppUrl?: string | undefined;
+    /**
+     * The `x-client-version` the phone declared: a form whose live version it
+     * is too old to open is marked for it (see `form-formats.ts`).
+     */
+    clientVersion?: string | undefined;
   },
 ) {
   let token: Omit<PageToken, 'after'> & { after?: string };
@@ -149,7 +155,7 @@ export async function pullPage(
     ...new Set(workOrders.flatMap((detail) => detail.forms.map((form) => form.formId))),
   ];
   const manage = holds(principal, 'form.manage');
-  const forms = (
+  const found = (
     await Promise.all(
       formIds.map(async (formId) => {
         const form = await tx.forms.findForm(formId);
@@ -157,6 +163,27 @@ export async function pullPage(
       }),
     )
   ).filter((detail) => detail !== undefined);
+  // Forms this phone is too old to open, by the live version's format: named
+  // so that it asks to be updated, since it cannot say so itself.
+  const tooNew = new Set(
+    found
+      .filter(
+        (detail) =>
+          detail.live !== null &&
+          !appReadsFormat(options.clientVersion, definitionFormat(detail.live.definition)),
+      )
+      .map((detail) => detail.form.id),
+  );
+  const forms = found.map((detail) =>
+    tooNew.has(detail.form.id)
+      ? { ...detail, form: { ...detail.form, title: markedTitle(detail.form.title) } }
+      : detail,
+  );
+  for (const detail of workOrders) {
+    detail.forms = detail.forms.map((form) =>
+      tooNew.has(form.formId) ? { ...form, title: markedTitle(form.title) } : form,
+    );
+  }
 
   const people = await peopleOf(tx);
   const submissions = (

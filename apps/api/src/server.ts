@@ -172,6 +172,7 @@ export function buildServer(options: BuildServerOptions): FastifyInstance {
       signatureHeader:
         header(request, 'stripe-signature') ?? header(request, 'x-webhook-signature') ?? undefined,
       clientApp: readClientApp(header(request, 'x-client-app')),
+      clientVersion: header(request, 'x-client-version') ?? undefined,
       startedAt: process.hrtime.bigint(),
     };
 

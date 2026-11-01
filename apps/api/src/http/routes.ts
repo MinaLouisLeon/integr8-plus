@@ -56,6 +56,12 @@ export interface BaseRequestContext {
    */
   clientApp: ClientApp;
   /**
+   * The `x-client-version` header as sent, if it was: which build this is.
+   * Like `clientApp`, for serving an old build what it can use (a form it can
+   * open, schema version 2), never for a decision worth lying about.
+   */
+  clientVersion?: string | undefined;
+  /**
    * What the session recorded when it began — the app that signed in, and
    * whether it is staff acting as the company. Set on authenticated requests
    * by the liveness check, from its 30-second cache (Low 11, 1.2.4).

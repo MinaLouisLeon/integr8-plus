@@ -22,6 +22,7 @@ import {
   type CompiledForm,
   type FieldError,
   type FormDefinition,
+  isQuestion,
   mediaReferences,
   type SubmissionIssue,
   validateSubmission,
@@ -425,16 +426,28 @@ function errorDetail(compiled: CompiledForm, error: FieldError): ErrorDetail {
 }
 
 /**
+ * An instant as the engine's `now` reads it (schema version 2): to the second,
+ * in UTC. A difference between two instants does not depend on the offset, so
+ * the server's clock and the phone's agree on it.
+ */
+export function engineNow(at: Date): string {
+  return `${at.toISOString().slice(0, 19)}Z`;
+}
+
+/**
  * Everything the server checks before answers become a submission.
  * Returns the answers to store: the engine's, with calculated values its own.
+ * A calculation that reads `now` (schema version 2) is worked out at `now`:
+ * when the form was submitted, or when the phone recorded it.
  */
 export async function revalidate(
   tx: TenantTransaction,
   compiled: CompiledForm,
   answers: Record<string, unknown>,
   today: string,
+  now: Date = new Date(),
 ): Promise<Record<string, unknown>> {
-  const check = validateSubmission(compiled, answers, { today });
+  const check = validateSubmission(compiled, answers, { today, now: engineNow(now) });
   const details = [
     ...check.issues.map(issueDetail),
     ...check.errors.map((error) => errorDetail(compiled, error)),
@@ -954,12 +967,14 @@ function exportColumns(
     const definition = version.definition as unknown as FormDefinition;
     for (const page of definition.pages) {
       for (const section of page.sections) {
+        // Questions only: an Information block (schema version 2) has no answer.
+        const questions = section.fields.filter(isQuestion);
         if (section.repeat === undefined) {
-          section.fields.forEach((field) => add(plain, field.id));
+          questions.forEach((field) => add(plain, field.id));
           continue;
         }
         const fields = sections.get(section.id) ?? [];
-        section.fields.forEach((field) => add(fields, field.id));
+        questions.forEach((field) => add(fields, field.id));
         sections.set(section.id, fields);
         if (!plain.includes(section.id)) {
           plain.push(section.id);
