@@ -211,6 +211,7 @@ describe('the publish check', () => {
     valid: true,
     issues: [],
     diff: { titleChanged: false, changes: [], breaking: [] },
+    documentTemplates: [],
     warnings,
   });
   const missing = (path: string) => ({
