@@ -195,10 +195,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     experiments: {
       typedRoutes: true,
     },
-    extra: {
+    : {
       ...config.extra,
       eas: {
-        projectId: EAS_PROJECT_ID,
+        projectId: "b950cc9e-9e26-477a-905f-4c216767fde4",
       },
       ...(company === undefined ? {} : { company }),
     },
@@ -206,7 +206,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       policy: 'fingerprint',
     },
     updates: {
-      url: `https://u.expo.dev/${EAS_PROJECT_ID}`,
+      url: "https://u.expo.dev/b950cc9e-9e26-477a-905f-4c216767fde4}",
       checkAutomatically: 'ON_LOAD',
       fallbackToCacheTimeout: 0,
     },
