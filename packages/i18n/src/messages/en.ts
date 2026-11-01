@@ -8957,6 +8957,25 @@ export const en = {
         'To add one, open a company’s form in the staff desktop app and choose “Save as library template”.',
       showRetired: 'Show retired templates',
     },
+    // The library and .integr8form files (form builder decision 14, 1.3.0).
+    templatePackages: {
+      importTitle: 'Import a form file',
+      importBody:
+        'A .integr8form file, exported from a company’s form or from another Integr8 Plus server, becomes a new staff-made template with its PDF templates and pictures. Its form must be ready to publish.',
+      file: 'File',
+      importSubmit: 'Import',
+      size: '{{size}} MB',
+      notAPackage: 'Choose a file whose name ends in .integr8form.',
+      importing: 'Uploading and checking the file…',
+      problems: 'What to fix:',
+      created: 'Added “{{name}}” to the library as “{{key}}”.',
+      counts: 'PDF templates: {{templates}}, pictures: {{pictures}}.',
+      editAfter: 'Rename it, describe it or change its category below.',
+      untranslated: 'Texts without English or Arabic: {{number}}.',
+      export: 'Export',
+      exportHelp:
+        'Saves this template as a .integr8form file, with its PDF templates and pictures, to import on another server.',
+    },
     health: {
       title: 'What is failing quietly',
       subtitle:

@@ -9007,6 +9007,25 @@ export const ar: Catalogue<Messages> = {
         'لإضافة قالب، افتح نموذج شركة في تطبيق الفريق المكتبي واختر «حفظ كقالب في المكتبة».',
       showRetired: 'عرض القوالب الموقوفة',
     },
+    // The library and .integr8form files (form builder decision 14, 1.3.0).
+    templatePackages: {
+      importTitle: 'استيراد ملف نموذج',
+      importBody:
+        'ملف ‎.integr8form، مُصدَّر من نموذج شركة أو من خادم Integr8 Plus آخر، يصبح قالبًا جديدًا من صنع الفريق مع قوالب PDF الخاصة به وصورها. يجب أن يكون نموذجه جاهزًا للنشر.',
+      file: 'الملف',
+      importSubmit: 'استيراد',
+      size: '{{size}} ميغابايت',
+      notAPackage: 'اختر ملفًا ينتهي اسمه بـ ‎.integr8form.',
+      importing: 'جارٍ رفع الملف وفحصه…',
+      problems: 'ما يجب إصلاحه:',
+      created: 'أُضيف «{{name}}» إلى المكتبة باسم «{{key}}».',
+      counts: 'قوالب PDF: {{templates}}، الصور: {{pictures}}.',
+      editAfter: 'غيّر اسمه أو وصفه أو فئته من القائمة أدناه.',
+      untranslated: 'نصوص بلا إنجليزية أو بلا عربية: {{number}}.',
+      export: 'تصدير',
+      exportHelp:
+        'يحفظ هذا القالب كملف ‎.integr8form مع قوالب PDF الخاصة به وصورها، لاستيراده على خادم آخر.',
+    },
     health: {
       title: 'ما يفشل بصمت',
       subtitle:

@@ -5,6 +5,7 @@ import { useTranslation } from '@integr8/i18n';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { Badge } from '~/components/platform-bits';
+import { ExportTemplateButton, ImportTemplatePanel } from '~/components/template-package';
 import { Button, EmptyState, ErrorState, Field, LoadingState } from '~/components/ui';
 import { messageForError } from '~/lib/errors';
 import { formatWhen, pickMessage } from '~/lib/platform-format';
@@ -22,7 +23,9 @@ import { platformClient } from '~/lib/platform-session';
  * forms already made from it are copies and do not change.
  *
  * There is still no definition editor here on purpose: a template is a form,
- * and editing a form is what the form builder is for.
+ * and editing a form is what the form builder is for. A `.integr8form` file
+ * (decision 14) is imported here as a new staff-made template, and any
+ * template exported as one, to move a catalogue between servers.
  */
 
 type Template =
@@ -54,6 +57,8 @@ export default function TemplatesPage() {
         <p className="text-sm text-content-muted">{t('platform.templates.subtitle')}</p>
         <p className="text-sm text-content-muted">{t('platform.libraryTemplates.howToAdd')}</p>
       </header>
+
+      <ImportTemplatePanel queryKey={QUERY_KEY} />
 
       <label className="flex items-center gap-2 text-sm text-content-muted">
         <input
@@ -96,6 +101,7 @@ function TemplateRow({ template }: { template: Template }) {
   const [editing, setEditing] = useState(false);
   const [notice, setNotice] = useState<string | undefined>(undefined);
   const staffMade = template.source === 'staff';
+  const exportName = template.title.en ?? Object.values(template.title)[0] ?? template.key;
   const refreshList = () => void queries.invalidateQueries({ queryKey: QUERY_KEY });
 
   const retire = useMutation({
@@ -198,9 +204,13 @@ function TemplateRow({ template }: { template: Template }) {
               ? t('platform.libraryTemplates.retire')
               : t('platform.libraryTemplates.restore')}
           </Button>
+          <ExportTemplateButton templateKey={template.key} title={exportName} />
         </div>
       ) : (
-        <p className="text-xs text-content-muted">{t('platform.libraryTemplates.readOnly')}</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <ExportTemplateButton templateKey={template.key} title={exportName} />
+          <p className="text-xs text-content-muted">{t('platform.libraryTemplates.readOnly')}</p>
+        </div>
       )}
 
       {notice === undefined ? null : (
