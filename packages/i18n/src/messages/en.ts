@@ -138,11 +138,11 @@ export const en = {
     // a page that did not exist, so every invitation led to a 404.
     accept: {
       title: 'Join your team',
-      subtitle: 'Choose a name and a password, and you are in.',
+      subtitle: 'Choose a name and a password to join.',
       displayName: 'Your name',
       displayNameHint: 'How you will appear on jobs and forms.',
       choosePassword: 'Choose a password',
-      submit: 'Accept and sign in',
+      submit: 'Accept invitation',
       accepting: 'Setting up your account\u2026',
       // One message for expired, withdrawn, already-used and never-existed.
       // Telling a stranger which it was tells them the link was once real.
@@ -153,6 +153,18 @@ export const en = {
       // The account exists at this point; only the sign-in failed.
       signInFailed:
         'Your account is ready, but we could not sign you in automatically. Please sign in.',
+      // Low 5 (1.2.4): accepting signs nobody in; the page ends on "now sign in".
+      subtitleExisting:
+        'You already sign in to Integr8 with this address, so there is no password to choose. Tell us the name your team will see.',
+      invitedAs: 'Invited as {{email}}',
+      passwordHint:
+        'Long and not easy to guess. It must not contain the first part of your email address.',
+      doneTitle: 'Done \u2014 now sign in',
+      doneNew: 'You are a member now. Sign in with {{email}} and the password you just chose.',
+      doneExisting:
+        'You are a member now. Sign in with {{email}} and the password you already use.',
+      doneApps: 'The same address and password work in the desktop and phone apps.',
+      goToSignIn: 'Go to sign in',
     },
   },
 
