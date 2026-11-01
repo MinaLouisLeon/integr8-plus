@@ -60,6 +60,9 @@ export {
 
 export {
   DEFINITION_SCHEMA_VERSION,
+  requiredSchemaVersion,
+  SUPPORTED_SCHEMA_VERSIONS,
+  withRequiredSchemaVersion,
   entriesSchema,
   ENTRY_ID,
   entryIdSchema,
@@ -96,8 +99,20 @@ export {
 export {
   AGGREGATE_OPERATORS,
   ARITHMETIC_OPERATORS,
+  children,
   COMPARISON_OPERATORS,
+  DATE_SHIFT_OPERATORS,
+  DATE_STEP_UNITS,
+  DURATION_UNITS,
   expressionSchema,
+  MAX_ROUND_PLACES,
+  MAX_STATISTIC_OPERANDS,
+  STATISTIC_OPERATORS,
+  VERSION_2_EXPRESSION_KINDS,
+  type DateShiftOperator,
+  type DateStepUnit,
+  type DurationUnit,
+  type StatisticOperator,
   measure,
   referencedFields,
   referencedSections,
@@ -110,6 +125,7 @@ export {
 
 export {
   answerSchemaFor,
+  calculationOf,
   choiceValues,
   dependsOnOf,
   dependsOnSchema,
@@ -185,7 +201,19 @@ export {
   type ReportableType,
 } from './reporting.js';
 
-export { parseDate, parseDatetime, parseTime } from './temporal.js';
+export {
+  INFORMATION_STYLES,
+  informationSchema,
+  isInformation,
+  isQuestion,
+  questionsOf,
+  sectionItemSchema,
+  type Information,
+  type InformationStyle,
+  type SectionItem,
+} from './information.js';
+
+export { formatDate, parseDate, parseDatetime, parseTime, shiftDays } from './temporal.js';
 
 export {
   answerKey,
@@ -243,6 +271,7 @@ export {
   duplicate,
   fieldsOf,
   findField,
+  findItem,
   isEditError,
   locate,
   moveField,
@@ -253,6 +282,7 @@ export {
   remove,
   subtreeIds,
   updateField,
+  updateItem,
   updatePage,
   updateSection,
   type DuplicateResult,
@@ -275,6 +305,7 @@ export {
   emptyDefinition,
   generateId,
   newField,
+  newInformation,
   newPage,
   newRepeatableSection,
   newSection,

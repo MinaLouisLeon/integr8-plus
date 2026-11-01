@@ -92,8 +92,14 @@ describe('structure', () => {
     });
   });
 
-  it('refuses a definition from a schema version it does not know', () => {
-    expect(issuesOf({ ...fields(field('text', 't')), schemaVersion: 2 })[0]).toMatchObject({
+  it('refuses a definition from a newer schema version as needing a newer app', () => {
+    expect(issuesOf({ ...fields(field('text', 't')), schemaVersion: 3 })).toEqual([
+      expect.objectContaining({ code: 'schema_version_unsupported', path: 'schemaVersion' }),
+    ]);
+  });
+
+  it('refuses a schema version that is not one at all as a broken structure', () => {
+    expect(issuesOf({ ...fields(field('text', 't')), schemaVersion: 0 })[0]).toMatchObject({
       code: 'invalid_structure',
       path: 'schemaVersion',
     });

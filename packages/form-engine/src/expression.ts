@@ -30,6 +30,27 @@ export type ArithmeticOperator = (typeof ARITHMETIC_OPERATORS)[number];
 export const AGGREGATE_OPERATORS = ['sum', 'min', 'max'] as const;
 export type AggregateOperator = (typeof AGGREGATE_OPERATORS)[number];
 
+/** The least, greatest or average of several numbers in one row: `min(a, b, c)`. */
+export const STATISTIC_OPERATORS = ['min', 'max', 'average'] as const;
+export type StatisticOperator = (typeof STATISTIC_OPERATORS)[number];
+
+/** What a difference between two dates or times is counted in. */
+export const DURATION_UNITS = ['minutes', 'hours', 'days'] as const;
+export type DurationUnit = (typeof DURATION_UNITS)[number];
+
+/** What a date is moved by. A month keeps the day of the month where it can. */
+export const DATE_STEP_UNITS = ['days', 'weeks', 'months'] as const;
+export type DateStepUnit = (typeof DATE_STEP_UNITS)[number];
+
+export const DATE_SHIFT_OPERATORS = ['add', 'subtract'] as const;
+export type DateShiftOperator = (typeof DATE_SHIFT_OPERATORS)[number];
+
+/** The most places a calculation may round to: the most a decimal question keeps. */
+export const MAX_ROUND_PLACES = 6;
+
+/** The most numbers one `min`, `max` or `average` may take. */
+export const MAX_STATISTIC_OPERANDS = 20;
+
 export type Expression =
   // Literals. Numbers are decimal text, never doubles — see decimal.ts.
   | { kind: 'text'; value: string }
@@ -42,6 +63,10 @@ export type Expression =
   | { kind: 'answer'; field: ElementId }
   // The date the form is being filled, supplied by the caller. Never a clock read.
   | { kind: 'today' }
+  // The moment the form is being filled, supplied by the caller like `today`
+  // (schema version 2). A date and time, so it is compared and subtracted
+  // only with dates and times.
+  | { kind: 'now' }
   // Definitely true or false, never unknown: the one way to test for "left blank".
   | { kind: 'answered'; field: ElementId }
   // Whether a multi-select answer includes an option.
@@ -51,6 +76,23 @@ export type Expression =
   | { kind: 'any'; operands: Expression[] }
   | { kind: 'compare'; operator: ComparisonOperator; left: Expression; right: Expression }
   | { kind: 'arithmetic'; operator: ArithmeticOperator; left: Expression; right: Expression }
+  // Schema version 2: number extras and date arithmetic (see `evaluate.ts`).
+  // A number rounded half away from zero to `places` decimal places.
+  | { kind: 'round'; operand: Expression; places: number }
+  // `part` as a percentage of `whole`: part ÷ whole × 100.
+  | { kind: 'percentage'; part: Expression; whole: Expression }
+  // The least, greatest or average of the numbers among `operands` that are known.
+  | { kind: 'statistic'; operator: StatisticOperator; operands: Expression[] }
+  // `to` minus `from`, two dates, two times or two dates-and-times, in `unit`.
+  | { kind: 'difference'; unit: DurationUnit; from: Expression; to: Expression }
+  // A date moved forward or back by a whole number of days, weeks or months.
+  | {
+      kind: 'shift_date';
+      operator: DateShiftOperator;
+      unit: DateStepUnit;
+      date: Expression;
+      amount: Expression;
+    }
   // Across the entries of a repeatable section (P13b). Inside `some` and
   // `every`, `condition` reads each entry's own answers in turn.
   // How many entries there are: never unknown, and 0 while the section is hidden.
@@ -71,6 +113,7 @@ export const expressionSchema: z.ZodType<Expression> = z.lazy(() =>
     z.strictObject({ kind: z.literal('datetime'), value: z.string().max(32) }),
     z.strictObject({ kind: z.literal('answer'), field: elementIdSchema }),
     z.strictObject({ kind: z.literal('today') }),
+    z.strictObject({ kind: z.literal('now') }),
     z.strictObject({ kind: z.literal('answered'), field: elementIdSchema }),
     z.strictObject({
       kind: z.literal('includes'),
@@ -91,6 +134,34 @@ export const expressionSchema: z.ZodType<Expression> = z.lazy(() =>
       operator: z.enum(ARITHMETIC_OPERATORS),
       left: expressionSchema,
       right: expressionSchema,
+    }),
+    z.strictObject({
+      kind: z.literal('round'),
+      operand: expressionSchema,
+      places: z.number().int().min(0).max(MAX_ROUND_PLACES),
+    }),
+    z.strictObject({
+      kind: z.literal('percentage'),
+      part: expressionSchema,
+      whole: expressionSchema,
+    }),
+    z.strictObject({
+      kind: z.literal('statistic'),
+      operator: z.enum(STATISTIC_OPERATORS),
+      operands: z.array(expressionSchema).min(1).max(MAX_STATISTIC_OPERANDS),
+    }),
+    z.strictObject({
+      kind: z.literal('difference'),
+      unit: z.enum(DURATION_UNITS),
+      from: expressionSchema,
+      to: expressionSchema,
+    }),
+    z.strictObject({
+      kind: z.literal('shift_date'),
+      operator: z.enum(DATE_SHIFT_OPERATORS),
+      unit: z.enum(DATE_STEP_UNITS),
+      date: expressionSchema,
+      amount: expressionSchema,
     }),
     z.strictObject({ kind: z.literal('count'), section: elementIdSchema }),
     z.strictObject({
@@ -171,6 +242,26 @@ export function visit(expression: Expression, callback: (node: Expression) => vo
       visit(expression.left, callback);
       visit(expression.right, callback);
       return;
+    case 'round':
+      visit(expression.operand, callback);
+      return;
+    case 'percentage':
+      visit(expression.part, callback);
+      visit(expression.whole, callback);
+      return;
+    case 'statistic':
+      for (const operand of expression.operands) {
+        visit(operand, callback);
+      }
+      return;
+    case 'difference':
+      visit(expression.from, callback);
+      visit(expression.to, callback);
+      return;
+    case 'shift_date':
+      visit(expression.date, callback);
+      visit(expression.amount, callback);
+      return;
     case 'some':
     case 'every':
       visit(expression.condition, callback);
@@ -180,9 +271,64 @@ export function visit(expression: Expression, callback: (node: Expression) => vo
   }
 }
 
+/** The expressions directly under a node, in order. */
+export function children(expression: Expression): Expression[] {
+  switch (expression.kind) {
+    case 'not':
+      return [expression.operand];
+    case 'all':
+    case 'any':
+    case 'statistic':
+      return expression.operands;
+    case 'compare':
+    case 'arithmetic':
+      return [expression.left, expression.right];
+    case 'round':
+      return [expression.operand];
+    case 'percentage':
+      return [expression.part, expression.whole];
+    case 'difference':
+      return [expression.from, expression.to];
+    case 'shift_date':
+      return [expression.date, expression.amount];
+    case 'some':
+    case 'every':
+      return [expression.condition];
+    default:
+      return [];
+  }
+}
+
+/**
+ * The node kinds schema version 2 added. A definition using any of them needs
+ * an engine from 1.3.0 or later, so it declares `schemaVersion: 2`.
+ */
+export const VERSION_2_EXPRESSION_KINDS: ReadonlySet<Expression['kind']> = new Set([
+  'now',
+  'round',
+  'percentage',
+  'statistic',
+  'difference',
+  'shift_date',
+]);
+
 /** Nodes and depth, so a definition cannot make evaluation arbitrarily expensive. */
 export function measure(expression: Expression): { nodes: number; depth: number } {
   switch (expression.kind) {
+    case 'round':
+    case 'percentage':
+    case 'statistic':
+    case 'difference':
+    case 'shift_date': {
+      let nodes = 1;
+      let depth = 0;
+      for (const child of children(expression)) {
+        const inner = measure(child);
+        nodes += inner.nodes;
+        depth = Math.max(depth, inner.depth);
+      }
+      return { nodes, depth: depth + 1 };
+    }
     case 'not': {
       const inner = measure(expression.operand);
       return { nodes: inner.nodes + 1, depth: inner.depth + 1 };

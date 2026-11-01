@@ -3,6 +3,7 @@ import type { Answers } from './evaluate.js';
 import { ownAnswer, storedEntries } from './evaluate.js';
 import { type FieldType, type MediaReference, mediaReferenceSchema } from './field-types.js';
 import type { ElementId } from './ids.js';
+import { isQuestion } from './information.js';
 
 /**
  * What a published version makes searchable, and what it points at outside itself.
@@ -61,6 +62,10 @@ export function reportableFields(definition: FormDefinition): ReportableField[] 
   return definition.pages.flatMap((page) =>
     page.sections.flatMap((section) =>
       section.fields.flatMap((field): ReportableField[] => {
+        // An Information block has no answer to filter on.
+        if (!isQuestion(field)) {
+          return [];
+        }
         const type = REPORTABLE_TYPES[field.type];
         return type === null
           ? []

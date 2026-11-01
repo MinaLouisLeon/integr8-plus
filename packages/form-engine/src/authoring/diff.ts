@@ -2,6 +2,7 @@ import { canonicalJson, compareCodeUnits } from '../canonical.js';
 import { compareDecimal, parseDecimal } from '../decimal.js';
 import type { FormDefinition, Section } from '../definition.js';
 import { choiceValues, type Field } from '../field-types.js';
+import { isQuestion } from '../information.js';
 import type { ElementId } from '../ids.js';
 import { parseDate, parseDatetime, parseTime } from '../temporal.js';
 
@@ -107,13 +108,15 @@ function index(definition: FormDefinition): Map<ElementId, Placed> {
         repeats: section.repeat !== undefined,
         repeat: section.repeat,
       });
+      // An Information block is placed like a question — it moves and changes
+      // the same way — but has no answers for a change to break.
       fields.forEach((field, fieldIndex) => {
         placed.set(field.id, {
           kind: 'field',
           parent: section.id,
           index: fieldIndex,
           own: { ...field },
-          field,
+          field: isQuestion(field) ? field : undefined,
           repeats: section.repeat !== undefined,
           repeat: undefined,
         });
@@ -163,6 +166,10 @@ export function diffDefinitions(
       changes.push({ kind: 'changed', elementKind: next.kind, element: id, properties });
     }
 
+    if (previous.field !== undefined && next.field === undefined) {
+      // A question replaced by an Information block under the same id.
+      breaking.push({ field: id, reason: 'field_removed', affects: 'reporting', detail: [] });
+    }
     if (previous.field !== undefined && next.field !== undefined) {
       if (previous.repeats !== next.repeats) {
         breaking.push({ field: id, reason: 'entries_changed', affects: 'reporting', detail: [] });

@@ -6,6 +6,7 @@ import {
   divide,
   formatDecimal,
   fromInteger,
+  isInteger,
   MAX_SCALE,
   multiply,
   parseDecimal,
@@ -14,9 +15,15 @@ import {
 } from './decimal.js';
 import { ENTRY_ID, type Entry, LIMITS } from './definition.js';
 import type { ComparisonOperator, Expression } from './expression.js';
-import { type Field, hasAnswerShape, isAnswered, isCalculated } from './field-types.js';
+import {
+  calculationOf,
+  type Field,
+  hasAnswerShape,
+  isAnswered,
+  isCalculated,
+} from './field-types.js';
 import type { ElementId } from './ids.js';
-import { parseDate, parseDatetime, parseTime } from './temporal.js';
+import { formatDate, parseDate, parseDatetime, parseTime, shiftDays } from './temporal.js';
 
 /**
  * Working out what a form looks like for a given set of answers.
@@ -56,11 +63,37 @@ import { parseDate, parseDatetime, parseTime } from './temporal.js';
  * and `max` over no known answer are unknown; `some` and `every` are "any" and
  * "all" over the entries, with the same three-valued logic — so `every` over no
  * entries is true, and `some` is false.
+ *
+ * ## Numbers and dates in calculations (schema version 2)
+ *
+ * - `round` is half away from zero, like every other rounding here.
+ * - `percentage` is part ÷ whole × 100, and unknown when the whole is zero.
+ * - `min`, `max` and `average` of several answers read the ones that are known
+ *   and pass over blanks, as a spreadsheet does; with none known they are
+ *   unknown.
+ * - A `difference` is `to` minus `from`, negative when `to` is earlier, and
+ *   exact (an hour and a half is 1.5 hours). Two dates are whole calendar days
+ *   apart; no time zone is involved. Two dates and times are the time elapsed
+ *   between the two instants, offsets applied, so a change of clocks cannot
+ *   distort it. Two times of day are on the same day, unless the later one is
+ *   earlier on the clock — a 22:00 to 06:00 shift — when it is taken as the
+ *   next day.
+ * - `shift_date` moves a date by whole days, weeks or months (`temporal.ts`:
+ *   31 January plus a month is the last day of February). A fractional amount
+ *   gives no date rather than a rounded one.
+ * - `today` and `now` come from the caller: the filler's calendar date and the
+ *   moment they are working out the form, never a clock read in here.
  */
 
 export interface EvaluationContext {
   /** The date the form is being filled, `YYYY-MM-DD`, in the site's calendar. */
   today?: string;
+  /**
+   * The moment the form is being worked out, a date and time with its offset
+   * (`2026-09-13T14:05:00+03:00`): what `now` reads (schema version 2). The
+   * filler passes its own clock; the server, when the submission was made.
+   */
+  now?: string;
 }
 
 export type Answers = Readonly<Record<string, unknown>>;
@@ -185,6 +218,10 @@ export function evaluateExpression(expression: Expression, scope: Scope): RuleVa
       return scope.context.today === undefined
         ? undefined
         : temporal('date', parseDate(scope.context.today));
+    case 'now':
+      return scope.context.now === undefined
+        ? undefined
+        : temporal('datetime', parseDatetime(scope.context.now));
     case 'answer':
       return scope.value(expression.field);
     case 'answered':
@@ -214,6 +251,46 @@ export function evaluateExpression(expression: Expression, scope: Scope): RuleVa
         evaluateExpression(expression.left, scope),
         evaluateExpression(expression.right, scope),
       );
+    case 'round': {
+      const operand = evaluateExpression(expression.operand, scope);
+      return operand?.type === 'number'
+        ? { type: 'number', value: rescale(operand.value, expression.places) }
+        : undefined;
+    }
+    case 'percentage': {
+      const part = evaluateExpression(expression.part, scope);
+      const whole = evaluateExpression(expression.whole, scope);
+      if (part?.type !== 'number' || whole?.type !== 'number') {
+        return undefined;
+      }
+      const quotient = divide(multiply(part.value, HUNDRED), whole.value, MAX_SCALE);
+      return quotient === undefined ? undefined : { type: 'number', value: quotient };
+    }
+    case 'statistic':
+      return statistic(expression, scope);
+    case 'difference':
+      return difference(
+        expression.unit,
+        evaluateExpression(expression.from, scope),
+        evaluateExpression(expression.to, scope),
+      );
+    case 'shift_date': {
+      const date = evaluateExpression(expression.date, scope);
+      const amount = evaluateExpression(expression.amount, scope);
+      if (date?.type !== 'date' || amount?.type !== 'number' || !isInteger(amount.value)) {
+        return undefined;
+      }
+      const whole = Number(rescale(amount.value, 0).units);
+      if (!Number.isSafeInteger(whole)) {
+        return undefined;
+      }
+      const moved = shiftDays(
+        date.value,
+        expression.unit,
+        expression.operator === 'subtract' ? -whole : whole,
+      );
+      return moved === undefined ? undefined : { type: 'date', value: moved };
+    }
     case 'count':
       return { type: 'number', value: fromInteger(scope.entries(expression.section).length) };
     case 'aggregate':
@@ -259,6 +336,83 @@ function aggregate(
   }
   return result === undefined ? undefined : { type: 'number', value: result };
 }
+
+const HUNDRED = fromInteger(100);
+
+function statistic(
+  expression: Extract<Expression, { kind: 'statistic' }>,
+  scope: Scope,
+): RuleValue | undefined {
+  let result: Decimal | undefined;
+  let count = 0;
+  for (const operand of expression.operands) {
+    const value = evaluateExpression(operand, scope);
+    if (value?.type !== 'number') {
+      continue;
+    }
+    count += 1;
+    if (result === undefined) {
+      result = value.value;
+    } else if (expression.operator === 'average') {
+      result = add(result, value.value);
+    } else {
+      const order = compareDecimal(value.value, result);
+      if (expression.operator === 'min' ? order < 0 : order > 0) {
+        result = value.value;
+      }
+    }
+  }
+  if (result === undefined) {
+    return undefined;
+  }
+  if (expression.operator !== 'average') {
+    return { type: 'number', value: result };
+  }
+  const mean = divide(result, fromInteger(count), MAX_SCALE);
+  /* v8 ignore next -- count is at least one here, so the divisor is never zero */
+  return mean === undefined ? undefined : { type: 'number', value: mean };
+}
+
+/** Seconds in each unit a difference is counted in. */
+const UNIT_SECONDS = { minutes: 60, hours: 3_600, days: 86_400 } as const;
+
+function difference(
+  unit: keyof typeof UNIT_SECONDS,
+  from: RuleValue | undefined,
+  to: RuleValue | undefined,
+): RuleValue | undefined {
+  if (from === undefined || from.type !== to?.type) {
+    return undefined;
+  }
+  if (from.type !== 'date' && from.type !== 'time' && from.type !== 'datetime') {
+    return undefined;
+  }
+  // Days, minutes or seconds apart, by kind (see temporal.ts).
+  const apart = (to as typeof from).value - from.value;
+  const seconds =
+    from.type === 'date'
+      ? apart * 86_400
+      : from.type === 'time'
+        ? // Earlier on the clock means the next day.
+          (apart < 0 ? apart + 24 * 60 : apart) * 60
+        : apart;
+  const result = divide(fromInteger(seconds), fromInteger(UNIT_SECONDS[unit]), MAX_SCALE);
+  /* v8 ignore next -- the divisor is a constant, never zero */
+  return result === undefined ? undefined : { type: 'number', value: trimmed(result) };
+}
+
+/** The same value without trailing zeros after the point: 1.500000000000 is 1.5. */
+function trimmed(value: Decimal): Decimal {
+  let { units, scale } = value;
+  while (scale > 0 && units % TEN === ZERO) {
+    units /= TEN;
+    scale -= 1;
+  }
+  return { units, scale };
+}
+
+const TEN = BigInt(10);
+const ZERO = BigInt(0);
 
 /** `true`, `false`, or unknown. Anything that is not a boolean is unknown. */
 export function truth(value: RuleValue | undefined): boolean | undefined {
@@ -645,13 +799,20 @@ function answerOf(field: Field, answers: Answers): unknown {
   return ownAnswer(answers, field.id);
 }
 
-/** The stored form of a calculated field: an integer for `number`, text for `decimal`. */
+/**
+ * The stored form of a calculated field: an integer for `number`, text for
+ * `decimal`, and `YYYY-MM-DD` for `date`.
+ */
 function calculate(field: Field, scope: Scope): unknown {
-  if ((field.type !== 'number' && field.type !== 'decimal') || field.calculation === undefined) {
+  const calculation = calculationOf(field);
+  if (calculation === undefined) {
     return undefined;
   }
 
-  const result = evaluateExpression(field.calculation, scope);
+  const result = evaluateExpression(calculation, scope);
+  if (field.type === 'date') {
+    return result?.type === 'date' ? formatDate(result.value) : undefined;
+  }
   if (result?.type !== 'number') {
     return undefined;
   }
