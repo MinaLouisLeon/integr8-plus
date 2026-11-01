@@ -7,6 +7,7 @@ import {
   type FormDefinition,
   type FormEvent,
   type FormState,
+  isQuestion,
   transition,
 } from '@integr8/form-engine';
 import { FORM_TEMPLATES } from '@integr8/form-engine/templates';
@@ -165,7 +166,9 @@ function apply(form: CompiledForm, answers: Answers, events: readonly FormEvent[
 /** Answers every question it can, twice over so revealed questions get theirs too. */
 function fillAll(form: CompiledForm, variant: Variant): Answers {
   const fields = form.definition.pages.flatMap((page) =>
-    page.sections.filter((section) => section.repeat === undefined).flatMap((s) => s.fields),
+    page.sections
+      .filter((section) => section.repeat === undefined)
+      .flatMap((s) => s.fields.filter(isQuestion)),
   );
   const events = fields.flatMap((field): FormEvent[] => {
     const value = sample(field, variant);
@@ -196,7 +199,7 @@ function withEntries(form: CompiledForm, count = 2): Answers {
     if (first === undefined) {
       continue;
     }
-    for (const field of section.fields) {
+    for (const field of section.fields.filter(isQuestion)) {
       const value = sample(field, 'first');
       if (value !== undefined) {
         events.push({ type: 'answer', field: field.id, value, entry: first });

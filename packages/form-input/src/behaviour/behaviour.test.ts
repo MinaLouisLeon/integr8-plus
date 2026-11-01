@@ -1,4 +1,12 @@
-import { type Expression, FIELD_TYPES, viewForm, visit } from '@integr8/form-engine';
+import {
+  type Expression,
+  FIELD_TYPES,
+  isInformation,
+  isQuestion,
+  VERSION_2_EXPRESSION_KINDS,
+  viewForm,
+  visit,
+} from '@integr8/form-engine';
 import { describe, expect, it } from 'vitest';
 import {
   BEHAVIOUR_TODAY,
@@ -21,9 +29,11 @@ const translate: Translate = (key, params) =>
 const cases = behaviourCases();
 
 describe('the every-type form', () => {
-  const fields = EVERYTHING_FORM.pages.flatMap((page) =>
+  const items = EVERYTHING_FORM.pages.flatMap((page) =>
     page.sections.flatMap((section) => section.fields),
   );
+  const fields = items.filter(isQuestion);
+  const blocks = items.filter(isInformation);
   const expressions: Expression[] = [
     ...EVERYTHING_FORM.pages.flatMap((page) => [
       ...(page.visibleWhen === undefined ? [] : [page.visibleWhen]),
@@ -38,7 +48,7 @@ describe('the every-type form', () => {
       ...('calculation' in field && field.calculation !== undefined ? [field.calculation] : []),
     ]),
   ];
-  const kinds = new Set<string>();
+  const kinds = new Set<Expression['kind']>();
   for (const expression of expressions) {
     visit(expression, (node) => kinds.add(node.kind));
   }
@@ -65,6 +75,29 @@ describe('the every-type form', () => {
     expect([...kinds]).toEqual(
       expect.arrayContaining(['arithmetic', 'aggregate', 'count', 'every', 'answered', 'compare']),
     );
+  });
+
+  it('uses what form format 2 added: descriptions, Information blocks and the new calculations', () => {
+    expect(EVERYTHING_FORM.schemaVersion).toBe(2);
+    const pages = EVERYTHING_FORM.pages;
+    expect(pages.some((page) => page.description !== undefined)).toBe(true);
+    expect(pages.some((page) => page.sections.some((s) => s.description !== undefined))).toBe(true);
+    expect(new Set(blocks.map((block) => block.style ?? 'plain'))).toEqual(
+      new Set(['plain', 'tip', 'warning']),
+    );
+    expect(blocks.some((block) => block.visibleWhen !== undefined)).toBe(true);
+    expect(blocks.some((block) => block.heading === undefined)).toBe(true);
+    const repeat = pages.flatMap((page) => page.sections).find((s) => s.repeat !== undefined);
+    expect(repeat?.fields.some(isInformation)).toBe(true);
+    // Every new family except `now`, which reads the clock and so cannot be compared.
+    expect([...kinds].filter((kind) => VERSION_2_EXPRESSION_KINDS.has(kind)).sort()).toEqual([
+      'difference',
+      'percentage',
+      'round',
+      'shift_date',
+      'statistic',
+    ]);
+    expect(fields.some((field) => field.type === 'date' && 'calculation' in field)).toBe(true);
   });
 });
 
@@ -113,5 +146,39 @@ describe('the cases', () => {
     );
     expect(all.some((screen) => screen.sections.some((s) => s.id === 'failure_detail'))).toBe(true);
     expect(all.some((screen) => !screen.sections.some((s) => s.id === 'captured'))).toBe(true);
+  });
+
+  it('show descriptions, Information blocks and worked-out answers in the every-type form', () => {
+    const everything = cases.at(-1)!;
+    const all = everything.steps.map((step) =>
+      expectedScreen(
+        everything.form,
+        viewForm(everything.form, stateOf(everything.form, step), { today: BEHAVIOUR_TODAY }),
+        'en',
+        translate,
+      ),
+    );
+    const opened = all[0]!;
+    expect(opened.pages[0]).toEqual({
+      id: 'basics',
+      description: 'What the unit is and when it was seen. Answer from its plate.',
+    });
+    expect(opened.sections.find((s) => s.id === 'typed')?.description).toBe('Copy them exactly.');
+    expect(opened.information.map((block) => block.id)).toEqual(['plate_tip', 'about_dates']);
+    const information = all.flatMap((screen) => screen.information);
+    expect(information).toContainEqual(
+      expect.objectContaining({ id: 'fail_warning', style: 'warning' }),
+    );
+    expect(information).toContainEqual(
+      expect.objectContaining({ id: 'bleed_tip', entry: 'radiators-1', style: 'tip' }),
+    );
+    const filled = all[2]!.questions;
+    const value = (id: string) => filled.find((question) => question.id === id)?.value;
+    // Visited 1 September; "today" is 13 September.
+    expect(value('days_since_visit')).toBe('12');
+    expect(value('next_service')).toBe('Mar 1, 2027');
+    expect(value('pressure_rounded')).toBe('0 bar');
+    expect(value('readings_share')).toBe('12.5 %');
+    expect(opened.questions.find((question) => question.id === 'next_service')?.value).toBe('—');
   });
 });

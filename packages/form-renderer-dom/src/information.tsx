@@ -26,8 +26,14 @@ export function InformationBlock({ item, locale }: { item: Information; locale: 
       className={`flex flex-col gap-1 text-sm ${STYLE_CLASS[style]}`}
     >
       {style === 'plain' ? null : <span className="sr-only">{t(`fill.information.${style}`)}</span>}
-      {heading === undefined ? null : <p className="font-semibold">{heading}</p>}
-      <p className="whitespace-pre-line text-content">{lines.join('\n')}</p>
+      {heading === undefined ? null : (
+        <p data-part="information-heading" className="font-semibold">
+          {heading}
+        </p>
+      )}
+      <p data-part="information-body" className="whitespace-pre-line text-content">
+        {lines.join('\n')}
+      </p>
     </div>
   );
 }
@@ -37,14 +43,21 @@ export function Description({
   text,
   locale,
   id,
+  of,
 }: {
   text: LocalizedText | undefined;
   locale: string;
   id?: string;
+  /** Whose description it is, for the behaviour check's reader (`data-part`). */
+  of?: 'page' | 'section';
 }) {
   const said = say(text, locale).trim();
   return said === '' ? null : (
-    <p id={id} className="whitespace-pre-line text-sm text-content-muted">
+    <p
+      id={id}
+      data-part={of === undefined ? undefined : `${of}-description`}
+      className="whitespace-pre-line text-sm text-content-muted"
+    >
       {said}
     </p>
   );

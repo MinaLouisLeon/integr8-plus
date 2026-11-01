@@ -31,23 +31,42 @@ export function InformationBlock({ item, locale }: { item: Information; locale: 
     <View
       accessible
       accessibilityLabel={spoken}
-      testID={`information-${item.id}`}
+      // `information:<id>:<style>`: the behaviour check's markers (src/testing/react-native.tsx).
+      testID={`information:${item.id}:${style}`}
       style={[styles.block, tone === undefined ? null : [styles.boxed, tone]]}
     >
       {heading === undefined ? null : (
-        <Text style={[styles.heading, { color: theme.text }]}>{heading}</Text>
+        <Text testID="part:information-heading" style={[styles.heading, { color: theme.text }]}>
+          {heading}
+        </Text>
       )}
-      <Text style={[styles.body, { color: theme.text }]}>{lines.join('\n')}</Text>
+      <Text testID="part:information-body" style={[styles.body, { color: theme.text }]}>
+        {lines.join('\n')}
+      </Text>
     </View>
   );
 }
 
 /** A page's or section's description, under its title. Nothing when it has none. */
-export function Description({ text, locale }: { text: LocalizedText | undefined; locale: string }) {
+export function Description({
+  text,
+  locale,
+  of,
+}: {
+  text: LocalizedText | undefined;
+  locale: string;
+  /** Whose description it is, for the behaviour check's markers. */
+  of: 'page' | 'section';
+}) {
   const theme = useTheme();
   const said = say(text, locale).trim();
   return said === '' ? null : (
-    <Text style={[styles.description, { color: theme.textMuted }]}>{said}</Text>
+    <Text
+      testID={`part:${of}-description`}
+      style={[styles.description, { color: theme.textMuted }]}
+    >
+      {said}
+    </Text>
   );
 }
 

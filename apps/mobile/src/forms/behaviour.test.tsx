@@ -6,9 +6,11 @@ import {
   entryIds,
   expectedScreen,
   joinScreens,
+  readInformation,
   readQuestions,
   readScreen,
   type Screen,
+  type ScreenInformation,
   type ScreenQuestion,
   stateOf,
   type Translate,
@@ -136,13 +138,16 @@ describe.each(LOCALES)('the phone shows what the engine says (%s)', (locale) => 
 });
 
 /**
- * A repeating section's questions are on the phone only inside an open entry:
- * each entry is opened by tapping its row in the list, read, and closed again.
+ * A repeating section's questions and Information blocks are on the phone only
+ * inside an open entry: each entry is opened by tapping its row in the list,
+ * read, and closed again.
  */
 function withEntries(page: Screen, container: HTMLElement, model: FillModel): Screen {
   const questions: ScreenQuestion[] = [];
+  const information: ScreenInformation[] = [];
   for (const section of page.sections) {
     questions.push(...page.questions.filter((question) => question.section === section.id));
+    information.push(...page.information.filter((block) => block.section === section.id));
     if (section.entries === undefined) {
       continue;
     }
@@ -159,9 +164,10 @@ function withEntries(page: Screen, container: HTMLElement, model: FillModel): Sc
       const open = container.querySelector('[data-entry]');
       if (open !== null) {
         questions.push(...readQuestions(open, section.id));
+        information.push(...readInformation(open, section.id));
       }
       act(() => model.openEntry(undefined));
     }
   }
-  return { ...page, questions };
+  return { ...page, questions, information };
 }

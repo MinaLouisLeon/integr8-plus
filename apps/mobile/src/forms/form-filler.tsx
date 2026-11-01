@@ -328,7 +328,7 @@ export function FormFiller(props: FormFillerProps) {
                 </View>
               </View>
             ) : page === undefined ? null : (
-              <View style={styles.content}>
+              <View testID={`page:${page.id}`} style={styles.content}>
                 <View>
                   {pages.length > 1 ? (
                     <Muted>
@@ -343,7 +343,7 @@ export function FormFiller(props: FormFillerProps) {
                       {say(page.title, locale) || t('fill.nav.page', { number: pageIndex + 1 })}
                     </Text>
                   ) : null}
-                  <Description text={page.description} locale={locale} />
+                  <Description text={page.description} locale={locale} of="page" />
                 </View>
 
                 {snapshot.openEntry !== undefined ? (
@@ -384,7 +384,7 @@ export function FormFiller(props: FormFillerProps) {
                           {say(section.title, locale)}
                         </Text>
                       )}
-                      <Description text={section.description} locale={locale} />
+                      <Description text={section.description} locale={locale} of="section" />
                       {section.repeat !== undefined ? (
                         <EntryList
                           model={model}

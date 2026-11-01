@@ -111,7 +111,7 @@ export const FieldBlock = forwardRef<ComponentRef<typeof View>, FieldBlockProps>
             accessibilityLabel={`${label}: ${calculatedText(field, value, locale) || '—'}`}
             style={[styles.calculated, { backgroundColor: theme.surfaceMuted }]}
           >
-            <Text style={[styles.calculatedValue, { color: theme.text }]}>
+            <Text testID="part:calculated" style={[styles.calculatedValue, { color: theme.text }]}>
               {calculatedText(field, value, locale) || '—'}
               {'unit' in field && field.unit !== undefined && value !== undefined
                 ? ` ${field.unit}`

@@ -26,6 +26,7 @@ export {
 export { EVERYTHING_FORM } from './fixture.js';
 export {
   joinScreens,
+  readInformation,
   readQuestions,
   readScreen,
   type ReadOptions,
@@ -34,8 +35,12 @@ export {
 export {
   entryName,
   expectedScreen,
+  reviewScreen,
   type Screen,
+  type ScreenInformation,
+  type ScreenPage,
   type ScreenQuestion,
   type ScreenSection,
   type Translate,
+  words,
 } from './screen.js';

@@ -128,6 +128,7 @@ export function FieldBlock(props: FieldBlockProps) {
         {help}
         <output
           id={id}
+          data-part="calculated"
           aria-labelledby={`${id}-label`}
           aria-live="polite"
           className="rounded-md bg-surface-muted px-3 py-2 text-sm text-content"

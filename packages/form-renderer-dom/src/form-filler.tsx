@@ -468,13 +468,13 @@ export function FormFiller({
             </div>
           </div>
         ) : current === undefined ? null : (
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-6" data-page={current.id}>
             {pages.length > 1 || current.title !== undefined ? (
               <h3 className="text-lg font-semibold text-content">
                 {say(current.title, locale) || t('fill.nav.page', { number: currentIndex + 1 })}
               </h3>
             ) : null}
-            <Description text={current.description} locale={locale} />
+            <Description text={current.description} locale={locale} of="page" />
 
             {current.sections
               .filter((section) => view.visible.get(section.id) === true)
@@ -499,7 +499,7 @@ export function FormFiller({
                       {say(section.title, locale)}
                     </h4>
                   )}
-                  <Description text={section.description} locale={locale} />
+                  <Description text={section.description} locale={locale} of="section" />
                   {section.repeat === undefined ? null : (
                     <EntryList
                       section={section}

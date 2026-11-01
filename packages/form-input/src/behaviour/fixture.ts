@@ -13,7 +13,12 @@ import type { Expression, FormDefinition, LocalizedText } from '@integr8/form-en
  * - calculations, one of them over a repeating section's entries;
  * - a repeating section with a minimum, a title question, a check inside an
  *   entry, and checks outside it that read across its entries (count, sum,
- *   some/every).
+ *   some/every);
+ * - form format 2 (1.3.0): descriptions under a page and a section title,
+ *   Information blocks of each style (one with "Show when", one inside the
+ *   repeating section's entries), and a calculation of each new family —
+ *   a difference between dates, a date moved by months, rounding, a
+ *   percentage, an average — one of them a calculated date.
  *
  * Written in English and Arabic, like the library.
  */
@@ -42,17 +47,32 @@ const ge = (left: Expression, right: Expression): Expression => ({
 });
 
 export const EVERYTHING_FORM: FormDefinition = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   title: t('Everything form', 'نموذج كل شيء'),
   pages: [
     {
       id: 'basics',
       title: t('Basics', 'الأساسيات'),
+      description: t(
+        'What the unit is and when it was seen.\nAnswer from its plate.',
+        'ما هي الوحدة ومتى تمت رؤيتها.\nأجب من لوحتها.',
+      ),
       sections: [
         {
           id: 'typed',
           title: t('Typed answers', 'إجابات مكتوبة'),
+          description: t('Copy them exactly.', 'انسخها كما هي تمامًا.'),
           fields: [
+            {
+              id: 'plate_tip',
+              type: 'information',
+              heading: t('Where to look', 'أين تبحث'),
+              body: t(
+                'The plate is inside the front cover.\nWipe it first.',
+                'اللوحة داخل الغطاء الأمامي.\nامسحها أولًا.',
+              ),
+              style: 'tip',
+            },
             {
               id: 'serial',
               type: 'text',
@@ -127,6 +147,66 @@ export const EVERYTHING_FORM: FormDefinition = {
             },
             { id: 'arrived', type: 'time', label: t('Arrived', 'وقت الوصول') },
             { id: 'next_due', type: 'datetime', label: t('Next due', 'الموعد التالي') },
+            {
+              id: 'about_dates',
+              type: 'information',
+              body: t('Dates are in the site’s own time.', 'التواريخ بتوقيت الموقع نفسه.'),
+            },
+          ],
+        },
+        {
+          id: 'worked_out',
+          title: t('Worked out', 'محسوبة'),
+          fields: [
+            {
+              id: 'days_since_visit',
+              type: 'number',
+              label: t('Days since the visit', 'أيام منذ الزيارة'),
+              calculation: {
+                kind: 'difference',
+                unit: 'days',
+                from: answer('visit_date'),
+                to: { kind: 'today' },
+              },
+            },
+            {
+              id: 'next_service',
+              type: 'date',
+              label: t('Next service', 'الصيانة التالية'),
+              calculation: {
+                kind: 'shift_date',
+                operator: 'add',
+                unit: 'months',
+                date: answer('visit_date'),
+                amount: num('6'),
+              },
+            },
+            {
+              id: 'pressure_rounded',
+              type: 'number',
+              label: t('Pressure, whole bars', 'الضغط بالبار الكامل'),
+              unit: 'bar',
+              calculation: { kind: 'round', operand: answer('pressure'), places: 0 },
+            },
+            {
+              id: 'readings_share',
+              type: 'decimal',
+              label: t('Share of the readings allowed', 'نسبة القراءات المسموح بها'),
+              decimalPlaces: 1,
+              unit: '%',
+              calculation: { kind: 'percentage', part: answer('readings'), whole: num('8') },
+            },
+            {
+              id: 'average_figure',
+              type: 'decimal',
+              label: t('Average of readings and pressure', 'متوسط القراءات والضغط'),
+              decimalPlaces: 2,
+              calculation: {
+                kind: 'statistic',
+                operator: 'average',
+                operands: [answer('readings'), answer('pressure')],
+              },
+            },
           ],
         },
       ],
@@ -155,6 +235,17 @@ export const EVERYTHING_FORM: FormDefinition = {
               label: t('Why it failed', 'سبب الرسوب'),
               visibleWhen: eq(answer('result'), text('fail')),
               requiredWhen: eq(answer('result'), text('fail')),
+            },
+            {
+              id: 'fail_warning',
+              type: 'information',
+              heading: t('Do not leave it running', 'لا تتركه يعمل'),
+              body: t(
+                'Isolate the supply and label the unit before you leave.',
+                'اعزل الإمداد وضع ملصقًا على الوحدة قبل المغادرة.',
+              ),
+              style: 'warning',
+              visibleWhen: eq(answer('result'), text('fail')),
             },
             {
               id: 'hazards',
@@ -251,6 +342,13 @@ export const EVERYTHING_FORM: FormDefinition = {
               label: t('Why not bled', 'سبب عدم التنفيس'),
               visibleWhen: eq(answer('bled'), text('no')),
               requiredWhen: eq(answer('bled'), text('no')),
+            },
+            {
+              id: 'bleed_tip',
+              type: 'information',
+              body: t('Bleed from the top valve.', 'نفّس من الصمام العلوي.'),
+              style: 'tip',
+              visibleWhen: eq(answer('bled'), text('no')),
             },
           ],
         },

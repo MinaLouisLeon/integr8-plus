@@ -13,7 +13,8 @@ import {
  * Only what the form screens use, and only what a test reads: the tree, the
  * text, what is pressable, and the markers. A `testID` such as
  * `question:serial` or `part:label` becomes the attribute `data-question` or
- * `data-part`, the same markers the DOM renderers write, so one reader
+ * `data-part` (and `information:note:tip` both `data-information` and
+ * `data-style`), the same markers the DOM renderers write, so one reader
  * (`readScreen` in `@integr8/form-input/behaviour`) reads all three. Layout,
  * styles and native behaviour are not modelled: this proves what the phone's
  * components say, not how they look.
@@ -48,6 +49,12 @@ function markers(testID: string | undefined): Record<string, string> {
   switch (kind) {
     case 'question':
       return { 'data-question': value };
+    case 'page':
+      return { 'data-page': value };
+    case 'information': {
+      const style = value.lastIndexOf(':');
+      return { 'data-information': value.slice(0, style), 'data-style': value.slice(style + 1) };
+    }
     case 'section':
       return { 'data-section': value };
     case 'repeat':
