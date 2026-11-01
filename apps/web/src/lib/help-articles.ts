@@ -1,212 +1,27 @@
+import type { Locale } from '@integr8/i18n';
+import { helpArticlesFor as libraryArticlesFor } from '@integr8/i18n/help';
+
 /**
- * The help centre's content (P18).
+ * The public Help centre's content (P18, Low 12).
  *
- * Fifteen articles, which is what the plan asks for. The plan also asks for
- * them to be *written from real support questions*, and they are not, **because
- * there are no customers yet and therefore no support questions.** Inventing
- * fifteen quotes from imaginary users would be worse than admitting it, so the
- * help page says so at the top and these are written from how the product
- * actually behaves.
- *
- * They are chosen by working through what a new company does in its first week
- * and what each step can go wrong in — which is the best available proxy, and
- * the right set to replace first once real questions exist.
- *
- * Content in a TypeScript module rather than a CMS or markdown files because
- * there is no content pipeline in this repository, and inventing one for
- * fifteen articles would be the tail wagging the dog. Moving them later is a
- * find-and-replace.
+ * The articles are the same help library the in-app assistant answers from
+ * (`@integr8/i18n/help`), so the Help centre and the assistant never say two
+ * different things, and both are kept in English and Arabic in one place. The
+ * library marks which articles are public; those are the ones shown here,
+ * grouped by category, each a question with plain paragraphs (no markup).
  */
 
-import type { Locale } from '@integr8/i18n';
-
-/** One article as the help page shows it, in the reader's language. */
+/** One article as the Help centre renders it. */
 export interface HelpArticle {
   slug: string;
   category: string;
-  /** The category's name, in the same language as the article. */
   categoryLabel: string;
   question: string;
-  /** Paragraphs. Rendered in order, no markup. */
+  /** Paragraphs, in order, plain text. */
   answer: string[];
 }
 
-interface DraftArticle {
-  slug: string;
-  category: 'getting-started' | 'forms' | 'mobile' | 'people' | 'billing';
-  question: string;
-  answer: string[];
-}
-
-export const HELP_ARTICLES: readonly DraftArticle[] = [
-  {
-    slug: 'what-do-i-do-first',
-    category: 'getting-started',
-    question: 'My company has just been set up. What should I do first?',
-    answer: [
-      'Tell us the kinds of work you do and send us the paperwork you use today. We set up your job types and build your forms for you — that is part of what you are paying for, and it is usually done within a day or two.',
-      'Then invite one engineer and fill a form in yourself on a phone. Doing the whole loop once, badly, teaches you more than setting everything up perfectly before anybody uses it.',
-      'The checklist on your dashboard tracks these. It is computed from what actually exists, so it is never out of date.',
-    ],
-  },
-  {
-    slug: 'sample-data',
-    category: 'getting-started',
-    question: 'What is the sample data, and is it safe to remove?',
-    answer: [
-      'Three customers, each with a site and a job, so the screens are not empty while you look around. Every row is marked as a sample.',
-      'Removing it only removes rows that are still marked. If you edit one of them into a real customer, that mark is cleared and removal leaves it alone.',
-      'You can load it and remove it as often as you like. It never touches anything you created yourself.',
-    ],
-  },
-  {
-    slug: 'import-from-spreadsheet',
-    category: 'getting-started',
-    question: 'Can I bring my customers in from a spreadsheet?',
-    answer: [
-      'Yes. Go to Import and upload a CSV. You match your columns to ours on the next screen, so the file does not have to be in any particular shape.',
-      'Nothing is written until you have seen exactly what will be created, including any rows that cannot be read. Fix those in the file and upload it again.',
-    ],
-  },
-  {
-    slug: 'build-a-form',
-    category: 'forms',
-    question: 'How do I get a form built or changed?',
-    answer: [
-      'You do not build forms yourself: Integr8 builds and maintains them for you, so the people in your company only ever see the forms they fill in.',
-      'Send us the form you want — a photo of the paper one, a spreadsheet, a description — and say which kinds of job it belongs to. We usually start from one of our templates, because they are built from forms that are genuinely used.',
-      'A form is pages, sections and questions. A question can be required, can have a numeric range, and can be shown only when an earlier answer says so, which is how we keep a routine job down to a few taps. Tell us about those rules and we build them in.',
-      'Nothing is live until we publish it, and we check it with you first.',
-    ],
-  },
-  {
-    slug: 'change-a-published-form',
-    category: 'forms',
-    question: 'A form has changed. What happens to the jobs already filled in?',
-    answer: [
-      'Nothing. A published version is frozen: a submission made against version 1 still shows version 1, with the questions as they were worded and the answers as they were given.',
-      'New submissions use the latest published version. The two live alongside each other for as long as you keep the records.',
-    ],
-  },
-  {
-    slug: 'breaking-changes',
-    category: 'forms',
-    question: 'What is a breaking change to a form?',
-    answer: [
-      'Removing a question, making an optional one required, or narrowing what an answer can be. Anything already saved as a draft against the old version may no longer be valid.',
-      'When you ask us for a change like that, we tell you before publishing it, so you can have engineers send in what they have first.',
-    ],
-  },
-  {
-    slug: 'no-signal',
-    category: 'mobile',
-    question: 'What happens when an engineer has no signal?',
-    answer: [
-      'They carry on. The form is filled in on the device and stored there, photos and signatures included.',
-      'When there is signal again the app sends everything, in order, without anybody pressing anything. This is the normal case, not an error state.',
-    ],
-  },
-  {
-    slug: 'sync-stuck',
-    category: 'mobile',
-    question: 'An engineer says their app is stuck. What do I do?',
-    answer: [
-      'First, have them open the app with signal and leave it open for a minute. Almost everything clears itself.',
-      'If it does not, contact us and we can reset their device from our side. Their phone then downloads everything again. Nothing waiting to be sent is lost when we do this.',
-    ],
-  },
-  {
-    slug: 'photos-quality',
-    category: 'mobile',
-    question: 'Are photos compressed? Will they still be readable?',
-    answer: [
-      'They are compressed on the phone before being uploaded, which is what makes them send over a weak connection at all.',
-      'The compression is chosen so a serial number or a meter reading stays legible. If you have a case where it is not, tell us — that is a setting worth getting right.',
-    ],
-  },
-  {
-    slug: 'invite-an-engineer',
-    category: 'people',
-    question: 'How do I invite an engineer?',
-    answer: [
-      'People, then Invite somebody. They get an email with a link that sets up their account.',
-      'The link expires after a week. If it goes astray, use Send again — that issues a new link and stops the old one working, which is what you want if the first one went to the wrong place.',
-    ],
-  },
-  {
-    slug: 'roles',
-    category: 'people',
-    question: 'What can each role do?',
-    answer: [
-      'An owner can do everything in the company, including billing and closing the account. An admin can do everything except billing and company settings.',
-      'Forms and job types are the exception for both: Integr8 builds and maintains those for you, so nobody in the company needs to.',
-      'An HR manager keeps employee profiles, ID and bank details, expense approvals and payroll, and nothing else. An inventory manager keeps stock, purchasing and manufacturing, and nothing else.',
-      'A dispatcher manages jobs, customers and sites. An engineer does the work assigned to them and fills in forms. A viewer can read and nothing else.',
-      'Either manager’s work can also be given on top of somebody’s role, from People: a dispatcher who also keeps the store, for example.',
-      'Nobody can give somebody a role above their own, and only the owner makes somebody an HR manager.',
-    ],
-  },
-  {
-    slug: 'somebody-left',
-    category: 'people',
-    question: 'Somebody has resigned. Should I remove them or suspend them?',
-    answer: [
-      'Suspend them if they might come back, or if you are not sure — it is reversible and takes their seat back the moment you do it.',
-      'Remove them if they have gone for good. Either way, everything they filled in, signed and submitted stays, and the history still names them.',
-      'One thing worth knowing: both stop them signing in immediately, but a session they already have open can keep working for up to fifteen minutes. If somebody departed in difficult circumstances, tell us and we can cut it off at once.',
-    ],
-  },
-  {
-    slug: 'what-counts-as-a-seat',
-    category: 'billing',
-    question: 'What counts as a seat?',
-    answer: [
-      'An active member of your company, whatever their role. Somebody you have invited but who has not joined yet does not take a seat until they accept.',
-      'Suspending or removing somebody frees their seat immediately.',
-    ],
-  },
-  {
-    slug: 'what-if-i-dont-pay',
-    category: 'billing',
-    question: 'What happens if a payment fails?',
-    answer: [
-      'We tell you in the app and email the owners and admins, and you have a fortnight to fix it.',
-      'If it is still outstanding after that, the account becomes read-only: everybody can still sign in, read everything and export it, but new work cannot be saved. Nothing is deleted, and nothing ever will be for non-payment.',
-      'Updating the card restores writing immediately.',
-    ],
-  },
-  {
-    slug: 'export-everything',
-    category: 'billing',
-    question: 'Can I get all my data out?',
-    answer: [
-      'Yes, whenever you ask, including while your account is read-only. Ask us and you get a single file with everything in it.',
-      'This is deliberate. Data you cannot get out is data you do not really own.',
-    ],
-  },
-];
-
-export const HELP_CATEGORIES = [
-  { key: 'getting-started', label: 'Getting started' },
-  { key: 'forms', label: 'Forms' },
-  { key: 'mobile', label: 'On the van' },
-  { key: 'people', label: 'People' },
-  { key: 'billing', label: 'Billing' },
-] as const;
-
-/**
- * The articles for one language, each carrying its category's name.
- *
- * A stand-in with the bilingual library's signature (Low 12), so the help
- * page is written against the function that replaces this file: for now
- * every language gets these English articles.
- */
+/** The public articles in one language, grouped by category in display order. */
 export function helpArticlesFor(locale: Locale): readonly HelpArticle[] {
-  void locale;
-  return HELP_ARTICLES.map((article) => ({
-    ...article,
-    categoryLabel:
-      HELP_CATEGORIES.find((category) => category.key === article.category)?.label ??
-      article.category,
-  }));
+  return libraryArticlesFor(locale);
 }

@@ -1,32 +1,22 @@
+import type { HelpArticleSource } from './types.js';
+
 /**
- * The help knowledge base the assistant answers from (docs/ai §7.2; ADR-0001).
+ * The help knowledge base (docs/ai §7.2; ADR-0001; Low 12): what the in-app
+ * assistant answers from, and, for the articles marked `public`, the public
+ * Help centre on the web.
  *
  * Every article describes what the product does today, as the screens and the
  * code have it, in both languages. The titles, button names and screen names
  * follow the `@integr8/i18n` catalogues, so an answer names what the person
  * sees. Nothing here is a plan: a feature that is not shipped is not written up.
+ * Bodies are plain text, paragraphs separated by a blank line, because the
+ * Help centre shows them as they are.
  *
  * `module`, `feature`, `minPermission` and `appRoute` let the server offer an
  * article only to a seat that can act on it, and let a client turn the route
  * into its own screen. Retrieval treats these bodies as reference data, never
  * as instructions.
  */
-
-/** A curated help article the assistant may cite (docs/ai §7.2; ADR-0001). */
-export interface HelpArticleSource {
-  /** Stable key: ^[a-z][a-z0-9_]{0,63}$ */
-  key: string;
-  /** Product area: one of 'overview' | 'account' | 'customers' | 'work_orders' | 'mobile' | 'forms' | 'crm' | 'sales' | 'inventory' | 'purchasing' | 'finance' | 'ledger' | 'assets' | 'hr' | 'payroll' | 'manufacturing' | 'subscription' | 'troubleshooting' */
-  module: string;
-  /** The module flag a company must have for this article to apply, or null for everybody. One of the MODULE_FEATURES in packages/core/src/crm.ts: 'crm' | 'inventory' | 'purchasing' | 'sales' | 'finance' | 'assets' | 'ledger' | 'hr' | 'payroll' | 'manufacturing' */
-  feature: string | null;
-  /** The permission a seat needs for this article to be offered (one of PERMISSIONS in packages/core/src/permissions.ts, e.g. 'work_order.read_all', 'crm.read'), or null when everybody signed in may read it. */
-  minPermission: string | null;
-  /** The app route key the article is about (a NavPath from packages/core/src/navigation.ts, e.g. 'workOrders', 'customers', 'invoices', 'ledger'), or null. Clients map it to their own screen. */
-  appRoute: string | null;
-  en: { title: string; summary: string; body: string; keywords: string[] };
-  ar: { title: string; summary: string; body: string; keywords: string[] };
-}
 
 export const HELP_ARTICLES: readonly HelpArticleSource[] = [
   {
@@ -35,6 +25,10 @@ export const HELP_ARTICLES: readonly HelpArticleSource[] = [
     feature: null,
     minPermission: null,
     appRoute: 'dashboard',
+    public: {
+      category: 'getting-started',
+      question: { en: 'What is Integr8 Plus?', ar: 'ما هو Integr8 Plus؟' },
+    },
     en: {
       title: 'What Integr8 Plus is',
       summary:
@@ -43,7 +37,7 @@ export const HELP_ARTICLES: readonly HelpArticleSource[] = [
 
 Forms and job types are built for your company by Integr8, not by the company itself. You tell Integr8 which kinds of job you do and which paperwork each needs, and they appear as job types with their forms, checklist and completion rules.
 
-The side menu is grouped: Overview (Dashboard), Work (Fill in a form, Submissions, Work orders, Timesheets), Operations (Customers, Assets, Import from CSV), Set-up (Forms, Job types) and Company (Get set up, People, Company settings, Storage, Billing). Further groups appear when Integr8 switches a module on for your company: CRM, Sales, Finance, Accounting, HR and Inventory, which also holds purchasing and manufacturing. A module you cannot see is one your company does not have yet; ask Integr8 to enable it.
+The side menu is grouped: Overview (Dashboard, Assistant), Work (Fill in a form, Submissions, Documents, Work orders, Schedule, Skills and certificates, Maintenance, Response deadlines, Timesheets), Operations (Customers, Service contracts, Assets, Import from CSV), Set-up (Forms, Job types) and Company (Get set up, People, Company settings, Website access, Storage, Billing). Further groups appear when Integr8 switches a module on for your company: CRM, Sales, Finance (with E-invoicing), Accounting, HR and Inventory, which also holds purchasing and manufacturing; Documents, Assets and Maintenance also appear only with their modules. A screen you cannot see is one your company does not have yet or your role does not include; ask an owner, or ask Integr8 to enable the module.
 
 Every screen is available in English and Arabic, and the Dashboard shows where you are and what needs doing. A new company starts on the Get set up page, which lists five things to do and can load sample data so the screens are not empty while you look around.`,
       keywords: [
@@ -69,7 +63,7 @@ Every screen is available in English and Arabic, and the Dashboard shows where y
 
 تبني Integr8 النماذج وأنواع المهام لشركتك، لا الشركة نفسها. تخبر Integr8 بأنواع الأعمال التي تنفّذها وبالأوراق التي يحتاجها كل نوع، فتظهر كأنواع مهام مع نماذجها وقائمة التحقق وشروط الإتمام.
 
-القائمة الجانبية مقسّمة إلى مجموعات: نظرة عامة (لوحة التحكم)، والعمل (تعبئة نموذج، الإرسالات، أوامر العمل، سجلات الدوام)، والعمليات (العملاء، الأصول، استيراد من CSV)، والإعداد (النماذج، أنواع المهام)، والشركة (ابدأ الإعداد، الأشخاص، إعدادات الشركة، التخزين، الفوترة). وتظهر مجموعات أخرى عندما تفعّل Integr8 وحدة لشركتك: إدارة علاقات العملاء، والمبيعات، والمالية، والمحاسبة، والموارد البشرية، والمخزون الذي يضم أيضًا المشتريات والتصنيع. أي وحدة لا تراها هي وحدة لم تحصل عليها شركتك بعد؛ اطلب من Integr8 تفعيلها.
+القائمة الجانبية مقسّمة إلى مجموعات: نظرة عامة (لوحة التحكم، المساعد)، والعمل (تعبئة نموذج، الإرسالات، المستندات، أوامر العمل، الجدول، المهارات والشهادات، الصيانة، مهل الاستجابة، سجلات الدوام)، والعمليات (العملاء، عقود الخدمة، الأصول، استيراد من CSV)، والإعداد (النماذج، أنواع المهام)، والشركة (ابدأ الإعداد، الأشخاص، إعدادات الشركة، وصول الموقع، التخزين، الفوترة). وتظهر مجموعات أخرى عندما تفعّل Integr8 وحدة لشركتك: إدارة علاقات العملاء، والمبيعات، والمالية (ومعها الفاتورة الإلكترونية)، والمحاسبة، والموارد البشرية، والمخزون الذي يضم أيضًا المشتريات والتصنيع؛ ولا تظهر المستندات والأصول والصيانة إلا مع وحداتها. أي شاشة لا تراها هي شاشة لم تحصل عليها شركتك بعد أو لا يشملها دورك؛ اسأل المالك، أو اطلب من Integr8 تفعيل الوحدة.
 
 كل الشاشات متاحة بالعربية والإنجليزية، وتعرض لوحة التحكم أين أنت وما الذي يحتاج إلى إنجاز. تبدأ الشركة الجديدة من صفحة «ابدأ الإعداد» التي تعرض خمسة أمور للقيام بها، ويمكنها تحميل بيانات تجريبية حتى لا تكون الشاشات فارغة أثناء الاستكشاف.`,
       keywords: [
@@ -94,6 +88,13 @@ Every screen is available in English and Arabic, and the Dashboard shows where y
     feature: null,
     minPermission: 'member.read',
     appRoute: 'people',
+    public: {
+      category: 'people-hr',
+      question: {
+        en: 'What can each role do, and how do I invite people?',
+        ar: 'ماذا يستطيع كل دور، وكيف أدعو الأشخاص؟',
+      },
+    },
     en: {
       title: 'Roles, permissions and the People screen',
       summary:
@@ -102,7 +103,7 @@ Every screen is available in English and Arabic, and the Dashboard shows where y
 
 Three things are never done by the company: building forms, setting up job types and company branding. Those are done by Integr8 staff.
 
-Open People under Company in the web app. Invite somebody with their email address and role; they receive a link to join. You cannot invite somebody at a role above your own. From a person’s row you can Change role, Suspend, Let back in, Remove, or Send again and Withdraw a pending invitation. Suspending or removing stops them signing in straight away; a session they already have open can last up to fifteen minutes longer.
+Open People under Company in the web app. Invite somebody with their email address and role; they receive a link to join. You cannot invite somebody at a role above your own. From a person’s row you can Change role, Suspend, Let back in, Remove, or Send again and Withdraw a pending invitation. Suspending or removing stops them signing in straight away, and a device they are already signed in on stops within thirty seconds. Every active person takes a seat: once your plan’s seats, or the number Integr8 set for your company, are used up, inviting somebody and letting a suspended person back in are refused until a seat is free. A suspended person holds no seat.
 
 HR and inventory work can also be given on top of a role: Also make HR manager or Also make Inventory manager. Only the owner makes somebody an HR manager.
 
@@ -122,6 +123,7 @@ The owner can define Company roles: a role of your own, built on a built-in role
         'suspend',
         'remove user',
         'custom role',
+        'seats',
       ],
     },
     ar: {
@@ -132,7 +134,7 @@ The owner can define Company roles: a role of your own, built on a built-in role
 
 ثلاثة أمور لا تقوم بها الشركة أبدًا: بناء النماذج، وإعداد أنواع المهام، وهوية الشركة. يقوم بها موظفو Integr8.
 
-افتح «الأشخاص» تحت مجموعة الشركة في تطبيق الويب. ادعُ شخصًا ببريده الإلكتروني ودوره، فيصله رابط للانضمام. لا يمكنك دعوة شخص بدور أعلى من دورك. ومن صف الشخص يمكنك تغيير الدور، أو الإيقاف، أو السماح بالعودة، أو الإزالة، أو إعادة إرسال الدعوة المعلّقة أو سحبها. الإيقاف أو الإزالة يمنعان تسجيل الدخول فورًا، وقد تستمر جلسة مفتوحة بالفعل حتى خمس عشرة دقيقة إضافية.
+افتح «الأشخاص» تحت مجموعة الشركة في تطبيق الويب. ادعُ شخصًا ببريده الإلكتروني ودوره، فيصله رابط للانضمام. لا يمكنك دعوة شخص بدور أعلى من دورك. ومن صف الشخص يمكنك تغيير الدور، أو الإيقاف، أو السماح بالعودة، أو الإزالة، أو إعادة إرسال الدعوة المعلّقة أو سحبها. الإيقاف أو الإزالة يمنعان تسجيل الدخول فورًا، ويتوقف أي جهاز مسجّل الدخول بالفعل خلال ثلاثين ثانية. ويشغل كل شخص نشط مقعدًا: فعند استنفاد مقاعد خطتك، أو العدد الذي حددته Integr8 لشركتك، تُرفض دعوة شخص جديد والسماح بعودة شخص موقوف حتى يتحرر مقعد. ولا يشغل الشخص الموقوف مقعدًا.
 
 يمكن أيضًا منح عمل الموارد البشرية أو المخزون فوق الدور الأصلي: «جعله أيضًا مدير الموارد البشرية» أو «جعله أيضًا مدير المخزون». المالك وحده يجعل شخصًا مدير موارد بشرية.
 
@@ -152,6 +154,7 @@ The owner can define Company roles: a role of your own, built on a built-in role
         'إيقاف',
         'إزالة مستخدم',
         'دور مخصص',
+        'المقاعد',
       ],
     },
   },
@@ -161,13 +164,20 @@ The owner can define Company roles: a role of your own, built on a built-in role
     feature: null,
     minPermission: 'customer.read',
     appRoute: 'customers',
+    public: {
+      category: 'field-work',
+      question: {
+        en: 'How do I add customers, contacts and sites?',
+        ar: 'كيف أضيف العملاء وجهات الاتصال والمواقع؟',
+      },
+    },
     en: {
       title: 'Customers, contacts and sites',
       summary:
         'Adding a customer, its contacts and its sites, keeping access notes for engineers, and importing customers and sites from a spreadsheet.',
       body: `Open Customers under Operations. Search by name, account, email, phone or postcode, and filter by status (Active, On hold, Closed) or tag. New customer asks for the name, account number, email, phone, billing address, tags and notes. A customer on hold can still have jobs created, but the form asks you to confirm first.
 
-On a customer’s page, Contacts holds the people you deal with, each with a name, job title, email and phone; one is the Primary contact, and a contact can be archived. Sites holds the places where work happens. Add site gives each a name, an address and a position on the map: the address is placed automatically, or you can place the pin by hand or use your current location. A site can be archived and restored, and keeps the jobs done there.
+On a customer’s page, Contacts holds the people you deal with, each with a name, job title, email and phone; one is the Primary contact, and a contact can be archived. Sites holds the places where work happens. Add site gives each a name, an address and its coordinates: they are looked up from the address automatically, or you can type the latitude and longitude, or use your current location. The site shows its coordinates with Open in Google Maps for directions. A site can be archived and restored, and keeps the jobs done there.
 
 Each site has access notes under Getting in: gate or door code, parking, who to ask for, hazards on arrival and other notes. These are the first thing an engineer sees on the phone, so keep them current; engineers can correct them from the job and the change is kept with who made it and when.
 
@@ -187,6 +197,8 @@ To bring many customers or sites in at once, use Import from CSV under Operation
         'import csv',
         'on hold',
         'new customer',
+        'coordinates',
+        'google maps',
       ],
     },
     ar: {
@@ -195,7 +207,7 @@ To bring many customers or sites in at once, use Import from CSV under Operation
         'إضافة عميل وجهات اتصاله ومواقعه، وحفظ ملاحظات الدخول للمهندسين، واستيراد العملاء والمواقع من جدول بيانات.',
       body: `افتح «العملاء» تحت مجموعة العمليات. ابحث بالاسم أو رقم الحساب أو البريد الإلكتروني أو الهاتف أو الرمز البريدي، وصفِّ بالحالة (نشط، معلّق، مغلق) أو بالوسم. يطلب «عميل جديد» الاسم ورقم الحساب والبريد الإلكتروني والهاتف وعنوان الفوترة والوسوم والملاحظات. يمكن إنشاء مهام لعميل معلّق، لكن الشاشة تطلب منك التأكيد أولًا.
 
-في صفحة العميل، تضم «جهات الاتصال» الأشخاص الذين تتعامل معهم، لكل منهم اسم ومسمى وظيفي وبريد إلكتروني وهاتف؛ أحدهم جهة الاتصال الرئيسية، ويمكن أرشفة أي جهة اتصال. وتضم «المواقع» الأماكن التي يُنفَّذ فيها العمل. يمنح «إضافة موقع» كل موقع اسمًا وعنوانًا وموضعًا على الخريطة: يُحدَّد العنوان تلقائيًا، أو يمكنك وضع الدبوس يدويًا أو استخدام موقعك الحالي. يمكن أرشفة الموقع واستعادته، ويحتفظ بالمهام التي نُفّذت فيه.
+في صفحة العميل، تضم «جهات الاتصال» الأشخاص الذين تتعامل معهم، لكل منهم اسم ومسمى وظيفي وبريد إلكتروني وهاتف؛ أحدهم جهة الاتصال الرئيسية، ويمكن أرشفة أي جهة اتصال. وتضم «المواقع» الأماكن التي يُنفَّذ فيها العمل. يمنح «إضافة موقع» كل موقع اسمًا وعنوانًا وإحداثيات: تُستخرج تلقائيًا من العنوان، أو يمكنك كتابة خط العرض وخط الطول، أو استخدام موقعك الحالي. ويعرض الموقع إحداثياته مع «فتح في خرائط Google» للاتجاهات. يمكن أرشفة الموقع واستعادته، ويحتفظ بالمهام التي نُفّذت فيه.
 
 لكل موقع ملاحظات دخول تحت «الدخول إلى الموقع»: رمز البوابة أو الباب، ومواقف السيارات، وعمّن تسأل، والمخاطر عند الوصول، وملاحظات أخرى. وهي أول ما يراه المهندس على الهاتف، فأبقها محدّثة؛ ويستطيع المهندسون تصحيحها من المهمة، ويُحفظ التغيير مع اسم من أجراه ووقته.
 
@@ -215,6 +227,8 @@ To bring many customers or sites in at once, use Import from CSV under Operation
         'استيراد',
         'معلق',
         'عميل جديد',
+        'الإحداثيات',
+        'خرائط جوجل',
       ],
     },
   },
@@ -224,6 +238,10 @@ To bring many customers or sites in at once, use Import from CSV under Operation
     feature: null,
     minPermission: 'work_order.read_all',
     appRoute: 'workOrders',
+    public: {
+      category: 'field-work',
+      question: { en: 'How do I create and dispatch a job?', ar: 'كيف أنشئ مهمة وأوجّهها؟' },
+    },
     en: {
       title: 'Creating, assigning and dispatching work orders',
       summary:
@@ -238,7 +256,7 @@ To send the job to the engineer, use Move this job on and choose Dispatch. The e
 
 The list can be filtered by state, assignee (Anyone, Me, Nobody or a person), job type, priority, Overdue only and due dates, and searched by reference, title or description. Save view keeps a set of filters under a name, and Share with colleagues makes it visible to everyone. Select several jobs to Reassign, Reschedule (by a number of days or to new dates) or Cancel jobs in one go; jobs that could not be changed are listed with the reason.
 
-Timesheets, also under Work, shows each person’s shifts, travel and time on jobs week by week.`,
+To plan when the work happens and who goes, use Schedule under Work: a job can have one or more visits, each with its own time and people. Timesheets, also under Work, shows each person’s shifts, travel and time on jobs week by week.`,
       keywords: [
         'work order',
         'job',
@@ -270,7 +288,7 @@ Timesheets, also under Work, shows each person’s shifts, travel and time on jo
 
 يمكن تصفية القائمة بالحالة والمسند إليه (أي شخص، أنا، لا أحد، أو شخص بعينه) ونوع المهمة والأولوية و«المتأخرة فقط» وتواريخ الاستحقاق، والبحث بالمرجع أو العنوان أو الوصف. يحفظ «حفظ طريقة العرض» مجموعة عوامل تصفية باسم، و«المشاركة مع الزملاء» تجعلها مرئية للجميع. حدّد عدة مهام لإعادة إسنادها أو إعادة جدولتها (بعدد أيام أو بتواريخ جديدة) أو إلغائها دفعة واحدة؛ وتُعرض المهام التي تعذّر تغييرها مع السبب.
 
-وتعرض «سجلات الدوام»، تحت مجموعة العمل أيضًا، ورديات كل شخص وانتقاله ووقته على المهام أسبوعًا بأسبوع.`,
+ولتخطيط موعد العمل ومن يذهب إليه استخدم «الجدول» تحت العمل: يمكن أن تكون للمهمة زيارة واحدة أو أكثر، لكل منها وقتها وأشخاصها. وتعرض «سجلات الدوام»، تحت مجموعة العمل أيضًا، ورديات كل شخص وانتقاله ووقته على المهام أسبوعًا بأسبوع.`,
       keywords: [
         'أمر عمل',
         'اوامر العمل',
@@ -294,6 +312,13 @@ Timesheets, also under Work, shows each person’s shifts, travel and time on jo
     feature: null,
     minPermission: null,
     appRoute: 'workOrders',
+    public: {
+      category: 'field-work',
+      question: {
+        en: 'What does a job need before it can be completed?',
+        ar: 'ما الذي تحتاجه المهمة قبل إتمامها؟',
+      },
+    },
     en: {
       title: 'Work order states, completion and sign-off',
       summary:
@@ -357,6 +382,13 @@ Once a job is Complete, an owner or admin reviews it: Sign off moves it to Revie
     feature: null,
     minPermission: null,
     appRoute: null,
+    public: {
+      category: 'phone-app',
+      question: {
+        en: 'What does an engineer do on the phone app?',
+        ar: 'ماذا يفعل المهندس في تطبيق الهاتف؟',
+      },
+    },
     en: {
       title: 'The engineer’s day on the mobile app',
       summary:
@@ -428,6 +460,13 @@ Complete job lists anything still missing and completes the job once nothing is.
     feature: null,
     minPermission: null,
     appRoute: null,
+    public: {
+      category: 'phone-app',
+      question: {
+        en: 'What happens when an engineer has no signal?',
+        ar: 'ماذا يحدث عندما لا تتوفر إشارة لدى المهندس؟',
+      },
+    },
     en: {
       title: 'Working offline and the Sync screen',
       summary:
@@ -491,6 +530,13 @@ Signing out deletes every job, customer and file from the phone, including unsen
     feature: null,
     minPermission: 'form.read',
     appRoute: 'forms',
+    public: {
+      category: 'forms-documents',
+      question: {
+        en: 'Who builds our forms, and how do I get one changed?',
+        ar: 'من يبني نماذجنا، وكيف أطلب تغيير نموذج؟',
+      },
+    },
     en: {
       title: 'Forms and job types: built by Integr8',
       summary:
@@ -550,6 +596,13 @@ Job types, under Set-up, show the kinds of job you do: name, code, expected dura
     feature: null,
     minPermission: null,
     appRoute: 'submissions',
+    public: {
+      category: 'forms-documents',
+      question: {
+        en: 'How are forms filled in, and can a submitted form be corrected?',
+        ar: 'كيف تُعبّأ النماذج، وهل يمكن تصحيح نموذج مُرسل؟',
+      },
+    },
     en: {
       title: 'Filling in forms and correcting submissions',
       summary:
@@ -613,6 +666,13 @@ Engineers see their own submissions; dispatchers, viewers, admins and owners see
     feature: 'crm',
     minPermission: 'crm.read',
     appRoute: 'leads',
+    public: {
+      category: 'sales-finance',
+      question: {
+        en: 'How do leads become customers?',
+        ar: 'كيف يتحول العملاء المحتملون إلى عملاء؟',
+      },
+    },
     en: {
       title: 'CRM leads and converting them into customers',
       summary:
@@ -670,6 +730,13 @@ Dispatchers, admins and owners add, qualify and convert leads; viewers read the 
     feature: 'crm',
     minPermission: 'crm.read',
     appRoute: 'opportunities',
+    public: {
+      category: 'sales-finance',
+      question: {
+        en: 'How do I follow deals through the pipeline?',
+        ar: 'كيف أتابع الصفقات عبر مسار المبيعات؟',
+      },
+    },
     en: {
       title: 'Opportunities, the pipeline board and follow-ups',
       summary:
@@ -737,6 +804,13 @@ CRM reports shows quote conversion, win rate and pipeline value by month. Dispat
     feature: 'sales',
     minPermission: 'sales.read',
     appRoute: 'quotes',
+    public: {
+      category: 'sales-finance',
+      question: {
+        en: 'How do quotes, sales orders and deliveries work?',
+        ar: 'كيف تعمل عروض الأسعار وأوامر البيع والتسليمات؟',
+      },
+    },
     en: {
       title: 'Quotes, sales orders and deliveries',
       summary:
@@ -800,6 +874,13 @@ Dispatchers draft quotes and orders and record answers; issuing and confirming a
     feature: 'inventory',
     minPermission: 'inventory.read',
     appRoute: 'inventory',
+    public: {
+      category: 'stock-assets',
+      question: {
+        en: 'How do I keep items, stock locations and vans?',
+        ar: 'كيف أدير الأصناف ومواقع المخزون والسيارات؟',
+      },
+    },
     en: {
       title: 'Inventory: items, stock locations and vans',
       summary:
@@ -865,6 +946,13 @@ Everybody with inventory access sees stock; costs are shown to those who move st
     feature: 'inventory',
     minPermission: 'inventory.read',
     appRoute: 'stockLocations',
+    public: {
+      category: 'stock-assets',
+      question: {
+        en: 'How is stock moved, counted and tracked by serial number?',
+        ar: 'كيف يُنقل المخزون ويُجرد ويُتتبع بالأرقام التسلسلية؟',
+      },
+    },
     en: {
       title: 'Stock movements, counts, parts on jobs and serial numbers',
       summary:
@@ -931,6 +1019,13 @@ Moving and counting stock is for dispatchers, inventory managers, admins and own
     feature: 'purchasing',
     minPermission: 'purchasing.read',
     appRoute: 'purchaseOrders',
+    public: {
+      category: 'stock-assets',
+      question: {
+        en: 'How do I buy from suppliers and receive goods?',
+        ar: 'كيف أشتري من الموردين وأستلم البضائع؟',
+      },
+    },
     en: {
       title: 'Suppliers, purchase orders, approval and receiving goods',
       summary:
@@ -995,6 +1090,13 @@ Dispatchers, inventory managers, admins and owners add suppliers, draft orders a
     feature: 'finance',
     minPermission: 'finance.read',
     appRoute: 'invoices',
+    public: {
+      category: 'sales-finance',
+      question: {
+        en: 'How do I invoice a customer or credit an invoice?',
+        ar: 'كيف أصدر فاتورة لعميل أو إشعارًا دائنًا؟',
+      },
+    },
     en: {
       title: 'Invoices and credit notes',
       summary:
@@ -1005,7 +1107,7 @@ An invoice starts as a draft in one of three ways. New invoice drafts one from s
 
 A draft has no number and can be changed or discarded. Issue, done by an owner or admin, gives the invoice its number, fixes what it says and sets the due date from the company’s days to pay unless you set one. After that an invoice is corrected with a credit note: Credit opens a draft that reduces what the invoice asks for, by chosen lines or Credit everything still owed, and is issued with its own number. Void cancels an issued invoice that nothing has been paid or credited against, with a reason; its number stays used. Print or save as PDF gives the document.
 
-Invoice settings, for owners and admins, hold what is printed about your company: legal name, address, tax reference, how to pay, a footer, days to pay, and the labour cost and labour rate per hour. Invoices from Integr8 are commercial records, not certified tax or e-invoicing documents.
+Invoice settings, for owners and admins, hold what is printed about your company: legal name, address, tax reference, how to pay, a footer, days to pay, and the labour cost and labour rate per hour. Every line’s amounts are rounded to the currency’s smallest unit, piastres for the Egyptian pound, and the total is the sum of the rounded lines. Invoices from Integr8 Plus are commercial records, not certified tax documents; sending invoices to the Egyptian Tax Authority is the separate E-invoicing module.
 
 Dispatchers draft invoices and credit notes; issuing, voiding and recording money are for owners and admins. When the ledger is set up, issued documents post to it automatically.`,
       keywords: [
@@ -1033,7 +1135,7 @@ Dispatchers draft invoices and credit notes; issuing, voiding and recording mone
 
 المسودة بلا رقم ويمكن تغييرها أو حذفها. و«إصدار»، الذي يقوم به المالك أو المسؤول، يعطي الفاتورة رقمها ويثبّت محتواها ويحدد تاريخ الاستحقاق من أيام السداد المعتادة للشركة ما لم تحدد غيره. وبعد ذلك تُصحَّح الفاتورة بإشعار دائن: يفتح «إشعار دائن» مسودة تخفّض ما تطلبه الفاتورة، ببنود مختارة أو «إشعار بكل المتبقي»، وتُصدر برقمها الخاص. و«إلغاء» يلغي فاتورة صادرة لم يُدفع ولم يُقيَّد عليها شيء، مع السبب؛ ويبقى رقمها مستخدمًا. و«طباعة أو حفظ بصيغة PDF» يعطي المستند.
 
-وتحمل «إعدادات الفواتير»، للمالكين والمسؤولين، ما يُطبع عن شركتك: الاسم القانوني والعنوان والرقم الضريبي وطريقة الدفع وتذييل الصفحة وأيام السداد وتكلفة العمالة وأجر العمالة للساعة. والفواتير من Integr8 سجلات تجارية، لا مستندات ضريبية أو فواتير إلكترونية معتمدة.
+وتحمل «إعدادات الفواتير»، للمالكين والمسؤولين، ما يُطبع عن شركتك: الاسم القانوني والعنوان والرقم الضريبي وطريقة الدفع وتذييل الصفحة وأيام السداد وتكلفة العمالة وأجر العمالة للساعة. وتُقرَّب مبالغ كل بند إلى أصغر وحدة في العملة، أي القرش للجنيه المصري، والإجمالي هو مجموع البنود المقرّبة. والفواتير من Integr8 Plus سجلات تجارية، لا مستندات ضريبية معتمدة؛ أما إرسال الفواتير إلى مصلحة الضرائب المصرية فهو وحدة الفاتورة الإلكترونية المستقلة.
 
 يُعدّ المنسّقون مسودات الفواتير والإشعارات الدائنة؛ أما الإصدار والإلغاء وتسجيل الأموال فللمالكين والمسؤولين. وعند إعداد دفتر الأستاذ تُرحَّل المستندات الصادرة إليه تلقائيًا.`,
       keywords: [
@@ -1058,6 +1160,13 @@ Dispatchers draft invoices and credit notes; issuing, voiding and recording mone
     feature: 'finance',
     minPermission: 'finance.read',
     appRoute: 'payments',
+    public: {
+      category: 'sales-finance',
+      question: {
+        en: 'How do I record a payment and put it against invoices?',
+        ar: 'كيف أسجّل دفعة وأخصصها للفواتير؟',
+      },
+    },
     en: {
       title: 'Payments, allocations and customer balances',
       summary:
@@ -1117,6 +1226,13 @@ Recording and allocating payments is for owners and admins; dispatchers and view
     feature: 'ledger',
     minPermission: 'ledger.read',
     appRoute: 'ledger',
+    public: {
+      category: 'sales-finance',
+      question: {
+        en: 'How do I set up the ledger and post journals?',
+        ar: 'كيف أُعدّ دفتر الأستاذ وأرحّل القيود؟',
+      },
+    },
     en: {
       title: 'The general ledger: set-up, chart of accounts, journals and the unposted list',
       summary:
@@ -1180,6 +1296,13 @@ Reading the ledger needs ledger access, which viewers also hold; posting is for 
     feature: 'ledger',
     minPermission: 'ledger.read',
     appRoute: 'ledgerReports',
+    public: {
+      category: 'sales-finance',
+      question: {
+        en: 'How do month locks, reports and year end work?',
+        ar: 'كيف يعمل قفل الأشهر والتقارير وإقفال السنة؟',
+      },
+    },
     en: {
       title: 'Ledger reports, locking months and the year-end close',
       summary:
@@ -1243,6 +1366,13 @@ Ledger settings, for owners and admins, hold the automatic posting switches for 
     feature: 'assets',
     minPermission: 'asset.read',
     appRoute: 'assets',
+    public: {
+      category: 'stock-assets',
+      question: {
+        en: 'How do I keep a register of the machines we service?',
+        ar: 'كيف أحتفظ بسجل للمعدات التي نخدمها؟',
+      },
+    },
     en: {
       title: 'Assets: the register, QR tags, service history and warranty alerts',
       summary:
@@ -1309,6 +1439,13 @@ Warranty alerts, in the asset settings, say how many days before a warranty ends
     feature: 'hr',
     minPermission: 'hr.read',
     appRoute: 'employees',
+    public: {
+      category: 'people-hr',
+      question: {
+        en: 'What does the HR module keep about employees?',
+        ar: 'ماذا تحفظ وحدة الموارد البشرية عن الموظفين؟',
+      },
+    },
     en: {
       title: 'HR: employee profiles',
       summary:
@@ -1372,6 +1509,10 @@ Everybody has My profile, which shows what the company holds about them as an em
     feature: 'hr',
     minPermission: null,
     appRoute: 'myExpenses',
+    public: {
+      category: 'people-hr',
+      question: { en: 'How do I claim an expense back?', ar: 'كيف أطالب باسترداد مصروف؟' },
+    },
     en: {
       title: 'Expense claims: claiming and approving',
       summary:
@@ -1436,6 +1577,10 @@ Expense categories, kept by the same people, say what expenses may be claimed fo
     feature: 'payroll',
     minPermission: 'payroll.run',
     appRoute: 'payRuns',
+    public: {
+      category: 'people-hr',
+      question: { en: 'How does payroll work?', ar: 'كيف تعمل الرواتب؟' },
+    },
     en: {
       title: 'Payroll: rule sets, pay terms, pay runs and payslips',
       summary:
@@ -1502,6 +1647,13 @@ Payslips and files offers Print payslips in English or Arabic, the insurance rep
     feature: 'manufacturing',
     minPermission: 'manufacturing.read',
     appRoute: 'boms',
+    public: {
+      category: 'stock-assets',
+      question: {
+        en: 'How do bills of materials and assembly orders work?',
+        ar: 'كيف تعمل قوائم المواد وأوامر التجميع؟',
+      },
+    },
     en: {
       title: 'Manufacturing: bills of materials, assembly orders and material planning',
       summary:
@@ -1561,17 +1713,26 @@ Material planning answers what to build and buy. Run a plan for a number of days
     feature: null,
     minPermission: 'billing.read',
     appRoute: 'billing',
+    public: {
+      category: 'account-billing',
+      question: {
+        en: 'How are we billed, and what do the plan limits mean?',
+        ar: 'كيف تتم فوترتنا، وماذا تعني حدود الخطة؟',
+      },
+    },
     en: {
       title: 'Your subscription: plans, limits, billing and read-only',
       summary:
-        'The four plans, what the Billing screen shows, paying by card or by invoice from Integr8, the seat, submission and storage limits, and what happens when a payment is outstanding.',
-      body: `Every company is on one of four plans: Trial, Starter, Standard or Enterprise. Each plan allows a number of people (seats), a number of submissions a month and an amount of storage; Integr8 sets what each plan allows. Billing, under Company in the web app, shows your plan and its status (Trial, Active, Payment outstanding, Cancelled), when it renews or ends, the limits with your usage against them, and your invoices. Owners and admins can read it; only the owner changes the subscription.
+        'The four plans, what the Billing screen shows, invoicing by Integr8 (there are no card payments in the app), the seat, submission and storage limits, and storage over the plan.',
+      body: `Every company is on one of four plans: Trial, Starter, Standard or Enterprise. Each plan allows a number of people (seats), a number of submissions a month and an amount of storage. Integr8 sets what each plan allows, and can give your company its own number of seats in place of the plan’s. Billing, under Company in the web app, shows your plan, its limits and your usage against them; owners and admins can read it.
 
-A company is billed in one of two ways. A self-serve company pays by card: Subscribe or Choose a plan opens the payment provider’s page for Starter, Standard or Enterprise, and Manage billing opens the provider’s portal to update the card or cancel. Your invoices open and download there too. An invoiced company is billed directly by Integr8: the screen says Invoiced by Integr8, there is no card and nothing to pay for in the app, and to change your plan, add people or ask about an invoice you contact Integr8. Plan changes for invoiced companies are made by Integr8.
+Integr8 invoices every company directly. The Billing screen says Invoiced by Integr8: there is no card to add and nothing to pay in the app. To change your plan, add seats or ask about an invoice, contact Integr8, who make plan changes from their dashboard.
 
-The limits are enforced by the system itself. Inviting somebody, and accepting an invitation, are refused once the seats are used up. Starting a form, and submitting one, are refused once the month’s submissions are used up; corrections to reopened submissions are never counted. Uploads are refused once storage is full, and the Storage screen shows what you use by kind. A warning appears before each limit is reached.
+The limits are enforced by the system itself. Every active person takes a seat, whatever their role; a suspended person and an invitation not yet accepted do not. Inviting somebody, accepting an invitation and letting a suspended person back in are refused once the seats are used up. Starting a form, and submitting one, are refused once the month’s submissions are used up; corrections to reopened submissions are never counted. A warning appears before each limit is reached.
 
-If a trial ends unpaid or a payment fails, a banner says so and the owners and admins are emailed, with reminders. If it is still outstanding a fortnight later the account becomes read-only: nothing is deleted and nothing will be, everything can still be read and exported, but new work cannot be saved and work waiting on engineers’ phones stays there until the bill is paid. Paying restores writing straight away.
+Storage depends on the plan. On Trial and Starter, uploads are refused once storage is full. On Standard, uploads keep working past the allowance: the Storage screen shows Over your plan, and the extra is added to your Integr8 invoice as the month’s average overage in GB-months, which is the storage over the line each day, averaged over the days of the month. Delete files you no longer need, or ask Integr8 about a larger plan.
+
+An unpaid invoice is followed up by Integr8 directly; nothing is ever deleted for non-payment, and Integr8 can export all of your company’s data for you whenever you ask.
 
 Modules such as CRM, inventory or finance, and the AI assistant, are enabled by Integr8 per company; ask your Integr8 contact.`,
       keywords: [
@@ -1589,19 +1750,24 @@ Modules such as CRM, inventory or finance, and the AI assistant, are enabled by 
         'storage limit',
         'invoiced by integr8',
         'upgrade',
+        'invoiced',
+        'overage',
+        'over your plan',
       ],
     },
     ar: {
       title: 'اشتراكك: الخطط والحدود والفوترة ووضع القراءة فقط',
       summary:
-        'الخطط الأربع، وما تعرضه شاشة الفوترة، والدفع بالبطاقة أو بفاتورة من Integr8، وحدود الأشخاص والإرسالات والتخزين، وما يحدث عند تأخر الدفع.',
-      body: `كل شركة على إحدى أربع خطط: التجريبية، أو المبتدئة، أو القياسية، أو المؤسسات. وتسمح كل خطة بعدد من الأشخاص (المقاعد) وعدد من الإرسالات شهريًا ومساحة تخزين؛ وتحدد Integr8 ما تسمح به كل خطة. تعرض «الفوترة»، تحت مجموعة الشركة في تطبيق الويب، خطتك وحالتها (فترة تجريبية، نشطة، دفعة مستحقة، ملغاة)، وموعد تجددها أو انتهائها، والحدود مع استخدامك منها، وفواتيرك. ويقرؤها المالكون والمسؤولون؛ والمالك وحده يغيّر الاشتراك.
+        'الخطط الأربع، وما تعرضه شاشة الفوترة، والفوترة من Integr8 (لا مدفوعات بالبطاقة في التطبيق)، وحدود المقاعد والإرسالات والتخزين، وتجاوز مساحة الخطة.',
+      body: `كل شركة على إحدى أربع خطط: التجريبية، أو المبتدئة، أو القياسية، أو المؤسسات. وتسمح كل خطة بعدد من الأشخاص (المقاعد) وعدد من الإرسالات شهريًا ومساحة تخزين. وتحدد Integr8 ما تسمح به كل خطة، ويمكنها أن تمنح شركتك عددًا خاصًا من المقاعد بدل عدد الخطة. وتعرض «الفوترة»، تحت مجموعة الشركة في تطبيق الويب، خطتك وحدودها واستخدامك منها؛ ويقرؤها المالكون والمسؤولون.
 
-تُفوتَر الشركة بإحدى طريقتين. الشركة ذاتية الخدمة تدفع بالبطاقة: يفتح «اشترك» أو «اختر خطة» صفحة مزوّد الدفع للخطة المبتدئة أو القياسية أو المؤسسات، ويفتح «إدارة الفوترة» بوابة المزوّد لتحديث البطاقة أو الإلغاء. وتُفتح فواتيرك وتُنزَّل هناك أيضًا. والشركة المفوترة تُفوترها Integr8 مباشرةً: تقول الشاشة «بفاتورة من Integr8»، ولا بطاقة ولا شيء يُدفع في التطبيق، ولتغيير خطتك أو إضافة أشخاص أو الاستفسار عن فاتورة تتواصل مع Integr8. وتغييرات الخطة للشركات المفوترة تجريها Integr8.
+تُصدر Integr8 فواتير كل شركة مباشرةً. وتقول شاشة الفوترة «بفاتورة من Integr8»: لا بطاقة تُضاف ولا شيء يُدفع في التطبيق. ولتغيير خطتك أو إضافة مقاعد أو الاستفسار عن فاتورة، تواصل مع Integr8، فهي التي تغيّر الخطط من لوحة التحكم الخاصة بها.
 
-ويفرض النظام الحدود بنفسه. تُرفض دعوة شخص، وقبول الدعوة، بعد استنفاد المقاعد. ويُرفض بدء نموذج، وإرساله، بعد استنفاد إرسالات الشهر؛ ولا تُحتسب أبدًا تصحيحات الإرسالات المعاد فتحها. وتُرفض عمليات التحميل عندما يمتلئ التخزين، وتعرض شاشة «التخزين» ما تستخدمه بحسب النوع. ويظهر تحذير قبل بلوغ كل حد.
+ويفرض النظام الحدود بنفسه. يشغل كل شخص نشط مقعدًا مهما كان دوره؛ ولا يشغله الشخص الموقوف ولا الدعوة التي لم تُقبل بعد. وتُرفض دعوة شخص، وقبول الدعوة، والسماح بعودة شخص موقوف، بعد استنفاد المقاعد. ويُرفض بدء نموذج، وإرساله، بعد استنفاد إرسالات الشهر؛ ولا تُحتسب أبدًا تصحيحات الإرسالات المعاد فتحها. ويظهر تحذير قبل بلوغ كل حد.
 
-إذا انتهت الفترة التجريبية دون دفع أو فشلت دفعة، يظهر شريط يخبرك بذلك ويُراسَل المالكون والمسؤولون بالبريد الإلكتروني، مع تذكيرات. وإذا بقيت مستحقة بعد أسبوعين يتحول الحساب إلى وضع القراءة فقط: لا يُحذف شيء ولن يُحذف، وما يزال بالإمكان قراءة كل شيء وتصديره، لكن لا يمكن حفظ أعمال جديدة، ويبقى العمل المنتظر على هواتف المهندسين هناك حتى تُسدَّد الفاتورة. ويُعيد الدفعُ إمكانيةَ الكتابة فورًا.
+ويعتمد التخزين على الخطة. في الخطتين التجريبية والمبتدئة تُرفض عمليات التحميل عندما يمتلئ التخزين. وفي الخطة القياسية يستمر التحميل بعد تجاوز المساحة المخصصة: تعرض شاشة «التخزين» «تجاوزت مساحة خطتك»، وتُضاف الزيادة إلى فاتورة Integr8 بمتوسط التجاوز خلال الشهر بوحدة غيغابايت-شهر، أي المساحة الزائدة كل يوم بمتوسطها على أيام الشهر. احذف الملفات التي لم تعد بحاجة إليها، أو اسأل Integr8 عن خطة أكبر.
+
+وتتابع Integr8 الفاتورة غير المسددة معك مباشرةً؛ ولا يُحذف شيء أبدًا بسبب عدم الدفع، ويمكن لـ Integr8 أن تصدّر لك كل بيانات شركتك متى طلبت.
 
 والوحدات مثل إدارة علاقات العملاء أو المخزون أو المالية، والمساعد الذكي، تفعّلها Integr8 لكل شركة؛ فتواصل مع جهة اتصالك في Integr8.`,
       keywords: [
@@ -1619,6 +1785,8 @@ Modules such as CRM, inventory or finance, and the AI assistant, are enabled by 
         'حد الإرسالات',
         'حد التخزين',
         'ترقية',
+        'فاتورة',
+        'تجاوز المساحة',
       ],
     },
   },
@@ -1628,6 +1796,13 @@ Modules such as CRM, inventory or finance, and the AI assistant, are enabled by 
     feature: null,
     minPermission: null,
     appRoute: null,
+    public: {
+      category: 'account-billing',
+      question: {
+        en: 'I cannot sign in. What should I do?',
+        ar: 'لا أستطيع تسجيل الدخول. ماذا أفعل؟',
+      },
+    },
     en: {
       title: 'Signing in, locked accounts, invitations and devices',
       summary:
@@ -1640,13 +1815,13 @@ To set a new password, open the account menu and choose Change password. You nee
 
 After too many failed attempts the account is locked for a few minutes; wait and try again. Too many requests in a short time are also slowed down.
 
-Joining is done through an invitation link. The Join your team page asks for your name and a password and signs you in. A link that was used, withdrawn or expired no longer works; ask the person who invited you to open People and choose Send again. You cannot be invited while the company has used all the seats its plan allows.
+Joining is done through an invitation link. On the Join your team page a new person gives their name and chooses a password, following the rules shown; somebody who already has an Integr8 Plus account, from another company, is not asked for one. Joining does not sign you in: the page says you are done, and you then sign in with your email address, which is already filled in. A link that was used, withdrawn or expired no longer works; ask the person who invited you to open People and choose Send again. You cannot be invited while the company has used all the seats its plan allows.
 
 Your session has expired means you need to sign in again; nothing is lost. Suspended or removed people are refused entry and should speak to an owner or admin. A company’s own phone app refuses an account from another company. If you belong to several companies, Switch company moves between them.
 
 Your devices lists where you are signed in, and Sign out this device signs one of them out. Owners and admins can sign out any device in the company, so report a lost phone to them immediately: the phone stops the next time it has signal. The mobile app also has an App lock that locks after five minutes away and opens with your fingerprint, face or the phone’s passcode.
 
-If the company’s account is read-only because of an outstanding payment, signing in works but saving does not; an owner can read why under Billing.`,
+If Integr8 has made the company’s account read-only, signing in works but saving does not; an owner can ask Integr8 why.`,
       keywords: [
         'sign in',
         'login',
@@ -1678,13 +1853,13 @@ If the company’s account is read-only because of an outstanding payment, signi
 
 بعد محاولات فاشلة كثيرة يُقفل الحساب بضع دقائق؛ فانتظر وحاول مجددًا. وتُبطَّأ أيضًا الطلبات الكثيرة في وقت قصير.
 
-يتم الانضمام عبر رابط دعوة. وتطلب صفحة «انضم إلى فريقك» اسمك وكلمة مرور وتسجّل دخولك. والرابط الذي استُخدم أو سُحب أو انتهت صلاحيته لم يعد يعمل؛ فاطلب ممن دعاك أن يفتح «الأشخاص» ويختار «إعادة الإرسال». ولا يمكن دعوتك ما دامت الشركة قد استنفدت المقاعد التي تسمح بها خطتها.
+يتم الانضمام عبر رابط دعوة. في صفحة «انضم إلى فريقك» يكتب الشخص الجديد اسمه ويختار كلمة مرور وفق القواعد المعروضة؛ أما من لديه حساب Integr8 Plus بالفعل من شركة أخرى فلا يُطلب منه ذلك. ولا يسجّل الانضمام دخولك: تخبرك الصفحة بأنك انتهيت، ثم تسجّل الدخول ببريدك الإلكتروني المعبّأ مسبقًا. والرابط الذي استُخدم أو سُحب أو انتهت صلاحيته لم يعد يعمل؛ فاطلب ممن دعاك أن يفتح «الأشخاص» ويختار «إعادة الإرسال». ولا يمكن دعوتك ما دامت الشركة قد استنفدت المقاعد التي تسمح بها خطتها.
 
 «انتهت صلاحية جلستك» تعني أن عليك تسجيل الدخول مجددًا؛ ولا يُفقد شيء. والأشخاص الموقوفون أو المزالون يُمنعون من الدخول وعليهم مراجعة المالك أو المسؤول. ويرفض تطبيق الهاتف الخاص بالشركة حسابًا من شركة أخرى. وإن كنت تنتمي إلى عدة شركات، ينقلك «تبديل الشركة» بينها.
 
 تعرض «أجهزتك» أين أنت مسجّل الدخول، و«تسجيل الخروج من هذا الجهاز» يُخرج أحدها. ويستطيع المالكون والمسؤولون إخراج أي جهاز في الشركة، فأبلغهم فورًا عن هاتف مفقود: يتوقف الهاتف عند أول اتصال له بالشبكة. وفي تطبيق الهاتف أيضًا «قفل التطبيق» الذي يقفل بعد خمس دقائق من الابتعاد ويُفتح ببصمتك أو وجهك أو رمز الهاتف.
 
-وإذا كان حساب الشركة في وضع القراءة فقط بسبب دفعة مستحقة، فتسجيل الدخول يعمل لكن الحفظ لا يعمل؛ ويستطيع المالك قراءة السبب تحت «الفوترة».`,
+وإذا جعلت Integr8 حساب الشركة للقراءة فقط، فتسجيل الدخول يعمل لكن الحفظ لا يعمل؛ ويستطيع المالك سؤال Integr8 عن السبب.`,
       keywords: [
         'تسجيل الدخول',
         'تسجيل دخول',
@@ -1710,6 +1885,13 @@ If the company’s account is read-only because of an outstanding payment, signi
     feature: null,
     minPermission: null,
     appRoute: null,
+    public: {
+      category: 'getting-started',
+      question: {
+        en: 'Which app should I use: web, desktop or phone?',
+        ar: 'أي تطبيق أستخدم: الويب أم سطح المكتب أم الهاتف؟',
+      },
+    },
     en: {
       title: 'The web, desktop and mobile apps: which to use for what',
       summary:
@@ -1721,6 +1903,8 @@ The web app runs in a browser and is where the office works: the Dashboard, Work
 The desktop app, for Windows and macOS, has the same office screens with native menus and a right-click menu on rows. Two screens exist only there, under Set-up: Forms, where forms are built, previewed, tested and published, and Company branding. Both are used by Integr8 staff, who sign in through the Integr8 staff tab, choose your company and say why they are opening it, which the company can read. Owners and admins can look at the forms but not change them; branding is not shown to the company at all.
 
 The mobile app is for engineers. It holds their jobs, customers, sites, forms and files on the phone, works without signal and sends work when there is one. It is where jobs are travelled to, worked, photographed, signed off and completed, parts are used, assets are scanned and expenses are claimed. It is built for your company by Integr8, carries your logo, colours and app icon, and refuses an account from another company. Owners, admins and dispatchers normally do not need it; they do everything in the browser.
+
+The desktop apps update themselves when Integr8 releases a new version. When a desktop or phone app is too old for the server, it says so and offers Update, which opens your company’s download page with the latest installers and the phone app.
 
 All three apps are in English and Arabic, with a right-to-left layout in Arabic, and open in a light or dark theme or follow the device. Every screen in the web and desktop apps is reached from the side menu, grouped under Overview, Work, CRM, Sales, Finance, Accounting, HR, Inventory, Operations, Set-up and Company; a group you cannot see is one your role or your company’s modules do not include.`,
       keywords: [
@@ -1752,6 +1936,8 @@ All three apps are in English and Arabic, with a right-to-left layout in Arabic,
 
 وتطبيق الهاتف للمهندسين. يحمل مهامهم وعملاءهم ومواقعهم ونماذجهم وملفاتهم على الهاتف، ويعمل دون شبكة ويرسل العمل عند توفرها. وفيه يُنطلق إلى المهام وتُنفَّذ وتُصوَّر ويعتمدها العميل وتُتم، وتُستخدم القطع، وتُمسح الأصول، ويُطالَب بالمصروفات. وتبنيه Integr8 لشركتك، فيحمل شعارك وألوانك وأيقونة تطبيقك، ويرفض حسابًا من شركة أخرى. ولا يحتاج إليه المالكون والمسؤولون والمنسّقون عادةً؛ فهم يفعلون كل شيء في المتصفح.
 
+وتحدّث تطبيقات سطح المكتب نفسها عندما تُصدر Integr8 نسخة جديدة. وعندما يصبح تطبيق سطح المكتب أو الهاتف أقدم مما يقبله الخادم، يخبرك بذلك ويعرض «تحديث» الذي يفتح صفحة التنزيل الخاصة بشركتك مع أحدث برامج التثبيت وتطبيق الهاتف.
+
 والتطبيقات الثلاثة بالعربية والإنجليزية، مع تخطيط من اليمين إلى اليسار بالعربية، وتُفتح بسمة فاتحة أو داكنة أو تتبع الجهاز. وكل شاشة في تطبيقي الويب وسطح المكتب تُفتح من القائمة الجانبية المقسّمة إلى: نظرة عامة، والعمل، وإدارة علاقات العملاء، والمبيعات، والمالية، والمحاسبة، والموارد البشرية، والمخزون، والعمليات، والإعداد، والشركة؛ والمجموعة التي لا تراها هي مجموعة لا يشملها دورك أو وحدات شركتك.`,
       keywords: [
         'تطبيق الويب',
@@ -1777,19 +1963,26 @@ All three apps are in English and Arabic, with a right-to-left layout in Arabic,
     feature: null,
     minPermission: 'tenant.update',
     appRoute: 'companySettings',
+    public: {
+      category: 'account-billing',
+      question: {
+        en: 'What can I change in Company settings?',
+        ar: 'ما الذي يمكنني تغييره في إعدادات الشركة؟',
+      },
+    },
     en: {
       title: 'Company settings: timezone, currency, language, working hours and branding',
       summary:
         'What the owner sets under Company settings, what each setting affects, and which parts of the company’s look are set by Integr8.',
       body: `Company settings, under Company in the web app, is for the owner and applies to everybody in the company.
 
-Where you are holds three settings. Timezone decides what a working day means for the company: due windows, timesheets, the dates on reports and the dates in a CSV import without a time zone are all read in it. Currency is the company’s currency: item costs, quotes and invoices, expense claims, pay and the ledger are kept in it, and a quote or lead in another currency says so. Default language is the language the apps use for the company, English or Arabic; each reader still sees the screens in their own language where the app offers it.
+Where you are holds three settings. Timezone decides what a working day means for the company: due windows, timesheets, the dates on reports and the dates in a CSV import without a time zone are all read in it. Currency is the company’s currency: item costs, quotes and invoices, expense claims, pay and the ledger are kept in it, and a quote or lead in another currency says so. The currency can be changed only until the company has its first money record, such as an item cost, a quote, an invoice, a payment, an expense or a pay run; after that it is fixed. Default language is the language the apps use for the company, English or Arabic; each reader still sees the screens in their own language where the app offers it. Phone notifications arrive in the phone’s own language, or the company’s default language when the phone has not said.
 
-Working hours sets when the day starts and ends and which days are working days; the screen warns when no working day is selected.
+Working hours sets when the day starts and ends and which days are working days; the screen warns when no working day is selected. A new company starts on Cairo time (Africa/Cairo) with Sunday to Thursday as its working days.
 
 Branding is in two parts. The logo and brand colour under Company settings are printed on the documents you send out, such as quotes, invoices and delivery notes; the logo is a PNG, JPEG or WebP up to the size shown, and the brand colour is six hex digits. How your company looks inside its apps, on the other hand, is set by Integr8: the logo in the menu, the accent and shell colours, the default theme, the website link and the icon of your phone and desktop apps. The screen says Integr8 sets how your company looks in its apps; to change any of it, contact your Integr8 contact.
 
-Other settings live with their modules and are kept by owners and admins: Invoice settings under Finance (legal name, tax reference, how to pay, days to pay, labour rates), Ledger settings under Accounting, Warranty alerts under Assets, Expense categories under HR, and the Pipelines of the CRM. Job types and forms are set up by Integr8. Storage, under Company, shows what the company uses by kind and how much is left on its plan.`,
+Other settings live with their modules and are kept by owners and admins: Invoice settings under Finance (legal name, tax reference, how to pay, days to pay, labour rates), Ledger settings under Accounting, Warranty alerts under Assets, Expense categories under HR, and the Pipelines of the CRM. Job types and forms are set up by Integr8. Storage, under Company, shows what the company uses by kind and how much is left on its plan. Website access, under Company, is where owners and admins choose what the company’s own website may look up.`,
       keywords: [
         'company settings',
         'timezone',
@@ -1803,6 +1996,9 @@ Other settings live with their modules and are kept by owners and admins: Invoic
         'branding',
         'theme',
         'settings',
+        'currency locked',
+        'notifications language',
+        'working days',
       ],
     },
     ar: {
@@ -1811,13 +2007,13 @@ Other settings live with their modules and are kept by owners and admins: Invoic
         'ما يضبطه المالك تحت إعدادات الشركة، وما يؤثر فيه كل إعداد، وأي أجزاء مظهر الشركة تضبطها Integr8.',
       body: `«إعدادات الشركة»، تحت مجموعة الشركة في تطبيق الويب، للمالك وتسري على الجميع في الشركة.
 
-يحمل قسم «أين أنتم» ثلاثة إعدادات. المنطقة الزمنية تحدد معنى يوم العمل للشركة: نوافذ الاستحقاق، وسجلات الدوام، وتواريخ التقارير، وتواريخ الاستيراد من CSV التي بلا منطقة زمنية تُقرأ كلها بها. والعملة هي عملة الشركة: تكاليف الأصناف، وعروض الأسعار والفواتير، ومطالبات المصروفات، والأجور، ودفتر الأستاذ تُحفظ بها، ويُذكر ذلك على عرض سعر أو عميل محتمل بعملة أخرى. واللغة الافتراضية هي اللغة التي تستخدمها التطبيقات للشركة، العربية أو الإنجليزية؛ ويبقى كل قارئ يرى الشاشات بلغته حيث يتيح التطبيق ذلك.
+يحمل قسم «أين أنتم» ثلاثة إعدادات. المنطقة الزمنية تحدد معنى يوم العمل للشركة: نوافذ الاستحقاق، وسجلات الدوام، وتواريخ التقارير، وتواريخ الاستيراد من CSV التي بلا منطقة زمنية تُقرأ كلها بها. والعملة هي عملة الشركة: تكاليف الأصناف، وعروض الأسعار والفواتير، ومطالبات المصروفات، والأجور، ودفتر الأستاذ تُحفظ بها، ويُذكر ذلك على عرض سعر أو عميل محتمل بعملة أخرى. ولا يمكن تغيير العملة إلا قبل أول سجل مالي للشركة، مثل تكلفة صنف أو عرض سعر أو فاتورة أو دفعة أو مصروف أو مسيرة رواتب؛ وبعدها تثبت. واللغة الافتراضية هي اللغة التي تستخدمها التطبيقات للشركة، العربية أو الإنجليزية؛ ويبقى كل قارئ يرى الشاشات بلغته حيث يتيح التطبيق ذلك. وتصل إشعارات الهاتف بلغة الهاتف نفسه، أو باللغة الافتراضية للشركة إن لم يحدد الهاتف لغته.
 
-وتحدد «ساعات العمل» متى يبدأ اليوم وينتهي وأي الأيام أيام عمل؛ وتحذّر الشاشة عندما لا يُختار أي يوم عمل.
+وتحدد «ساعات العمل» متى يبدأ اليوم وينتهي وأي الأيام أيام عمل؛ وتحذّر الشاشة عندما لا يُختار أي يوم عمل. وتبدأ الشركة الجديدة بتوقيت القاهرة (Africa/Cairo) وأيام عمل من الأحد إلى الخميس.
 
 والهوية جزآن. الشعار ولون العلامة تحت إعدادات الشركة يُطبعان على المستندات التي ترسلها، مثل عروض الأسعار والفواتير وإشعارات التسليم؛ والشعار ملف PNG أو JPEG أو WebP حتى الحجم المبيّن، ولون العلامة ستة أحرف سداسية عشرية. أما مظهر شركتك داخل تطبيقاتها فتضبطه Integr8: الشعار في القائمة، ولونا التمييز والإطار، والسمة الافتراضية، ورابط الموقع الإلكتروني، وأيقونة تطبيقات الهاتف وسطح المكتب. وتقول الشاشة إن Integr8 تحدد مظهر شركتك في تطبيقاتها؛ ولتغيير أي منه، تواصل مع جهة اتصالك في Integr8.
 
-وتقع الإعدادات الأخرى مع وحداتها ويديرها المالكون والمسؤولون: إعدادات الفواتير تحت المالية (الاسم القانوني والرقم الضريبي وطريقة الدفع وأيام السداد وأجور العمالة)، وإعدادات الدفتر تحت المحاسبة، وتنبيهات الضمان تحت الأصول، وفئات المصروفات تحت الموارد البشرية، ومسارات المبيعات في إدارة علاقات العملاء. وأنواع المهام والنماذج تُعدّها Integr8. وتعرض «التخزين»، تحت الشركة، ما تستخدمه الشركة بحسب النوع وما تبقّى لها في خطتها.`,
+وتقع الإعدادات الأخرى مع وحداتها ويديرها المالكون والمسؤولون: إعدادات الفواتير تحت المالية (الاسم القانوني والرقم الضريبي وطريقة الدفع وأيام السداد وأجور العمالة)، وإعدادات الدفتر تحت المحاسبة، وتنبيهات الضمان تحت الأصول، وفئات المصروفات تحت الموارد البشرية، ومسارات المبيعات في إدارة علاقات العملاء. وأنواع المهام والنماذج تُعدّها Integr8. وتعرض «التخزين»، تحت الشركة، ما تستخدمه الشركة بحسب النوع وما تبقّى لها في خطتها. وفي «وصول الموقع»، تحت الشركة، يختار المالكون والمسؤولون ما يمكن لموقع الشركة الإلكتروني البحث عنه.`,
       keywords: [
         'إعدادات الشركة',
         'اعدادات',
@@ -1831,6 +2027,9 @@ Other settings live with their modules and are kept by owners and admins: Invoic
         'لون العلامة',
         'هوية الشركة',
         'السمة',
+        'قفل العملة',
+        'لغة الإشعارات',
+        'أيام العمل',
       ],
     },
   },
@@ -1840,13 +2039,21 @@ Other settings live with their modules and are kept by owners and admins: Invoic
     feature: null,
     minPermission: null,
     appRoute: null,
+    public: {
+      category: 'getting-started',
+      question: { en: 'What can the AI assistant do?', ar: 'ماذا يستطيع المساعد الذكي أن يفعل؟' },
+    },
     en: {
       title: 'The AI assistant: what it can do and its limits',
       summary:
-        'What the in-app assistant answers today, where it appears, why it needs a connection, who switches it on, and the message limits your subscription sets.',
-      body: `The assistant answers questions about how to use Integr8 Plus: what a screen is for, where to find something, which button does what, who may do what, and what to do when something is refused. It answers in English or Arabic, from reviewed help articles like this one, and shows the articles it used so you can read more. Today it is a help assistant only: it does not read your company’s customers, jobs, stock or money, it does not change anything, and it does not take actions on your behalf. When the help content does not cover a question, it says so rather than guessing, and points you to Integr8 support.
+        'What the in-app assistant can do (answer from the help guide, look up your records, prepare changes you confirm), where it appears, who switches it on, and its limits.',
+      body: `The assistant answers questions about how to use Integr8 Plus: what a screen is for, where to find something, which button does what, who may do what, and what to do when something is refused. It answers in English or Arabic from reviewed help articles like this one, and shows the articles it used so you can read more. When the help does not cover a question, it says so rather than guessing, and points you to Integr8.
 
-The assistant is online only. It is not part of the work the mobile app keeps on the phone, so it is unavailable without signal, and it is unavailable while the company’s account is read-only because of an outstanding payment. Never type passwords, card numbers or other secrets into it; it does not need them, and it never asks for them.
+What else it can do depends on the level your company’s plan includes. At the help level it only answers from the guide. With insights it can also look your company’s records up to answer a question, such as overdue jobs, a customer’s summary, open quotes, invoices, stock on hand, the CRM pipeline or your own schedule, only as far as your role and your company’s modules let you see them, and it changes nothing. With actions it can also prepare a new customer, a new work order, a CRM follow-up or an opportunity’s move to another stage: nothing is saved until you check the card it shows and confirm it, a proposal lapses after five minutes, and the change is recorded as made by you through the assistant.
+
+When the assistant runs without a language model, or the model is unavailable, it answers from the help guide alone and says so.
+
+The assistant is online only. It is not part of the work the mobile app keeps on the phone, so it is unavailable without signal, and it is unavailable while the company’s account is read-only. Never type passwords, card numbers or other secrets into it; it does not need them, and it never asks for them.
 
 Whether your company has the assistant at all is decided by Integr8 as part of your subscription plan, and it is off until Integr8 switches it on for the company. Within that, the company’s owner or admins decide in which apps it appears (web, desktop, mobile) and which people may use it. If you do not see it, ask an owner or admin first, and they ask Integr8.
 
@@ -1864,15 +2071,23 @@ Your plan sets how many assistant messages the company, and each person, may sen
         'enable assistant',
         'turn on ai',
         'not available',
+        'insights',
+        'actions',
+        'confirm',
+        'records',
       ],
     },
     ar: {
       title: 'المساعد الذكي: ما يستطيعه وحدوده',
       summary:
-        'ما يجيب عنه المساعد داخل التطبيق اليوم، وأين يظهر، ولماذا يحتاج إلى اتصال، ومن يفعّله، وحدود الرسائل التي يحددها اشتراكك.',
-      body: `يجيب المساعد عن أسئلة حول كيفية استخدام Integr8 Plus: ما الغرض من شاشة، وأين تجد شيئًا، وماذا يفعل كل زر، ومن يستطيع فعل ماذا، وماذا تفعل عندما يُرفض شيء. ويجيب بالعربية أو الإنجليزية من مقالات مساعدة مراجَعة مثل هذه، ويعرض المقالات التي استند إليها لتقرأ المزيد. وهو اليوم مساعد للمساعدة فقط: لا يقرأ عملاء شركتك أو مهامها أو مخزونها أو أموالها، ولا يغيّر شيئًا، ولا ينفّذ إجراءات نيابةً عنك. وعندما لا يغطي محتوى المساعدة سؤالًا، يقول ذلك بدل التخمين ويوجّهك إلى دعم Integr8.
+        'ما يستطيع المساعد داخل التطبيق فعله (الإجابة من دليل المساعدة، والبحث في سجلاتك، وتحضير تغييرات تؤكدها)، وأين يظهر، ومن يفعّله، وحدوده.',
+      body: `يجيب المساعد عن أسئلة حول كيفية استخدام Integr8 Plus: ما الغرض من شاشة، وأين تجد شيئًا، وماذا يفعل كل زر، ومن يستطيع فعل ماذا، وماذا تفعل عندما يُرفض شيء. ويجيب بالعربية أو الإنجليزية من مقالات مساعدة مراجَعة مثل هذه، ويعرض المقالات التي استند إليها لتقرأ المزيد. وعندما لا يغطي محتوى المساعدة سؤالًا، يقول ذلك بدل التخمين ويوجّهك إلى Integr8.
 
-يعمل المساعد عبر الاتصال فقط. فهو ليس جزءًا من العمل الذي يحتفظ به تطبيق الهاتف على الهاتف، ولذلك لا يتوفر دون شبكة، ولا يتوفر عندما يكون حساب الشركة في وضع القراءة فقط بسبب دفعة مستحقة. ولا تكتب فيه أبدًا كلمات مرور أو أرقام بطاقات أو أسرارًا أخرى؛ فهو لا يحتاج إليها ولا يطلبها أبدًا.
+وما يستطيعه غير ذلك يعتمد على المستوى الذي تشمله خطة شركتك. في مستوى المساعدة يجيب من الدليل فقط. ومع «الرؤى» يستطيع أيضًا البحث في سجلات شركتك للإجابة عن سؤال، مثل المهام المتأخرة، أو ملخص عميل، أو عروض الأسعار المفتوحة، أو الفواتير، أو المخزون المتوفر، أو مسار المبيعات، أو جدولك أنت، وذلك فقط في حدود ما يسمح لك دورك ووحدات شركتك برؤيته، ولا يغيّر شيئًا. ومع «الإجراءات» يستطيع أيضًا تحضير عميل جديد، أو أمر عمل جديد، أو متابعة في إدارة علاقات العملاء، أو نقل فرصة إلى مرحلة أخرى: لا يُحفظ شيء حتى تراجع البطاقة التي يعرضها وتؤكدها، وينتهي الاقتراح بعد خمس دقائق، ويُسجَّل التغيير على أنك أجريته عبر المساعد.
+
+وعندما يعمل المساعد دون نموذج لغوي، أو يكون النموذج غير متاح، يجيب من دليل المساعدة وحده ويقول ذلك.
+
+يعمل المساعد عبر الاتصال فقط. فهو ليس جزءًا من العمل الذي يحتفظ به تطبيق الهاتف على الهاتف، ولذلك لا يتوفر دون شبكة، ولا يتوفر عندما يكون حساب الشركة للقراءة فقط. ولا تكتب فيه أبدًا كلمات مرور أو أرقام بطاقات أو أسرارًا أخرى؛ فهو لا يحتاج إليها ولا يطلبها أبدًا.
 
 وما إذا كان لدى شركتك المساعد أصلًا تقرره Integr8 ضمن خطة اشتراكك، وهو متوقف حتى تفعّله Integr8 للشركة. وضمن ذلك، يقرر مالك الشركة أو مسؤولوها في أي التطبيقات يظهر (الويب، سطح المكتب، الهاتف) ومن يستطيع استخدامه. وإن لم تره، فاسأل المالك أو المسؤول أولًا، وهم يسألون Integr8.
 
@@ -1890,6 +2105,668 @@ Your plan sets how many assistant messages the company, and each person, may sen
         'دون اتصال',
         'تفعيل المساعد',
         'غير متاح',
+        'الرؤى',
+        'الإجراءات',
+        'تأكيد',
+        'السجلات',
+      ],
+    },
+  },
+  {
+    key: 'documents_pdfs_upload_sharing',
+    module: 'documents',
+    feature: 'documents',
+    minPermission: 'document.read',
+    appRoute: 'documents',
+    public: {
+      category: 'forms-documents',
+      question: {
+        en: 'How do PDF documents work, and who can see them?',
+        ar: 'كيف تعمل مستندات PDF، ومن يستطيع رؤيتها؟',
+      },
+    },
+    en: {
+      title: 'Documents: PDFs from submissions, uploaded PDFs and the Shareable switch',
+      summary:
+        'The register of PDF documents, making a PDF from a submission, uploading a PDF made elsewhere, the QR code link, and the Shareable switch that decides whether anybody outside the company can open a document.',
+      body: `Documents, under Work, appears when Integr8 has switched the documents module on. It is the company’s register of PDF documents: certificates and reports made from submissions, and PDFs you upload yourself. Search by any of a document’s fields or its title, filter by state, and open, view or download the PDF.
+
+To make a PDF from a submission, open the submission and choose Make PDF, pick one of the form’s PDF templates (Integr8 designs them with you) and fill in anything the template asks for. The PDF is made in a moment, and its page updates by itself.
+
+To add a PDF made elsewhere, such as a certificate signed on paper and scanned, upload it in Documents: a PDF of up to 20 MB, a title, a reference number such as the certificate number, and optionally the customer it belongs to. An uploaded document is listed in the same register, marked Uploaded, and has its own QR code link like any other.
+
+Every document has a Shareable switch. When it is on, the document’s QR code link opens the PDF for anybody who has the link, without an account, and your company’s own website can find the document by its reference. When it is off, the link and the website lookup both stop, and the document stays in the register for your team. New documents start with Shareable off; documents made before this switch existed stay shareable. Every change of the switch is recorded in the document’s history.
+
+Stop the link and Open the link again stop or restart a document’s link, and a date can stop it by itself. Delete stops the link at once and removes the PDF after the restore window. Uploading documents and changing Shareable are for owners and admins unless your company’s roles say otherwise; making a PDF also needs access to the submission.`,
+      keywords: [
+        'documents',
+        'pdf',
+        'certificate',
+        'upload',
+        'uploaded',
+        'qr code',
+        'link',
+        'shareable',
+        'share',
+        'website lookup',
+        'make pdf',
+        'template',
+        'expire',
+      ],
+    },
+    ar: {
+      title: 'المستندات: ملفات PDF من الإرسالات والملفات المرفوعة ومفتاح «قابل للمشاركة»',
+      summary:
+        'سجل مستندات PDF، وإنشاء PDF من إرسال، ورفع PDF أُنشئ في مكان آخر، ورابط رمز QR، ومفتاح «قابل للمشاركة» الذي يحدد هل يستطيع أحد من خارج الشركة فتح المستند.',
+      body: `تظهر «المستندات»، تحت مجموعة العمل، عندما تفعّل Integr8 وحدة المستندات. وهي سجل الشركة لمستندات PDF: الشهادات والتقارير المنشأة من الإرسالات، وملفات PDF التي ترفعها بنفسك. ابحث بأي حقل من حقول المستند أو بعنوانه، وصفِّ بالحالة، وافتح ملف PDF أو اعرضه أو نزّله.
+
+لإنشاء PDF من إرسال، افتح الإرسال واختر «إنشاء PDF»، ثم اختر أحد قوالب PDF الخاصة بالنموذج (تصممها Integr8 معك) واملأ ما يطلبه القالب. يُنشأ الملف خلال لحظات، وتتحدّث صفحته تلقائيًا.
+
+ولإضافة PDF أُنشئ في مكان آخر، مثل شهادة موقّعة على الورق ثم مُسحت ضوئيًا، ارفعه في «المستندات»: ملف PDF حتى 20 ميغابايت، وعنوان، ورقم مرجعي مثل رقم الشهادة، والعميل الذي يخصه إن أردت. ويظهر المستند المرفوع في السجل نفسه بعلامة «مرفوع»، وله رابط رمز QR خاص به كأي مستند آخر.
+
+ولكل مستند مفتاح «قابل للمشاركة». عندما يكون مفعّلًا، يفتح رابط رمز QR الخاص بالمستند ملف PDF لكل من لديه الرابط دون حساب، ويستطيع موقع شركتك الإلكتروني العثور على المستند برقمه المرجعي. وعندما يكون متوقفًا، يتوقف الرابط والبحث من الموقع كلاهما، ويبقى المستند في السجل لفريقك. تبدأ المستندات الجديدة والمفتاح متوقف؛ أما المستندات المنشأة قبل وجود هذا المفتاح فتبقى قابلة للمشاركة. ويُسجَّل كل تغيير للمفتاح في سجل المستند.
+
+ويوقف «إيقاف الرابط» و«فتح الرابط مجددًا» رابط المستند أو يعيدان تشغيله، ويمكن لتاريخ أن يوقفه تلقائيًا. ويوقف «حذف» الرابط فورًا ويزيل ملف PDF بعد فترة الاستعادة. ورفع المستندات وتغيير «قابل للمشاركة» للمالكين والمسؤولين ما لم تحدد أدوار شركتك غير ذلك؛ ويحتاج إنشاء PDF أيضًا إلى صلاحية الوصول إلى الإرسال.`,
+      keywords: [
+        'المستندات',
+        'PDF',
+        'شهادة',
+        'رفع',
+        'مرفوع',
+        'رمز QR',
+        'رابط',
+        'قابل للمشاركة',
+        'مشاركة',
+        'البحث من الموقع',
+        'إنشاء PDF',
+        'قالب',
+        'إيقاف الرابط',
+      ],
+    },
+  },
+  {
+    key: 'e_invoicing_eta',
+    module: 'e_invoicing',
+    feature: 'e_invoicing',
+    minPermission: 'eta.read',
+    appRoute: 'eInvoicing',
+    public: null,
+    en: {
+      title: 'E-invoicing with the Egyptian Tax Authority',
+      summary:
+        'What the e-invoicing module does, its settings and codes, preparing, signing and sending an invoice to the ETA, what each state means, and what is not yet validated.',
+      body: `E-invoicing sends the company’s issued invoices to the Egyptian Tax Authority (ETA) as e-invoices, signed with the company’s own token. It needs the finance module, and Integr8 switches it on for a company from the staff desktop app. It appears under Finance as E-invoicing.
+
+Owners and admins set it up under Settings: the environment (PreProd for testing, or Production), the issuer details, the company’s ETA credentials, which are never shown again once saved, and the signing certificates. Codes holds the customers’ tax identities, the items’ ETA codes and the unit and tax mappings, which the people who prepare documents keep.
+
+From an issued invoice choose Prepare ETA document, then Ask for signature. Signing is done in the desktop app on the computer the company’s token is plugged into: open the signing queue, check the document and sign it. Then choose Send to the ETA. A document moves through Ready to sign, Waiting for signature, Signed, Sending and Sent, awaiting the ETA, and ends Valid, Invalid or Rejected; the status is checked automatically, and Check status now asks at once. An invalid or rejected document shows what the ETA said in its own words: correct the invoice or the codes, then prepare it again. When no clear answer came back, search the ETA portal for the invoice before choosing Say what happened, because sending a document the ETA already has creates a duplicate.
+
+A valid document can be cancelled at the ETA, and its ETA PDF downloaded. E-invoicing has not yet been tested end to end with the live tax authority, and signing needs the token’s driver on the desktop computer; keep it on the test system until Integr8 says it is ready.`,
+      keywords: [
+        'e-invoicing',
+        'einvoice',
+        'eta',
+        'egyptian tax authority',
+        'tax',
+        'sign',
+        'token',
+        'signing queue',
+        'submit',
+        'valid',
+        'invalid',
+        'rejected',
+        'preprod',
+        'codes',
+      ],
+    },
+    ar: {
+      title: 'الفاتورة الإلكترونية مع مصلحة الضرائب المصرية',
+      summary:
+        'ما تفعله وحدة الفاتورة الإلكترونية، وإعداداتها ورموزها، وتحضير الفاتورة وتوقيعها وإرسالها إلى المصلحة، ومعنى كل حالة، وما لم يُتحقق منه بعد.',
+      body: `ترسل الفاتورة الإلكترونية فواتير الشركة الصادرة إلى مصلحة الضرائب المصرية (ETA) كفواتير إلكترونية موقّعة بتوكن الشركة نفسها. وتحتاج إلى وحدة المالية، وتفعّلها Integr8 للشركة من تطبيق سطح المكتب الخاص بموظفيها. وتظهر تحت المالية باسم «الفاتورة الإلكترونية».
+
+يُعدّها المالكون والمسؤولون من «الإعدادات»: البيئة (PreProd للاختبار، أو الإنتاج)، وبيانات المُصدِر، وبيانات اعتماد الشركة لدى المصلحة التي لا تُعرض مجددًا بعد حفظها، وشهادات التوقيع. وتضم «الرموز» الهويات الضريبية للعملاء، ورموز الأصناف لدى المصلحة، ومطابقة الوحدات والضرائب، ويتولاها من يحضّرون المستندات.
+
+من فاتورة صادرة اختر «تحضير مستند للمصلحة»، ثم «طلب التوقيع». ويتم التوقيع في تطبيق سطح المكتب على الحاسوب الموصول به توكن الشركة: افتح طابور التوقيع، وراجع المستند، ووقّعه. ثم اختر «الإرسال إلى المصلحة». ويمر المستند بالحالات: جاهز للتوقيع، وبانتظار التوقيع، وموقّع، وقيد الإرسال، وأُرسل بانتظار المصلحة، وينتهي صالحًا أو غير صالح أو مرفوضًا؛ وتُفحص الحالة تلقائيًا، ويسأل «فحص الحالة الآن» فورًا. ويعرض المستند غير الصالح أو المرفوض ما قالته المصلحة بكلماتها: صحّح الفاتورة أو الرموز ثم حضّر المستند مجددًا. وعندما لا يعود جواب واضح، ابحث عن الفاتورة في بوابة المصلحة قبل اختيار «اذكر ما حدث»، لأن إرسال مستند موجود لدى المصلحة ينشئ نسخة مكررة.
+
+ويمكن إلغاء المستند الصالح لدى المصلحة وتنزيل ملف PDF الخاص بها. ولم تُختبر الفاتورة الإلكترونية بعد اختبارًا كاملًا مع المصلحة الفعلية، ويحتاج التوقيع إلى برنامج تشغيل التوكن على حاسوب سطح المكتب؛ فأبقها على بيئة الاختبار حتى تخبرك Integr8 بأنها جاهزة.`,
+      keywords: [
+        'الفاتورة الإلكترونية',
+        'مصلحة الضرائب',
+        'ضرائب',
+        'توقيع',
+        'توكن',
+        'طابور التوقيع',
+        'إرسال',
+        'صالح',
+        'غير صالح',
+        'مرفوض',
+        'بيئة الاختبار',
+        'الرموز',
+      ],
+    },
+  },
+  {
+    key: 'schedule_visits',
+    module: 'work_orders',
+    feature: null,
+    minPermission: 'work_order.read_all',
+    appRoute: 'schedule',
+    public: {
+      category: 'field-work',
+      question: { en: 'How do I plan visits on the schedule?', ar: 'كيف أخطط الزيارات في الجدول؟' },
+    },
+    en: {
+      title: 'The schedule: planning visits',
+      summary:
+        'Planning when work happens and who goes: visits, the day, week and month calendar, jobs that need a visit, moving and resizing visits, and qualification warnings.',
+      body: `Schedule, under Work, is where visits are planned: when the work happens and who goes. A job can have one visit or several, for example a survey and then an installation, each with its own start, length and people. The calendar shows a day, a week or a month, with each person’s visits and the visits with nobody on them yet.
+
+Needs a visit lists open jobs with no planned visit: drag one onto the calendar, or choose Plan a visit and set the time and the people. Drag a visit to move it, and drag its bottom edge to change its length. Select several visits to move or reassign them together. Cancelled visits are hidden unless you choose to show them.
+
+Times are shown in your device’s time zone, and the screen says when that differs from the company’s. When a job needs a skill or certificate that nobody on the visit holds for the visit’s dates, the schedule says who lacks what; you can still go ahead by giving a reason, which is kept in the job’s history.
+
+Engineers see their visits on the phone under Today and Your jobs. Dispatchers, admins and owners plan and change visits; others who can see every job can read the schedule but not change it.`,
+      keywords: [
+        'schedule',
+        'calendar',
+        'visit',
+        'visits',
+        'plan a visit',
+        'needs a visit',
+        'dispatch board',
+        'drag',
+        'day',
+        'week',
+        'month',
+        'reassign',
+        'time zone',
+      ],
+    },
+    ar: {
+      title: 'الجدول: تخطيط الزيارات',
+      summary:
+        'تخطيط موعد العمل ومن يذهب إليه: الزيارات، والتقويم باليوم والأسبوع والشهر، والمهام التي تحتاج إلى زيارة، ونقل الزيارات وتغيير مدتها، وتنبيهات المؤهلات.',
+      body: `«الجدول»، تحت مجموعة العمل، هو حيث تُخطَّط الزيارات: متى يتم العمل ومن يذهب إليه. يمكن أن تكون للمهمة زيارة واحدة أو أكثر، مثل معاينة ثم تركيب، لكل منها بدايتها ومدتها وأشخاصها. ويعرض التقويم يومًا أو أسبوعًا أو شهرًا، مع زيارات كل شخص والزيارات التي لا أحد عليها بعد.
+
+تعرض «تحتاج إلى زيارة» المهام المفتوحة التي لا زيارة مخططة لها: اسحب إحداها إلى التقويم، أو اختر «تخطيط زيارة» وحدد الوقت والأشخاص. اسحب الزيارة لنقلها، واسحب حافتها السفلى لتغيير مدتها. وحدد عدة زيارات لنقلها أو إعادة إسنادها معًا. وتُخفى الزيارات الملغاة ما لم تختر إظهارها.
+
+تُعرض الأوقات بالمنطقة الزمنية لجهازك، وتذكر الشاشة متى تختلف عن منطقة الشركة. وعندما تحتاج المهمة إلى مهارة أو شهادة لا يحملها أحد على الزيارة في تواريخها، يذكر الجدول من ينقصه ماذا؛ ويمكنك المتابعة مع ذكر سبب يُحفظ في سجل المهمة.
+
+ويرى المهندسون زياراتهم على الهاتف تحت «اليوم» و«مهامك». ويخطط المنسّقون والمسؤولون والمالكون الزيارات ويغيّرونها؛ ويستطيع غيرهم ممن يرون كل المهام قراءة الجدول دون تغييره.`,
+      keywords: [
+        'الجدول',
+        'التقويم',
+        'زيارة',
+        'الزيارات',
+        'تخطيط زيارة',
+        'تحتاج إلى زيارة',
+        'لوحة التوجيه',
+        'سحب',
+        'يوم',
+        'أسبوع',
+        'شهر',
+        'إعادة إسناد',
+        'المنطقة الزمنية',
+      ],
+    },
+  },
+  {
+    key: 'qualifications_skills_certificates',
+    module: 'work_orders',
+    feature: null,
+    minPermission: null,
+    appRoute: 'qualifications',
+    public: {
+      category: 'people-hr',
+      question: {
+        en: 'How do we keep track of skills and certificates?',
+        ar: 'كيف نتابع المهارات والشهادات؟',
+      },
+    },
+    en: {
+      title: 'Skills and certificates',
+      summary:
+        'Keeping who is qualified for what, the jobs that need a qualification, the warning when nobody on a visit holds it, and expiry alerts.',
+      body: `Skills and certificates, under Work, keeps what each person in the company is qualified for. A skill does not expire; a certificate has a number, an issue date, an expiry date and, if you like, a scan. It works without the HR module.
+
+The company’s list holds the skills and certificates you use, and People’s records shows who holds what: Valid, Expiring soon, Expired or Does not expire. Owners, admins and HR managers add and change both; dispatchers and others with access read them, and everybody sees their own, on the phone too.
+
+A job type can list the qualifications its jobs need, and each new job copies that list; it can be changed on a single job. When people are put on a visit, at least one of them must hold each qualification, valid on the visit’s dates rather than today. If nobody does, the schedule and the job say who is missing what, people without it are listed last when choosing the crew, and you can go ahead with a reason that is kept in the job’s history. Nothing is blocked.
+
+Before a certificate runs out, its holder and the managers are warned; the warning period is a company setting, 30 days unless you change it. When a certificate lapses, the warning lists the planned visits that no longer meet what their jobs need.`,
+      keywords: [
+        'skills',
+        'certificates',
+        'qualifications',
+        'qualified',
+        'expiry',
+        'expiring',
+        'expired',
+        'requirement',
+        'job type',
+        'override',
+        'reason',
+        'licence',
+        'training',
+      ],
+    },
+    ar: {
+      title: 'المهارات والشهادات',
+      summary:
+        'متابعة من هو مؤهل لماذا، والمهام التي تحتاج إلى مؤهل، والتنبيه عندما لا يحمله أحد على الزيارة، وتنبيهات انتهاء الصلاحية.',
+      body: `تحفظ «المهارات والشهادات»، تحت مجموعة العمل، ما يؤهَّل له كل شخص في الشركة. المهارة لا تنتهي صلاحيتها؛ والشهادة لها رقم وتاريخ إصدار وتاريخ انتهاء، ونسخة ممسوحة ضوئيًا إن أردت. وتعمل دون وحدة الموارد البشرية.
+
+تضم «قائمة الشركة» المهارات والشهادات التي تستخدمونها، وتعرض «سجلات الأشخاص» من يحمل ماذا: صالحة، أو تنتهي قريبًا، أو منتهية، أو لا تنتهي. ويضيفها المالكون والمسؤولون ومديرو الموارد البشرية ويغيّرونها؛ ويقرؤها المنسّقون وغيرهم ممن لديهم صلاحية، ويرى كل شخص ما يخصه، على الهاتف أيضًا.
+
+يمكن لنوع المهمة أن يذكر المؤهلات التي تحتاجها مهامه، وتنسخ كل مهمة جديدة هذه القائمة؛ ويمكن تغييرها في مهمة واحدة. وعند إسناد أشخاص إلى زيارة، يجب أن يحمل أحدهم على الأقل كل مؤهل، صالحًا في تواريخ الزيارة لا اليوم. وإن لم يحمله أحد، يذكر الجدول والمهمة من ينقصه ماذا، ويُعرض من لا يحمله في آخر القائمة عند اختيار الفريق، ويمكنك المتابعة مع سبب يُحفظ في سجل المهمة. لا شيء يُمنع.
+
+وقبل انتهاء صلاحية الشهادة يُنبَّه حاملها والمديرون؛ ومدة التنبيه إعداد للشركة، 30 يومًا ما لم تغيّرها. وعندما تنتهي الشهادة، يذكر التنبيه الزيارات المخططة التي لم تعد تستوفي ما تحتاجه مهامها.`,
+      keywords: [
+        'المهارات',
+        'الشهادات',
+        'المؤهلات',
+        'مؤهل',
+        'انتهاء الصلاحية',
+        'تنتهي قريبًا',
+        'منتهية',
+        'متطلبات',
+        'نوع المهمة',
+        'تجاوز',
+        'سبب',
+        'رخصة',
+        'تدريب',
+      ],
+    },
+  },
+  {
+    key: 'contracts_maintenance_deadlines',
+    module: 'work_orders',
+    feature: null,
+    minPermission: null,
+    appRoute: 'contracts',
+    public: {
+      category: 'field-work',
+      question: {
+        en: 'How do contracts, maintenance plans and response deadlines work?',
+        ar: 'كيف تعمل العقود وخطط الصيانة ومهل الاستجابة؟',
+      },
+    },
+    en: {
+      title: 'Service contracts, maintenance plans and response deadlines',
+      summary:
+        'Recording what a customer has agreed to and whether each job is covered, recurring maintenance jobs for an asset, and the company’s response and completion deadlines.',
+      body: `Service contracts, under Operations, record what a customer has agreed to: the customer and sites it covers, its dates and what is included. Each job then says whether it is covered by a contract or chargeable, in the office and on the phone, and office staff can change a job’s coverage with a reason. Nothing is billed or quoted automatically. Contracts are renewed by hand: you are reminded before the end date, and Renew makes a new contract that starts the day after the old one ends, linked to it, with its maintenance plans moved across. A cancelled contract cannot be changed or renewed. Owners, admins and dispatchers keep contracts.
+
+Maintenance, under Work, makes recurring jobs for an asset, so it needs the assets module. A plan names the asset, the job type and an interval, every so many days, weeks, months or years, counted either on a fixed calendar from its start date or from when the last job was completed. A set number of days before each due date, 30 unless you change it, the plan creates the job with its due window, and the job appears under Needs a visit on the Schedule for a dispatcher to place and staff. A plan can be paused or ended, and changing it only affects jobs it has not created yet. Plans linked to an ended contract stop creating jobs.
+
+Response deadlines, under Work, set for each priority how long the company has to respond to a job, which means dispatching it, and to complete it, counted from when the job was created, either around the clock or in working hours only. The clock never pauses. Jobs show their deadlines, a warning goes out before one is missed, and a deadline met late is recorded as a miss in the job’s history. Owners and admins set the deadlines; the report is open to everybody who sees every job.`,
+      keywords: [
+        'contract',
+        'service contract',
+        'covered',
+        'chargeable',
+        'coverage',
+        'renew',
+        'maintenance',
+        'maintenance plan',
+        'recurring',
+        'planned maintenance',
+        'deadline',
+        'response time',
+        'sla',
+        'priority',
+      ],
+    },
+    ar: {
+      title: 'عقود الخدمة وخطط الصيانة ومهل الاستجابة',
+      summary:
+        'تسجيل ما اتفق عليه العميل وهل كل مهمة مشمولة، ومهام الصيانة المتكررة لأصل، ومهل الشركة للاستجابة والإتمام.',
+      body: `تسجّل «عقود الخدمة»، تحت مجموعة العمليات، ما اتفق عليه العميل: العميل والمواقع التي يشملها العقد، وتواريخه، وما يتضمنه. وعندها تذكر كل مهمة هل هي مشمولة بعقد أم بمقابل، في المكتب وعلى الهاتف، ويستطيع موظفو المكتب تغيير شمول المهمة مع ذكر سبب. ولا يُفوتَر شيء ولا يُسعَّر تلقائيًا. وتُجدَّد العقود يدويًا: تُذكَّر قبل تاريخ الانتهاء، وينشئ «تجديد» عقدًا جديدًا يبدأ في اليوم التالي لانتهاء القديم ومرتبطًا به، وتنتقل إليه خطط الصيانة. ولا يمكن تغيير العقد الملغى أو تجديده. ويتولى العقود المالكون والمسؤولون والمنسّقون.
+
+تنشئ «الصيانة»، تحت مجموعة العمل، مهامًا متكررة لأصل، ولذلك تحتاج إلى وحدة الأصول. تحدد الخطة الأصل ونوع المهمة وفاصلًا زمنيًا، كل عدد من الأيام أو الأسابيع أو الأشهر أو السنوات، يُحسب إما بتقويم ثابت من تاريخ بدايتها أو من إتمام آخر مهمة. وقبل كل تاريخ استحقاق بعدد محدد من الأيام، 30 ما لم تغيّره، تنشئ الخطة المهمة بنافذة استحقاقها، فتظهر تحت «تحتاج إلى زيارة» في الجدول ليضعها المنسّق ويحدد فريقها. ويمكن إيقاف الخطة مؤقتًا أو إنهاؤها، ولا يؤثر تغييرها إلا في المهام التي لم تُنشأ بعد. وتتوقف الخطط المرتبطة بعقد منتهٍ عن إنشاء المهام.
+
+وتحدد «مهل الاستجابة»، تحت مجموعة العمل، لكل أولوية المدة المتاحة للشركة للاستجابة للمهمة، أي توجيهها، ولإتمامها، محسوبة من وقت إنشاء المهمة، إما على مدار الساعة أو في ساعات العمل فقط. ولا يتوقف العدّ أبدًا. وتعرض المهام مهلها، ويصدر تنبيه قبل فوات المهلة، وتُسجَّل المهلة التي تحققت متأخرة على أنها فائتة في سجل المهمة. ويحدد المالكون والمسؤولون المهل؛ والتقرير متاح لكل من يرى كل المهام.`,
+      keywords: [
+        'عقد',
+        'عقد خدمة',
+        'مشمول',
+        'بمقابل',
+        'الشمول',
+        'تجديد',
+        'الصيانة',
+        'خطة صيانة',
+        'متكررة',
+        'صيانة دورية',
+        'مهلة',
+        'وقت الاستجابة',
+        'اتفاقية مستوى الخدمة',
+        'الأولوية',
+      ],
+    },
+  },
+  {
+    key: 'closed_jobs_late_phone_work',
+    module: 'work_orders',
+    feature: null,
+    minPermission: null,
+    appRoute: 'workOrders',
+    public: {
+      category: 'phone-app',
+      question: {
+        en: 'What happens to work a phone sends after the job was closed?',
+        ar: 'ماذا يحدث للعمل الذي يرسله الهاتف بعد إغلاق المهمة؟',
+      },
+    },
+    en: {
+      title: 'Closed jobs and work a phone sends late',
+      summary:
+        'What a completed, reviewed or cancelled job refuses, how forms and parts recorded on a phone before the job closed are still accepted, and billing parts that arrive after the invoice.',
+      body: `A job that is Complete, Reviewed or Cancelled is closed. A closed job refuses new work from the office: no form can be started on it, a draft cannot be submitted on it, and no parts can be recorded on it from the office screens. Returning unused parts is still allowed.
+
+Phones work without signal, so an engineer may have done the work in time and synced only after the job closed. The phone’s work is judged by when it was done. A form the phone started before the job closed is accepted, marked Submitted after close, with an entry in the job’s history; a form started after the job closed is refused, and the phone shows why under Needs your attention. Parts recorded on the phone before the job closed are accepted and taken from stock in the same way. A cancelled job takes no parts at all.
+
+A job is invoiced once. If parts recorded on a phone arrive after the job was invoiced, the job’s Invoicing and cost section shows Parts not yet billed; choose Invoice the parts not yet billed to raise a follow-up invoice for them.
+
+To finish something on a completed job, an owner or admin can Reopen it with a reason, and a cancelled job can be reinstated.`,
+      keywords: [
+        'closed job',
+        'completed job',
+        'cancelled job',
+        'late',
+        'submitted after close',
+        'offline',
+        'sync',
+        'refused',
+        'parts after close',
+        'parts not yet billed',
+        'follow-up invoice',
+        'reopen',
+      ],
+    },
+    ar: {
+      title: 'المهام المغلقة والعمل الذي يرسله الهاتف متأخرًا',
+      summary:
+        'ما ترفضه المهمة المكتملة أو المعتمدة أو الملغاة، وكيف يُقبل ما سجّله الهاتف من نماذج وقطع قبل إغلاقها، وفوترة القطع التي تصل بعد الفاتورة.',
+      body: `المهمة المكتملة أو المعتمدة أو الملغاة مهمة مغلقة. وترفض المهمة المغلقة أي عمل جديد من المكتب: لا يمكن بدء نموذج عليها، ولا إرسال مسودة عليها، ولا تسجيل قطع عليها من شاشات المكتب. ويبقى إرجاع القطع غير المستخدمة مسموحًا.
+
+تعمل الهواتف دون شبكة، فقد ينجز المهندس العمل في وقته ولا يزامن إلا بعد إغلاق المهمة. ويُحكم على عمل الهاتف بوقت إنجازه. فالنموذج الذي بدأه الهاتف قبل إغلاق المهمة يُقبل، ويُعلَّم بأنه «أُرسل بعد الإغلاق» مع قيد في سجل المهمة؛ أما النموذج الذي بدأ بعد إغلاقها فيُرفض، ويعرض الهاتف السبب تحت «يحتاج إلى انتباهك». وتُقبل القطع المسجلة على الهاتف قبل إغلاق المهمة وتُخصم من المخزون بالطريقة نفسها. ولا تقبل المهمة الملغاة أي قطع على الإطلاق.
+
+تُفوتَر المهمة مرة واحدة. فإذا وصلت قطع مسجلة على هاتف بعد فوترة المهمة، يعرض قسم «الفوترة والتكلفة» في المهمة «قطع لم تُفوتَر بعد»؛ فاختر «فوترة القطع التي لم تُفوتَر» لإصدار فاتورة لاحقة لها.
+
+ولإنهاء أمر ما في مهمة مكتملة، يستطيع المالك أو المسؤول إعادة فتحها مع ذكر سبب، ويمكن إعادة المهمة الملغاة.`,
+      keywords: [
+        'مهمة مغلقة',
+        'مهمة مكتملة',
+        'مهمة ملغاة',
+        'متأخر',
+        'أُرسل بعد الإغلاق',
+        'دون اتصال',
+        'مزامنة',
+        'مرفوض',
+        'قطع بعد الإغلاق',
+        'قطع لم تُفوتَر',
+        'فاتورة لاحقة',
+        'إعادة فتح',
+      ],
+    },
+  },
+  {
+    key: 'finance_corrections_rounding',
+    module: 'finance',
+    feature: 'finance',
+    minPermission: 'finance.read',
+    appRoute: 'payments',
+    public: {
+      category: 'sales-finance',
+      question: {
+        en: 'How do I correct a payment or an invoice, and how are amounts rounded?',
+        ar: 'كيف أصحح دفعة أو فاتورة، وكيف تُقرَّب المبالغ؟',
+      },
+    },
+    en: {
+      title: 'Correcting money: reversals, follow-up invoices and rounding',
+      summary:
+        'Reversing a payment that should not stand, moving a payment to the right invoice, billing parts that arrived after the invoice, and how amounts are rounded to piastres.',
+      body: `Money is corrected by adding records, never by editing or deleting what was issued, so the history always shows what happened. An issued invoice is corrected with a credit note (Credit), or voided when nothing has been paid or credited against it. A payment put against the wrong invoice is moved with Take back, which returns the money to the customer’s account so it can be put against the right one.
+
+A payment that should not stand, such as a bounced cheque or a payment recorded for the wrong customer, is reversed: on the payment’s page choose Reverse payment and say why. The payment stays on record, marked Reversed, with who reversed it, when and why. Every invoice it paid owes that amount again, it can no longer be put against an invoice, and with the ledger set up the ledger takes the money back on the day of the reversal. A reversal cannot be undone; if the payment was right after all, record it again. Reversing is for owners and admins.
+
+Parts recorded on a phone after a job was invoiced are billed with a follow-up invoice: on the job, Invoicing and cost shows Parts not yet billed, and Invoice the parts not yet billed drafts it.
+
+Amounts are rounded to the currency’s smallest unit, piastres for the Egyptian pound. Each line’s gross, discount, net and tax is rounded half up, and a document’s total is the sum of its rounded lines, so an invoice can be paid exactly by a bank transfer or in cash. Documents issued before this rule keep their four decimal places, and a credit note follows its invoice, so crediting an old invoice in full still matches it exactly.`,
+      keywords: [
+        'reverse payment',
+        'reversal',
+        'bounced cheque',
+        'wrong customer',
+        'take back',
+        'credit note',
+        'void',
+        'correction',
+        'follow-up invoice',
+        'parts not yet billed',
+        'rounding',
+        'piastres',
+        'decimal places',
+      ],
+    },
+    ar: {
+      title: 'تصحيح المبالغ: العكس والفواتير اللاحقة والتقريب',
+      summary:
+        'عكس دفعة لا يجب أن تبقى، ونقل دفعة إلى الفاتورة الصحيحة، وفوترة قطع وصلت بعد الفاتورة، وكيف تُقرَّب المبالغ إلى القروش.',
+      body: `تُصحَّح المبالغ بإضافة سجلات، لا بتعديل ما صدر أو حذفه، حتى يبقى السجل يُظهر ما حدث. فالفاتورة الصادرة تُصحَّح بإشعار دائن («إشعار دائن»)، أو تُلغى إذا لم يُدفع شيء ولم يصدر إشعار دائن مقابلها. والدفعة المخصصة لفاتورة خاطئة تُنقل بـ«استرجاع التخصيص» الذي يعيد المبلغ إلى حساب العميل ليُخصَّص للفاتورة الصحيحة.
+
+أما الدفعة التي لا يجب أن تبقى، مثل شيك مرتجع أو دفعة سُجلت لعميل خاطئ، فتُعكس: في صفحة الدفعة اختر «عكس الدفعة» واذكر السبب. تبقى الدفعة مسجلة بعلامة «معكوسة»، مع من عكسها ومتى ولماذا. وتعود كل فاتورة سددتها مدينة بذلك المبلغ، ولا يمكن تخصيصها لفاتورة بعد ذلك، وعند إعداد الدفتر يسترد الدفتر المبلغ بتاريخ العكس. ولا يمكن التراجع عن العكس؛ فإن تبيّن أن الدفعة كانت صحيحة فسجّلها مجددًا. والعكس للمالكين والمسؤولين.
+
+والقطع المسجلة على هاتف بعد فوترة المهمة تُفوتَر بفاتورة لاحقة: في المهمة يعرض قسم «الفوترة والتكلفة» «قطع لم تُفوتَر بعد»، وينشئ «فوترة القطع التي لم تُفوتَر» مسودتها.
+
+وتُقرَّب المبالغ إلى أصغر وحدة في العملة، أي القرش للجنيه المصري. فيُقرَّب إجمالي كل بند وخصمه وصافيه وضريبته إلى الأقرب مع جبر النصف لأعلى، ويكون إجمالي المستند مجموع بنوده المقرّبة، فيمكن سداد الفاتورة بالضبط بتحويل بنكي أو نقدًا. وتحتفظ المستندات الصادرة قبل هذه القاعدة بأربع خانات عشرية، ويتبع الإشعار الدائن فاتورته، فيبقى إشعار دائن كامل لفاتورة قديمة مطابقًا لها تمامًا.`,
+      keywords: [
+        'عكس الدفعة',
+        'عكس',
+        'شيك مرتجع',
+        'عميل خاطئ',
+        'استرجاع التخصيص',
+        'إشعار دائن',
+        'إلغاء',
+        'تصحيح',
+        'فاتورة لاحقة',
+        'قطع لم تُفوتَر',
+        'التقريب',
+        'القروش',
+        'خانات عشرية',
+      ],
+    },
+  },
+  {
+    key: 'app_updates_download',
+    module: 'overview',
+    feature: null,
+    minPermission: null,
+    appRoute: null,
+    public: {
+      category: 'getting-started',
+      question: {
+        en: 'How do I install or update the desktop and phone apps?',
+        ar: 'كيف أثبّت تطبيقات سطح المكتب والهاتف أو أحدّثها؟',
+      },
+    },
+    en: {
+      title: 'Installing and updating the apps',
+      summary:
+        'Where to download the desktop and phone apps, how the desktop apps update themselves, and what to do when an app says it is too old.',
+      body: `The web app is always the current version: reload the page after an update. The desktop and phone apps are installed, so they have to be updated.
+
+The desktop apps, both the Integr8 staff app and your company’s own, update themselves when Integr8 publishes a new release. Nothing you have saved is lost by updating.
+
+Every installer is on the download page of the web app, at /download, for example app.integr8-media.com/download. With your company’s short name added, as in /download?company=your-company, the page lists your company’s latest desktop installers and its phone app. Integr8 gives you the exact link.
+
+When a desktop or phone app is too old for the server, it says so instead of failing, and Update opens that download page with your company already filled in. Install the new version over the app you have: do not uninstall the phone app first, because uninstalling it removes any work on the phone that has not been sent yet.`,
+      keywords: [
+        'update',
+        'download',
+        'install',
+        'installer',
+        'new version',
+        'too old',
+        'desktop app',
+        'phone app',
+        'upgrade',
+        'release',
+        'download page',
+      ],
+    },
+    ar: {
+      title: 'تثبيت التطبيقات وتحديثها',
+      summary:
+        'من أين تنزّل تطبيقات سطح المكتب والهاتف، وكيف تحدّث تطبيقات سطح المكتب نفسها، وماذا تفعل عندما يقول التطبيق إنه قديم.',
+      body: `تطبيق الويب هو دائمًا النسخة الحالية: أعد تحميل الصفحة بعد التحديث. أما تطبيقات سطح المكتب والهاتف فهي مثبّتة، ولذلك تحتاج إلى تحديث.
+
+تحدّث تطبيقات سطح المكتب نفسها، تطبيق موظفي Integr8 وتطبيق شركتك الخاص، عندما تنشر Integr8 إصدارًا جديدًا. ولا يضيع شيء مما حفظته بسبب التحديث.
+
+وكل برامج التثبيت موجودة في صفحة التنزيل في تطبيق الويب، على /download، مثل app.integr8-media.com/download. ومع إضافة الاسم المختصر لشركتك، كما في /download?company=your-company، تعرض الصفحة أحدث برامج تثبيت سطح المكتب الخاصة بشركتك وتطبيق الهاتف. وتعطيك Integr8 الرابط الدقيق.
+
+وعندما يصبح تطبيق سطح المكتب أو الهاتف أقدم مما يقبله الخادم، يخبرك بذلك بدل أن يتعطل، ويفتح «تحديث» صفحة التنزيل تلك مع اسم شركتك معبّأً. ثبّت النسخة الجديدة فوق التطبيق الموجود: لا تحذف تطبيق الهاتف أولًا، لأن حذفه يزيل أي عمل على الهاتف لم يُرسل بعد.`,
+      keywords: [
+        'تحديث',
+        'تنزيل',
+        'تثبيت',
+        'برنامج التثبيت',
+        'نسخة جديدة',
+        'قديم',
+        'تطبيق سطح المكتب',
+        'تطبيق الهاتف',
+        'ترقية',
+        'إصدار',
+        'صفحة التنزيل',
+      ],
+    },
+  },
+  {
+    key: 'company_website_access',
+    module: 'website',
+    feature: null,
+    covers: ['website_files', 'website_jobs', 'website_quotes', 'website_invoices'],
+    minPermission: 'website.access.manage',
+    appRoute: 'websiteAccess',
+    public: {
+      category: 'forms-documents',
+      question: {
+        en: 'Can our own website show customers their documents, jobs, quotes and invoices?',
+        ar: 'هل يستطيع موقعنا الإلكتروني أن يعرض للعملاء مستنداتهم ومهامهم وعروض أسعارهم وفواتيرهم؟',
+      },
+    },
+    en: {
+      title: 'Your company website: documents, jobs, quotes and invoices',
+      summary:
+        'How your own website can show customers their documents, job status, quotes and invoices, the switches on both sides, and website keys.',
+      body: `Your company’s own website can show your customers their documents, the status of their jobs, their quotes and their invoices, by asking Integr8 Plus from the website’s server with a website key. The website signs its own customers in; Integr8 Plus answers only for your company.
+
+Each of the four is switched separately, on both sides: Integr8 grants it for your company, and an owner or admin turns it on under Website access, under Company. Both must be on for the website to see it, and all four start off. A company that already had one on keeps it.
+
+Documents are found by a reference such as a certificate number and, when the document’s template asks for it, a second field that must match too, such as the customer. Only documents whose Shareable switch is on can be found; a document with Shareable off, or with its link stopped, is not found.
+
+Website keys are created by Integr8 and shown once, to be kept in the website server’s settings and never in its pages. Ask Integr8 for a key and for the developer guide.`,
+      keywords: [
+        'website',
+        'company website',
+        'website access',
+        'website key',
+        'customer portal',
+        'lookup',
+        'certificate lookup',
+        'job status',
+        'quotes',
+        'invoices',
+        'documents',
+        'api',
+      ],
+    },
+    ar: {
+      title: 'موقع شركتك الإلكتروني: المستندات والمهام وعروض الأسعار والفواتير',
+      summary:
+        'كيف يعرض موقعك الإلكتروني للعملاء مستنداتهم وحالة مهامهم وعروض أسعارهم وفواتيرهم، والمفاتيح على الجانبين، ومفاتيح الموقع.',
+      body: `يستطيع موقع شركتك الإلكتروني أن يعرض لعملائك مستنداتهم وحالة مهامهم وعروض أسعارهم وفواتيرهم، بسؤال Integr8 Plus من خادم الموقع بمفتاح موقع. ويسجّل الموقع دخول عملائه بنفسه؛ ولا يجيب Integr8 Plus إلا عن شركتك.
+
+وتُفعَّل كل واحدة من الأربع على حدة، وعلى الجانبين: تمنحها Integr8 لشركتك، ويفعّلها المالك أو المسؤول من «وصول الموقع» تحت مجموعة الشركة. ويجب أن يكون الجانبان مفعّلين ليراها الموقع، وتبدأ الأربع متوقفة. والشركة التي كانت قد فعّلت إحداها تحتفظ بها.
+
+ويُعثر على المستندات برقم مرجعي مثل رقم الشهادة، وبحقل ثانٍ يجب أن يطابق أيضًا، مثل العميل، عندما يطلبه قالب المستند. ولا يُعثر إلا على المستندات التي مفتاح «قابل للمشاركة» فيها مفعّل؛ أما المستند الذي أُوقف فيه المفتاح أو أُوقف رابطه فلا يُعثر عليه.
+
+وتنشئ Integr8 مفاتيح الموقع وتعرضها مرة واحدة، لتُحفظ في إعدادات خادم الموقع لا في صفحاته أبدًا. اطلب من Integr8 مفتاحًا ودليل المطوّر.`,
+      keywords: [
+        'الموقع الإلكتروني',
+        'موقع الشركة',
+        'وصول الموقع',
+        'مفتاح الموقع',
+        'بوابة العملاء',
+        'بحث',
+        'البحث عن شهادة',
+        'حالة المهمة',
+        'عروض الأسعار',
+        'الفواتير',
+        'المستندات',
+        'واجهة برمجية',
+      ],
+    },
+  },
+  {
+    key: 'data_export_closing',
+    module: 'account',
+    feature: null,
+    minPermission: null,
+    appRoute: null,
+    public: {
+      category: 'account-billing',
+      question: {
+        en: 'Can I get all my data out, and what happens if we leave?',
+        ar: 'هل أستطيع الحصول على كل بياناتي، وماذا يحدث إذا غادرنا؟',
+      },
+    },
+    en: {
+      title: 'Your data: export, retention and closing the account',
+      summary:
+        'Getting a copy of everything the company holds, how long records and files are kept, and what happens when a company account is closed.',
+      body: `Your company’s data is yours. Ask Integr8 and they export everything the company holds for you, whenever you ask, including while the account is read-only or suspended.
+
+Nothing is deleted on a schedule unless a retention window has been agreed with your company first. Integr8 sets one only after telling you, and the company logo and app icon are never removed by it.
+
+Closing an account is done by Integr8: the company is suspended, its data is exported for you, and the account is closed. Seven days after closing, everything is deleted for good, including the sign-in accounts of your people that belong to no other company.`,
+      keywords: [
+        'export',
+        'my data',
+        'download everything',
+        'backup',
+        'retention',
+        'delete',
+        'close account',
+        'cancel',
+        'leave',
+        'suspend',
+        'purge',
+      ],
+    },
+    ar: {
+      title: 'بياناتك: التصدير والاحتفاظ وإغلاق الحساب',
+      summary:
+        'الحصول على نسخة من كل ما تحتفظ به الشركة، ومدة الاحتفاظ بالسجلات والملفات، وما يحدث عند إغلاق حساب الشركة.',
+      body: `بيانات شركتك ملك لك. اطلب من Integr8 فتصدّر لك كل ما تحتفظ به الشركة، متى طلبت، حتى عندما يكون الحساب للقراءة فقط أو موقوفًا.
+
+لا يُحذف شيء وفق جدول زمني ما لم يُتفق مع شركتك أولًا على مدة احتفاظ. ولا تحددها Integr8 إلا بعد إخبارك، ولا تُزال بها أبدًا شعار الشركة وأيقونة التطبيق.
+
+وتغلق Integr8 الحساب: تُوقف الشركة، وتُصدَّر بياناتها لك، ثم يُغلق الحساب. وبعد سبعة أيام من الإغلاق يُحذف كل شيء نهائيًا، بما في ذلك حسابات تسجيل الدخول لأشخاصك التي لا تنتمي إلى أي شركة أخرى.`,
+      keywords: [
+        'تصدير',
+        'بياناتي',
+        'تنزيل كل شيء',
+        'نسخة احتياطية',
+        'الاحتفاظ',
+        'حذف',
+        'إغلاق الحساب',
+        'إلغاء',
+        'مغادرة',
+        'إيقاف',
+        'الحذف النهائي',
       ],
     },
   },

@@ -191,6 +191,11 @@ Read [`docs/ui/`](./docs/ui/README.md) before adding a screen. The short version
 - Every string comes from `@integr8/i18n`, keyed by meaning rather than by words.
 - Layout uses logical properties, so Arabic mirrors for free. Tick "Preview
   right-to-left" in the app to check.
+- A screen whose behaviour changes updates its help article in
+  `packages/i18n/src/help/articles.ts`, English and Arabic, in the same change. The
+  library is both the AI assistant's knowledge and the public Help centre; a new
+  switchable module needs an article or `apps/api/src/ai/help/articles.test.ts` fails
+  (docs/ai/RUNBOOK.md, "The help library").
 
 ## Changing the API
 

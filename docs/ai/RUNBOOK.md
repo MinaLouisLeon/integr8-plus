@@ -293,10 +293,33 @@ rest after the policy's retention window.
 
 ## 8. The help library
 
-The assistant answers from `apps/api/src/ai/help/articles.ts`, in English and
-Arabic. Editing an article and deploying re-seeds it by content hash on API
-start; an article removed from the file is disabled, never cited again. No
-company data is ever indexed.
+The assistant answers from `packages/i18n/src/help/articles.ts`
+(`@integr8/i18n/help`), in English and Arabic: 39 articles since 1.2.4. Editing
+an article and deploying re-seeds it by content hash on API start; an article
+removed from the file is disabled, never cited again. No company data is ever
+indexed.
+
+The same library is the web app's public Help centre (`/help`): an article
+with a `public` placement (a category and the question it answers, in both
+languages) is shown there, its body split into plain paragraphs; one with
+`public: null` stays in the app (today only e-invoicing, which is not yet
+validated with the tax authority). `apps/web/src/lib/help-articles.ts`
+exposes it as `helpArticlesFor(locale)`.
+
+Keeping it true:
+
+- **A feature that changes what a screen does updates its article**, English
+  and Arabic, in the same change. Name buttons and screens as the
+  `@integr8/i18n` catalogues do, and write plain text: paragraphs separated by
+  a blank line, no Markdown.
+- `packages/i18n/src/help/help.test.ts` checks keys, both languages (the same
+  number of paragraphs in each), the database's length limit, plain text and
+  the public view.
+- `apps/api/src/ai/help/articles.test.ts` checks every module a company can
+  have switched on (`MODULE_FEATURES`) has at least one article (by `feature`,
+  or `covers` for an article about several, such as the website's four
+  switches), and that every `feature`, `minPermission` and `appRoute` names
+  one that exists. A new module fails it until its article is written.
 
 ## 9. Voice
 

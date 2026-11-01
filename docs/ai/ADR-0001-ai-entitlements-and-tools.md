@@ -179,7 +179,7 @@ max_output_tokens × out_price)`; settled from reported usage, or a conservative
 - Channel toggles default to **false** at onboarding (the form shows the three
   boxes); the owner/admin may change them later (`tenant.update`).
 - Help articles are seeded from a checked-in bilingual manifest
-  (`apps/api/src/ai/help/articles/*.json`) and re-seeded idempotently by content hash
+  (`apps/api/src/ai/help/articles/*.json`; as built, `packages/i18n/src/help/articles.ts`, shared with the public Help centre since 1.2.4) and re-seeded idempotently by content hash
   at API start; no vector service.
 - Retrieval is lexical: normalised tokens (Arabic alef/yaa/taa-marbuta variants,
   diacritics, tatweel removed; English lower-cased) with a BM25-style score over a
