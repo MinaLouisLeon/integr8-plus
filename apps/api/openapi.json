@@ -11268,6 +11268,39 @@
                         ],
                         "additionalProperties": false
                       }
+                    },
+                    "warnings": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "code": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          },
+                          "path": {
+                            "type": "string"
+                          },
+                          "elements": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "locale": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "code",
+                          "message",
+                          "path",
+                          "elements"
+                        ],
+                        "additionalProperties": false
+                      }
                     }
                   },
                   "required": [
@@ -11275,7 +11308,8 @@
                     "valid",
                     "issues",
                     "diff",
-                    "documentTemplates"
+                    "documentTemplates",
+                    "warnings"
                   ],
                   "additionalProperties": false
                 }

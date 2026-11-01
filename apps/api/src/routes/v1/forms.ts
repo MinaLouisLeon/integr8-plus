@@ -14,6 +14,7 @@ import {
   diffDefinitions,
   emptyDefinition,
   type FormDefinition,
+  missingTranslations,
   validateSubmission,
 } from '@integr8/form-engine';
 import { z } from 'zod';
@@ -162,6 +163,19 @@ const affectedTemplateSchema = z.object({
   ),
 });
 
+/**
+ * Something worth knowing before publishing that does not stop it. Today one
+ * code: `missing_translation`, a text with nothing in `locale` (Arabic), one
+ * warning per text, so "12 texts have no Arabic" is a count of these.
+ */
+const warningSchema = z.object({
+  code: z.string(),
+  message: z.string(),
+  path: z.string(),
+  elements: z.array(z.string()),
+  locale: z.string().optional(),
+});
+
 const checkSchema = z.object({
   revision: z.number().int(),
   valid: z.boolean(),
@@ -173,6 +187,8 @@ const checkSchema = z.object({
    * there are any; documents keep being made from them meanwhile.
    */
   documentTemplates: z.array(affectedTemplateSchema),
+  /** Never refuses publishing; listed so the builder can say what is left to do. */
+  warnings: z.array(warningSchema),
 });
 
 /** The form's PDF templates the draft would leave needing attention. */
@@ -660,10 +676,26 @@ export const checkDraftRoute = defineRoute({
           ? diffDefinitions(liveDefinition(live), compiled.form.definition)
           : { titleChanged: false, changes: [], breaking: [] },
         documentTemplates,
+        warnings: translationWarnings(draft.definition),
       },
     };
   },
 });
+
+/**
+ * The texts of the draft with no Arabic (owner's decision, 1.3.0): a warning,
+ * never a refusal, because an English-only company is a normal customer. The
+ * builder's Translations tab counts the same texts with the same function.
+ */
+function translationWarnings(definition: Record<string, unknown>) {
+  return missingTranslations(definition, 'ar').map((text) => ({
+    code: 'missing_translation',
+    message: `${text.pathText} has no Arabic.`,
+    path: text.pathText,
+    elements: text.element === undefined ? [] : [text.element],
+    locale: 'ar',
+  }));
+}
 
 export const publishDraftRoute = defineRoute({
   method: 'post',

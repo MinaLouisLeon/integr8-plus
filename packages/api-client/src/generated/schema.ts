@@ -14886,6 +14886,13 @@ export interface operations {
                                 fieldKey: string | null;
                             }[];
                         }[];
+                        warnings: {
+                            code: string;
+                            message: string;
+                            path: string;
+                            elements: string[];
+                            locale?: string;
+                        }[];
                     };
                 };
             };

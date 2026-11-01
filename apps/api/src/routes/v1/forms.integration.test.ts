@@ -327,6 +327,30 @@ describe('checking and publishing — an invalid definition cannot be published'
     expect(audit.map((entry) => entry.action)).toEqual(['form.published']);
   });
 
+  it('warns about every text with no Arabic, and publishes anyway', async () => {
+    const { form } = await createForm('English only');
+    await save(form.id, inspection(), 1);
+
+    const check = json<{
+      valid: boolean;
+      warnings: { code: string; path: string; elements: string[]; locale?: string }[];
+    }>(await api.call(builderToken, { method: 'POST', url: `/v1/forms/${form.id}/draft/check` }));
+    expect(check.valid).toBe(true);
+    expect(check.warnings.map((warning) => [warning.code, warning.path, warning.elements])).toEqual(
+      [
+        ['missing_translation', 'title', []],
+        ['missing_translation', 'pages[0].sections[0].fields[0].label', ['result']],
+        ['missing_translation', 'pages[0].sections[0].fields[0].options[0].label', ['result']],
+        ['missing_translation', 'pages[0].sections[0].fields[0].options[1].label', ['result']],
+        ['missing_translation', 'pages[0].sections[0].fields[1].label', ['reason']],
+      ],
+    );
+    expect(check.warnings.every((warning) => warning.locale === 'ar')).toBe(true);
+
+    const response = await publish(form.id, 2);
+    expect(response.statusCode, response.body).toBe(200);
+  });
+
   it('refuses to publish a draft that was saved again after it was reviewed', async () => {
     const { form } = await createForm('Stale publish');
     await save(form.id, inspection(), 1);
