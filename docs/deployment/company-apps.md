@@ -80,6 +80,16 @@ holding the Windows, macOS and Linux installers, the Android app, and links to
 the builds on Expo. The desktop download links are those release assets;
 rehost them wherever you like. The phone apps are also kept on Expo.
 
+The web app's public **download page** lists them: `/download?company=<slug>`
+shows the company's newest release with installers (Windows, macOS, Linux and the
+Android `.apk`), found through the same cached release list as the desktop update
+feed (`GITHUB_RELEASES_REPOSITORY`, and `GITHUB_RELEASES_TOKEN` for a private
+repository, when the files are passed through `/desktop-updates/<slug>/download/…`).
+`/download` alone lists the staff desktop app. A short name with no release, or no
+company, gets a sentence asking the reader to check with their administrator; a
+release with no `.apk` (store builds, or phone builds switched off) says the company
+sends the phone app. Send people that link rather than GitHub's.
+
 What a company run needs on GitHub (see `docs/contributing/branching.md`):
 `PUBLIC_API_URL`, `EXPO_TOKEN`, `EAS_BUILDS=enabled`, and for `all` the
 `BUILD_TOKEN` secret, the same value the API has in its environment.
