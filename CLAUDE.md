@@ -60,13 +60,14 @@ pushes to `main`/`staging`/`dev` and runs `pnpm typecheck` and `pnpm test`
 
 ## Local development database
 
-Integration suites and the CLIs need Postgres 16 and three connection strings:
+Integration suites and the CLIs need Postgres 16 and three connection strings (a fourth is optional):
 
 ```bash
 DATABASE_URL_ADMIN=postgres://postgres:postgres@localhost:5432/integr8_dev     # owner: migrations, platform data
 DATABASE_URL=postgres://integr8_app:PASSWORD@localhost:5432/integr8_dev        # tenant runtime role, RLS applies
 DATABASE_URL_AUTH=postgres://integr8_auth:PASSWORD@localhost:5432/integr8_dev  # pre-auth role: sign-in only
-INTEGR8_APP_PASSWORD=… INTEGR8_AUTH_PASSWORD=…   # used by `db bootstrap` to create the two roles
+DATABASE_URL_PLATFORM=postgres://integr8_platform:PASSWORD@localhost:5432/integr8_dev  # optional locally: staff/platform work; falls back to the admin URL, required in production
+INTEGR8_APP_PASSWORD=… INTEGR8_AUTH_PASSWORD=… INTEGR8_PLATFORM_PASSWORD=…   # used by `db bootstrap` to create the roles
 ```
 
 Put them in `packages/db/.env` and `apps/api/.env` (both git-ignored; templates
