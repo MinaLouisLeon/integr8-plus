@@ -340,7 +340,7 @@ export function FormFiller({
         ) : null}
 
         {reviewing ? (
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-6" data-part="review">
             <div className="flex flex-col gap-1">
               <h3 className="text-lg font-semibold text-content">{t('fill.review.title')}</h3>
               <p className="text-sm text-content-muted">{t('fill.review.intro')}</p>
@@ -462,6 +462,8 @@ export function FormFiller({
                 <section
                   key={section.id}
                   id={`${prefix}-section-${section.id}`}
+                  data-section={section.id}
+                  data-repeat={section.repeat === undefined ? undefined : ''}
                   {...(section.title === undefined
                     ? {}
                     : { 'aria-labelledby': `${prefix}-section-${section.id}-title` })}
@@ -470,6 +472,7 @@ export function FormFiller({
                   {section.title === undefined ? null : (
                     <h4
                       id={`${prefix}-section-${section.id}-title`}
+                      data-part="section-title"
                       tabIndex={section.repeat === undefined ? undefined : -1}
                       className="text-base font-semibold text-content outline-none"
                     >

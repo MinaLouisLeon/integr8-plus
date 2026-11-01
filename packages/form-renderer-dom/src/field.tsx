@@ -87,7 +87,7 @@ export function FieldBlock(props: FieldBlockProps) {
 
   const required = isRequired ? (
     <>
-      <span aria-hidden="true" className="text-danger">
+      <span aria-hidden="true" data-part="required" className="text-danger">
         {' *'}
       </span>
       <span className="sr-only">{` (${t('fill.required')})`}</span>
@@ -96,7 +96,7 @@ export function FieldBlock(props: FieldBlockProps) {
 
   const help =
     field.help === undefined ? null : (
-      <p id={helpId} className="text-xs text-content-muted">
+      <p id={helpId} data-part="help" className="text-xs text-content-muted">
         {say(field.help, locale)}
       </p>
     );
@@ -116,6 +116,7 @@ export function FieldBlock(props: FieldBlockProps) {
         {errors.map((error) => (
           <li
             key={`${error.code}-${error.params.rule ?? ''}`}
+            data-part="error"
             className="text-xs font-medium text-danger"
           >
             <ErrorText field={field} error={error} locale={locale} />
@@ -127,7 +128,7 @@ export function FieldBlock(props: FieldBlockProps) {
   if (isCalculated(field)) {
     return (
       <div className="flex flex-col gap-1.5" data-question={field.id}>
-        <span id={`${id}-label`} className="text-sm font-medium text-content">
+        <span id={`${id}-label`} data-part="label" className="text-sm font-medium text-content">
           {label}
         </span>
         {help}
@@ -190,7 +191,7 @@ export function FieldBlock(props: FieldBlockProps) {
           : {})}
         {...(errors.length > 0 ? { 'aria-invalid': true } : {})}
       >
-        <legend className="mb-1 text-sm font-medium text-content">
+        <legend data-part="label" className="mb-1 text-sm font-medium text-content">
           {label}
           {required}
         </legend>
@@ -204,7 +205,7 @@ export function FieldBlock(props: FieldBlockProps) {
 
   return (
     <div className="flex flex-col gap-1.5" data-question={field.id}>
-      <label htmlFor={id} className="text-sm font-medium text-content">
+      <label htmlFor={id} data-part="label" className="text-sm font-medium text-content">
         {label}
         {required}
       </label>

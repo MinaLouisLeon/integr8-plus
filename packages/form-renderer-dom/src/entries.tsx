@@ -229,7 +229,11 @@ export function EntryList({
           className="flex flex-col gap-0.5 outline-none"
         >
           {problems.map((error) => (
-            <li key={error.code} className="text-sm font-medium text-danger">
+            <li
+              key={error.code}
+              data-part="section-problem"
+              className="text-sm font-medium text-danger"
+            >
               <SectionProblem section={section} error={error} locale={locale} />
             </li>
           ))}
@@ -249,6 +253,7 @@ export function EntryList({
               <li key={entry.id}>
                 <div
                   role="group"
+                  data-entry={entry.id}
                   aria-labelledby={entryHeadingId(prefix, entry.id)}
                   className={[
                     'flex flex-col gap-4 rounded-md border bg-surface p-3 sm:p-4',
@@ -259,6 +264,7 @@ export function EntryList({
                     <div className="flex min-w-0 flex-wrap items-center gap-2">
                       <Heading
                         id={entryHeadingId(prefix, entry.id)}
+                        data-part="entry-title"
                         tabIndex={-1}
                         className="text-sm font-semibold text-content outline-none"
                       >

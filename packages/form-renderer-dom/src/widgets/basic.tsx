@@ -323,11 +323,11 @@ export function CheckboxWidget(props: WidgetProps<'checkbox'>) {
         onChange={(event) => onAnswer(event.target.checked)}
         onBlur={onBlur}
       />
-      <span className="font-medium">
+      <span data-part="label" className="font-medium">
         {label}
         {required ? (
           <>
-            <span aria-hidden="true" className="text-danger">
+            <span aria-hidden="true" data-part="required" className="text-danger">
               {' *'}
             </span>
             <span className="sr-only">{` (${t('fill.required')})`}</span>
