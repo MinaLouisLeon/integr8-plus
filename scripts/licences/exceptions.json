@@ -30,6 +30,16 @@
       "package": "caniuse-lite",
       "license": "CC-BY-4.0",
       "reason": "Browser support data used at build time by Browserslist; attribution is in its package, nothing of it ships."
+    },
+    {
+      "package": "@fontsource-variable/*",
+      "license": "OFL-1.1",
+      "reason": "Fonts for the Integr8 Media look (Unbounded, Inter, JetBrains Mono, Alexandria, IBM Plex Sans Arabic), bundled unmodified into the web and staff desktop apps. The SIL Open Font License allows using, embedding and shipping the fonts with software; it only forbids selling the fonts on their own or renaming modified copies, neither of which we do."
+    },
+    {
+      "package": "@fontsource/ibm-plex-sans-arabic",
+      "license": "OFL-1.1",
+      "reason": "Fonts for the Integr8 Media look (Unbounded, Inter, JetBrains Mono, Alexandria, IBM Plex Sans Arabic), bundled unmodified into the web and staff desktop apps. The SIL Open Font License allows using, embedding and shipping the fonts with software; it only forbids selling the fonts on their own or renaming modified copies, neither of which we do."
     }
   ]
 }
