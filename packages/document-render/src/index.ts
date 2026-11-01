@@ -1,9 +1,13 @@
 export {
   allBlocks,
   type Block,
+  BLOCK_COLOURS,
+  type BlockColour,
   type BlockType,
   blockSchema,
   checkDesignAgainstForm,
+  CLASSIC_STYLE,
+  DEFAULT_FOOTER,
   DESIGN_LIMITS,
   DESIGN_SCHEMA_VERSION,
   type DesignIssue,
@@ -11,14 +15,19 @@ export {
   designFileIds,
   designMediaFields,
   designSchema,
+  designUsesLogo,
   type DocumentField,
   emptyDesign,
   type FieldSource,
+  issueTargets,
   type LeafBlock,
   type Margins,
   type PageSettings,
   parseDesign,
+  styleSchema,
   type TemplateDesign,
+  type TemplateStyle,
+  upgradeDesign,
 } from './design.js';
 export {
   factValue,
@@ -29,6 +38,15 @@ export {
   resolveDocumentFields,
   type SubmissionFacts,
 } from './fields.js';
+export {
+  DOCUMENT_FONT_KEYS,
+  DOCUMENT_FONTS,
+  type DocumentFont,
+  type DocumentFontKey,
+  documentFont,
+  type FontFaceSource,
+  fontFaceRules,
+} from './fonts.js';
 export { type FormatContext, formatAnswer, isBlank, mediaIdsOf, say } from './format.js';
 export {
   escapeHtml,
@@ -37,7 +55,27 @@ export {
   type RenderInput,
   renderDocumentHtml,
 } from './html.js';
+export {
+  bandIsEmpty,
+  DEFAULT_BRAND_COLOUR,
+  type DocumentLook,
+  documentLook,
+  type HeaderFooterSlot,
+  headerFooterSchema,
+  headerFooterSlotSchema,
+  type HeaderFooterSpec,
+  hexColourSchema,
+  type LookColours,
+  lookColours,
+  type LookContext,
+  lookCss,
+  type LookParts,
+  marginsSchema,
+  type PrintParts,
+  tintOf,
+} from './look.js';
 export { qrSvg } from './qr.js';
+export { sampleAnswers } from './sample.js';
 export { type DocumentLocale, fill, type RenderWords, wordsFor } from './words.js';
 export {
   automaticMapping,

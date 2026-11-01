@@ -202,7 +202,11 @@ describe('parseDesign', () => {
         firstPage: null,
         fontSize: 10,
       });
-      expect(result.design.page.footer.pageNumbers).toBe(true);
+      // A version 1 design, upgraded: page numbers at the end of the footer, the classic look.
+      expect(result.design.schemaVersion).toBe(2);
+      expect(result.design.page.footer.end).toEqual({ kind: 'page' });
+      expect(result.design.page.orientation).toBe('portrait');
+      expect(result.design.style.brandColour).toBeNull();
     }
   });
 

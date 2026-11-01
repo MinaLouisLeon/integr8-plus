@@ -7870,6 +7870,9 @@ export const ar: Catalogue<Messages> = {
       number: 'رقم',
       qrPlaceholder: 'رمز QR',
       imagePlaceholder: 'صورة',
+      // 1.3.0 (PDF preview): made-up answers for a template previewed without a submission.
+      sampleAnswer: 'إجابة تجريبية',
+      sampleLongAnswer: 'إجابة تجريبية\nعلى سطرين.',
     },
   },
 

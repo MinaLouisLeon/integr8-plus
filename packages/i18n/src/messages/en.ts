@@ -7819,6 +7819,9 @@ export const en = {
       number: 'No.',
       qrPlaceholder: 'QR code',
       imagePlaceholder: 'Image',
+      // 1.3.0 (PDF preview): made-up answers for a template previewed without a submission.
+      sampleAnswer: 'Sample answer',
+      sampleLongAnswer: 'A sample answer, written\nover two lines.',
     },
   },
 
