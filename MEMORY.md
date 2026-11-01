@@ -218,12 +218,15 @@ Update them together at each release or new migration:
 ## Gotchas
 
 - GitHub branch protection is **not** in force. The repository is **public** (rulesets
-  would be free) but they have never been applied, and there is no `staging` branch. The
-  only guard against pushing to `main`/`staging`/`dev` is the local pre-push hook
+  would be free) but they have never been applied. The `staging` branch exists again since
+  2026-11-01, created on GitHub from `dev` at `812a550` (1.3.0 with the Dependabot updates);
+  pushes to it publish the `:staging` images and a nightly. The only guard against pushing to `main`/`staging`/`dev` is the local pre-push hook
   (`scripts/git-hooks/pre-push-branch-guard.sh`); `INTEGR8_ALLOW_PROTECTED_PUSH=1`
   bypasses it.
-- In practice feature PRs have been merged straight into `main`, despite the documented
-  `dev → staging → main` flow.
+- Until 1.2.2 feature PRs were merged straight into `main`, so `main` holds release commits
+  `dev` lacks; from 1.2.3 work goes into `dev` and, now that `staging` exists, through
+  `staging` to `main` as documented (`dev → staging → main`). Dependabot opens its PRs
+  against `main`; apply them on a branch from `dev` instead of merging their branches.
 - CI's database job always runs (there is no `DATABASE_TESTS` switch any more). The R2
   media suite inside it skips itself unless the `R2_TEST_*` secrets exist.
 - Screen tests (`operations-dom`, `form-renderer-dom`) wait up to 5 s in `findBy…`;
