@@ -153,6 +153,9 @@ importers:
       '@integr8/form-engine':
         specifier: workspace:*
         version: link:../../packages/form-engine
+      '@integr8/form-input':
+        specifier: workspace:*
+        version: link:../../packages/form-input
       '@integr8/form-renderer-dom':
         specifier: workspace:*
         version: link:../../packages/form-renderer-dom
@@ -202,6 +205,12 @@ importers:
       '@tauri-apps/cli':
         specifier: 2.11.4
         version: 2.11.4
+      '@testing-library/dom':
+        specifier: 10.4.2
+        version: 10.4.2
+      '@testing-library/react':
+        specifier: 16.3.3
+        version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       '@types/node':
         specifier: 26.6.5
         version: 26.6.5
@@ -217,6 +226,9 @@ importers:
       eslint:
         specifier: 10.12.0
         version: 10.12.0(jiti@2.7.0)
+      jsdom:
+        specifier: 30.0.1
+        version: 30.0.1(@noble/hashes@1.8.0)
       tailwindcss:
         specifier: 4.3.3
         version: 4.3.3
@@ -374,6 +386,12 @@ importers:
       '@integr8/typescript-config':
         specifier: workspace:*
         version: link:../../packages/typescript-config
+      '@testing-library/dom':
+        specifier: 10.4.2
+        version: 10.4.2
+      '@testing-library/react':
+        specifier: 16.3.3
+        version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       '@types/node':
         specifier: 26.6.5
         version: 26.6.5
@@ -383,6 +401,9 @@ importers:
       eslint:
         specifier: 10.12.0
         version: 10.12.0(jiti@2.7.0)
+      jsdom:
+        specifier: 30.0.1
+        version: 30.0.1(@noble/hashes@1.8.0)
       typescript:
         specifier: 6.0.3
         version: 6.0.3
