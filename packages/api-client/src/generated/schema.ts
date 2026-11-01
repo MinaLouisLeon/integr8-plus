@@ -1304,6 +1304,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/forms/{formId}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export a form with its PDF templates as a .integr8form file
+         * @description Integr8 staff only, acting as the company the form is in (`form.manage` and the impersonation claim; `document.design` when the form has PDF templates). The file holds the form’s last published version — or, with `source=draft`, its draft — its settings (who fills it, the signature rule), its PDF templates that are not archived and every picture they use. Never submissions, answers, customers, job type links or the company’s branding. The format is described in `docs/form-engine/package-format.md`. 409 `form_export_not_published` when nothing is published, `form_export_no_draft` when there is no draft, `document_template_image_missing` when a picture is gone from storage. Audited in the company and the platform.
+         */
+        get: operations["exportForm"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/forms/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import a .integr8form file as a new draft form
+         * @description Integr8 staff only, acting as the company to import into (`form.manage` and the impersonation claim; `document.design` when the file has PDF templates). The body is the file itself, sent as `application/vnd.integr8.form+zip`, at most 50 MB. It is read with every check of the format (`docs/form-engine/package-format.md`); a refusal answers 422 with the package's code (`package_invalid`, `package_too_large`, `package_too_new`, `package_entry_unexpected`, `package_file_mismatch`, `package_image_invalid`, `package_form_invalid`, `package_template_invalid`) and `details` naming each problem's entry and place. The file becomes a new form with an unpublished draft and the file's settings — never a change to an existing form; when a form of the same name exists, the new one is called "<name> (imported)". Its PDF templates are created with their pictures written into the company's storage under new ids (409 `storage_quota_exceeded` past a blocking allowance; nothing is kept when anything fails). `check` lists what must be fixed before the draft publishes, and warnings such as missing Arabic. Audited in the company (`form.imported`) and the platform. Honours `Idempotency-Key`.
+         */
+        post: operations["importForm"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/submissions": {
         parameters: {
             query?: never;
@@ -8364,6 +8404,46 @@ export interface paths {
          * @description Reads the form the template was saved from, in its company, again: its last published version and its PDF templates that are not archived (pictures copied into the library storage) replace the template’s. Its name, description and category stay. 409 `form_template_builtin` for a built-in template, `form_template_source_gone` when the company or form no longer exists, `form_not_published` when nothing is published.
          */
         post: operations["refreshPlatformFormTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform/form-templates/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import a .integr8form file into the template library
+         * @description The body is the file itself, sent as `application/vnd.integr8.form+zip`, at most 50 MB. It becomes a new staff-made library template, offered to every company, with its PDF templates and their pictures copied into the platform's library storage — exactly what "Save as library template" makes. Its key comes from the English title (`_2`, `_3` … when taken); its name is the form's title, its description empty, its category `category` (maintenance unless given): all can be changed afterwards. A file the format refuses answers 422 with the package's code (`package_invalid`, `package_too_new`, …); one whose form would not publish, or whose PDF templates would not save against it, answers 422 `form_package_not_publishable` with each problem in `details`. Audited (`form_template.imported`).
+         */
+        post: operations["importPlatformFormTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform/form-templates/{key}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export a library template as a .integr8form file
+         * @description Any template, built-in or staff-made, retired or not: its form, and a staff-made one’s PDF templates with their pictures, in the file a company form exports to. Settings are the defaults (a library template has none of its own). Audited (`form_template.exported`).
+         */
+        get: operations["exportPlatformFormTemplate"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -16103,6 +16183,220 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Error"];
                 };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    exportForm: {
+        parameters: {
+            query?: {
+                source?: "published" | "draft";
+            };
+            header?: never;
+            path: {
+                formId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The `.integr8form` file, as an attachment named after the form. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.integr8.form+zip": string;
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not Integr8 staff, or PDF templates without `document.design`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such form. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Nothing to export from the chosen source, or a picture is missing. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    importForm: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/vnd.integr8.form+zip": string;
+            };
+        };
+        responses: {
+            /** @description The new form. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        formId: string;
+                        title: string;
+                        documentTemplatesCreated: number;
+                        imagesCopied: number;
+                        source: {
+                            app: string;
+                            version: string;
+                            createdAt: string;
+                            /** @enum {string} */
+                            exportedFrom: "published" | "draft";
+                            versionNumber: number | null;
+                        };
+                        check: {
+                            ok: boolean;
+                            problemCount: number;
+                            warningCount: number;
+                            problems: {
+                                entry: string;
+                                path: string;
+                                code: string;
+                                message: string;
+                                elements?: string[];
+                            }[];
+                            warnings: {
+                                entry: string;
+                                path: string;
+                                code: string;
+                                message: string;
+                                elements?: string[];
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not Integr8 staff, or PDF templates without `document.design`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not enough storage for its pictures (`storage_quota_exceeded`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The file is larger than the limit (`body_too_large`). */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The file is not one this server reads; `details` say why. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Rate limit exceeded. */
             429: {
@@ -85131,6 +85425,220 @@ export interface operations {
                 content?: never;
             };
             /** @description Built in, or its form is gone or unpublished. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    importPlatformFormTemplate: {
+        parameters: {
+            query?: {
+                category?: "maintenance" | "safety" | "completion";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/vnd.integr8.form+zip": string;
+            };
+        };
+        responses: {
+            /** @description The new library template, and what the check would like looked at. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        template: {
+                            key: string;
+                            title: {
+                                [key: string]: string;
+                            };
+                            description: {
+                                [key: string]: string;
+                            };
+                            /** @enum {string} */
+                            category: "maintenance" | "safety" | "completion";
+                            definitionSchemaVersion: number;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            /** @enum {string} */
+                            source: "builtin" | "staff";
+                            /** Format: date-time */
+                            retiredAt: string | null;
+                            origin: {
+                                /** Format: uuid */
+                                tenantId: string;
+                                companyName: string | null;
+                                /** Format: uuid */
+                                formId: string;
+                                versionNumber: number | null;
+                            } | null;
+                            documentTemplateCount: number;
+                        };
+                        source: {
+                            app: string;
+                            version: string;
+                            createdAt: string;
+                            /** @enum {string} */
+                            exportedFrom: "published" | "draft";
+                            versionNumber: number | null;
+                        };
+                        documentTemplatesCreated: number;
+                        imagesCopied: number;
+                        check: {
+                            ok: boolean;
+                            problemCount: number;
+                            warningCount: number;
+                            problems: {
+                                entry: string;
+                                path: string;
+                                code: string;
+                                message: string;
+                                elements?: string[];
+                            }[];
+                            warnings: {
+                                entry: string;
+                                path: string;
+                                code: string;
+                                message: string;
+                                elements?: string[];
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description A platform session is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The file is larger than the limit (`body_too_large`). */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The file is not one this server reads, or its form would not publish. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    exportPlatformFormTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The `.integr8form` file, as an attachment named after the template. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.integr8.form+zip": string;
+                };
+            };
+            /** @description A platform session is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such template. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A picture is gone from storage (`document_template_image_missing`). */
             409: {
                 headers: {
                     [name: string]: unknown;

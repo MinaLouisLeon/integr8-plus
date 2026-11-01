@@ -77,6 +77,9 @@ importers:
       '@integr8/form-input':
         specifier: workspace:*
         version: link:../../packages/form-input
+      '@integr8/form-package':
+        specifier: workspace:*
+        version: link:../../packages/form-package
       '@integr8/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
@@ -9763,9 +9766,7 @@ snapshots:
       metro-runtime: 0.87.1
     transitivePeerDependencies:
       - '@babel/core'
-      - bufferutil
       - supports-color
-      - utf-8-validate
 
   '@react-native/normalize-colors@0.88.0': {}
 

@@ -581,4 +581,22 @@ export const apiErrorsEn = {
   year_not_ready:
     'Post or discard the draft journals, and post or set aside the waiting documents, dated in this year first.',
   year_open: 'This fiscal year is not closed.',
+
+  // Exporting and importing a form as a .integr8form file (1.3.0, decision 14).
+  form_export_no_draft: 'This form has no draft. Export its published version instead.',
+  form_export_not_published: 'This form has not been published yet. Export its draft instead.',
+  form_package_not_publishable:
+    'The form in this file would not publish, so it cannot join the library. Fix the problems listed, export it again and import the new file.',
+  package_invalid:
+    'This is not a .integr8form file, or it is damaged. Export the form again and import the new file.',
+  package_too_large: 'This file is larger than an Integr8 form file may be (50 MB).',
+  package_too_new:
+    'This file was made by a newer Integr8 Plus. Update this server first, then import it.',
+  package_entry_unexpected:
+    'This file holds something a form file has no place for. Export the form again and import the new file.',
+  package_file_mismatch:
+    'A picture in this file is missing or not the one its contents list says. Export the form again.',
+  package_image_invalid: 'A picture in this file is not a usable PNG, JPEG or WebP image.',
+  package_form_invalid: 'The form in this file cannot be read.',
+  package_template_invalid: 'A PDF template in this file cannot be read.',
 } as const;

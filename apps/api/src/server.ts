@@ -7,7 +7,8 @@ import {
 } from '@integr8/core';
 import { AuthError, InvalidTokenError, type LiveSession, SessionRevokedError } from '@integr8/auth';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
+import { Readable } from 'node:stream';
 import type { Services } from './composition.js';
 import { type ApiConfig, clientUpdateUrl, corsOrigins } from './config.js';
 import { registerCors } from './http/cors.js';
@@ -132,6 +133,30 @@ export function buildServer(options: BuildServerOptions): FastifyInstance {
         }
       },
     );
+  }
+
+  /**
+   * Files sent as a whole body (a `.integr8form` package, 1.3.0), as bytes.
+   *
+   * One parser per media type, and only the routes that declared `fileBody`
+   * read the bytes; any other request of that type is handed on as a stream,
+   * which is what the local media route's catch-all parser would have given
+   * it. Fastify applies each route's own `bodyLimit` while reading.
+   */
+  const fileBodyRoutes = new Set(
+    routes.filter((route) => route.fileBody !== undefined).map((route) => route.path),
+  );
+  for (const mediaType of new Set(
+    routes.flatMap((route) => (route.fileBody === undefined ? [] : [route.fileBody])),
+  )) {
+    app.addContentTypeParser(mediaType, { parseAs: 'buffer' }, (request, body: Buffer, done) => {
+      if (fileBodyRoutes.has(request.routeOptions.url ?? '')) {
+        request.integr8.fileBody = new Uint8Array(body.buffer, body.byteOffset, body.length);
+        done(null, {});
+        return;
+      }
+      done(null, Readable.from([body]));
+    });
   }
 
   // Before anything that could refuse a request: a preflight carries none of
@@ -359,7 +384,20 @@ export function buildServer(options: BuildServerOptions): FastifyInstance {
           route.idempotent !== undefined && route.idempotent !== false && context.principal !== null
             ? await withIdempotency(
                 context as RequestContext,
-                { method: request.method, path: request.url, body },
+                {
+                  method: request.method,
+                  path: request.url,
+                  // A file is compared by its digest: the same key with a
+                  // different file is a different request, not a replay.
+                  body:
+                    route.fileBody === undefined
+                      ? body
+                      : {
+                          sha256: createHash('sha256')
+                            .update(context.fileBody ?? new Uint8Array())
+                            .digest('hex'),
+                        },
+                },
                 run,
               )
             : await run();

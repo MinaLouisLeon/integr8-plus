@@ -108,6 +108,43 @@ export async function copyPictures(
   return copies;
 }
 
+/**
+ * Writes pictures that arrived as bytes (an imported `.integr8form` file,
+ * 1.3.0) into a bucket under new ids, as {@link copyPictures} does for
+ * pictures already stored: `from` is the id the file's designs use. If any one
+ * fails, whatever this call already wrote is removed again.
+ */
+export async function storePictures(
+  to: ObjectStore,
+  pictures: readonly { id: string; contentType: string; bytes: Uint8Array }[],
+  keyFor: (fileId: string) => string,
+): Promise<PictureCopy[]> {
+  const copies: PictureCopy[] = [];
+  try {
+    for (const picture of pictures) {
+      const id = randomUUID();
+      const storageKey = keyFor(id);
+      const stored = await to.put({
+        key: storageKey,
+        body: picture.bytes,
+        contentType: picture.contentType,
+      });
+      copies.push({
+        from: picture.id,
+        id,
+        bucket: to.bucket,
+        storageKey,
+        contentType: picture.contentType,
+        stored,
+      });
+    }
+  } catch (error) {
+    await discardPictures(to, copies);
+    throw error;
+  }
+  return copies;
+}
+
 /** Removes copies whose records were never written. Best effort: the sweep finds the rest. */
 export async function discardPictures(
   store: ObjectStore,

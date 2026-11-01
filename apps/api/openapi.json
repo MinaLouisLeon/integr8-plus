@@ -13383,6 +13383,375 @@
         ]
       }
     },
+    "/v1/forms/{formId}/export": {
+      "get": {
+        "operationId": "exportForm",
+        "summary": "Export a form with its PDF templates as a .integr8form file",
+        "description": "Integr8 staff only, acting as the company the form is in (`form.manage` and the impersonation claim; `document.design` when the form has PDF templates). The file holds the form’s last published version — or, with `source=draft`, its draft — its settings (who fills it, the signature rule), its PDF templates that are not archived and every picture they use. Never submissions, answers, customers, job type links or the company’s branding. The format is described in `docs/form-engine/package-format.md`. 409 `form_export_not_published` when nothing is published, `form_export_no_draft` when there is no draft, `document_template_image_missing` when a picture is gone from storage. Audited in the company and the platform.",
+        "tags": [
+          "forms"
+        ],
+        "parameters": [
+          {
+            "name": "formId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "source",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": "published",
+              "type": "string",
+              "enum": [
+                "published",
+                "draft"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The `.integr8form` file, as an attachment named after the form.",
+            "content": {
+              "application/vnd.integr8.form+zip": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not Integr8 staff, or PDF templates without `document.design`."
+          },
+          "404": {
+            "description": "No such form."
+          },
+          "409": {
+            "description": "Nothing to export from the chosen source, or a picture is missing."
+          },
+          "422": {
+            "description": "The request failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/forms/import": {
+      "post": {
+        "operationId": "importForm",
+        "summary": "Import a .integr8form file as a new draft form",
+        "description": "Integr8 staff only, acting as the company to import into (`form.manage` and the impersonation claim; `document.design` when the file has PDF templates). The body is the file itself, sent as `application/vnd.integr8.form+zip`, at most 50 MB. It is read with every check of the format (`docs/form-engine/package-format.md`); a refusal answers 422 with the package's code (`package_invalid`, `package_too_large`, `package_too_new`, `package_entry_unexpected`, `package_file_mismatch`, `package_image_invalid`, `package_form_invalid`, `package_template_invalid`) and `details` naming each problem's entry and place. The file becomes a new form with an unpublished draft and the file's settings — never a change to an existing form; when a form of the same name exists, the new one is called \"<name> (imported)\". Its PDF templates are created with their pictures written into the company's storage under new ids (409 `storage_quota_exceeded` past a blocking allowance; nothing is kept when anything fails). `check` lists what must be fixed before the draft publishes, and warnings such as missing Arabic. Audited in the company (`form.imported`) and the platform. Honours `Idempotency-Key`.",
+        "tags": [
+          "forms"
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 255
+            },
+            "description": "A client-generated key. Replaying a request with the same key returns the original response and repeats no effect."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.integr8.form+zip": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The new form.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "formId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "documentTemplatesCreated": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "imagesCopied": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "source": {
+                      "type": "object",
+                      "properties": {
+                        "app": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "exportedFrom": {
+                          "type": "string",
+                          "enum": [
+                            "published",
+                            "draft"
+                          ]
+                        },
+                        "versionNumber": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "app",
+                        "version",
+                        "createdAt",
+                        "exportedFrom",
+                        "versionNumber"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "check": {
+                      "type": "object",
+                      "properties": {
+                        "ok": {
+                          "type": "boolean"
+                        },
+                        "problemCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "warningCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "problems": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "entry": {
+                                "type": "string"
+                              },
+                              "path": {
+                                "type": "string"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              },
+                              "elements": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              }
+                            },
+                            "required": [
+                              "entry",
+                              "path",
+                              "code",
+                              "message"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "warnings": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "entry": {
+                                "type": "string"
+                              },
+                              "path": {
+                                "type": "string"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              },
+                              "elements": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              }
+                            },
+                            "required": [
+                              "entry",
+                              "path",
+                              "code",
+                              "message"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "ok",
+                        "problemCount",
+                        "warningCount",
+                        "problems",
+                        "warnings"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "formId",
+                    "title",
+                    "documentTemplatesCreated",
+                    "imagesCopied",
+                    "source",
+                    "check"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not Integr8 staff, or PDF templates without `document.design`."
+          },
+          "409": {
+            "description": "Not enough storage for its pictures (`storage_quota_exceeded`)."
+          },
+          "413": {
+            "description": "The file is larger than the limit (`body_too_large`)."
+          },
+          "422": {
+            "description": "The file is not one this server reads; `details` say why."
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/v1/submissions": {
       "post": {
         "operationId": "startSubmission",
@@ -200226,6 +200595,450 @@
           },
           "409": {
             "description": "Built in, or its form is gone or unpublished."
+          },
+          "422": {
+            "description": "The request failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/platform/form-templates/import": {
+      "post": {
+        "operationId": "importPlatformFormTemplate",
+        "summary": "Import a .integr8form file into the template library",
+        "description": "The body is the file itself, sent as `application/vnd.integr8.form+zip`, at most 50 MB. It becomes a new staff-made library template, offered to every company, with its PDF templates and their pictures copied into the platform's library storage — exactly what \"Save as library template\" makes. Its key comes from the English title (`_2`, `_3` … when taken); its name is the form's title, its description empty, its category `category` (maintenance unless given): all can be changed afterwards. A file the format refuses answers 422 with the package's code (`package_invalid`, `package_too_new`, …); one whose form would not publish, or whose PDF templates would not save against it, answers 422 `form_package_not_publishable` with each problem in `details`. Audited (`form_template.imported`).",
+        "tags": [
+          "platform"
+        ],
+        "parameters": [
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": "maintenance",
+              "type": "string",
+              "enum": [
+                "maintenance",
+                "safety",
+                "completion"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.integr8.form+zip": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The new library template, and what the check would like looked at.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "template": {
+                      "type": "object",
+                      "properties": {
+                        "key": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        },
+                        "description": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        },
+                        "category": {
+                          "type": "string",
+                          "enum": [
+                            "maintenance",
+                            "safety",
+                            "completion"
+                          ]
+                        },
+                        "definitionSchemaVersion": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "source": {
+                          "type": "string",
+                          "enum": [
+                            "builtin",
+                            "staff"
+                          ]
+                        },
+                        "retiredAt": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "origin": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "tenantId": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "companyName": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "formId": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "versionNumber": {
+                              "nullable": true,
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "tenantId",
+                            "companyName",
+                            "formId",
+                            "versionNumber"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "documentTemplateCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "title",
+                        "description",
+                        "category",
+                        "definitionSchemaVersion",
+                        "updatedAt",
+                        "source",
+                        "retiredAt",
+                        "origin",
+                        "documentTemplateCount"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "source": {
+                      "type": "object",
+                      "properties": {
+                        "app": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "exportedFrom": {
+                          "type": "string",
+                          "enum": [
+                            "published",
+                            "draft"
+                          ]
+                        },
+                        "versionNumber": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "app",
+                        "version",
+                        "createdAt",
+                        "exportedFrom",
+                        "versionNumber"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "documentTemplatesCreated": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "imagesCopied": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "check": {
+                      "type": "object",
+                      "properties": {
+                        "ok": {
+                          "type": "boolean"
+                        },
+                        "problemCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "warningCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "problems": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "entry": {
+                                "type": "string"
+                              },
+                              "path": {
+                                "type": "string"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              },
+                              "elements": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              }
+                            },
+                            "required": [
+                              "entry",
+                              "path",
+                              "code",
+                              "message"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "warnings": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "entry": {
+                                "type": "string"
+                              },
+                              "path": {
+                                "type": "string"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              },
+                              "elements": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              }
+                            },
+                            "required": [
+                              "entry",
+                              "path",
+                              "code",
+                              "message"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "ok",
+                        "problemCount",
+                        "warningCount",
+                        "problems",
+                        "warnings"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "template",
+                    "source",
+                    "documentTemplatesCreated",
+                    "imagesCopied",
+                    "check"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A platform session is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The file is larger than the limit (`body_too_large`)."
+          },
+          "422": {
+            "description": "The file is not one this server reads, or its form would not publish."
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/platform/form-templates/{key}/export": {
+      "get": {
+        "operationId": "exportPlatformFormTemplate",
+        "summary": "Export a library template as a .integr8form file",
+        "description": "Any template, built-in or staff-made, retired or not: its form, and a staff-made one’s PDF templates with their pictures, in the file a company form exports to. Settings are the defaults (a library template has none of its own). Audited (`form_template.exported`).",
+        "tags": [
+          "platform"
+        ],
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The `.integr8form` file, as an attachment named after the template.",
+            "content": {
+              "application/vnd.integr8.form+zip": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A platform session is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such template."
+          },
+          "409": {
+            "description": "A picture is gone from storage (`document_template_image_missing`)."
           },
           "422": {
             "description": "The request failed validation.",

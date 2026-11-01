@@ -44,6 +44,11 @@ export interface BaseRequestContext {
   /** The body exactly as it arrived, for a route that declared `rawBody`. */
   rawBody?: string | undefined;
   /**
+   * The uploaded file's bytes, for a route that declared `fileBody` and was
+   * sent that media type; `undefined` when the request carried something else.
+   */
+  fileBody?: Uint8Array | undefined;
+  /**
    * The provider's signature over that body, for a route that declared
    * `rawBody`. Read here rather than in the handler so a webhook route never
    * reaches into Fastify itself.
@@ -184,6 +189,15 @@ interface RouteShape {
    * this receives the raw string on `context.rawBody` and an unparsed `body`.
    */
   rawBody?: boolean;
+
+  /**
+   * The media type of a file this route receives as its whole body (a
+   * `.integr8form` package, 1.3.0), rather than JSON. The bytes arrive on
+   * `context.fileBody`, the route's `body` schema sees an empty object, and
+   * `bodyLimit` caps the file. The published contract says so, so a generated
+   * client knows to send bytes.
+   */
+  fileBody?: string;
 
   params: z.ZodType;
   query: z.ZodType;
