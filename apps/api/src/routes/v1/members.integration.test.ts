@@ -400,6 +400,176 @@ describe('managing a member', () => {
   });
 });
 
+describe('somebody with HR access (Low 10)', () => {
+  const code = (response: { body: string }) =>
+    (JSON.parse(response.body) as { error: { code: string } }).error.code;
+
+  let adminToken: string;
+  beforeAll(async () => {
+    adminToken = await api.signIn(await api.member('admin', 'hr-rule-admin'));
+  });
+
+  async function peopleDesk(): Promise<string> {
+    const created = await api.call(ownerToken, {
+      method: 'POST',
+      url: '/v1/roles',
+      headers: { 'idempotency-key': randomUUID() },
+      payload: {
+        name: `People desk ${randomUUID().slice(0, 6)}`,
+        baseRole: 'viewer',
+        added: ['hr.manage'],
+      },
+    });
+    expect(created.statusCode, created.body).toBe(201);
+    return (JSON.parse(created.body) as { id: string }).id;
+  }
+
+  it('is the owner’s to move into or out of a role with HR access', async () => {
+    const desk = await peopleDesk();
+    const person = await api.member('viewer', 'hr-rule-mover');
+
+    // Into it: an admin is refused, in words every app has.
+    const into = await api.call(adminToken, {
+      method: 'PATCH',
+      url: `/v1/members/${person.userId}/role`,
+      payload: { customRoleId: desk },
+    });
+    expect(into.statusCode).toBe(403);
+    expect(code(into)).toBe('hr_access_owner_only');
+
+    const byOwner = await api.call(ownerToken, {
+      method: 'PATCH',
+      url: `/v1/members/${person.userId}/role`,
+      payload: { customRoleId: desk },
+    });
+    expect(byOwner.statusCode, byOwner.body).toBe(200);
+
+    // Out of it — a company role, not the built-in HR manager — likewise.
+    const out = await api.call(adminToken, {
+      method: 'PATCH',
+      url: `/v1/members/${person.userId}/role`,
+      payload: { role: 'engineer' },
+    });
+    expect(out.statusCode).toBe(403);
+    expect(code(out)).toBe('hr_access_owner_only');
+
+    // And the built-in HR manager, as before, now with the same code.
+    const manager = await api.member('hr_manager', 'hr-rule-manager');
+    const demoted = await api.call(adminToken, {
+      method: 'PATCH',
+      url: `/v1/members/${manager.userId}/role`,
+      payload: { role: 'viewer' },
+    });
+    expect(code(demoted)).toBe('hr_access_owner_only');
+
+    // A role with no HR access in it is still the admin's to change.
+    const plain = await api.member('viewer', 'hr-rule-plain');
+    const changed = await api.call(adminToken, {
+      method: 'PATCH',
+      url: `/v1/members/${plain.userId}/role`,
+      payload: { role: 'engineer' },
+    });
+    expect(changed.statusCode, changed.body).toBe(200);
+  });
+
+  it('keeps the HR grant the owner’s to give and take', async () => {
+    const person = await api.member('dispatcher', 'hr-rule-grant');
+    const given = await api.call(adminToken, {
+      method: 'PUT',
+      url: `/v1/members/${person.userId}/grants/hr_manager`,
+    });
+    expect(code(given)).toBe('hr_access_owner_only');
+    expect(
+      (
+        await api.call(ownerToken, {
+          method: 'PUT',
+          url: `/v1/members/${person.userId}/grants/hr_manager`,
+        })
+      ).statusCode,
+    ).toBe(200);
+    const taken = await api.call(adminToken, {
+      method: 'DELETE',
+      url: `/v1/members/${person.userId}/grants/hr_manager`,
+    });
+    expect(code(taken)).toBe('hr_access_owner_only');
+  });
+
+  it('cannot be removed by an admin, by role or by grant; the owner can', async () => {
+    const manager = await api.member('hr_manager', 'hr-rule-remove');
+    const granted = await api.member('dispatcher', 'hr-rule-remove-grant');
+    await api.call(ownerToken, {
+      method: 'PUT',
+      url: `/v1/members/${granted.userId}/grants/hr_manager`,
+    });
+    for (const person of [manager, granted]) {
+      const refused = await api.call(adminToken, {
+        method: 'DELETE',
+        url: `/v1/members/${person.userId}`,
+      });
+      expect(refused.statusCode).toBe(403);
+      expect(code(refused)).toBe('hr_access_owner_only');
+    }
+    const removed = await api.call(ownerToken, {
+      method: 'DELETE',
+      url: `/v1/members/${manager.userId}`,
+    });
+    expect(removed.statusCode, removed.body).toBe(200);
+  });
+
+  it('may be suspended by an admin in an emergency, audited and told to the owner', async () => {
+    const manager = await api.member('hr_manager', 'hr-rule-suspend');
+    const suspended = await api.call(adminToken, {
+      method: 'PATCH',
+      url: `/v1/members/${manager.userId}/status`,
+      payload: { status: 'suspended' },
+    });
+    expect(suspended.statusCode, suspended.body).toBe(200);
+
+    const audit = await withTenant(api.tenantId, (tx) =>
+      tx.auditLog.list({ resourceType: 'tenant_user', resourceId: manager.userId }),
+    );
+    expect(audit.find((entry) => entry.action === 'member.suspended')?.metadata).toMatchObject({
+      hrAccess: true,
+      byOwner: false,
+      ownersNotified: true,
+    });
+
+    const told = email.lastTo(owner.email);
+    expect(told?.subject).toContain('hr-rule-suspend');
+    expect(told?.text).toContain('hr-rule-admin');
+    expect(told?.text).toContain(`${WEB}/settings/people`);
+
+    // Letting them back in is the owner's.
+    const back = await api.call(adminToken, {
+      method: 'PATCH',
+      url: `/v1/members/${manager.userId}/status`,
+      payload: { status: 'active' },
+    });
+    expect(back.statusCode).toBe(403);
+    expect(code(back)).toBe('hr_access_owner_only');
+    const byOwner = await api.call(ownerToken, {
+      method: 'PATCH',
+      url: `/v1/members/${manager.userId}/status`,
+      payload: { status: 'active' },
+    });
+    expect(byOwner.statusCode, byOwner.body).toBe(200);
+  });
+
+  it('suspended by the owner tells nobody, since the owner did it', async () => {
+    const manager = await api.member('hr_manager', 'hr-rule-quiet');
+    const before = email.sent.length;
+    const suspended = await api.call(ownerToken, {
+      method: 'PATCH',
+      url: `/v1/members/${manager.userId}/status`,
+      payload: { status: 'suspended' },
+    });
+    expect(suspended.statusCode, suspended.body).toBe(200);
+    expect(
+      email.sent.slice(before).some((message) => message.subject.includes('hr-rule-quiet')),
+    ).toBe(false);
+  });
+});
+
 describe('the last owner', () => {
   it('cannot be demoted, suspended or removed — including by themselves', async () => {
     // This harness company has exactly one owner, which is the situation that

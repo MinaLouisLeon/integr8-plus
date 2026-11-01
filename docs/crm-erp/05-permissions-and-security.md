@@ -279,6 +279,27 @@ role, invitation or grant — or changes an HR manager's role; an owner or
 admin gives the inventory grant. A grant travels in the access token (`grt`)
 and taking it back ends the member's sessions.
 
+**HR access is the owner's to manage** (Low 10, 1.2.4). Somebody has HR
+access when their role is the HR manager, their company role holds any of
+`hr.sensitive`, `hr.manage`, `payroll.run` or `payroll.approve` (the HR
+permissions the built-in admin does not hold: pay, ID and bank numbers,
+employee records, payroll), or they hold the HR manager grant. Then:
+
+| Action on the member                                          | Owner | Admin                                   |
+| ------------------------------------------------------------- | :---: | --------------------------------------- |
+| Change their role, when the old **or** new role has HR access |   ✓   | 403 `hr_access_owner_only`              |
+| Give or take the HR manager grant                             |   ✓   | 403 `hr_access_owner_only`              |
+| Remove them (HR access by role or grant)                      |   ✓   | 403 `hr_access_owner_only`              |
+| Suspend them                                                  |   ✓   | ✓ — audited, and the owners are emailed |
+| Let them back in after a suspension                           |   ✓   | 403 `hr_access_owner_only`              |
+
+Suspending is the emergency stop (a lost phone, a sudden departure), so an
+admin keeps it; the audit line `member.suspended` carries `hrAccess`,
+`byOwner` and `ownersNotified`, and every active owner gets an email in the
+company's language naming who did it, with a link to Settings → People. A
+failed send is logged and does not undo the suspension. The refusal has its own
+code, so every app says it in English or Arabic.
+
 | Permission             | Owner | Admin | HR manager | Inventory manager | Dispatcher | Engineer | Viewer |
 | ---------------------- | :---: | :---: | :--------: | :---------------: | :--------: | :------: | :----: |
 | `hr.read`              |   ✓   |   ✓   |     ✓      |         —         |     —      |    —     |   —    |
@@ -371,7 +392,9 @@ hr-reseal` re-seals every company's fields under the current key, company by
 - **Giving a role** keeps the rank rule (the base may not rank above the
   giver: `role_above_own`) and adds one: a company role holding a
   permission the giver does not hold is the owner's to give
-  (`role_beyond_own`, with what is missing).
+  (`role_beyond_own`, with what is missing). Since the only addable
+  permissions an admin lacks are the HR ones, an admin meets the HR rule
+  first (`hr_access_owner_only`, above).
 - **Tokens** carry the overlay (`crl`) read when each access token is
   minted. Changing a role, or a member's role, signs its holders out, so
   the change applies at once rather than at the next refresh. The member

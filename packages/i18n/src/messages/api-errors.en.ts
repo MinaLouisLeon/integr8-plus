@@ -231,6 +231,8 @@ export const apiErrorsEn = {
   form_unknown: 'Choose a published form.',
   form_version_unavailable:
     'This version of the form is no longer available. Fill it again on the current version.',
+  hr_access_owner_only:
+    'Only the owner can do this for somebody who has, or would have, HR access. You can suspend them in an emergency; the owner is told.',
   hr_key_missing:
     'ID, insurance and bank numbers cannot be stored or shown until the HR data key is set on the server. Ask Integr8 to set it.',
   idempotency_key_in_progress:

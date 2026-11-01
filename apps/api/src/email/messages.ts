@@ -461,3 +461,38 @@ export function deadlineAlertEmail(input: {
     ...(input.url === null ? {} : { action: { label: words.action, url: input.url } }),
   });
 }
+
+/**
+ * An admin suspended somebody with HR access (Low 10). The owners hear at
+ * once: suspending is the one thing about an HR person an admin may do alone,
+ * as an emergency stop, and everything after it is the owner's.
+ */
+export function hrSuspensionEmail(input: {
+  to: string;
+  companyName: string;
+  /** Who suspended them. */
+  admin: string;
+  /** Who was suspended. */
+  person: string;
+  /** Already written in the company's time zone. */
+  when: string;
+  url: string | null;
+  locale?: EmailLocale;
+}): EmailMessage {
+  const locale = input.locale ?? 'en';
+  const words = wordsFor(locale).hrSuspension;
+  const values = {
+    company: input.companyName,
+    admin: input.admin,
+    person: input.person,
+    date: input.when,
+  };
+  return compose({
+    to: input.to,
+    locale,
+    subject: fill(words.subject, values),
+    title: words.title,
+    paragraphs: [fill(words.body, values), fill(words.next, values)],
+    ...(input.url === null ? {} : { action: { label: words.action, url: input.url } }),
+  });
+}

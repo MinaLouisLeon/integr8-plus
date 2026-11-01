@@ -178,6 +178,7 @@ export const API_ERROR_CODES = [
   'form_started',
   'form_unknown',
   'form_version_unavailable',
+  'hr_access_owner_only',
   'hr_key_missing',
   'idempotency_key_in_progress',
   'idempotency_key_required',
