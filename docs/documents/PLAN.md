@@ -28,15 +28,6 @@ key that only the terminal-created platform account can issue.
 | F     | Complete | Runbook, the website developer's guide, the setup guide (every copy), full checks, the pull request.                                                                                  |
 | G     | Complete | 1.2.4: uploaded PDFs, the sharing switch (new documents start unshared), the lookup by reference, files readable only through their record (0067).                                    |
 | H     | Complete | 1.3.0: header and three-place footer, landscape, style and fonts, drag and drop, undo, copy and paste, recovery, Preview as PDF, templates that survive form versions (ADR addendum). |
-| Phase | Status   | What it covers                                                                                                                                                                        |
-| ----- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------        |
-| A     | Complete | This plan; ADR-0001.                                                                                                                                                                  |
-| B     | Complete | Permissions, the `documents` module flag, navigation, migration 0048 (templates, documents, field values, website keys), repositories, retention rule.                                |
-| C     | Complete | `@integr8/document-render`: the template schema and the HTML renderer shared by the designer's preview and the server.                                                                |
-| D     | Complete | The PDF pipeline (Chromium, backgrounds), the render job, routes for templates, documents, the public link, the website lookup and website keys.                                      |
-| E     | Complete | The desktop designer, the Documents register and export in the apps, the `/d/<code>` page, the dashboard's website-key panel, the phone's list.                                       |
-| F     | Complete | Runbook, the website developer's guide, the setup guide (every copy), full checks, the pull request.                                                                                  |
-| G     | Complete | 1.2.4: uploaded PDFs, the sharing switch (new documents start unshared), the lookup by reference, files readable only through their record (0067).                                    |
 | I     | Complete | 1.3.0: business PDFs — quotes, invoices, purchase orders and job reports printed in the company's look, kept in the register (0074). [`BUSINESS-PDFS.md`](./BUSINESS-PDFS.md).        |
 
 ## Verification log
