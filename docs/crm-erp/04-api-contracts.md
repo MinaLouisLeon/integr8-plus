@@ -349,6 +349,17 @@ The web page `/q/[token]` (`apps/web/src/app/q/[token]/page.tsx`) renders the
 same `QuoteDocument` the office prints, with the accept and decline form and a
 "Print or save as PDF" button that calls the browser's own print.
 
+**With the company's sales module switched off** (Low 13, 1.2.4), both routes
+answer a link that would otherwise open with `410 quote_unavailable`: the
+message is "This quote is no longer available online. Please contact
+{company}." in English, or in Arabic when the browser's `Accept-Language`
+prefers it, and `details[0].params.company` carries the company's name so the
+page writes the sentence in its own language. Nothing about the quote is
+returned and nothing changes; switching sales back on restores the link, which
+then answers as before (an expired quote still reads expired and cannot be
+answered). A spent, revised or withdrawn link stays the same 404 that names
+nobody. The web page shows "No longer available online" with that sentence.
+
 ## Invoices and credit notes (phase B1; ADR-0007)
 
 Source: `apps/api/src/routes/v1/finance-invoices.ts`. Tests:

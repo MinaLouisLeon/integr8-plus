@@ -89939,6 +89939,9 @@
           "404": {
             "description": "This link is not valid."
           },
+          "410": {
+            "description": "The company’s sales module is switched off, so the quote is no longer available online (`quote_unavailable`; `details[0].params.company` names the company)."
+          },
           "422": {
             "description": "The request failed validation.",
             "content": {
@@ -90340,6 +90343,9 @@
           },
           "409": {
             "description": "The quote has expired (`quote_expired`) or is no longer open (`quote_not_issued`)."
+          },
+          "410": {
+            "description": "The company’s sales module is switched off, so the quote cannot be answered online (`quote_unavailable`)."
           },
           "422": {
             "description": "The request failed validation.",

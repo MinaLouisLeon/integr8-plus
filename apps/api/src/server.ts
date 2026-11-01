@@ -164,6 +164,7 @@ export function buildServer(options: BuildServerOptions): FastifyInstance {
       principal: null,
       ipAddress: request.ip === '' ? null : request.ip,
       userAgent: header(request, 'user-agent'),
+      acceptLanguage: header(request, 'accept-language'),
       idempotencyKey: header(request, 'idempotency-key'),
       bearerToken: bearer(header(request, 'authorization')),
       // Whichever provider signed it. One header per provider, and only a

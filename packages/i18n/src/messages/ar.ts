@@ -4387,6 +4387,8 @@ export const ar: Catalogue<Messages> = {
       thanksAccepted: 'شكرًا لك. ستتواصل معك {{company}} لترتيب العمل.',
       thanksRejected: 'شكرًا لإبلاغنا.',
       invalid: 'هذا الرابط غير صالح. ربما استُخدم من قبل، أو سُحب العرض أو استُبدل.',
+      unavailableTitle: 'لم يعد متاحًا على الإنترنت',
+      unavailable: 'لم يعد عرض السعر هذا متاحًا على الإنترنت. يُرجى التواصل مع {{company}}.',
       print: 'طباعة أو حفظ PDF',
       terms: 'الشروط',
       poweredBy: 'أُرسل عبر Integr8 Plus',
@@ -7753,6 +7755,16 @@ export const ar: Catalogue<Messages> = {
   },
 
   notifications: {
+    publicQuote: {
+      unavailable: 'لم يعد عرض السعر هذا متاحًا على الإنترنت. يُرجى التواصل مع {{company}}.',
+    },
+    hrSuspension: {
+      subject: 'أُوقف {{person}} في {{company}}',
+      title: 'أُوقف شخص لديه صلاحية الموارد البشرية',
+      body: 'أوقف {{admin}} حساب {{person}}، الذي يطّلع على رواتب موظفيك وسجلاتهم الشخصية، بتاريخ {{date}}. لا يمكنه تسجيل الدخول حتى يُعاد تفعيله.',
+      next: 'أنت وحدك من يستطيع إعادة تفعيله أو تغيير دوره أو إزالته. إن لم يكن هذا متوقعًا فتحقّق من الأمر مع {{admin}}.',
+      action: 'فتح صفحة الأشخاص',
+    },
     push: {
       newJob: 'مهمة جديدة: {{job}}',
       urgentCallout: 'استدعاء عاجل: {{job}}',

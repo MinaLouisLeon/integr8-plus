@@ -409,6 +409,8 @@ export const apiErrorsEn = {
   quote_closed: 'This quote is no longer open.',
   quote_converted: 'This quote has already become a sales order.',
   quote_empty: 'Add at least one line before issuing.',
+  quote_unavailable:
+    'This quote is no longer available online. Please contact the company that sent it.',
   quote_expired: 'This quote has expired. A new one has to be issued.',
   quote_not_accepted: 'Only an accepted quote becomes a sales order.',
   quote_not_draft: 'Only a draft quote changes. Revise this quote to edit it.',

@@ -27,6 +27,12 @@ export interface BaseRequestContext {
   services: Services;
   ipAddress: string | null;
   userAgent: string | null;
+  /**
+   * The `Accept-Language` header, for the few public answers written in the
+   * reader's language before anybody has signed in (a quote link that is no
+   * longer available). Optional so hand-built contexts in tests need not say.
+   */
+  acceptLanguage?: string | null;
   /** The `Idempotency-Key` header, if the caller sent one. */
   idempotencyKey: string | null;
   /**

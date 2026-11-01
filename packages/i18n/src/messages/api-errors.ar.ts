@@ -363,6 +363,8 @@ export const apiErrorsAr: Catalogue<typeof apiErrorsEn> = {
   quote_closed: 'لم يعد عرض السعر هذا مفتوحًا.',
   quote_converted: 'أصبح عرض السعر هذا طلب بيع بالفعل.',
   quote_empty: 'أضف سطرًا واحدًا على الأقل قبل الإصدار.',
+  quote_unavailable:
+    'لم يعد عرض السعر هذا متاحًا على الإنترنت. يُرجى التواصل مع الشركة التي أرسلته.',
   quote_expired: 'انتهت صلاحية عرض السعر هذا. يجب إصدار عرض جديد.',
   quote_not_accepted: 'لا يصبح طلب بيع إلا عرض سعر مقبول.',
   quote_not_draft: 'لا يتغير إلا عرض السعر المسودة. راجع هذا العرض لتعديله.',

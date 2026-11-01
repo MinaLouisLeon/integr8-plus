@@ -45341,6 +45341,13 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description The company’s sales module is switched off, so the quote is no longer available online (`quote_unavailable`; `details[0].params.company` names the company). */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description The request failed validation. */
             422: {
                 headers: {
@@ -45481,6 +45488,13 @@ export interface operations {
             };
             /** @description The quote has expired (`quote_expired`) or is no longer open (`quote_not_issued`). */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The company’s sales module is switched off, so the quote cannot be answered online (`quote_unavailable`). */
+            410: {
                 headers: {
                     [name: string]: unknown;
                 };

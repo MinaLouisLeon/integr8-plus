@@ -338,6 +338,7 @@ export const API_ERROR_CODES = [
   'quote_not_draft',
   'quote_not_issued',
   'quote_not_revisable',
+  'quote_unavailable',
   'range_reversed',
   'rate_limited',
   'rate_required',

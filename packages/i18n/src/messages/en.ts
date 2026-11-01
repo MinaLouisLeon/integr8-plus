@@ -4352,6 +4352,8 @@ export const en = {
       thanksRejected: 'Thank you for letting us know.',
       invalid:
         'This link is not valid. It may have been used already, or the quote may have been withdrawn or replaced.',
+      unavailableTitle: 'No longer available online',
+      unavailable: 'This quote is no longer available online. Please contact {{company}}.',
       print: 'Print or save as PDF',
       terms: 'Terms',
       poweredBy: 'Sent with Integr8 Plus',
@@ -7705,6 +7707,18 @@ export const en = {
   // phone's language, and reminder emails and banners, in the company's.
   // Read by the API through `@integr8/i18n/core`; `{{…}}` is filled there.
   notifications: {
+    // Low 13 (1.2.4): a quote link while the company's sales module is off.
+    publicQuote: {
+      unavailable: 'This quote is no longer available online. Please contact {{company}}.',
+    },
+    // Low 10 (1.2.4): the owner is told when an admin suspends somebody with HR access.
+    hrSuspension: {
+      subject: '{{person}} was suspended at {{company}}',
+      title: 'Somebody with HR access was suspended',
+      body: '{{admin}} suspended {{person}}, who can see your people\u2019s salaries and personal records, on {{date}}. They cannot sign in until they are let back in.',
+      next: 'Only you can let them back in, change their role or remove them. If this was not expected, check with {{admin}}.',
+      action: 'Open People',
+    },
     push: {
       newJob: 'New job: {{job}}',
       urgentCallout: 'Urgent callout: {{job}}',
