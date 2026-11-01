@@ -333,8 +333,8 @@ Oracle's Always Free tier gives every account an ARM machine with up to 4 cores 
 - [ ] **SSH key.** **Paste public keys** → paste the key from Stage 0, Part A (`Get-Content $env:USERPROFILE\.ssh\id_ed25519.pub | Set-Clipboard` puts it on the clipboard again).
 - [ ] **Boot volume.** Tick "Specify a custom boot volume size", enter `100` GB (the free allowance is 200 GB in total). **Create**.
 - [ ] **If it says "Out of host capacity"**: nothing is wrong with your account. Try again in an hour, try 2 OCPUs and 12 GB (also free), or a different time of day.
-- [ ] **Note the public IP address** from the instance page once it is Running. This is **SERVER-IP** below.
-- [ ] **Reserve that IP now**, so it survives recreating the instance and your DNS records never go stale: Networking → IP Management → **Reserved public IPs** → Reserve, then on the instance's VNIC → IPv4 Addresses → Edit → switch the ephemeral address to the reserved one. Done now, the address does not change.
+- [ ] **Note the public IP address** from the instance page once it is Running. It is temporary: the next step swaps it for a reserved one, and that reserved address is **SERVER-IP** below.
+- [ ] **Give the machine a reserved address now**, so it survives recreating the instance and your DNS records never go stale. Oracle cannot turn the temporary address into a reserved one, so the address changes once, here, and never again. First Networking → IP Management → **Reserved public IPs** → **Reserve**. Then the instance page → **Networking** tab → under **Attached VNICs**, the primary VNIC's name → its list of IP addresses (the **IP administration** tab, or **IP addresses** in older consoles) → on the primary private IP's row, **⋮** → **Edit** → Public IP type **No public IP** → **Update**. Oracle refuses to go straight from the temporary address to the reserved one, which is why it is removed first. Then **⋮** → **Edit** again → **Reserved public IP** → the address you reserved → **Update**. The reserved address is **SERVER-IP** from here on; an SSH session to the old address drops, so connect again to the new one.
 
 ### Two firewalls
 
@@ -1642,7 +1642,7 @@ scp "LOGIN-USER@SERVER-IP:/var/backups/integr8/*.sql.gz" $env:USERPROFILE\Downlo
 
 ### C. The new machine: Stages 1 and 2 again
 
-- [ ] **Stage 1, with two differences.** Under Networking choose **Select existing virtual cloud network** and its public subnet instead of creating new ones; the security list already lets 80 and 443 in. Once the instance is Running, give it the reserved address: the instance's VNIC → **IPv4 Addresses** → Edit → **No public IP** → Update, then Edit again → **Reserved public IP** → the kept address → Update. Then the setup script, the second SSH login and the clone, as written.
+- [ ] **Stage 1, with two differences.** Under Networking choose **Select existing virtual cloud network** and its public subnet instead of creating new ones; the security list already lets 80 and 443 in. Once the instance is Running, give it the reserved address as in Stage 1: the instance page → **Networking** tab → the primary VNIC → its list of IP addresses (**IP administration**, or **IP addresses** in older consoles) → the primary private IP's **⋮** → **Edit** → **No public IP** → **Update**, then **Edit** again → **Reserved public IP** → the kept address → **Update**. Then the setup script, the second SSH login and the clone, as written.
 - [ ] **The laptop will refuse to connect at first**, with "REMOTE HOST IDENTIFICATION HAS CHANGED": the address is the same, the machine behind it is new. That is expected here and only here. Forget the old machine's fingerprint and connect again:
 
 ```powershell
