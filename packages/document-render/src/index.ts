@@ -39,3 +39,17 @@ export {
 } from './html.js';
 export { qrSvg } from './qr.js';
 export { type DocumentLocale, fill, type RenderWords, wordsFor } from './words.js';
+export {
+  automaticMapping,
+  type DesignReference,
+  designReferences,
+  matchDesignReferences,
+  type ReferenceMapping,
+  type ReferenceMatch,
+  type ReferenceUse,
+  referenceCandidates,
+  referencedFileIds,
+  replaceFileIds,
+  rewriteDesignReferences,
+  unresolvedReferences,
+} from './references.js';
