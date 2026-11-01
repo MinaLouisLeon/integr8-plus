@@ -219,6 +219,63 @@ the choice questions in scope, then, per option, a row of the parent's options t
 it (nothing ticked means always offered). The preview draws the required mark and the offered
 options from the engine's view, as the phone and the web renderer do.
 
+### Information blocks and descriptions (1.3.0)
+
+The palette's "Text and guidance" group adds an **Information** block where a question
+would go (drag or click). Its panel edits an optional heading, the paragraph (plain text;
+line breaks kept), the style — plain, tip, or warning in amber — and "Shown when", with the
+same condition editor as a question; the card shows its heading or first words and its
+rule as a sentence. Pages and sections have a **Description** box under their title. All of
+these are plain `LocalizedText`, so whatever walks a form's texts (translations, the check
+before publishing) finds them. An Information block has no answer: it is not in
+submissions, reports or exports, and it prints on a PDF only where a template places it
+(the PDF designer's "Information from the form" block). See
+[the engine](README.md#descriptions-and-information-blocks-format-2).
+
+### Formulas (1.3.0)
+
+A calculated number, decimal or date question is worked out from a **formula**, typed in
+the panel:
+
+```
+([Hours] + [Travel]) * [Rate]
+round(percent([Passed], [Tested]), 1)
+add_months([Serviced on], 12)                ← a date question
+hours([Start], [Finish])                      ← 22:00 to 06:00 is 8
+minutes([Arrived], now)
+sum([Radiators], [Output]) / count([Radiators])
+```
+
+- Questions are `[their wording]` in the language being edited, or `[their_key]` when two
+  share a wording. Typing `[` lists the questions the formula may read where it sits;
+  typing a name lists the functions; Enter, Tab or a click takes one.
+- `+ - * /` (also `× ÷ −`), multiplication before addition, brackets; Arabic-Indic digits
+  and the Arabic comma are read too. Functions are named in English in both languages, as
+  in a spreadsheet, and listed with their meaning in the panel's language under
+  "Functions": `round`, `percent`, `min`, `max`, `average`, `days`, `hours`, `minutes`,
+  `add_days`/`weeks`/`months`, `subtract_days`/`weeks`/`months`, `count`, `sum`, `today`,
+  `now`. Dates and times in quotes: `"2026-01-31"`, `"08:30"`.
+- Every keystroke is checked: the formula's own reading names the first problem (an
+  unknown question, a wrong number of values, a date where a number goes, a result of the
+  wrong kind), then the engine compiles the form with it (a calculation that comes back to
+  its own question). Only a formula that works is saved into the draft; the text is kept as
+  typed until it does.
+
+**Why a typed formula, not boxes.** The step-by-step editor could only say left-to-right
+chains. Brackets and functions nest, and a nested tree of dropdowns is unreadable; one line
+of text is what every office already reads in a spreadsheet, and the suggestions and the
+live check make it hard to get wrong. A calculation made with the old editor opens printed
+with the brackets that keep its left-to-right meaning (`[Hours] + [Travel] * [Rate]` as
+written then is `([Hours] + [Travel]) * [Rate]`), and the stored tree is unchanged.
+`apps/desktop/src/features/forms/model/formula.ts` is the language; its tests prove every
+printed formula reads back into the same tree.
+
+Screenshots, in English and Arabic: [an Information block and descriptions on the web
+filler](../screenshots/1.3.0/form-builder/information-block-en.png) ([Arabic](../screenshots/1.3.0/form-builder/information-block-ar.png)),
+[its settings](../screenshots/1.3.0/form-builder/information-settings-en.png) ([Arabic](../screenshots/1.3.0/form-builder/information-settings-ar.png)),
+[the formula editor](../screenshots/1.3.0/form-builder/formula-editor-en.png) ([Arabic](../screenshots/1.3.0/form-builder/formula-editor-ar.png))
+and [a calculated date](../screenshots/1.3.0/form-builder/formula-editor-date-en.png) ([Arabic](../screenshots/1.3.0/form-builder/formula-editor-date-ar.png)).
+
 ### Answer keys
 
 A question's id is the key its answers are stored under, forever. A new question starts
