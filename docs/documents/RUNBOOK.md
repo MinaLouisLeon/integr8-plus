@@ -289,6 +289,22 @@ the template again first. Copies are audited as `document_template.copied`
 Screenshots of the matching dialog, in English and Arabic:
 `docs/screenshots/1.3.0/documents/`.
 
+**In a `.integr8form` file** (decision 14; `docs/form-engine/package-format.md`). Exporting a
+form packs its templates that are not archived with every picture they use, read from the
+company's bucket; a picture whose file is gone refuses the export with
+`document_template_image_missing`. A picture must be a real PNG, JPEG or WebP to travel: the
+designer only accepts those, and the packer refuses anything else. Importing a file into a
+company writes each picture into that company's bucket under a new id, records it in the media
+ledger tied to the first new template that uses it (two templates sharing a picture in the file
+share it here too), and counts it in the company's storage: the allowance is checked before
+anything is written, and if the import fails after the pictures are written they are deleted
+again (best effort; the storage sweep finds any left). Importing into the library writes them
+into `<prefix>-platform-library` and `form_template_files` instead, like Save as library
+template. The file's pictures are checked before any of that — real images of the kind they
+say, at most 10,000 pixels a side, matching the manifest's length and SHA-256 — so nothing
+unreadable reaches a bucket. Audited as `form.imported` / `form.exported` and
+`form_template.imported` / `.exported`.
+
 ## Storage
 
 A document's PDF counts towards the company's storage like any upload, and

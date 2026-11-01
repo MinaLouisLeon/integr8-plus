@@ -14,6 +14,7 @@ apps/api/src/routes/v1/platform
   audit.ts          the platform audit log, and the one way to write to it
   settings.ts       feature flags, announcements
   templates.ts      the global form template library: built-in and staff-made (1.3.0)
+  template-packages.ts  a .integr8form file into the library, any template out to one (1.3.0)
   support.ts        recent failures, unlock, unstick sync, releases in the field
         │
 apps/api/src/platform
@@ -293,6 +294,30 @@ carries. For those:
 - **Retire / Bring back** — a retired template is no longer offered to companies; forms already
   made from it are copies and do not change (`POST …/retire`, `form_template.retired` /
   `.restored`). **Show retired templates** lists them again.
+
+**Import a form file** (top of the page; decision 14) moves a catalogue between servers: a
+`.integr8form` file — exported from a company's form in the staff app, from this page on
+another server, or written by the forms AI tool — becomes a new staff-made template, stored
+exactly as **Save as library template** stores one: the form, its PDF templates in
+`form_template_documents`, every picture copied into the library's bucket under a new id and
+recorded in `form_template_files`. Pick the category beside the file; the key comes from the
+English title (`boiler_service_2` when `boiler_service` is taken, built-in keys included), the
+name is the form's title in both languages and the description is empty — change them with
+**Rename** afterwards. It has no source form, so **Replace with the newer version** stays off:
+import a newer file instead. `POST /v1/platform/form-templates/import?category=…` takes the
+file as the request body (`application/vnd.integr8.form+zip`, at most 50 MB). The file is read
+with every check of the format (refusals carry the package's code, e.g. `package_too_new`:
+update this server first), and because a library template is published content every company
+may start from, a form that would not publish, or a PDF template that would not save against
+it, is refused with `form_package_not_publishable` and each problem in `details`; the page
+lists them. Warnings (texts with no Arabic) are shown and stop nothing. Audited as
+`form_template.imported` with the file's app and version.
+
+**Export** on every row, built-in or staff-made, saves the template as a `.integr8form` file
+(`GET /v1/platform/form-templates/:key/export`, audited `form_template.exported`): its form, and
+a staff-made template's PDF templates with their pictures; settings are the defaults, as a
+library template has none of its own.
+Screenshots: `docs/screenshots/1.3.0/platform/templates-import-{result,refused}-{en,ar}.png`.
 
 Templates are never deleted. `PUT /v1/platform/form-templates/:key` still adds or replaces a
 staff-made template from a definition (without PDF templates) and refuses any key the product

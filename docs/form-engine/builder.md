@@ -53,6 +53,8 @@ apps/api  routes/v1/forms.ts        the only way to a published version
 | `GET /v1/forms/copy-targets`               | staff only   | Other companies a form can be copied to (1.3.0)         |
 | `POST /v1/forms/:id/copy-to-company`       | staff only   | The form in another company as a draft (1.3.0)          |
 | `POST /v1/forms/:id/library-template`      | staff only   | The form saved as a staff-made library template (1.3.0) |
+| `GET /v1/forms/:id/export`                 | staff only   | The form and its PDF templates as a `.integr8form` file |
+| `POST /v1/forms/import`                    | staff only   | A `.integr8form` file as a new draft form (idempotent)  |
 
 | Route                                      | Who          | What                                                       |
 | ------------------------------------------ | ------------ | ---------------------------------------------------------- |
@@ -177,6 +179,58 @@ pictures, and a manifest with the format's version. The format, its limits and i
 specified in [package-format.md](package-format.md); `@integr8/form-package` writes, reads and
 checks it.
 
+**Export** (form builder header, "Export form"; staff only). The dialog offers the published
+version or the draft when the form has both, and otherwise says which one goes. `GET
+/v1/forms/:id/export?source=published|draft` (published unless asked) answers the file itself,
+`application/vnd.integr8.form+zip`, as an attachment named after the form
+(`Gas safety certificate.integr8form`; characters a file name cannot hold are dropped). It
+holds the chosen version's definition, the form's settings (who fills it, the signature rule),
+its PDF templates that are not archived and every picture they use, read from the company's
+storage; `createdBy` is `integr8-plus` and this server's version. Never submissions, answers,
+customers, job type links or the company's branding. Refusals: `form_export_not_published`
+(export the draft instead), `form_export_no_draft`, `document_template_image_missing` (a
+picture gone from storage). The app saves the file to the downloads folder, as its other
+exports do.
+
+**Import** (forms list, "Import form"; staff only). The app refuses a file whose name does not
+end in `.integr8form` or that is over 50 MB before sending it; `POST /v1/forms/import` takes the
+file as the whole request body (`application/vnd.integr8.form+zip`, its own 50 MB body limit —
+the API's 1 MB limit for everything else is unchanged; the route declares `fileBody` and
+`bodyLimit`, see `apps/api/src/http/routes.ts`). The file is read with every check of the
+format; anything wrong answers 422 with the package's code (`package_invalid`,
+`package_too_large`, `package_too_new` — "update this server first" —, `package_entry_unexpected`,
+`package_file_mismatch`, `package_image_invalid`, `package_form_invalid`,
+`package_template_invalid`) and `details` naming each problem's entry and place
+(`templates/1.json#design.blocks.title`). A file that reads becomes a **new form with an
+unpublished draft** — never a change to an existing form — with the file's settings. Its name
+is the file's English title (the Arabic one when it has no English); when a form of that name
+exists it is called "Boiler service (imported)", then "(imported 2)" and so on ("(مستورد)" for
+an Arabic title). Its PDF templates are created with every picture written into the company's
+storage under a new id, tied to its template; the storage allowance is checked before anything
+is written (`storage_quota_exceeded`), and if anything fails after that the pictures already
+written are removed and nothing is kept. A form that would not publish yet is still imported —
+a draft may be unfinished — and the response's `check` lists the problems that will stop
+publishing (the builder's own check says the same) and the warnings, such as texts with no
+Arabic, which stop nothing. The result dialog shows what was created (PDF templates, pictures,
+which app and version made the file, from which version), the problems with where they are, a
+count of untranslated texts, and "Open the draft". Retrying with the same `Idempotency-Key`
+and the same file replays the answer; the same key with another file is a different request.
+
+Both routes, like copying, are staff routes on the company session: `form.manage` (staff-only)
+and the impersonation claim, plus `document.design` when PDF templates are involved. Each is
+audited twice: `form.exported` / `form.imported` in the company (the import's entry records the
+file's app and version, whether a published version or a draft was exported, the templates
+created, the pictures, and how many problems and warnings the check found) and the same action
+in the platform audit log with the grant id.
+
+The dashboard's Templates page imports a file into the library instead, and exports any
+library template; see `docs/platform/README.md`.
+
+Screenshots, in English and Arabic: `docs/screenshots/1.3.0/forms/form-file-*` (the export
+choice, choosing a file, the import result) and `docs/screenshots/1.3.0/platform/templates-import-*`
+(the dashboard's import, made and refused). They were rendered from the real components with
+sample data, not from a running server.
+
 ## In the desktop app
 
 `apps/desktop/src/features/forms`:
@@ -198,6 +252,7 @@ checks it.
 | `components/phone-preview.tsx`        | The preview's phone, drawn the way the phone app draws the form                    |
 | `components/bilingual-text-input.tsx` | One text typed in English and Arabic side by side; every text in the panel uses it |
 | `components/translations-panel.tsx`   | The Translations tab: every text of the draft, English beside Arabic               |
+| `components/form-package.tsx`         | Export form and Import form: the `.integr8form` file and the import's result       |
 | `components/changes-panel.tsx`        | The server's check, the diff, and the publish dialog                               |
 
 ### Conditions as sentences
