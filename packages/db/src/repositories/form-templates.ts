@@ -56,7 +56,8 @@ export interface LibraryFile {
 /** What a staff-made template is made of: its form and its PDF templates. */
 export interface LibraryContent {
   definition: Record<string, unknown>;
-  sourceVersionNumber: number;
+  /** The source form's version number; null for a template saved from a definition. */
+  sourceVersionNumber: number | null;
   documents: readonly { name: string; design: Record<string, unknown> }[];
   files: readonly LibraryFile[];
 }
@@ -178,7 +179,8 @@ export class FormTemplatesWriter {
     title: Record<string, string>;
     description: Record<string, string>;
     category: FormTemplateCategory;
-    origin: { tenantId: string; formId: string };
+    /** The company form it was saved from; null for one saved from a definition. */
+    origin: { tenantId: string; formId: string } | null;
     content: LibraryContent;
     by: string;
   }): Promise<boolean> {
@@ -193,8 +195,8 @@ export class FormTemplatesWriter {
           definition: input.content.definition,
           definition_schema_version: schemaVersionOf(input.content.definition),
           source: 'staff',
-          source_tenant_id: input.origin.tenantId,
-          source_form_id: input.origin.formId,
+          source_tenant_id: input.origin?.tenantId ?? null,
+          source_form_id: input.origin?.formId ?? null,
           source_version_number: input.content.sourceVersionNumber,
           created_by: input.by,
           updated_by: input.by,
@@ -273,6 +275,26 @@ export class FormTemplatesWriter {
       await insertContent(trx, key, content);
       return old;
     });
+  }
+
+  /** Replaces only a staff-made template's form. `false` for a built-in or none. */
+  async replaceDefinition(
+    key: string,
+    definition: Record<string, unknown>,
+    by: string,
+  ): Promise<boolean> {
+    const row = await this.db
+      .updateTable('form_templates')
+      .set({
+        definition,
+        definition_schema_version: schemaVersionOf(definition),
+        updated_by: by,
+      })
+      .where('key', '=', key)
+      .where('source', '=', 'staff')
+      .returning('key')
+      .executeTakeFirst();
+    return row !== undefined;
   }
 
   /** Retires a staff-made template, or brings it back. `undefined` for a built-in or none. */

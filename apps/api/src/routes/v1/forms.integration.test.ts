@@ -660,13 +660,15 @@ describe('the template library', () => {
   });
 
   it('is listed and previewable by anyone, and cloned only by builders', async () => {
-    const list = json<{ items: { key: string; fieldCount: number }[] }>(
+    const list = json<{ items: { key: string; fieldCount: number; source: string }[] }>(
       await api.call(engineerToken, { method: 'GET', url: '/v1/form-templates' }),
     );
     // Every shipped template is listed. Asserted as a set rather than an
     // ordered array: the order is the query's, not a promise, and pinning it
     // made this test fail for the crime of adding a template (P18 added three).
-    expect([...list.items.map((item) => item.key)].sort()).toEqual(
+    // Staff-made ones (1.3.0) other suites saved sit beside them.
+    const builtIn = list.items.filter((item) => item.source === 'builtin');
+    expect([...builtIn.map((item) => item.key)].sort()).toEqual(
       [...FORM_TEMPLATES.map((template) => template.key)].sort(),
     );
     expect(list.items.every((item) => item.fieldCount > 0)).toBe(true);

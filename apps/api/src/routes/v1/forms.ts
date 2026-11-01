@@ -3,6 +3,7 @@ import {
   type Form,
   type FormVersion,
   type FormVersionSummary,
+  getPlatformDataSource,
   type TenantTransaction,
   withTenant,
 } from '@integr8/db';
@@ -15,6 +16,11 @@ import {
   validateSubmission,
 } from '@integr8/form-engine';
 import { z } from 'zod';
+import {
+  bringTemplatesIn,
+  discardPictures,
+  libraryTemplatesFor,
+} from '../../documents/template-copies.js';
 import { conflict, type ErrorDetail, notFound, unprocessable } from '../../http/errors.js';
 import { defineRoute, noSchema, type RequestContext } from '../../http/routes.js';
 import { iso, isoOrNull, listSchema } from './schemas.js';
@@ -151,6 +157,10 @@ const templateSummarySchema = z.object({
   description: localizedSchema,
   category: z.enum(['maintenance', 'safety', 'completion']),
   fieldCount: z.number().int(),
+  /** `builtin`: ships with the product. `staff`: made by Integr8 from a company's form (1.3.0). */
+  source: z.enum(['builtin', 'staff']),
+  /** PDF templates a new form started from this one gets copies of (1.3.0). */
+  documentTemplateCount: z.number().int(),
 });
 
 const templateSchema = templateSummarySchema.extend({ definition: definitionSchema });
@@ -839,6 +849,14 @@ export const listTemplatesRoute = defineRoute({
   responses: { 200: { description: 'Templates.', schema: listSchema(templateSummarySchema) } },
   handler: async (_input, context) => {
     const templates = await withTenant(context.principal.tenantId, (tx) => tx.formTemplates.list());
+    // How many PDF templates each carries is library data the runtime role
+    // cannot read (0069), so it comes from the platform's side.
+    const counts = new Map(
+      (await getPlatformDataSource().formTemplates.list()).map((template) => [
+        template.key,
+        template.documentCount,
+      ]),
+    );
     return {
       status: 200,
       body: {
@@ -848,6 +866,8 @@ export const listTemplatesRoute = defineRoute({
           description: template.description,
           category: template.category,
           fieldCount: fieldCount(template.definition),
+          source: template.source,
+          documentTemplateCount: counts.get(template.key) ?? 0,
         })),
       },
     };
@@ -884,6 +904,9 @@ export const getTemplateRoute = defineRoute({
         description: template.description,
         category: template.category,
         fieldCount: fieldCount(template.definition),
+        source: template.source,
+        documentTemplateCount:
+          (await getPlatformDataSource().formTemplates.find(template.key))?.documentCount ?? 0,
         definition: template.definition,
       },
     };
@@ -896,33 +919,88 @@ export const cloneTemplateRoute = defineRoute({
   operationId: 'cloneFormTemplate',
   summary: 'Start a form from a template',
   description:
-    'The new form starts as a draft of the template. The template itself never changes. Honours `Idempotency-Key`.',
+    'The new form starts as a draft of the template. The template itself never changes. A staff-made template’s PDF templates come too unless `includeDocumentTemplates` is false, their pictures copied into the company’s storage (409 `storage_quota_exceeded` past a blocking allowance); `documentTemplatesCopied` says how many. Honours `Idempotency-Key`.',
   tags: TAGS,
   security: 'authenticated',
   permission: 'form.manage',
   idempotent: true,
   params: z.object({ key: z.string().regex(/^[a-z][a-z0-9_]{0,63}$/u) }),
   query: noSchema,
-  body: z.object({ title: z.string().trim().min(1).max(200).optional() }),
+  body: z.object({
+    title: z.string().trim().min(1).max(200).optional(),
+    includeDocumentTemplates: z.boolean().default(true),
+  }),
   responses: {
-    201: { description: 'The new form and its draft.', schema: formDetailSchema },
+    201: {
+      description: 'The new form and its draft.',
+      schema: formDetailSchema.extend({ documentTemplatesCopied: z.number().int() }),
+    },
     404: { description: 'No such template.' },
+    409: { description: 'Not enough storage for its PDF templates’ pictures.' },
   },
   handler: async ({ params, body }, context) => {
-    const detail = await withTenant(context.principal.tenantId, async (tx) => {
-      const template = await tx.formTemplates.find(params.key);
-      if (template === undefined) {
-        throw notFound('This template does not exist.');
-      }
-      const title =
-        body.title ?? template.title.en ?? Object.values(template.title)[0] ?? template.key;
-      return createFormWithDraft(tx, context, {
-        title,
-        definition: template.definition,
-        sourceTemplateKey: template.key,
+    const { tenantId } = context.principal;
+    const found = await withTenant(tenantId, (tx) => tx.formTemplates.find(params.key));
+    if (found === undefined) {
+      throw notFound('This template does not exist.');
+    }
+    // A staff-made template's PDF templates, with their pictures copied into
+    // this company's bucket before anything is written (decision 10b).
+    const carried =
+      found.source === 'staff' && body.includeDocumentTemplates
+        ? await libraryTemplatesFor({
+            media: context.services.media,
+            tenantId,
+            templateKey: found.key,
+          })
+        : { templates: [], copies: [], store: null };
+    try {
+      const detail = await withTenant(tenantId, async (tx) => {
+        const template = await tx.formTemplates.find(params.key);
+        if (template === undefined) {
+          throw notFound('This template does not exist.');
+        }
+        const title =
+          body.title ?? template.title.en ?? Object.values(template.title)[0] ?? template.key;
+        const created = await createFormWithDraft(tx, context, {
+          title,
+          definition: template.definition,
+          sourceTemplateKey: template.key,
+        });
+        const brought = await bringTemplatesIn({
+          tx,
+          formId: created.form.id,
+          templates: carried.templates,
+          copies: carried.copies,
+          by: context.principal.userId,
+        });
+        if (brought.templateIds.length > 0) {
+          await tx.auditLog.append({
+            actorKind: 'tenant_user',
+            actorId: context.principal.userId,
+            actorLabel: context.principal.userId,
+            action: 'form.started_from_library',
+            resourceType: 'form',
+            resourceId: created.form.id,
+            requestId: context.requestId,
+            ipAddress: context.ipAddress,
+            userAgent: context.userAgent,
+            metadata: {
+              key: template.key,
+              documentTemplates: brought.templateIds,
+              pictures: brought.pictures,
+            },
+          });
+        }
+        return { ...created, documentTemplatesCopied: brought.templateIds.length };
       });
-    });
-    return { status: 201, body: detail };
+      return { status: 201, body: detail };
+    } catch (error) {
+      if (carried.store !== null) {
+        await discardPictures(carried.store, carried.copies);
+      }
+      throw error;
+    }
   },
 });
 

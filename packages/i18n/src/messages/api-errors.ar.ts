@@ -94,6 +94,7 @@ export const apiErrorsAr: Catalogue<typeof apiErrorsEn> = {
   closing_journal: 'يُعكس قيد إقفال نهاية السنة بإعادة فتح سنته.',
   code_taken: 'هذا الرمز مستخدم بالفعل. اختر رمزًا آخر.',
   comment_id_taken: 'تعارضت هذه الملاحظة مع ملاحظة أخرى. تجاهل التغيير واكتب الملاحظة من جديد.',
+  company_closed: 'هذه الشركة مغلقة. لا يمكن نسخ شيء إليها.',
   completion_blocked: 'لا يمكن إكمال هذه المهمة بعد: ما زال ينقصها شيء تحتاج إليه.',
   component_kind: 'المكوّن صنف مخزني أو غير مخزني. ضع العمالة في تكلفة العمالة.',
   confirmed: 'مجموعة القواعد هذه مؤكدة ولم تعد تتغير. أضف مجموعة جديدة من شهر لاحق.',
@@ -137,10 +138,15 @@ export const apiErrorsAr: Catalogue<typeof apiErrorsEn> = {
   document_not_pdf: 'لا يمكن رفع مستند إلا بصيغة PDF. اختر ملف PDF.',
   document_template_archived: 'هذا القالب مؤرشف. اختر قالبًا آخر.',
   document_template_changed: 'حفظ شخص آخر هذا القالب في الأثناء. افتحه من جديد لترى تغييراته.',
+  document_template_image_missing:
+    'صورة يستخدمها هذا القالب لم تعد محفوظة. ارفعها من جديد ثم انسخ.',
   document_template_image_unusable:
     'صورة في القالب غير صالحة للاستخدام. ارفعها من جديد بصيغة PNG أو JPEG أو WebP.',
   document_template_invalid: 'في القالب مشكلات، كل منها مذكور أدناه.',
+  document_template_mapping_invalid: 'سؤال اخترته للنسخة لا يصلح لهذا المكان. اختر سؤالًا آخر.',
   document_template_problem: 'هذا الجزء من القالب يحتاج إلى تصحيح.',
+  document_template_unmatched:
+    'بعض الأسئلة التي يستخدمها القالب غير موجودة في النموذج الآخر. اختر سؤالًا لكل منها، أو احذف ما يستخدمها.',
   document_template_wrong_form: 'هذا القالب يخص نموذجًا آخر.',
   document_too_large: 'حجم ملف PDF هذا أكبر من 20 ميجابايت. ارفع ملفًا أصغر.',
   double_booked: 'هذا الشخص مكلَّف بمهمة أخرى في ذلك الوقت.',
@@ -194,9 +200,15 @@ export const apiErrorsAr: Catalogue<typeof apiErrorsEn> = {
   export_not_ready:
     'لا يُجدوَل حذف شركة إلا بعد أن يجهز تصدير بياناتها. انتظر حتى يجهز التصدير، ثم حاول مرة أخرى.',
   filter_needs_form: 'اختر نموذجًا قبل التصفية حسب إجابة.',
+  form_copy_same_company: 'هذه شركة النموذج نفسها. استخدم «نسخ» في قائمة النماذج بدلًا من ذلك.',
   form_not_on_work_order: 'لم يعد هذا النموذج من نماذج المهمة.',
   form_not_published: 'انشر النموذج أولًا؛ فمستنداته تُصمَّم على النسخة المنشورة.',
   form_started: 'بدأ أحدهم تعبئة هذا النموذج لهذه المهمة، لذا يبقى ضمنها.',
+  form_template_builtin: 'هذا القالب يأتي مع Integr8 Plus ولا يمكن تغييره هنا.',
+  form_template_key_taken: 'قالب في المكتبة يستخدم هذا المفتاح بالفعل. اختر مفتاحًا آخر.',
+  form_template_source_gone:
+    'النموذج الذي حُفظ منه هذا القالب لم يعد موجودًا. احفظ نموذجًا في المكتبة من جديد بدلًا من ذلك.',
+  form_template_title_required: 'أعطِ القالب اسمًا بلغة واحدة على الأقل.',
   form_unknown: 'اختر نموذجًا منشورًا.',
   form_version_unavailable:
     'لم يعد هذا الإصدار من النموذج متاحًا. عبّئه من جديد على الإصدار الحالي.',

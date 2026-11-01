@@ -118,6 +118,7 @@ export const apiErrorsEn = {
   code_taken: 'This code is already in use. Choose another.',
   comment_id_taken:
     'This note clashed with another one. Discard the change and write the note again.',
+  company_closed: 'This company is closed. Nothing can be copied to it.',
   completion_blocked: 'This job cannot be completed yet: something it needs is still missing.',
   component_kind: 'A component is a stock or non-stock item. Put labour in the labour cost.',
   confirmed: 'This rule set is confirmed and no longer changes. Add a new one from a later month.',
@@ -165,10 +166,16 @@ export const apiErrorsEn = {
   document_template_archived: 'This template is archived. Choose another one.',
   document_template_changed:
     'Someone else saved this template meanwhile. Open it again to see their changes.',
+  document_template_image_missing:
+    'A picture this template uses is no longer stored. Upload it again, then copy.',
   document_template_image_unusable:
     'A picture in the template is not usable. Upload it again as a PNG, JPEG or WebP image.',
   document_template_invalid: 'The template has problems. Each one is listed below.',
+  document_template_mapping_invalid:
+    'A question chosen for the copy cannot take that place. Choose another one.',
   document_template_problem: 'This part of the template needs fixing.',
+  document_template_unmatched:
+    'Some questions the template uses are not in the other form. Choose a question for each, or take out what uses it.',
   document_template_wrong_form: 'This template belongs to another form.',
   document_too_large: 'This PDF is larger than 20 MB. Upload a smaller one.',
   double_booked: 'This person is on another job at that time.',
@@ -226,10 +233,16 @@ export const apiErrorsEn = {
   export_not_ready:
     'A company is scheduled for deletion only once its export is ready. Wait for the export, then try again.',
   filter_needs_form: 'Choose a form before filtering by an answer.',
+  form_copy_same_company: 'This is the form’s own company. Use Copy in the forms list instead.',
   form_not_on_work_order: 'This form is no longer one of the job’s forms.',
   form_not_published:
     'Publish the form first; its documents are designed against the published version.',
   form_started: 'Someone has started this form for this job, so it stays on the job.',
+  form_template_builtin: 'This template ships with Integr8 Plus and cannot be changed here.',
+  form_template_key_taken: 'A library template already uses this key. Choose another key.',
+  form_template_source_gone:
+    'The form this template was saved from no longer exists. Save a form to the library again instead.',
+  form_template_title_required: 'Give the template a name in at least one language.',
   form_unknown: 'Choose a published form.',
   form_version_unavailable:
     'This version of the form is no longer available. Fill it again on the current version.',

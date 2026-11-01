@@ -77,7 +77,7 @@ const TEMPLATE_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 const localized = z.record(z.string(), z.string());
 const designInput = z.record(z.string(), z.unknown());
 
-const templateSchema = z.object({
+export const templateSchema = z.object({
   id: z.uuid(),
   formId: z.uuid(),
   name: z.string(),
@@ -143,7 +143,7 @@ const documentParams = z.object({ documentId: z.uuid() });
 // Bodies
 // ---------------------------------------------------------------------------
 
-function templateBody(template: DocumentTemplate): z.infer<typeof templateSchema> {
+export function templateBody(template: DocumentTemplate): z.infer<typeof templateSchema> {
   return {
     id: template.id,
     formId: template.formId,
@@ -211,7 +211,7 @@ async function documentBody(
   return body!;
 }
 
-function designRefused(issues: readonly DesignIssue[]): never {
+export function designRefused(issues: readonly DesignIssue[]): never {
   throw unprocessable(
     'document_template_invalid',
     'The template has problems; each is listed with where it is.',
