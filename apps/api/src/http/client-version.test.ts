@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   assessClientVersion,
   compareVersions,
+  outdatedClientError,
   outdatedClientMessage,
   parseClientVersion,
+  UPDATE_URL_DETAIL,
 } from './client-version.js';
 
 describe('parsing', () => {
@@ -97,5 +99,27 @@ describe('the message an out-of-date client shows', () => {
     expect(message).toContain('https://integr8.example/download');
     // Renderable as-is by a client too old to understand a new error shape.
     expect(message.startsWith('This version')).toBe(true);
+  });
+});
+
+describe('the refusal an out-of-date client receives', () => {
+  it('carries the update address as data as well as in the sentence', () => {
+    const error = outdatedClientError(
+      { minimum: '2.0.0', declared: '1.4.2' },
+      'https://app.integr8-media.com/download',
+    );
+    expect(error.status).toBe(503);
+    expect(error.code).toBe('client_too_old');
+    expect(error.message).toContain('https://app.integr8-media.com/download');
+    expect(error.details).toContainEqual({
+      field: 'update',
+      code: UPDATE_URL_DETAIL,
+      message: 'https://app.integr8-media.com/download',
+    });
+    // The two details older apps already read are still there, unchanged.
+    expect(error.details?.slice(0, 2)).toEqual([
+      { field: 'header.x-client-version', code: 'unsupported', message: '1.4.2' },
+      { field: 'header.min-supported-client', code: 'minimum', message: '2.0.0' },
+    ]);
   });
 });

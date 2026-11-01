@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   assertProductionReady,
+  clientUpdateUrl,
   databaseProblems,
+  DEVELOPMENT_UPDATE_URL,
   hrKeySettings,
   loadApiConfig,
   startupWarnings,
@@ -39,7 +41,8 @@ const PRODUCTION_BASE = {
 
 /** The database settings a production API or worker is given (0058). */
 const PRODUCTION_DATABASE = {
-  DATABASE_URL_PLATFORM: 'postgres://integr8_platform:x@postgres:5432/integr8',
+  DATABASE_URL_PLATFORM:
+    'postgres://integr8_platform:a-generated-password-of-32-chars@postgres:5432/integr8',
 };
 
 describe("the web app's origin and API_CORS_ORIGINS", () => {
@@ -283,7 +286,9 @@ describe('the Cloudflare analytics token', () => {
         }),
       ),
     ).toEqual([]);
-    expect(startupWarnings(loadApiConfig({ ...PRODUCTION_BASE, APP_ENV: 'staging' }))).toEqual([]);
+    expect(startupWarnings(loadApiConfig({ ...PRODUCTION_BASE, APP_ENV: 'staging' }), {})).toEqual(
+      [],
+    );
     expect(loadApiConfig({ CLOUDFLARE_API_TOKEN: '' }).CLOUDFLARE_API_TOKEN).toBeUndefined();
   });
 });
@@ -318,5 +323,118 @@ describe('the HR data key', () => {
     expect(() => loadApiConfig({ HR_DATA_KEY: key(2), HR_DATA_KEYS_PREVIOUS: 'short' })).toThrow(
       /HR_DATA_KEYS_PREVIOUS/u,
     );
+  });
+});
+
+describe('where an app too old to be served is sent', () => {
+  it("is the web app's download page unless set", () => {
+    expect(clientUpdateUrl(loadApiConfig({ WEB_APP_URL: 'https://app.integr8-media.com/' }))).toBe(
+      'https://app.integr8-media.com/download',
+    );
+    expect(
+      clientUpdateUrl(
+        loadApiConfig({
+          WEB_APP_URL: 'https://app.integr8-media.com',
+          API_UPDATE_URL: 'https://downloads.integr8-media.com',
+        }),
+      ),
+    ).toBe('https://downloads.integr8-media.com');
+    // A blank line in the env file is the same as no line.
+    expect(
+      clientUpdateUrl(
+        loadApiConfig({ WEB_APP_URL: 'https://app.integr8-media.com', API_UPDATE_URL: ' ' }),
+      ),
+    ).toBe('https://app.integr8-media.com/download');
+    expect(clientUpdateUrl(loadApiConfig({}))).toBe(DEVELOPMENT_UPDATE_URL);
+  });
+
+  const ready = (overrides: Record<string, string | undefined>) => () =>
+    assertProductionReady(
+      loadApiConfig({
+        ...PRODUCTION_BASE,
+        API_CORS_ORIGINS: 'https://app.example.com',
+        ...overrides,
+      }),
+      PRODUCTION_DATABASE,
+    );
+
+  it('is refused in production when it is the old example address', () => {
+    expect(ready({ API_UPDATE_URL: 'https://integr8.example/download' })).toThrow(
+      /API_UPDATE_URL names an example address/u,
+    );
+    expect(ready({ API_UPDATE_URL: 'https://app.your-domain.example/download' })).toThrow(
+      /API_UPDATE_URL names an example address/u,
+    );
+    expect(ready({ API_UPDATE_URL: undefined })).not.toThrow();
+    expect(ready({ API_UPDATE_URL: 'https://app.example.com/download' })).not.toThrow();
+  });
+
+  it('is refused in production when there is nothing to derive it from', () => {
+    expect(ready({ WEB_APP_URL: undefined })).toThrow(
+      /API_UPDATE_URL and WEB_APP_URL are both unset/u,
+    );
+  });
+});
+
+describe('example values from deploy/.env.example', () => {
+  const config = loadApiConfig({ ...PRODUCTION_BASE, API_CORS_ORIGINS: 'https://app.example.com' });
+
+  it('stop a production start: change-me, example addresses, short database passwords', () => {
+    const start = (env: NodeJS.ProcessEnv) => () => {
+      assertProductionReady(config, { ...PRODUCTION_DATABASE, ...env });
+    };
+    expect(
+      start({
+        DATABASE_URL: 'postgres://integr8_app:change-me-app-password@postgres:5432/integr8',
+      }),
+    ).toThrow(/DATABASE_URL still holds the "change-me" example value/u);
+    expect(start({ PLATFORM_SECRET_KEY: 'change-me' })).toThrow(/PLATFORM_SECRET_KEY still holds/u);
+    expect(start({ AUTH_ISSUER: 'https://api.your-domain.example' })).toThrow(
+      /AUTH_ISSUER names an example address/u,
+    );
+    expect(
+      start({ DATABASE_URL_PLATFORM: 'postgres://integr8_platform:password1@postgres:5432/x' }),
+    ).toThrow(/The password in DATABASE_URL_PLATFORM is shorter than 16 characters/u);
+    expect(
+      loadApiConfig({ ...PRODUCTION_BASE, WEB_APP_URL: 'https://app.your-domain.example' }),
+    ).toBeDefined();
+    expect(() => {
+      assertProductionReady(
+        loadApiConfig({
+          ...PRODUCTION_BASE,
+          WEB_APP_URL: 'https://app.your-domain.example',
+          API_CORS_ORIGINS: 'https://app.your-domain.example',
+        }),
+        PRODUCTION_DATABASE,
+      );
+    }).toThrow(/WEB_APP_URL names an example address/u);
+  });
+
+  it('never print the secret itself', () => {
+    let message = '';
+    try {
+      assertProductionReady(config, {
+        DATABASE_URL_PLATFORM: 'postgres://integr8_platform:hunter2@postgres:5432/integr8',
+      });
+    } catch (error) {
+      message = (error as Error).message;
+    }
+    expect(message).toMatch(/DATABASE_URL_PLATFORM is shorter/u);
+    expect(message).not.toContain('hunter2');
+  });
+
+  it('are warned about in staging, which still starts', () => {
+    const staging = loadApiConfig({ APP_ENV: 'staging', WEB_APP_URL: 'https://app.example.com' });
+    const warnings = startupWarnings(staging, {
+      POSTGRES_PASSWORD: 'change-me-owner-password',
+      AUTH_ISSUER: 'https://api.integr8.local',
+    });
+    expect(warnings).toEqual([
+      expect.stringMatching(/^Production would refuse to start: AUTH_ISSUER names an example/u),
+      expect.stringMatching(/^Production would refuse to start: POSTGRES_PASSWORD still holds/u),
+    ]);
+    expect(() => {
+      assertProductionReady(staging, { POSTGRES_PASSWORD: 'change-me-owner-password' });
+    }).not.toThrow();
   });
 });

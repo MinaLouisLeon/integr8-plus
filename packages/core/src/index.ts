@@ -95,6 +95,12 @@ export {
   requireEnv,
   optionalEnv,
   type AppEnvironment,
+  EXAMPLE_VALUE_MARKER,
+  MIN_DATABASE_PASSWORD_LENGTH,
+  connectionPassword,
+  exampleValueProblems,
+  hasExampleAddress,
+  isExampleHost,
 } from './environment.js';
 
 export {

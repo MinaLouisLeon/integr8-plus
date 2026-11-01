@@ -9,10 +9,10 @@ import { AuthError, InvalidTokenError, SessionRevokedError } from '@integr8/auth
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import { randomUUID } from 'node:crypto';
 import type { Services } from './composition.js';
-import { type ApiConfig, corsOrigins } from './config.js';
+import { type ApiConfig, clientUpdateUrl, corsOrigins } from './config.js';
 import { registerCors } from './http/cors.js';
 import { LocalDiskStorage, LOCAL_MEDIA_PREFIX } from './media/local-disk.js';
-import { assessClientVersion, outdatedClientMessage } from './http/client-version.js';
+import { assessClientVersion, outdatedClientError } from './http/client-version.js';
 import {
   ApiError,
   badRequest,
@@ -213,25 +213,7 @@ export function buildServer(options: BuildServerOptions): FastifyInstance {
     // 503 rather than 400: nothing is wrong with the request. The client is
     // simply older than this deployment serves, and `Retry-After` would be a
     // lie, so the message carries the actionable part.
-    done(
-      new ApiError(
-        503,
-        'client_too_old',
-        outdatedClientMessage({
-          minimum: verdict.minimum,
-          declared: verdict.declared,
-          updateUrl: config.API_UPDATE_URL,
-        }),
-        [
-          { field: 'header.x-client-version', code: 'unsupported', message: verdict.declared },
-          {
-            field: 'header.min-supported-client',
-            code: 'minimum',
-            message: verdict.minimum,
-          },
-        ],
-      ),
-    );
+    done(outdatedClientError(verdict, clientUpdateUrl(config)));
   });
 
   // ---------------------------------------------------------------------------

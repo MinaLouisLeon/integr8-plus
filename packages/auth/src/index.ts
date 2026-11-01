@@ -19,7 +19,14 @@
  *   public key, so the app opens in a basement.
  */
 
-export { authConfigSchema, loadAuthConfig, ttlMs, type AuthConfig } from './config.js';
+export {
+  authConfigSchema,
+  DEVELOPMENT_ISSUER,
+  loadAuthConfig,
+  productionIssuerProblems,
+  ttlMs,
+  type AuthConfig,
+} from './config.js';
 
 export {
   ALGORITHM,
