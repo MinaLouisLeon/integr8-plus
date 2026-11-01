@@ -139,6 +139,19 @@ the end of any piece of work that changes one of them, and date each section.
   and templates that keep printing when a form version drops a question ("Needs
   attention"). Branded server PDFs for quotes, invoices, purchase orders and a job report
   (0074), in the Documents register, emailable.
+- **Form files and AI form building (2026-11-01, 1.3.0), as the owner chose them:** a form with
+  its PDF templates and pictures travels as one `.integr8form` file (`@integr8/form-package`,
+  spec `docs/form-engine/package-format.md`; a strict ZIP reader of its own on Node's zlib, no
+  library, so oversized or malformed files are refused). Staff export a form (published, or the
+  draft) and import one as a new draft; the dashboard imports into and exports from the
+  library (library import refuses a form that would not publish). "Integr8 Forms for AI"
+  (`apps/forms-ai`) is an offline MCP server (no credentials, never calls the server) that
+  AI coding tools use to build those files: format guide generated from the real schemas,
+  checks with the app's own rules, PDF previews through the machine's Chrome/Edge, save and
+  open files. It ships as one executable per OS from the release workflow (Node SEA, about
+  130 MB, unsigned), linked from `/download`; double-clicked it opens a terminal installer
+  that connects Claude Code, Codex, Claude Desktop, Cursor, VS Code, Windsurf and Gemini CLI
+  globally and offers updates from GitHub releases.
 - **The demo seeder goes through the API**, in-process with Fastify's `inject`, as the
   company's own people (plus a staff impersonation for staff-only setup). Direct inserts
   were rejected: they skip numbering, stock, ledger postings and audit, and produce data
@@ -165,7 +178,11 @@ Update them together at each release or new migration:
   0074; the api container's 1 GB cap; wait a day after updating before publishing forms
   that use the new features, so phones have the 1.3.0 app). Check "Preview as PDF" and pdf.js
   in the real Tauri app on Windows and macOS (only tested in Chromium). The real Resend path
-  with PDF attachments is untested. No job-report button on the phone yet.
+  with PDF attachments is untested. No job-report button on the phone yet. Forms for AI:
+  the Windows and macOS executables are first built by the next release run (the
+  `macos-15-intel` runner label is unverified); on a real machine check the installer's setup
+  for Claude Desktop, Cursor, VS Code and Windsurf (their config formats could not be checked
+  against their docs) and macOS/Linux need `chmod +x` after download.
 
 - **Owner steps for 1.2.4 (2026-11-01):** run `sh deploy/vps/check-env.sh` and replace
   any value it names (Stage 11 part AA), comment out `API_UPDATE_URL`; tell companies using
