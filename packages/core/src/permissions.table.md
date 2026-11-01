@@ -93,6 +93,7 @@ and the company's own roles build on these cells and are tested separately.
 | `document.read`          | yes   | yes   | no         | no                | yes        | no       | yes    | no         |
 | `document.create`        | yes   | yes   | no         | no                | yes        | yes      | no     | no         |
 | `document.manage`        | yes   | yes   | no         | no                | no         | no       | no     | no         |
+| `document.upload`        | yes   | yes   | no         | no                | no         | no       | no     | no         |
 | `document.design`        | yes   | yes   | no         | no                | no         | no       | no     | yes        |
 | `eta.read`               | yes   | yes   | no         | no                | yes        | no       | yes    | no         |
 | `eta.prepare`            | yes   | yes   | no         | no                | yes        | no       | no     | no         |
