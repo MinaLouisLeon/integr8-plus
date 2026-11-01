@@ -6,6 +6,7 @@ import {
   type FormView,
   isAnswered,
   isCalculated,
+  isQuestion,
   type Section,
 } from '@integr8/form-engine';
 import {
@@ -18,6 +19,7 @@ import {
 } from '@integr8/form-input';
 import { type TFunction, useTranslation } from '@integr8/i18n';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { InformationBlock } from './information.js';
 import { say } from './text.js';
 import { buttonClass } from './widgets/types.js';
 
@@ -213,9 +215,9 @@ export function EntryList({
   };
 
   const hasAnswers = (entry: EntryEvaluation) =>
-    section.fields.some(
-      (field) => !isCalculated(field) && isAnswered(field, entry.values.get(field.id)),
-    );
+    section.fields
+      .filter(isQuestion)
+      .some((field) => !isCalculated(field) && isAnswered(field, entry.values.get(field.id)));
 
   const tooFew = removingLeavesTooFew(section, view);
   const Heading = `h${String(headingLevel)}` as 'h5';
@@ -353,12 +355,16 @@ export function EntryList({
                     {section.fields
                       .filter((field) => entry.visible.get(field.id) === true)
                       .map((field) =>
-                        renderField(field, {
-                          entry,
-                          index,
-                          prefix: own,
-                          errors: errors.filter((error) => error.field === field.id),
-                        }),
+                        isQuestion(field) ? (
+                          renderField(field, {
+                            entry,
+                            index,
+                            prefix: own,
+                            errors: errors.filter((error) => error.field === field.id),
+                          })
+                        ) : (
+                          <InformationBlock key={field.id} item={field} locale={locale} />
+                        ),
                       )}
                   </div>
                 </div>

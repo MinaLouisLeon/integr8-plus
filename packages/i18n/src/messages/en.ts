@@ -956,6 +956,91 @@ export const en = {
   // expression, a schema or a regular expression: "Pick one", not "radio";
   // "When to show", not "visibleWhen".
   forms: {
+    // Form builder 1.3.0 (schema version 2): descriptions, Information blocks, formulas.
+    descriptions: {
+      label: 'Description (optional)',
+      hint: 'A line or two under the title, on every device. Plain text.',
+    },
+    information: {
+      paletteGroup: 'Text and guidance',
+      palette: 'Information',
+      paletteHint: 'Text among the questions: guidance, a tip or a warning.',
+      defaultBody: 'Write the guidance here.',
+      name: 'Information',
+      title: 'Information block',
+      heading: 'Heading (optional)',
+      body: 'Text',
+      bodyHint: 'Plain text. Line breaks are kept.',
+      style: 'Style',
+      styles: {
+        plain: 'Plain',
+        tip: 'Tip',
+        warning: 'Warning (amber)',
+      },
+      noAnswer:
+        'Shows text only. It has no answer, so it is not in submissions, reports or exports. It prints on a PDF only where a template places it.',
+    },
+    formula: {
+      label: 'Formula',
+      start: 'Work this answer out with a formula',
+      stop: 'Stop working it out',
+      hint: 'Type [ to choose a question. Use + − × ÷ and brackets, and the functions below.',
+      functions: 'Functions',
+      insert: 'Insert {{name}}',
+      suggestions: 'Suggestions',
+      works: 'The formula works.',
+      result: {
+        number: 'Result: a number',
+        date: 'Result: a date',
+      },
+      describe: {
+        round: 'round(value, places): rounded to that many decimal places',
+        percent: 'percent(part, whole): part as a percentage of whole',
+        min: 'min(a, b, …): the smallest of the answers given',
+        max: 'max(a, b, …): the largest of the answers given',
+        average: 'average(a, b, …): the average of the answers given',
+        days: 'days(from, to): days between two dates',
+        hours: 'hours(from, to): hours between two times or dates and times',
+        minutes: 'minutes(from, to): minutes between two times or dates and times',
+        add_days: 'add_days(date, n): a date n days later',
+        add_weeks: 'add_weeks(date, n): a date n weeks later',
+        add_months: 'add_months(date, n): a date n months later (31 Jan + 1 = 28 Feb)',
+        subtract_days: 'subtract_days(date, n): a date n days earlier',
+        subtract_weeks: 'subtract_weeks(date, n): a date n weeks earlier',
+        subtract_months: 'subtract_months(date, n): a date n months earlier',
+        count: 'count([Section]): how many entries a repeatable section has',
+        sum: 'sum([Section], [Question]): the total across its entries; or sum(a, b, …)',
+        today: 'today: the date the form is filled',
+        now: 'now: the date and time the form is worked out',
+      },
+      kind: {
+        number: 'number',
+        date: 'date',
+        time: 'time',
+        datetime: 'date and time',
+        number_or_moment: 'date or time',
+      },
+      problem: {
+        empty: 'Type a formula, or stop working this answer out.',
+        syntax: 'Something is wrong near “{{found}}”.',
+        syntaxEnd: 'The formula ends too soon.',
+        unclosed_reference: 'A “[” is not closed with “]”.',
+        unknown_name: 'No number, date or time question here is called “{{name}}”.',
+        ambiguous_name:
+          'Two questions are called “{{name}}”. Write the answer key of the one you mean, like [its_key].',
+        unknown_function: '“{{name}}” is not a function. Choose one from the list.',
+        arguments: '“{{name}}” has the wrong number of values in its brackets.',
+        places: 'Round to between 0 and {{maximum}} decimal places, written as a number.',
+        not_a_section: '“{{name}}” is not a repeatable section.',
+        not_in_section: '“{{name}}” is not a number question of “{{section}}”.',
+        literal: '“{{text}}” is not a date (YYYY-MM-DD) or a time (HH:MM).',
+        needs: 'A {{expected}} is needed here, not a {{found}}.',
+        mixed: 'Both sides of a difference must be of one kind, not a {{left}} and a {{right}}.',
+        time_in_days: 'Two times of day are apart by minutes or hours, not days.',
+        result: 'This question needs a {{expected}}, but the formula gives a {{found}}.',
+        engine: 'The form cannot use this formula: {{message}}',
+      },
+    },
     nav: {
       forms: 'Forms',
       home: 'Home',
@@ -1566,6 +1651,16 @@ export const en = {
   // the screens around it. Written for whoever is filling it in — often an
   // engineer on site — so short, and never about the form's machinery.
   fill: {
+    // Schema version 2 (1.3.0): Information blocks, and a form too new for this app.
+    information: {
+      tip: 'Tip',
+      warning: 'Warning',
+    },
+    updateApp: {
+      title: 'Update the app to open this form',
+      body: 'This form uses features this version of the app does not have. Update the app, then open the form again. Nothing has been started.',
+      action: 'Update the app',
+    },
     nav: {
       label: 'Sections of this form',
       page: 'Page {{number}}',
@@ -7794,6 +7889,8 @@ export const en = {
           static_table: 'Fixed table',
           image: 'Image',
           qr: 'QR code',
+          // Form builder 1.3.0: one of the form's Information blocks.
+          information: 'Information from the form',
           divider: 'Line',
           spacer: 'Space',
           page_break: 'Page break',
@@ -7801,6 +7898,10 @@ export const en = {
         },
         textEn: 'Text (English)',
         textAr: 'Text (Arabic)',
+        // Form builder 1.3.0.
+        information: 'Information block',
+        informationHint: 'Printed as the form shows it, and only when the form shows it.',
+        noInformation: 'This form has no Information blocks outside repeating sections.',
         placeholders: 'These can be placed in the text, and are filled in when the PDF is made:',
         level: 'Size',
         align: 'Alignment',

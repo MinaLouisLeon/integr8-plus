@@ -5,6 +5,8 @@ import {
   type Field,
   geoPointSchema,
   isAnswered,
+  isCalculated,
+  isQuestion,
   mediaReferenceSchema,
   ownAnswer,
   type Section,
@@ -105,11 +107,12 @@ export function AnswerView({
                   </h5>
                   <dl className="divide-y divide-border-subtle rounded-lg border border-border-subtle bg-surface">
                     {section.fields
+                      .filter(isQuestion)
                       .filter((field) => entry.visible.get(field.id) === true)
                       .map((field) =>
                         row(
                           field,
-                          entry.values.get(field.id),
+                          kept(field, own, entry.values.get(field.id)),
                           before !== undefined &&
                             differs(ownAnswer(earlier, field.id), ownAnswer(own, field.id)),
                         ),
@@ -167,11 +170,12 @@ export function AnswerView({
                 {section.repeat === undefined ? (
                   <dl className="divide-y divide-border-subtle rounded-lg border border-border-subtle bg-surface">
                     {section.fields
+                      .filter(isQuestion)
                       .filter((field) => visible.get(field.id) === true)
                       .map((field) =>
                         row(
                           field,
-                          values.get(field.id),
+                          kept(field, answers, values.get(field.id)),
                           previous !== undefined &&
                             differs(ownAnswer(previous, field.id), ownAnswer(answers, field.id)),
                         ),
@@ -186,6 +190,17 @@ export function AnswerView({
       ))}
     </div>
   );
+}
+
+/**
+ * A calculated answer as it was stored, when it was: the server worked it out
+ * when the form was submitted, and one that reads `now` (schema version 2)
+ * would come out differently if worked out again today. Otherwise — a form
+ * still being filled — the value worked out from the answers.
+ */
+function kept(field: Field, stored: Answers, worked: unknown): unknown {
+  const value = isCalculated(field) ? ownAnswer(stored, field.id) : undefined;
+  return value === undefined ? worked : value;
 }
 
 function AnswerValue({

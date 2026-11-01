@@ -890,6 +890,91 @@ export const ar: Catalogue<Messages> = {
   },
 
   forms: {
+    // Form builder 1.3.0 (schema version 2): descriptions, Information blocks, formulas.
+    descriptions: {
+      label: 'الوصف (اختياري)',
+      hint: 'سطر أو سطران تحت العنوان، على كل الأجهزة. نص عادي.',
+    },
+    information: {
+      paletteGroup: 'نصوص وإرشادات',
+      palette: 'معلومات',
+      paletteHint: 'نص بين الأسئلة: إرشاد أو نصيحة أو تحذير.',
+      defaultBody: 'اكتب الإرشاد هنا.',
+      name: 'معلومات',
+      title: 'كتلة معلومات',
+      heading: 'العنوان (اختياري)',
+      body: 'النص',
+      bodyHint: 'نص عادي. يحتفظ بفواصل الأسطر.',
+      style: 'النمط',
+      styles: {
+        plain: 'عادي',
+        tip: 'نصيحة',
+        warning: 'تحذير (كهرماني)',
+      },
+      noAnswer:
+        'تعرض نصًا فقط. ليس لها إجابة، لذا لا تظهر في الإرسالات أو التقارير أو ملفات التصدير. تُطبع في ملف PDF فقط حيث يضعها القالب.',
+    },
+    formula: {
+      label: 'المعادلة',
+      start: 'احسب هذه الإجابة بمعادلة',
+      stop: 'أوقف الحساب',
+      hint: 'اكتب [ لاختيار سؤال. استخدم + − × ÷ والأقواس، والدوال أدناه.',
+      functions: 'الدوال',
+      insert: 'إدراج {{name}}',
+      suggestions: 'اقتراحات',
+      works: 'المعادلة صحيحة.',
+      result: {
+        number: 'النتيجة: رقم',
+        date: 'النتيجة: تاريخ',
+      },
+      describe: {
+        round: 'round(القيمة، المنازل): تقريب إلى هذا العدد من المنازل العشرية',
+        percent: 'percent(الجزء، الكل): الجزء كنسبة مئوية من الكل',
+        min: 'min(أ، ب، …): أصغر الإجابات المعطاة',
+        max: 'max(أ، ب، …): أكبر الإجابات المعطاة',
+        average: 'average(أ، ب، …): متوسط الإجابات المعطاة',
+        days: 'days(من، إلى): عدد الأيام بين تاريخين',
+        hours: 'hours(من، إلى): عدد الساعات بين وقتين أو تاريخين ووقتين',
+        minutes: 'minutes(من، إلى): عدد الدقائق بين وقتين أو تاريخين ووقتين',
+        add_days: 'add_days(التاريخ، ن): تاريخ بعد ن يومًا',
+        add_weeks: 'add_weeks(التاريخ، ن): تاريخ بعد ن أسبوعًا',
+        add_months: 'add_months(التاريخ، ن): تاريخ بعد ن شهرًا (31 يناير + 1 = 28 فبراير)',
+        subtract_days: 'subtract_days(التاريخ، ن): تاريخ قبل ن يومًا',
+        subtract_weeks: 'subtract_weeks(التاريخ، ن): تاريخ قبل ن أسبوعًا',
+        subtract_months: 'subtract_months(التاريخ، ن): تاريخ قبل ن شهرًا',
+        count: 'count([القسم]): عدد إدخالات قسم متكرر',
+        sum: 'sum([القسم]، [السؤال]): المجموع عبر إدخالاته؛ أو sum(أ، ب، …)',
+        today: 'today: تاريخ تعبئة النموذج',
+        now: 'now: تاريخ ووقت حساب النموذج',
+      },
+      kind: {
+        number: 'رقم',
+        date: 'تاريخ',
+        time: 'وقت',
+        datetime: 'تاريخ ووقت',
+        number_or_moment: 'تاريخ أو وقت',
+      },
+      problem: {
+        empty: 'اكتب معادلة، أو أوقف حساب هذه الإجابة.',
+        syntax: 'يوجد خطأ قرب «{{found}}».',
+        syntaxEnd: 'تنتهي المعادلة قبل أوانها.',
+        unclosed_reference: 'يوجد «[» غير مغلق بـ «]».',
+        unknown_name: 'لا يوجد هنا سؤال رقم أو تاريخ أو وقت باسم «{{name}}».',
+        ambiguous_name:
+          'يوجد سؤالان باسم «{{name}}». اكتب مفتاح الإجابة للسؤال المقصود، مثل [مفتاحه].',
+        unknown_function: '«{{name}}» ليست دالة. اختر واحدة من القائمة.',
+        arguments: 'عدد القيم بين قوسي «{{name}}» غير صحيح.',
+        places: 'قرّب إلى عدد من المنازل العشرية بين 0 و{{maximum}}، مكتوبًا كرقم.',
+        not_a_section: '«{{name}}» ليس قسمًا متكررًا.',
+        not_in_section: '«{{name}}» ليس سؤالًا رقميًا في «{{section}}».',
+        literal: '«{{text}}» ليس تاريخًا (YYYY-MM-DD) ولا وقتًا (HH:MM).',
+        needs: 'يلزم هنا {{expected}}، وليس {{found}}.',
+        mixed: 'يجب أن يكون طرفا الفرق من نوع واحد، وليس {{left}} و{{right}}.',
+        time_in_days: 'الفرق بين وقتين في اليوم يُحسب بالدقائق أو الساعات، لا بالأيام.',
+        result: 'يحتاج هذا السؤال إلى {{expected}}، لكن المعادلة تعطي {{found}}.',
+        engine: 'لا يمكن للنموذج استخدام هذه المعادلة: {{message}}',
+      },
+    },
     nav: {
       forms: 'النماذج',
       home: 'الرئيسية',
@@ -1502,6 +1587,16 @@ export const ar: Catalogue<Messages> = {
   },
 
   fill: {
+    // Schema version 2 (1.3.0): Information blocks, and a form too new for this app.
+    information: {
+      tip: 'نصيحة',
+      warning: 'تحذير',
+    },
+    updateApp: {
+      title: 'حدّث التطبيق لفتح هذا النموذج',
+      body: 'يستخدم هذا النموذج ميزات لا تتوفر في هذا الإصدار من التطبيق. حدّث التطبيق ثم افتح النموذج مرة أخرى. لم يبدأ أي شيء بعد.',
+      action: 'تحديث التطبيق',
+    },
     nav: {
       label: 'أقسام هذا النموذج',
       page: 'الصفحة {{number}}',
@@ -7840,6 +7935,8 @@ export const ar: Catalogue<Messages> = {
         edit: 'تعديل',
         done: 'تم',
         types: {
+          // Form builder 1.3.0: one of the form's Information blocks.
+          information: 'معلومات من النموذج',
           heading: 'عنوان',
           text: 'نص',
           field: 'إجابة',
@@ -7855,6 +7952,10 @@ export const ar: Catalogue<Messages> = {
           page_break: 'فاصل صفحة',
           row: 'جنبًا إلى جنب',
         },
+        // Form builder 1.3.0.
+        information: 'كتلة معلومات',
+        informationHint: 'تُطبع كما يعرضها النموذج، وفقط عندما يعرضها.',
+        noInformation: 'لا يحتوي هذا النموذج على كتل معلومات خارج الأقسام المتكررة.',
         textEn: 'النص (بالإنجليزية)',
         textAr: 'النص (بالعربية)',
         placeholders: 'يمكن وضع هذه في النص، وتُملأ عند إنشاء ملف PDF:',

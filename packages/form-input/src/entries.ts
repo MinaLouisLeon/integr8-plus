@@ -1,11 +1,12 @@
-import type {
-  CompiledForm,
-  Field,
-  ElementId,
-  EntryEvaluation,
-  FieldError,
-  FormView,
-  Section,
+import {
+  type CompiledForm,
+  type Field,
+  type ElementId,
+  type EntryEvaluation,
+  type FieldError,
+  type FormView,
+  isQuestion,
+  type Section,
 } from '@integr8/form-engine';
 import { say } from './text.js';
 
@@ -48,7 +49,9 @@ export function entryTitle(
   const number = new Intl.NumberFormat(locale).format(index + 1);
   const label = repeat === undefined ? number : `${say(repeat.entryLabel, locale)} ${number}`;
   const titled = repeat?.titleField === undefined ? undefined : entry.values.get(repeat.titleField);
-  const field = section.fields.find((candidate) => candidate.id === repeat?.titleField);
+  const field = section.fields
+    .filter(isQuestion)
+    .find((candidate) => candidate.id === repeat?.titleField);
   return { label, name: nameOf(field, titled, locale) };
 }
 

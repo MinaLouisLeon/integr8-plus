@@ -1,11 +1,5 @@
-import {
-  type Field,
-  type FieldError,
-  formatDecimal,
-  isCalculated,
-  parseDecimal,
-} from '@integr8/form-engine';
-import { type DependentChoices, errorMessage } from '@integr8/form-input';
+import { type Field, type FieldError, isCalculated } from '@integr8/form-engine';
+import { calculatedText, type DependentChoices, errorMessage } from '@integr8/form-input';
 import { useTranslation } from '@integr8/i18n';
 import type { ReactNode } from 'react';
 import type { MediaAdapter } from './media.js';
@@ -138,7 +132,7 @@ export function FieldBlock(props: FieldBlockProps) {
           aria-live="polite"
           className="rounded-md bg-surface-muted px-3 py-2 text-sm text-content"
         >
-          {calculatedText(field, value) || '—'}
+          {calculatedText(field, value, locale) || '—'}
           {'unit' in field && field.unit !== undefined && value !== undefined
             ? ` ${field.unit}`
             : ''}
@@ -252,17 +246,6 @@ function widget(props: WidgetProps): ReactNode {
     case 'gps':
       return <GpsWidget {...(props as WidgetProps<'gps'>)} />;
   }
-}
-
-function calculatedText(field: Field, value: unknown): string {
-  if (value === undefined) {
-    return '';
-  }
-  if (field.type === 'decimal' && typeof value === 'string') {
-    const parsed = parseDecimal(value);
-    return parsed === undefined ? value : formatDecimal(parsed);
-  }
-  return typeof value === 'number' || typeof value === 'string' ? String(value) : '';
 }
 
 /** A rule's own message when it has one; the catalogue's otherwise, with the engine's parameters. */

@@ -21,11 +21,13 @@ export {
   type EntryListProps,
 } from './entries.js';
 export { ErrorText } from './field.js';
+export { Description, InformationBlock } from './information.js';
 export { FormFiller, type FormFillerProps, type SubmitOutcome } from './form-filler.js';
 export type { MediaAdapter } from './media.js';
 export { formatBytes, normaliseDigits, say, withLocalOffset } from './text.js';
 // What the view says about a question, for the builder's preview to draw it the same way.
 export {
+  calculatedText,
   dependentChoices,
   isRequiredNow,
   offeredOptions,
