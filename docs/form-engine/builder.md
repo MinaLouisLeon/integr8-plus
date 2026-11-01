@@ -260,6 +260,11 @@ sum([Radiators], [Output]) / count([Radiators])
   wrong kind), then the engine compiles the form with it (a calculation that comes back to
   its own question). Only a formula that works is saved into the draft; the text is kept as
   typed until it does.
+- The box is left to right in both languages. An Arabic name in brackets still shows as
+  `[الضغط] * 2`, its brackets the right way round: browsers pair brackets by the Unicode
+  bidirectional algorithm's bracket rule, which gives a pair holding Arabic the direction of
+  what comes before it (checked in Chromium, with and without invisible isolation marks
+  around each name — the two look the same, so no marks are added to what is typed).
 
 **Why a typed formula, not boxes.** The step-by-step editor could only say left-to-right
 chains. Brackets and functions nest, and a nested tree of dropdowns is unreadable; one line
@@ -355,6 +360,13 @@ from `@integr8/tokens`, the values the phone's `useTheme` reads); a company on "
 follows the desktop's own theme. The camera, signature pad, location and native date pickers
 are stood in for, as before ("Simulate").
 
+What form format 2 added is drawn as the phone draws it (`apps/mobile/src/forms/information.tsx`):
+descriptions under page and section titles, Information blocks plain or boxed with a coloured
+edge (tip in the brand colour, warning in amber), and a calculated date written as the phone
+writes dates. For a form that uses any of it, **Open as an app older than 1.3.0** under the
+phone shows what such an app shows instead of the form: the phone's "Update the app" screen.
+The preview's `now` is the clock, as on the phone.
+
 Screenshots, after Review on an empty form, in a teal company colour:
 [English](../screenshots/1.3.0/form-builder/phone-preview-en.png),
 [Arabic](../screenshots/1.3.0/form-builder/phone-preview-ar.png).
@@ -370,20 +382,27 @@ An automated check holds all of them to the same thing at every step:
   options that depend on another answer, custom checks and a format with their own
   messages, calculations (one summing a repeating section), and a repeating section with a
   minimum, a title question, a check inside an entry and checks across its entries (count,
-  every).
+  every). It is written in form format 2 and also has a description on a page and on a
+  section, Information blocks of each style (one with "Show when", one inside the repeating
+  section's entries) and one calculation of each new family: days between dates, a date
+  moved by months, rounding, a percentage and an average (a calculation reading `now` is left
+  out: the clock differs between renderers).
 - **Steps:** opened; Review pressed on an empty form; first options and plain values,
   before and after Review; last options and values the rules refuse; two entries added,
   before and after Review; and five steps of the every-type form that trigger one rule each.
   In English and in Arabic.
-- **What is compared:** every section shown (title; for a repeating section its entries'
-  titles and its own problems) and every question shown, page after page and entry after
-  entry — its words, its help, whether it has the required mark, and every error message in
-  the words shown — or that the review screen shows when nothing is wrong.
+- **What is compared:** every page shown (its description), every section shown (title and
+  description; for a repeating section its entries' titles and its own problems), every
+  question shown, page after page and entry after entry — its words, its help, whether it has
+  the required mark, every error message in the words shown and, for a calculated question,
+  the answer as shown — and every Information block shown (heading, text, style); or that the
+  review screen shows when nothing is wrong.
 
 The expectation is written from the engine's view by `expectedScreen`
 (`@integr8/form-input/behaviour`, with the forms and steps). Each renderer's test reads its
-own screen through the same markers (`data-section`, `data-question`, `data-part`; `testID`s
-on the phone) with `readScreen`, and compares:
+own screen through the same markers (`data-page`, `data-section`, `data-question`,
+`data-information` with `data-style`, `data-part`; `testID`s on the phone) with `readScreen`,
+and compares:
 
 | Test                                                                    | Renderer                                                                                    |
 | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
