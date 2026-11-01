@@ -98,6 +98,7 @@ export {
   InvalidCredentialsError,
   InvalidTokenError,
   InvitationInvalidError,
+  InvitationPasswordRequiredError,
   NotAMemberError,
   RateLimitedError,
   RefreshTokenReuseError,
@@ -143,6 +144,7 @@ export {
   type AcceptInvitationResult,
   type CreateInvitationResult,
   type InvitationServiceDeps,
+  type InvitationSummary,
 } from './services/invitation-service.js';
 
 export {

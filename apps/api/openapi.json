@@ -9052,11 +9052,99 @@
         ]
       }
     },
+    "/v1/invitations/inspect": {
+      "post": {
+        "operationId": "inspectInvitation",
+        "summary": "What accepting an invitation will need",
+        "description": "Public, for the page an invitation link opens: the address it was sent to, and whether that address has no sign-in yet and so must choose a password when accepting. Changes nothing. A POST so the token stays out of URLs and logs; an unknown, spent, withdrawn or expired token is the same 422 as at acceptance.",
+        "tags": [
+          "authentication"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 512
+                  }
+                },
+                "required": [
+                  "token"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The invitation, still waiting.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "email": {
+                      "type": "string"
+                    },
+                    "passwordRequired": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "email",
+                    "passwordRequired"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The invitation is unknown, spent, withdrawn or expired."
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/invitations/accept": {
       "post": {
         "operationId": "acceptInvitation",
-        "summary": "Accept an invitation and sign in",
-        "description": "Public, because the invitee has no session yet. The company comes from the token: there is no parameter in which to name a different one.",
+        "summary": "Accept an invitation",
+        "description": "Public, because the invitee has no session yet. The company comes from the token: there is no parameter in which to name a different one. Makes the membership and signs nobody in: the person signs in afterwards with the address returned. An address with no sign-in yet must send a `password` meeting the password policy (422 `auth.invitation_password_required` without one, `auth.weak_password` for one refused); an address that already signs in needs none, and one sent is not applied (`existingAccount`).",
         "tags": [
           "authentication"
         ],
@@ -9102,7 +9190,7 @@
         },
         "responses": {
           "200": {
-            "description": "Accepted, and signed in.",
+            "description": "Accepted. Sign in next.",
             "content": {
               "application/json": {
                 "schema": {
@@ -9113,11 +9201,19 @@
                     },
                     "email": {
                       "type": "string"
+                    },
+                    "existingAccount": {
+                      "type": "boolean"
+                    },
+                    "signInRequired": {
+                      "type": "boolean"
                     }
                   },
                   "required": [
                     "accepted",
-                    "email"
+                    "email",
+                    "existingAccount",
+                    "signInRequired"
                   ],
                   "additionalProperties": false
                 }
@@ -9125,7 +9221,7 @@
             }
           },
           "422": {
-            "description": "The invitation is unknown, spent, withdrawn or expired."
+            "description": "The invitation is unknown, spent, withdrawn or expired (`auth.invitation_invalid`); a new sign-in needs a password (`auth.invitation_password_required`); or the password was refused (`auth.weak_password`)."
           },
           "429": {
             "description": "Rate limit exceeded.",

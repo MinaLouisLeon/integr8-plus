@@ -197,13 +197,28 @@ export const acceptedSchema = z.object({
   /**
    * The address the invitation was sent to (P18).
    *
-   * So the page can sign the new member in with the password they have just
-   * chosen, instead of asking them to work out which address they were invited
-   * at. Still no tokens in this response — but returning the address grants
-   * nothing, because whoever holds the invitation has just set the password
-   * anyway.
+   * So the page can send the new member to sign in with the address filled
+   * in, instead of asking them to work out which address they were invited
+   * at. No tokens in this response, and since 1.2.4 no session behind it
+   * either: accepting makes the membership, and the person then signs in.
    */
   email: z.string(),
+  /**
+   * The address already had a sign-in (another company's member, or somebody
+   * invited back), so they sign in with the password they already have; any
+   * password sent with the acceptance was not applied. Added in 1.2.4.
+   */
+  existingAccount: z.boolean(),
+  /** Always true since 1.2.4: accepting signs nobody in, so sign in next. */
+  signInRequired: z.boolean(),
+});
+
+/** What an invitation link's page may know before accepting it (1.2.4). */
+export const invitationSummarySchema = z.object({
+  /** The address it was sent to: the one to sign in with afterwards. */
+  email: z.string(),
+  /** No sign-in exists for the address yet, so accepting must include a password. */
+  passwordRequired: z.boolean(),
 });
 export const revokedSchema = z.object({ revoked: z.boolean() });
 

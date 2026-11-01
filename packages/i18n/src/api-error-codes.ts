@@ -60,6 +60,7 @@ export const API_ERROR_CODES = [
   'auth.invalid_credentials',
   'auth.invalid_token',
   'auth.invitation_invalid',
+  'auth.invitation_password_required',
   'auth.not_a_member',
   'auth.rate_limited',
   'auth.refresh_token_reuse',

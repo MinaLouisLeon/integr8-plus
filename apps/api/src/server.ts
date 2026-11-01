@@ -589,6 +589,7 @@ function statusForAuthError(code: string): number {
     case 'auth.current_password_required':
       return 403;
     case 'auth.invitation_invalid':
+    case 'auth.invitation_password_required':
     case 'auth.weak_password':
       return 422;
     case 'auth.identity_provider_unavailable':

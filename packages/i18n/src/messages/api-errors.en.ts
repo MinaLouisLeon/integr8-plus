@@ -89,6 +89,8 @@ export const apiErrorsEn = {
     invalid_token: 'Your session has ended. Sign in again.',
     invitation_invalid:
       'This invitation is no longer valid. It may have been used, withdrawn or expired. Ask for a new one.',
+    invitation_password_required:
+      'Choose a password to accept this invitation. If this app has no box for one, update the app or accept the invitation on the web.',
     not_a_member: 'Your account is not a member of this company. Ask its owner to invite you.',
     refresh_token_reuse: 'This session was ended to keep your account safe. Sign in again.',
     session_revoked: 'You were signed out of this session. Sign in again.',

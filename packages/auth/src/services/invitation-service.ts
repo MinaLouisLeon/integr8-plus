@@ -8,11 +8,14 @@ import {
 } from '@integr8/core';
 import { type ClientApp, type Invitation, withTenant } from '@integr8/db';
 import type { AuthConfig } from '../config.js';
-import { InvitationInvalidError, WeakPasswordError } from '../errors.js';
+import {
+  InvitationInvalidError,
+  InvitationPasswordRequiredError,
+  WeakPasswordError,
+} from '../errors.js';
 import type { IdentityProvider } from '../identity-provider.js';
 import { assessPassword } from '../password-policy.js';
 import { mintInvitationToken, parseInvitationToken } from '../secrets.js';
-import type { IssuedSession, SessionService } from './session-service.js';
 
 /**
  * Invitations: how somebody becomes a member of a company.
@@ -36,26 +39,35 @@ export interface CreateInvitationResult {
 
 export interface AcceptInvitationInput {
   token: string;
-  /** Set when the invitee has no identity yet and is choosing a password. */
+  /**
+   * Required when the address has no identity yet: it becomes their password.
+   * Ignored when it has one — see {@link InvitationService.accept}.
+   */
   password?: string;
   displayName: string;
+  /** Which app accepted, for the audit line. No session is made for it. */
   clientApp: ClientApp;
-  deviceLabel?: string | null;
-  userAgent?: string | null;
-  ipAddress?: string | null;
 }
 
 export interface AcceptInvitationResult {
-  tokens: IssuedSession;
   tenantId: TenantId;
   userId: UserId;
   /** The address the invitation was sent to. The caller decides who may see it. */
   email: string;
+  /** The address already had a sign-in, whose password is unchanged. */
+  existingAccount: boolean;
+}
+
+/** What the holder of a live invitation link may know before accepting it. */
+export interface InvitationSummary {
+  /** The address it was sent to, which is who will sign in. */
+  email: string;
+  /** No sign-in exists for the address yet, so accepting must choose a password. */
+  passwordRequired: boolean;
 }
 
 export interface InvitationServiceDeps {
   identity: IdentityProvider;
-  sessions: SessionService;
   config: AuthConfig;
   now?: () => Date;
   /**
@@ -75,14 +87,12 @@ export interface InvitationServiceDeps {
 
 export class InvitationService {
   readonly #identity: IdentityProvider;
-  readonly #sessions: SessionService;
   readonly #config: AuthConfig;
   readonly #clock: () => Date;
   readonly #seatCheck: ((tenantId: TenantId) => Promise<void>) | undefined;
 
   constructor(deps: InvitationServiceDeps) {
     this.#identity = deps.identity;
-    this.#sessions = deps.sessions;
     this.#config = deps.config;
     this.#clock = deps.now ?? (() => new Date());
     this.#seatCheck = deps.seatCheck;
@@ -174,7 +184,36 @@ export class InvitationService {
   }
 
   /**
-   * Accepts an invitation, creating the membership and signing the person in.
+   * The invitation behind a link, for the page that accepts it: who it is
+   * for, and whether they must choose a password.
+   *
+   * Says no more than accepting would: the holder of a live token learns the
+   * address the link was mailed to and whether it already signs in somewhere,
+   * and an invalid token is the same one error as at acceptance.
+   */
+  async inspect(token: string): Promise<InvitationSummary> {
+    const { invitation } = await this.#live(token);
+    const identity = await this.#identity.findByEmail(invitation.email);
+    return { email: invitation.email, passwordRequired: identity === undefined };
+  }
+
+  /**
+   * Accepts an invitation, creating the membership. **No session is made**
+   * (Low 5, 1.2.4): the person signs in afterwards, with the address the
+   * invitation was sent to, like anybody else.
+   *
+   * The invitation token travels by email and may sit in a mailbox, a proxy
+   * log or a screenshot. Signing in on the strength of it alone made every one
+   * of those a way in; requiring the ordinary sign-in afterwards means the
+   * token buys a membership and nothing a password does not already guard.
+   *
+   * An address with no identity yet must choose a password here, and it must
+   * pass the password policy, including not containing the address's local
+   * part. An address that already signs in (a member of another company,
+   * somebody removed and invited back) keeps the password it has: one sent
+   * anyway is ignored, because changing a credential that is also another
+   * company's sign-in is not what accepting an invitation means, and the
+   * result says `existingAccount` so the screen can say which password to use.
    *
    * The company comes from the token, not from the request: an invitation to
    * one company cannot be redeemed against another, because there is no
@@ -184,7 +223,87 @@ export class InvitationService {
    * cannot leave a membership without an accepted invitation, or the reverse.
    */
   async accept(input: AcceptInvitationInput): Promise<AcceptInvitationResult> {
-    const parsed = parseInvitationToken(input.token);
+    const { invitation, tenantId, now } = await this.#live(input.token);
+
+    // Before the identity is created, not after: an acceptance refused for
+    // want of a seat must leave nothing behind at the identity provider, and
+    // `createIdentity` is the first step that is not ours to undo.
+    //
+    // Checked here as well as at invitation because the two moments are weeks
+    // apart. The plan can shrink, or the last seat can be taken by somebody
+    // else, between the invitation being sent and the link being clicked.
+    if (this.#seatCheck !== undefined) {
+      await this.#seatCheck(tenantId);
+    }
+
+    // The address may have an identity already. The invitation arrived in that
+    // mailbox, which is the same proof of ownership creating one would rest
+    // on, so the existing identity is used. Creating unconditionally was
+    // refused by GoTrue as a duplicate and the invitation could never be
+    // accepted; the fake provider hid it by returning the existing identity.
+    const existing = await this.#identity.findByEmail(invitation.email);
+    let identity = existing;
+    if (identity === undefined) {
+      // A new identity needs a password, checked before anything is created.
+      if (input.password === undefined || input.password === '') {
+        throw new InvitationPasswordRequiredError();
+      }
+      const assessment = assessPassword(
+        input.password,
+        { minLength: this.#config.AUTH_MIN_PASSWORD_LENGTH },
+        { email: invitation.email },
+      );
+      if (!assessment.acceptable) {
+        throw new WeakPasswordError(assessment.problems);
+      }
+      identity = await this.#identity.createIdentity(invitation.email, input.password);
+    }
+    const userId = identity.userId;
+
+    await withTenant(tenantId, async (tx) => {
+      // Re-checked inside the transaction. Two people clicking the same link at
+      // once both passed the check above; the `where` clauses inside
+      // `markAccepted` let exactly one of them through.
+      const claimed = await tx.invitations.markAccepted(invitation.id, userId, now);
+      if (!claimed) {
+        throw new InvitationInvalidError();
+      }
+
+      await tx.tenantUsers.create({
+        userId,
+        email: invitation.email,
+        displayName: input.displayName,
+        role: invitation.role,
+        status: 'active',
+      });
+
+      await tx.auditLog.append({
+        actorKind: 'tenant_user',
+        actorId: userId,
+        actorLabel: invitation.email,
+        action: 'invitation.accepted',
+        resourceType: 'invitation',
+        resourceId: invitation.id,
+        metadata: {
+          role: invitation.role,
+          invitedBy: invitation.invitedByUserId,
+          clientApp: input.clientApp,
+          existingAccount: existing !== undefined,
+        },
+      });
+    });
+
+    return {
+      tenantId,
+      userId,
+      email: invitation.email,
+      existingAccount: existing !== undefined,
+    };
+  }
+
+  /** The live invitation a token names, or {@link InvitationInvalidError}. */
+  async #live(token: string): Promise<{ invitation: Invitation; tenantId: TenantId; now: Date }> {
+    const parsed = parseInvitationToken(token);
     if (parsed === undefined) {
       throw new InvitationInvalidError();
     }
@@ -210,83 +329,6 @@ export class InvitationService {
       throw new InvitationInvalidError();
     }
 
-    // Before the identity is created, not after: an acceptance refused for
-    // want of a seat must leave nothing behind at the identity provider, and
-    // `createIdentity` is the first step that is not ours to undo.
-    //
-    // Checked here as well as at invitation because the two moments are weeks
-    // apart. The plan can shrink, or the last seat can be taken by somebody
-    // else, between the invitation being sent and the link being clicked.
-    if (this.#seatCheck !== undefined) {
-      await this.#seatCheck(parsed.tenantId);
-    }
-
-    if (input.password !== undefined) {
-      const assessment = assessPassword(
-        input.password,
-        { minLength: this.#config.AUTH_MIN_PASSWORD_LENGTH },
-        { email: invitation.email },
-      );
-      if (!assessment.acceptable) {
-        throw new WeakPasswordError(assessment.problems);
-      }
-    }
-
-    // The address may have an identity already: a member of another company,
-    // or somebody removed and invited back. The invitation arrived in that
-    // mailbox, which is the same proof of ownership creating one would rest
-    // on, so the existing identity is used. Creating unconditionally was
-    // refused by GoTrue as a duplicate and the invitation could never be
-    // accepted; the fake provider hid it by returning the existing identity.
-    //
-    // The password typed here is not applied to an identity that already has
-    // one. Changing a credential that is also another company's sign-in is
-    // not what accepting an invitation means.
-    const identity =
-      (await this.#identity.findByEmail(invitation.email)) ??
-      (await this.#identity.createIdentity(invitation.email, input.password ?? ''));
-
-    const tokens = await withTenant(parsed.tenantId, async (tx) => {
-      // Re-checked inside the transaction. Two people clicking the same link at
-      // once both passed the check above; the `where` clauses inside
-      // `markAccepted` let exactly one of them through.
-      const claimed = await tx.invitations.markAccepted(invitation.id, identity.userId, now);
-      if (!claimed) {
-        throw new InvitationInvalidError();
-      }
-
-      await tx.tenantUsers.create({
-        userId: identity.userId,
-        email: invitation.email,
-        displayName: input.displayName,
-        role: invitation.role,
-        status: 'active',
-      });
-
-      const issued = await this.#sessions.issue(tx, {
-        tenantId: parsed.tenantId,
-        userId: identity.userId,
-        role: invitation.role,
-        clientApp: input.clientApp,
-        deviceLabel: input.deviceLabel ?? null,
-        userAgent: input.userAgent ?? null,
-        ipAddress: input.ipAddress ?? null,
-        signedInWith: 'invitation',
-      });
-
-      await tx.auditLog.append({
-        actorKind: 'tenant_user',
-        actorId: identity.userId,
-        actorLabel: invitation.email,
-        action: 'invitation.accepted',
-        resourceType: 'invitation',
-        resourceId: invitation.id,
-        metadata: { role: invitation.role, invitedBy: invitation.invitedByUserId },
-      });
-
-      return issued;
-    });
-
-    return { tokens, tenantId: parsed.tenantId, userId: identity.userId, email: invitation.email };
+    return { invitation, tenantId: parsed.tenantId, now };
   }
 }

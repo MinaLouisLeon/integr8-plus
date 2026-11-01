@@ -99,6 +99,25 @@ export class InvitationInvalidError extends AuthError {
   }
 }
 
+/**
+ * An invitation for an address with no sign-in yet was accepted without a
+ * password (Low 5, 1.2.4).
+ *
+ * Accepting is the only moment such a person chooses one, and an account
+ * created without a password could only ever be entered with an emailed code.
+ * A client that does not send one is older than this rule: the message says to
+ * update the app or accept on the web.
+ */
+export class InvitationPasswordRequiredError extends AuthError {
+  readonly code = 'auth.invitation_password_required';
+
+  constructor(
+    message = 'Choose a password to accept this invitation. If this app has no password box, update it or accept the invitation on the web. / اختر كلمة مرور لقبول هذه الدعوة. إن لم يكن في هذا التطبيق مكان لكلمة المرور فحدِّثه أو اقبل الدعوة من الموقع.',
+  ) {
+    super(message);
+  }
+}
+
 export class ImpersonationDeniedError extends AuthError {
   readonly code = 'auth.impersonation_denied';
 

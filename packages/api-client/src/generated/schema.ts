@@ -948,6 +948,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/invitations/inspect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * What accepting an invitation will need
+         * @description Public, for the page an invitation link opens: the address it was sent to, and whether that address has no sign-in yet and so must choose a password when accepting. Changes nothing. A POST so the token stays out of URLs and logs; an unknown, spent, withdrawn or expired token is the same 422 as at acceptance.
+         */
+        post: operations["inspectInvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/invitations/accept": {
         parameters: {
             query?: never;
@@ -958,8 +978,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Accept an invitation and sign in
-         * @description Public, because the invitee has no session yet. The company comes from the token: there is no parameter in which to name a different one.
+         * Accept an invitation
+         * @description Public, because the invitee has no session yet. The company comes from the token: there is no parameter in which to name a different one. Makes the membership and signs nobody in: the person signs in afterwards with the address returned. An address with no sign-in yet must send a `password` meeting the password policy (422 `auth.invitation_password_required` without one, `auth.weak_password` for one refused); an address that already signs in needs none, and one sent is not applied (`existingAccount`).
          */
         post: operations["acceptInvitation"];
         delete?: never;
@@ -13645,6 +13665,69 @@ export interface operations {
             };
         };
     };
+    inspectInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    token: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The invitation, still waiting. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        email: string;
+                        passwordRequired: boolean;
+                    };
+                };
+            };
+            /** @description The invitation is unknown, spent, withdrawn or expired. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     acceptInvitation: {
         parameters: {
             query?: never;
@@ -13667,7 +13750,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Accepted, and signed in. */
+            /** @description Accepted. Sign in next. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -13676,10 +13759,12 @@ export interface operations {
                     "application/json": {
                         accepted: boolean;
                         email: string;
+                        existingAccount: boolean;
+                        signInRequired: boolean;
                     };
                 };
             };
-            /** @description The invitation is unknown, spent, withdrawn or expired. */
+            /** @description The invitation is unknown, spent, withdrawn or expired (`auth.invitation_invalid`); a new sign-in needs a password (`auth.invitation_password_required`); or the password was refused (`auth.weak_password`). */
             422: {
                 headers: {
                     [name: string]: unknown;

@@ -169,7 +169,6 @@ export async function buildServices(options: BuildServicesOptions): Promise<Serv
     }),
     invitations: new InvitationService({
       identity,
-      sessions,
       config: authConfig,
       // The plan's seat limit, enforced at the moment a seat is taken (P17).
       // `@integr8/auth` has no idea what a plan is; this is where the two meet.

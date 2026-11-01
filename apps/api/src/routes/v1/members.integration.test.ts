@@ -1,4 +1,4 @@
-import { getPlatformDataSource } from '@integr8/db';
+import { getPlatformDataSource, withTenant } from '@integr8/db';
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { RecordingEmailSender } from '../../email/sender.js';
@@ -93,32 +93,137 @@ describe('inviting somebody', () => {
     expect(message?.text).toContain(`${WEB}/accept-invitation?token=`);
   });
 
+  /** POSTs to an invitation route the way the web page does, with no session. */
+  function publicPost(url: string, payload: Record<string, unknown>, app = 'web') {
+    return api.app.inject({
+      method: 'POST',
+      url,
+      remoteAddress: api.remoteAddress,
+      headers: { 'x-client-version': '1.0.0', 'x-client-app': app },
+      payload,
+    });
+  }
+
   it('lets them accept, choose a password, and appear as a member', async () => {
     const to = address('joiner');
     const { token } = await invite(to);
 
-    const accepted = await api.app.inject({
-      method: 'POST',
-      url: '/v1/invitations/accept',
-      remoteAddress: api.remoteAddress,
-      headers: { 'x-client-version': '1.0.0', 'x-client-app': 'web' },
-      payload: {
-        token,
-        displayName: 'Jo Joiner',
-        password: 'a-long-enough-password',
-        clientApp: 'web',
-      },
+    const inspected = await publicPost('/v1/invitations/inspect', { token });
+    expect(inspected.statusCode, inspected.body).toBe(200);
+    expect(JSON.parse(inspected.body)).toEqual({ email: to, passwordRequired: true });
+
+    const accepted = await publicPost('/v1/invitations/accept', {
+      token,
+      displayName: 'Jo Joiner',
+      password: 'a-long-enough-password',
+      clientApp: 'web',
     });
 
     expect(accepted.statusCode, accepted.body).toBe(200);
-    const body = JSON.parse(accepted.body) as { accepted: boolean; email: string };
-    expect(body.accepted).toBe(true);
-    // Returned so the page can sign them in; still no tokens in this response.
-    expect(body.email).toBe(to);
+    expect(JSON.parse(accepted.body)).toEqual({
+      accepted: true,
+      email: to,
+      existingAccount: false,
+      signInRequired: true,
+    });
     expect(accepted.body).not.toContain('accessToken');
 
     const members = await api.call(ownerToken, { method: 'GET', url: '/v1/members' });
     expect(members.body).toContain('Jo Joiner');
+
+    // Accepting made no session (Low 5); signing in is what makes one.
+    const joiner = (
+      JSON.parse(members.body) as { items: { userId: string; email: string }[] }
+    ).items.find((member) => member.email === to);
+    const sessions = await withTenant(api.tenantId, (tx) =>
+      tx.sessions.list({ userId: joiner?.userId ?? '', includeRevoked: true }),
+    );
+    expect(sessions).toEqual([]);
+    const signedIn = await publicPost('/v1/auth/sign-in', {
+      email: to,
+      password: 'a-long-enough-password',
+      clientApp: 'web',
+    });
+    expect(signedIn.statusCode, signedIn.body).toBe(200);
+  });
+
+  it('refuses an app that sends no password for a new sign-in, with its own code', async () => {
+    const to = address('oldphone');
+    const { token } = await invite(to);
+
+    const refused = await publicPost(
+      '/v1/invitations/accept',
+      { token, displayName: 'Old Phone', clientApp: 'mobile' },
+      'mobile',
+    );
+    expect(refused.statusCode).toBe(422);
+    const error = (JSON.parse(refused.body) as { error: { code: string; message: string } }).error;
+    expect(error.code).toBe('auth.invitation_password_required');
+    // Words for an app that does not know the code: in both languages.
+    expect(error.message).toContain('update it or accept the invitation on the web');
+    expect(error.message).toContain('اقبل الدعوة');
+
+    // The link still works once a password comes with it.
+    const accepted = await publicPost('/v1/invitations/accept', {
+      token,
+      displayName: 'New Phone',
+      password: 'a-long-enough-password',
+    });
+    expect(accepted.statusCode, accepted.body).toBe(200);
+  });
+
+  it('refuses a password holding the address’s own name', async () => {
+    const to = address('rosalind');
+    const { token } = await invite(to);
+
+    const refused = await publicPost('/v1/invitations/accept', {
+      token,
+      displayName: 'Rosalind',
+      password: `${to.split('@')[0] ?? ''}-and-more`,
+    });
+    expect(refused.statusCode).toBe(422);
+    expect(refused.body).toContain('auth.weak_password');
+  });
+
+  it('needs no password from somebody who already signs in', async () => {
+    // A member of another company, say: the identity exists already.
+    const elsewhere = address('elsewhere');
+    const identity = await api.services.identity.createIdentity(
+      elsewhere,
+      'their own good passphrase',
+    );
+    const returning = {
+      userId: identity.userId,
+      email: elsewhere,
+      password: 'their own good passphrase',
+      role: 'engineer' as const,
+    };
+    const { token } = await invite(returning.email);
+
+    const inspected = await publicPost('/v1/invitations/inspect', { token });
+    expect(JSON.parse(inspected.body)).toEqual({
+      email: returning.email,
+      passwordRequired: false,
+    });
+
+    const accepted = await publicPost('/v1/invitations/accept', {
+      token,
+      displayName: 'Back Again',
+      password: 'not-applied-to-an-existing-account',
+    });
+    expect(accepted.statusCode, accepted.body).toBe(200);
+    expect(JSON.parse(accepted.body)).toMatchObject({
+      existingAccount: true,
+      signInRequired: true,
+    });
+    // Their own password still works; the one sent was not applied.
+    await expect(api.signIn(returning)).resolves.toEqual(expect.any(String));
+  });
+
+  it('answers an inspected link that is not live as acceptance does', async () => {
+    const inspected = await publicPost('/v1/invitations/inspect', { token: 'nonsense' });
+    expect(inspected.statusCode).toBe(422);
+    expect(inspected.body).toContain('auth.invitation_invalid');
   });
 
   it('refuses the same link twice', async () => {
