@@ -483,6 +483,7 @@ each with a down file, applied by `pnpm --filter @integr8/db db up` (or
 | 0066      | Each phone's language, for its notifications                                                          |
 | 0067      | Uploaded PDF documents and a sharing switch; new documents start not shared                           |
 | 0068      | An index of the files each submission uses, for safe file clean-up                                    |
+| 0069      | Staff-made library templates (retire, source form) and the PDF templates and pictures they carry      |
 
 See [`docs/database/migrations.md`](./docs/database/migrations.md) and the
 [backup and restore runbook](./docs/database/runbook-backup-and-restore.md).

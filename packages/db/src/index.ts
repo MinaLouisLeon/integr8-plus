@@ -351,6 +351,9 @@ export type {
   FormTemplateRecord,
   FormTemplatesReader,
   FormTemplatesWriter,
+  LibraryContent,
+  LibraryDocument,
+  LibraryFile,
 } from './repositories/form-templates.js';
 
 export type {
@@ -867,6 +870,7 @@ export {
 
 export {
   FORM_TEMPLATE_CATEGORIES,
+  FORM_TEMPLATE_SOURCES,
   FORM_VERSION_STATUSES,
   formVersionStatusSchema,
   MEDIA_CATEGORIES,
@@ -877,6 +881,7 @@ export {
   SUBMISSION_EVENT_KINDS,
   SUBMISSION_STATUSES,
   type FormTemplateCategory,
+  type FormTemplateSource,
   type FormVersionStatus,
   type MediaCategory,
   type DocumentLookupRole,

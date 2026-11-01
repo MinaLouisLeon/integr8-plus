@@ -569,6 +569,41 @@ export interface FormTemplatesTable {
   definition_schema_version: number;
   created_at: CreatedAt;
   updated_at: UpdatedAt;
+  /** `builtin` (code-managed) or `staff` (saved from a company's form; 0069). */
+  source: Generated<FormTemplateSource>;
+  retired_at: Date | null;
+  retired_by: string | null;
+  source_tenant_id: string | null;
+  source_form_id: string | null;
+  source_version_number: number | null;
+  created_by: string | null;
+  updated_by: string | null;
+}
+
+export const FORM_TEMPLATE_SOURCES = ['builtin', 'staff'] as const;
+export type FormTemplateSource = (typeof FORM_TEMPLATE_SOURCES)[number];
+
+/** A PDF template a staff-made library form carries (0069). Platform data. */
+export interface FormTemplateDocumentsTable {
+  id: Generated<string>;
+  template_key: string;
+  position: number;
+  name: string;
+  design: Jsonb<Record<string, unknown>>;
+  design_schema_version: number;
+  created_at: CreatedAt;
+}
+
+/** A picture a library PDF template uses, in the platform-library bucket (0069). */
+export interface FormTemplateFilesTable {
+  id: string;
+  template_key: string;
+  bucket: string;
+  storage_key: string;
+  content_type: string;
+  byte_size: BigIntColumn;
+  etag: string | null;
+  created_at: CreatedAt;
 }
 
 export const SUBMISSION_STATUSES = ['draft', 'submitted', 'reopened'] as const;
@@ -3717,6 +3752,8 @@ export interface Database {
   shifts: ShiftsTable;
   push_devices: PushDevicesTable;
   form_templates: FormTemplatesTable;
+  form_template_documents: FormTemplateDocumentsTable;
+  form_template_files: FormTemplateFilesTable;
   rate_limit_buckets: RateLimitBucketsTable;
   schema_migrations: SchemaMigrationsTable;
   signup_requests: SignupRequestsTable;
@@ -3767,6 +3804,11 @@ export const PLATFORM_TABLES = [
   // The global form template library belongs to no company, and every company
   // may read it. The runtime role holds select and nothing else; see 0007.
   'form_templates',
+  // The PDF templates a staff-made library form carries, and their pictures
+  // (0069). Library content like the templates themselves; the runtime role
+  // holds nothing on either, and the API reaches them as the platform role.
+  'form_template_documents',
+  'form_template_files',
   // Running the business (0015). A super admin's identity, sessions and record
   // of what they did belong to no company, and the runtime role reaches none of
   // them. `announcements` carries a nullable tenant_id because a null is every
