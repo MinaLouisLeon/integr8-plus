@@ -223,10 +223,13 @@ Update them together at each release or new migration:
   pushes to it publish the `:staging` images and a nightly. The only guard against pushing to `main`/`staging`/`dev` is the local pre-push hook
   (`scripts/git-hooks/pre-push-branch-guard.sh`); `INTEGR8_ALLOW_PROTECTED_PUSH=1`
   bypasses it.
-- Until 1.2.2 feature PRs were merged straight into `main`, so `main` holds release commits
-  `dev` lacks; from 1.2.3 work goes into `dev` and, now that `staging` exists, through
-  `staging` to `main` as documented (`dev → staging → main`). Dependabot opens its PRs
-  against `main`; apply them on a branch from `dev` instead of merging their branches.
+- Until 1.2.2 feature PRs were merged straight into `main`; from 1.2.3 work goes into `dev`
+  and through `staging` to `main` as documented (`dev → staging → main`). Never edit `main`
+  (or `staging`) directly on GitHub: a web edit of `apps/mobile/app.config.ts` on `main`
+  (33e07cb, 2026-11-01) broke the file and failed every staging → main PR until `main` was
+  merged back into `dev` with the working file. The Expo project ID is the one
+  `EAS_PROJECT_ID` line in that file. Dependabot opens its PRs against `main`; apply them on
+  a branch from `dev` instead of merging their branches.
 - CI's database job always runs (there is no `DATABASE_TESTS` switch any more). The R2
   media suite inside it skips itself unless the `R2_TEST_*` secrets exist.
 - Screen tests (`operations-dom`, `form-renderer-dom`) wait up to 5 s in `findBy…`;
