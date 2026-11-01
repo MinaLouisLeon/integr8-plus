@@ -63,6 +63,7 @@ export {
   type HeaderFooterSlot,
   headerFooterSchema,
   headerFooterSlotSchema,
+  headerOffset,
   type HeaderFooterSpec,
   hexColourSchema,
   type LookColours,

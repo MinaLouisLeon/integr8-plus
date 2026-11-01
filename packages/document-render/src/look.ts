@@ -175,6 +175,20 @@ function say(text: Readonly<Record<string, string>>, locale: DocumentLocale): st
 
 const DATA_IMAGE = /^data:image\/(png|jpeg|webp|gif|svg\+xml);base64,[A-Za-z0-9+/=]+$/u;
 
+/**
+ * Chromium puts its own 0.4 cm above a header template's content (and below a
+ * footer's), whatever the template says.
+ */
+export const CHROMIUM_BAND_PADDING_MM = 4;
+
+/**
+ * How far below Chromium's own padding a header starts, so it ends 5 mm above
+ * the page's content: `top` is the top margin, `height` the band's tallest place.
+ */
+export function headerOffset(top: number, height: number): number {
+  return Math.max(0, top - 5 - height - CHROMIUM_BAND_PADDING_MM);
+}
+
 /** Whether a band has anything in it. */
 export function bandIsEmpty(spec: HeaderFooterSpec | null | undefined): boolean {
   return spec == null || (spec.start === null && spec.center === null && spec.end === null);
@@ -275,7 +289,7 @@ class Bands {
       ? ''
       : which === 'footer'
         ? `margin-bottom:${String(Math.max(0, margins.bottom - 10))}mm;`
-        : `margin-top:${String(Math.max(3, margins.top - 5 - this.height(spec)))}mm;`;
+        : `margin-top:${String(headerOffset(margins.top, this.height(spec)))}mm;`;
     const box = `width:100%;font-family:${font};font-size:8pt;color:${MUTED};padding-inline-start:${String(margins.start)}mm;padding-inline-end:${String(margins.end)}mm;box-sizing:border-box;`;
     if (spec.center === null) {
       // Two places, as every footer was before 1.3.0: the same markup, so an

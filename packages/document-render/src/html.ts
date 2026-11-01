@@ -14,8 +14,10 @@ import {
 import { documentFont } from './fonts.js';
 import { type FormatContext, formatAnswer, isBlank, mediaIdsOf, say } from './format.js';
 import {
+  CHROMIUM_BAND_PADDING_MM,
   DEFAULT_BRAND_COLOUR,
   documentLook,
+  headerOffset,
   type LookColours,
   lookColours,
   type PrintParts,
@@ -675,11 +677,11 @@ export function renderDocumentHtml(input: RenderInput): RenderedDocument {
     const header =
       look.previewHeaderHtml === ''
         ? ''
-        : `<div class="band" style="top:${String(Math.max(3, margins.top - 5 - bandHeight(input.design.page.header)))}mm">${look.previewHeaderHtml}</div>`;
+        : `<div class="band" style="top:${String(CHROMIUM_BAND_PADDING_MM + headerOffset(margins.top, bandHeight(input.design.page.header)))}mm">${look.previewHeaderHtml}</div>`;
     const footer =
       look.previewFooterHtml === ''
         ? ''
-        : `<div class="band" style="bottom:${String(Math.max(2, margins.bottom - 10))}mm">${look.previewFooterHtml}</div>`;
+        : `<div class="band" style="bottom:${String(CHROMIUM_BAND_PADDING_MM + Math.max(0, margins.bottom - 10))}mm">${look.previewFooterHtml}</div>`;
     body = `<main class="sheet">${header}${content}${footer}</main>`;
   }
   const extras = {
