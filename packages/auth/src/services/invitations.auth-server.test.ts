@@ -75,7 +75,7 @@ describe.skipIf(url === '' || serviceRoleKey === '')('Accepting invitations, for
   });
 
   it('gives a new address the password it chose, and no session', async () => {
-    const email = uniqueEmail('real-new');
+    const email = uniqueEmail('real-first-time');
     const { token } = await invitations.invite(owner, { email, role: 'engineer' });
 
     await expect(invitations.inspect(token)).resolves.toEqual({ email, passwordRequired: true });
