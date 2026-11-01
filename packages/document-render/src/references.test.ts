@@ -124,7 +124,23 @@ function design(): TemplateDesign {
     page: {
       ...emptyDesign().page,
       background: { fileId: BACKGROUND },
-      footer: { pageNumbers: true, text: { en: 'Notes: {{answer.notes}}' } },
+      // Three places each (1.3.0): answers in the header's and footer's texts.
+      header: {
+        start: {
+          kind: 'text',
+          text: { en: '{{answer.customer}}', ar: 'العميل {{answer.notes}}' },
+          bold: true,
+        },
+        center: { kind: 'text', text: { en: '{{answer.notes}}' }, bold: false },
+        end: { kind: 'logo', height: 12 },
+        notOnFirstPage: true,
+      },
+      footer: {
+        start: { kind: 'text', text: { en: 'Notes: {{answer.notes}}' }, bold: false },
+        center: null,
+        end: { kind: 'page' },
+        notOnFirstPage: false,
+      },
     },
     fields: [
       {
@@ -311,7 +327,23 @@ describe('rewriting', () => {
     // The document field taken from the notes goes; its lookup role with it.
     expect(rewritten.fields.map((field) => field.key)).toEqual(['client']);
     // A placeholder in the footer cannot take its footer out: it is removed from the text.
-    expect(rewritten.page.footer.text).toEqual({ en: 'Notes: ' });
+    expect(rewritten.page.footer.start).toEqual({
+      kind: 'text',
+      text: { en: 'Notes: ' },
+      bold: false,
+    });
+    // In the header: renamed where it stays, its language dropped where it was all there
+    // was, and a place left with no text at all emptied. The other places are untouched.
+    expect(rewritten.page.header).toEqual({
+      start: {
+        kind: 'text',
+        text: { en: '{{answer.customer}}', ar: 'العميل ' },
+        bold: true,
+      },
+      center: null,
+      end: { kind: 'logo', height: 12 },
+      notOnFirstPage: true,
+    });
     // Pictures uploaded for the template are not answers: untouched.
     expect(referencedFileIds(rewritten).sort()).toEqual([BACKGROUND, STAMP].sort());
 
@@ -349,5 +381,145 @@ describe('rewriting', () => {
     const copy = 'ffffffff-0000-4000-8000-000000000001';
     const swapped = replaceFileIds(design(), new Map([[STAMP, copy]]));
     expect(referencedFileIds(swapped).sort()).toEqual([BACKGROUND, copy].sort());
+  });
+});
+
+describe('the header’s and footer’s places', () => {
+  it('finds answers named in them, and renames them there', () => {
+    const references = new Map(designReferences(design()).map((entry) => [entry.id, entry]));
+    expect(references.get('customer')?.uses).toContain('placeholder');
+    const rewritten = rewriteDesignReferences(design(), { customer: 'client', notes: 'remarks' });
+    expect(rewritten.page.header?.start).toMatchObject({
+      text: { en: '{{answer.client}}', ar: 'العميل {{answer.remarks}}' },
+    });
+    expect(rewritten.page.header?.center).toMatchObject({ text: { en: '{{answer.remarks}}' } });
+    expect(rewritten.page.footer.start).toMatchObject({
+      text: { en: 'Notes: {{answer.remarks}}' },
+    });
+  });
+});
+
+describe('Information blocks (form format 2)', () => {
+  const informationSource = compile({
+    schemaVersion: 2,
+    title: { en: 'Gas check' },
+    pages: [
+      {
+        id: 'main',
+        sections: [
+          {
+            id: 'details',
+            fields: [
+              { id: 'customer', type: 'text', label: { en: 'Customer' } },
+              {
+                id: 'isolate',
+                type: 'information',
+                heading: { en: 'Isolate first', ar: 'اعزل أولًا' },
+                body: { en: 'Turn the supply off.' },
+                style: 'warning',
+              },
+              { id: 'legal', type: 'information', body: { en: 'Keep this copy.' } },
+              { id: 'vent', type: 'information', body: { en: 'Open a window.' } },
+            ],
+          },
+        ],
+      },
+    ],
+  });
+  const informationTarget = compile({
+    schemaVersion: 2,
+    title: { en: 'Annual gas check' },
+    pages: [
+      {
+        id: 'p1',
+        sections: [
+          {
+            id: 's1',
+            fields: [
+              { id: 'customer', type: 'text', label: { en: 'Client' } },
+              // Same id, another wording: matched by its id.
+              { id: 'legal', type: 'information', body: { en: 'Keep it safe.' } },
+              // Another id, the same heading in Arabic: matched by its wording.
+              {
+                id: 'supply_warning',
+                type: 'information',
+                heading: { ar: 'اعزل أولًا' },
+                body: { en: 'Switch the gas off at the meter.' },
+              },
+              // A question with the same id is not an Information block.
+              { id: 'vent', type: 'text', label: { en: 'Vent' } },
+            ],
+          },
+          {
+            id: 'rooms',
+            repeat: { maxEntries: 5, entryLabel: { en: 'Room' } },
+            fields: [
+              { id: 'room', type: 'text', label: { en: 'Room' } },
+              // Inside a repeating section: a template cannot print it.
+              { id: 'room_note', type: 'information', body: { en: 'Open a window.' } },
+            ],
+          },
+        ],
+      },
+    ],
+  });
+  const withInformation = (): TemplateDesign => {
+    const parsed = parseDesign({
+      ...emptyDesign(),
+      blocks: [
+        { type: 'heading', id: 'title', text: { en: '{{answer.customer}}' } },
+        { type: 'information', id: 'warning', informationId: 'isolate' },
+        { type: 'information', id: 'small_print', informationId: 'legal' },
+        { type: 'information', id: 'airflow', informationId: 'vent' },
+      ],
+    });
+    if (!parsed.ok) {
+      throw new Error(JSON.stringify(parsed.issues));
+    }
+    return parsed.design;
+  };
+
+  it('finds the Information blocks a template prints', () => {
+    const references = designReferences(withInformation()).filter(
+      (reference) => reference.kind === 'information',
+    );
+    expect(references).toEqual([
+      { id: 'isolate', kind: 'information', uses: ['information'], options: [] },
+      { id: 'legal', kind: 'information', uses: ['information'], options: [] },
+      { id: 'vent', kind: 'information', uses: ['information'], options: [] },
+    ]);
+  });
+
+  it('matches the same id, then the same heading, and leaves the rest to a person', () => {
+    const matches = new Map(
+      matchDesignReferences(withInformation(), informationSource, informationTarget).map(
+        (entry) => [entry.reference.id, entry],
+      ),
+    );
+    expect(matches.get('legal')).toMatchObject({ match: 'legal', by: 'key' });
+    expect(matches.get('isolate')).toMatchObject({ match: 'supply_warning', by: 'wording' });
+    // Not a question of that id, and not a block inside a repeating section.
+    expect(matches.get('vent')).toMatchObject({
+      match: null,
+      by: null,
+      candidates: ['legal', 'supply_warning'],
+    });
+  });
+
+  it('renames a block’s Information block, or takes the block out', () => {
+    const rewritten = rewriteDesignReferences(withInformation(), {
+      isolate: 'supply_warning',
+      legal: 'legal',
+      vent: null,
+    });
+    expect(rewritten.blocks).toEqual([
+      expect.objectContaining({ id: 'title' }),
+      expect.objectContaining({ id: 'warning', informationId: 'supply_warning' }),
+      expect.objectContaining({ id: 'small_print', informationId: 'legal' }),
+    ]);
+    const parsed = parseDesign(rewritten);
+    expect(parsed.ok ? checkDesignAgainstForm(parsed.design, informationTarget) : ['no']).toEqual(
+      [],
+    );
   });
 });

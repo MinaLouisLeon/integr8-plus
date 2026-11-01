@@ -229,7 +229,8 @@ release 1.3.0.
   `referenceCandidates`, `unresolvedReferences`, `rewriteDesignReferences`)
   walk the design as JSON, so a reference in a part of the format added later
   (a header slot, say) is still found; they match by answer key where the
-  question fits, then by English or Arabic wording, and rewrite the design
+  question fits, then by English or Arabic wording (an Information block by
+  its id, then its heading), and rewrite the design
   with each reference renamed or what used it taken out. The designer and the
   server run the same functions; the server refuses until every reference is
   decided, so a half-matched template is never stored.

@@ -9,8 +9,10 @@ import type { TemplateDesign } from './design.js';
  * blocks, check boxes and option lists, tables of fields, tables of a
  * repeating section's entries, pictures from a photo or signature answer,
  * document fields taken from an answer, and `{{answer.<key>}}` placeholders in
- * any text. Copying it to another form means finding each of those in the
- * other form, and either renaming it or taking out what used it.
+ * any text, the header's and footer's places included. It names one of the
+ * form's Information blocks (form format 2) by its id in an `information`
+ * block. Copying it to another form means finding each of those in the other
+ * form, and either renaming it or taking out what used it.
  *
  * The walk is over the design as JSON rather than over its typed blocks, on
  * purpose: the design format grows (headers, styles, orientation), and a
@@ -34,12 +36,14 @@ export type ReferenceUse =
   /** One box, ticked on an option. */
   | 'checkbox'
   /** A table with a row per entry of a repeating section. */
-  | 'section';
+  | 'section'
+  /** One of the form's Information blocks, printed as the form shows it. */
+  | 'information';
 
 export interface DesignReference {
-  /** A question's answer key, or a repeating section's id. */
+  /** A question's answer key, a repeating section's id, or an Information block's id. */
   id: string;
-  kind: 'field' | 'section';
+  kind: 'field' | 'section' | 'information';
   /** For a column of a repeating section's table: that section. */
   section?: string;
   uses: ReferenceUse[];
@@ -81,6 +85,9 @@ const FAMILIES: readonly (readonly FieldType[])[] = [
 const CHOICES: readonly string[] = ['dropdown', 'radio', 'multi_select'];
 const OPTION_LISTS: readonly string[] = [...CHOICES, 'yes_no', 'checkbox'];
 const YES_NO_OPTIONS: readonly string[] = ['yes', 'no', 'not_applicable'];
+
+/** The keys that hold a reference's id. */
+const REFERENCE_KEYS: ReadonlySet<string> = new Set(['fieldId', 'sectionId', 'informationId']);
 
 const isObject = (value: unknown): value is JsonObject =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -128,6 +135,9 @@ export function designReferences(design: TemplateDesign): DesignReference[] {
     if (isBlock && node.type === 'repeat_table' && typeof node.sectionId === 'string') {
       add(node.sectionId, 'section', 'section');
     }
+    if (isBlock && node.type === 'information' && typeof node.informationId === 'string') {
+      add(node.informationId, 'information', 'information');
+    }
     if (typeof node.fieldId === 'string') {
       const type = current?.type;
       const section =
@@ -147,7 +157,7 @@ export function designReferences(design: TemplateDesign): DesignReference[] {
       }
     }
     for (const [name, value] of Object.entries(node)) {
-      if (name !== 'fieldId' && name !== 'sectionId') {
+      if (!REFERENCE_KEYS.has(name)) {
         walk(value, current, name);
       }
     }
@@ -172,6 +182,10 @@ function fits(
 ): boolean {
   if (reference.kind === 'section') {
     return target.kind === 'section' && target.repeat !== undefined;
+  }
+  if (reference.kind === 'information') {
+    // An Information block prints only outside repeating sections.
+    return target.kind === 'information' && target.entries === undefined;
   }
   const field = target.field;
   if (target.kind !== 'field' || field === undefined) {
@@ -231,14 +245,21 @@ export function referenceCandidates(
     .map((element) => element.id);
 }
 
-/** What a question or section says, normalised for comparing wordings. */
+/**
+ * What a question, section or Information block says, normalised for comparing
+ * wordings: a question's label, a section's title, a block's heading (or, for
+ * one without a heading, its paragraph).
+ */
 function wordingsOf(form: CompiledForm | null, id: string): string[] {
   if (form === null) {
     return [];
   }
   const element = form.elements.get(id);
+  const information = element?.information;
   const text: LocalizedText | undefined =
-    element?.field?.label ?? (element?.kind === 'section' ? sectionTitle(form, id) : undefined);
+    element?.field?.label ??
+    (information === undefined ? undefined : (information.heading ?? information.body)) ??
+    (element?.kind === 'section' ? sectionTitle(form, id) : undefined);
   return Object.values(text ?? {})
     .map((value) => value.normalize('NFC').replace(/\s+/gu, ' ').trim().toLocaleLowerCase())
     .filter((value) => value !== '');
@@ -333,6 +354,10 @@ export function automaticMapping(matches: readonly ReferenceMatch[]): Record<str
 
 /** Marks a node to be taken out by the nearest list it can be taken out of. */
 const REMOVE = Symbol('remove');
+/** A text all of whose languages were only placeholders now taken out. */
+const EMPTIED = Symbol('emptied');
+/** A header or footer place left with no text: the place becomes empty (`null`). */
+const VACATED = Symbol('vacated');
 type Rewritten = unknown;
 
 /**
@@ -340,8 +365,10 @@ type Rewritten = unknown;
  * whatever used a reference mapped to `null` taken out: the block, or the row
  * of a table of fields, the column of a section's table, the document field. A
  * table left with no rows or columns goes too. A placeholder outside anything
- * that can be taken out (a footer, say) is removed from its text instead.
- * References the mapping does not name are left as they are.
+ * that can be taken out (a header or footer place, say) is removed from its
+ * text instead; a language left with nothing goes, and a place left with no
+ * language at all is emptied. References the mapping does not name are left as
+ * they are.
  */
 export function rewriteDesignReferences(
   design: TemplateDesign,
@@ -384,7 +411,8 @@ export function rewriteDesignReferences(
         if (next === REMOVE) {
           return REMOVE;
         }
-        out.push(next);
+        // An emptied text in a list (a fixed table's cell) keeps its words, placeholder and all.
+        out.push(next === EMPTIED || next === VACATED ? child : next);
       }
       return out;
     }
@@ -392,8 +420,22 @@ export function rewriteDesignReferences(
       return node;
     }
     const out: JsonObject = {};
+    let emptied = 0;
     for (const [key, value] of Object.entries(node)) {
-      if ((key === 'fieldId' || key === 'sectionId') && typeof value === 'string') {
+      if (typeof value === 'string' && !REFERENCE_KEYS.has(key)) {
+        const next = text(value, removable);
+        if (next === REMOVE) {
+          return REMOVE;
+        }
+        if (next === '' && value !== '') {
+          // A language that held only a placeholder now taken out.
+          emptied += 1;
+          continue;
+        }
+        out[key] = next;
+        continue;
+      }
+      if (REFERENCE_KEYS.has(key) && typeof value === 'string') {
         const next = rename(value);
         if (next === null) {
           if (removable) {
@@ -426,7 +468,19 @@ export function rewriteDesignReferences(
       if (next === REMOVE) {
         return REMOVE;
       }
-      out[key] = next;
+      if (next === EMPTIED) {
+        if (node.kind === 'text') {
+          // A header or footer place: nothing left to print in it.
+          return VACATED;
+        }
+        // Anywhere else nothing can be taken out: the text stays as it was.
+        out[key] = value;
+        continue;
+      }
+      out[key] = next === VACATED ? null : next;
+    }
+    if (emptied > 0 && Object.keys(out).length === 0) {
+      return EMPTIED;
     }
     return out;
   };

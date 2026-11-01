@@ -133,6 +133,12 @@ function labelOf(form: CompiledForm | null, id: string, locale: string): string 
   if (element?.field !== undefined) {
     return say(element.field.label, locale) || id;
   }
+  const information = element?.information;
+  if (information !== undefined) {
+    // An Information block: its heading, or the start of its text.
+    const words = say(information.heading ?? information.body, locale).split('\n')[0] ?? '';
+    return (words.length > 60 ? `${words.slice(0, 60)}…` : words) || id;
+  }
   for (const page of form?.definition.pages ?? []) {
     for (const section of page.sections) {
       if (section.id === id) {

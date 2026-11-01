@@ -251,15 +251,18 @@ read):
   form. Every question the template names — answer blocks, check boxes and
   option lists, table rows, a repeating section's table and its columns,
   pictures from photo or signature answers, document fields taken from
-  answers, and `{{answer.<key>}}` placeholders in any text — is looked for in
-  that form's latest published version: first the same answer key where the
-  question fits (a text for a text, a number for a number, a choice with the
-  options a box ticks on, a photo or signature for a picture), then the same
-  wording in English or Arabic. The dialog lists every one with what it
+  answers, and `{{answer.<key>}}` placeholders in any text, the header's and
+  footer's places included — is looked for in that form's latest published
+  version: first the same answer key where the question fits (a text for a
+  text, a number for a number, a choice with the options a box ticks on, a
+  photo or signature for a picture), then the same wording in English or
+  Arabic. An **Information from the form** block is matched the same way to
+  one of that form's Information blocks outside repeating sections: the same
+  id, then the same heading. The dialog lists every one with what it
   matched; anything left needs a question chosen, or **Take out what uses
   it** (the block, or just the row of a table of fields or the column of a
-  section's table; a placeholder outside a block, such as in the footer, is
-  removed from its text). **Nothing is saved until every one is decided**: the
+  section's table; a placeholder in a header or footer place is removed from
+  its text, and a place left with no text is emptied). **Nothing is saved until every one is decided**: the
   server (`POST /v1/document-templates/:id/copy`) runs the same matching and
   refuses with `document_template_unmatched`, listing each one, otherwise. A
   duplicate whose template names a question the form has since lost asks the
