@@ -1461,6 +1461,13 @@ Migrations 0067 and 0068 run by themselves at part D: documents can now be uploa
 - [ ] **Tell each company using documents** that new documents start not shared: an owner or admin opens a document and presses **Share it** before handing over its QR code, or checks a website lookup that suddenly finds nothing.
 - [ ] **Open the new pages**: `https://app.integr8-media.com/` and `https://app.integr8-media.com/download?company=<a company's short name>` load in the new look, and the language switch turns them to Arabic and back.
 
+### AC. Business PDFs: quotes, invoices, purchase orders and job reports (included in v1.3.0)
+
+Migration 0074 runs by itself at part D. The quote, invoice, purchase order and job screens get a **PDFs** panel: the server prints the record in the company's look, keeps it in Documents and can email it to the customer or supplier. It uses the PDF printer you already run (part K) and the email sender (Resend); no new settings. Like every new document, a business PDF's QR code opens it only once it is shared. Browser printing stays as it was. Details: `docs/documents/BUSINESS-PDFS.md`.
+
+- [ ] **Migration ran**: after part D, `docker compose -f deploy/compose.yml --env-file deploy/.env logs migrate | grep 0074` shows `applied 0074_business_documents`.
+- [ ] **Print one**: in a company with Documents and Sales on, open an issued quote, press **Make PDF**, and after a few seconds **View** opens it with the company's logo and colour; `docker compose -f deploy/compose.yml --env-file deploy/.env logs worker | grep "Business PDF printed"` shows it.
+
 > [!NOTE]
 > **The test box (Stage 10)** updates the same way, from `staging` instead of `main`: `git pull` on its `staging` checkout, then **Pull** and **Redeploy** the stack in Arcane. Updating it first, the day before, is the cheapest rehearsal there is.
 

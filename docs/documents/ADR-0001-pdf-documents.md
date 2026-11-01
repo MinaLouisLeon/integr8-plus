@@ -355,3 +355,14 @@ placeholder, mode })` into base CSS and the printer's header and footer
   saving, and a document made from an older submission) and the desktop's
   `designer.test.tsx` (moving, duplicating, pasting, undo). Sample PDFs printed
   by the real printer path are in `docs/screenshots/1.3.0/pdf/`.
+
+## Addendum: business PDFs (1 November 2026, 1.3.0)
+
+The owner chose (decision 11, option C) to print quotes, invoices, purchase orders and
+a job report on the server too, in the company's look, kept in this register. They use
+D4's printer, D5's bucket and allowance, D7's public code and D12's failures unchanged,
+with fixed layouts instead of designed templates (no D1-D3), a snapshot of the record
+instead of a submission (no D6 fields: a business PDF's `reference` and `customer` or
+`supplier` are fields only for searching the register), and each kind's own module and
+permissions on top of D9's switch. New ones start not shared, as since 1.2.4. Details:
+[`BUSINESS-PDFS.md`](./BUSINESS-PDFS.md).

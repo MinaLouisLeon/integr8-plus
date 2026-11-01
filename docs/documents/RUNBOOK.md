@@ -116,7 +116,9 @@ The document is marked **Failed** and its page says why. The codes:
 | `storage_quota_exceeded` | The company's storage is full.                | Free space or raise the plan, then make it again.                |
 
 A failed document is deleted from its page and made again from the
-submission.
+submission. A business PDF (below) fails with the same codes, `source_missing`
+meaning its job held no record to print; it is made again from its record's
+screen.
 
 A question dropped from the form is **not** a failure (1.3.0): the document is
 made, and what the question showed prints blank or is left out. The template
@@ -174,6 +176,28 @@ not affected.
   1.2.4 stay shared. Uploads and every change of sharing are in the company's
   audit log. When a company says its QR codes "stopped working", check first
   that the document is shared.
+
+## Business PDFs (1.3.0)
+
+Quotes, invoices, purchase orders and job reports printed by the server in the
+company's look ([`BUSINESS-PDFS.md`](./BUSINESS-PDFS.md)). They need the
+documents module and the record's own module, and are made from the record's
+screen (**PDFs** panel), not from Documents; the register lists them with their
+kind, and stopping, expiry, sharing and deletion work as for any document.
+
+- **Queue:** `documents.render_business`, handled by the same worker, printer
+  and settings (`PDF_RENDERER`, `PDF_CHROMIUM_PATH`, `PDF_RENDER_TIMEOUT_MS`).
+  The worker logs `Business PDF printed` or `Business PDF failed`. No new
+  setting.
+- **"The QR code says not available"**: a new business PDF starts not shared,
+  like every document; an owner or admin shares it in Documents. A quote PDF
+  made from the issue dialog's link opens the quote page instead, which closes
+  when the quote is answered, revised or withdrawn.
+- **"The email did not arrive"**: the dialog says whether the provider took it
+  and, if not, why; the audit log has `document.emailed` with the address and
+  `sent`. PDFs over 10 MB are not emailed. Replies go to the person who sent it.
+- **Drafts** are refused (`business_document_draft`): print them from the
+  browser.
 
 ## Links, expiry and deletion
 
@@ -281,4 +305,8 @@ the older code ignores its tables. The same for `0067_document_uploads_and_shari
 1.2.3 keeps working on it, lists uploaded documents without their reference,
 and ignores sharing (its QR links open whatever the switch says) until 1.2.4 is
 back. Its `.down.sql` drops every document and
-template and is for development databases only.
+template and is for development databases only. Leave
+`0074_business_documents` applied too: 1.2.4 lists business PDFs like any
+other document and their links open; its worker does not know their queue, so
+one asked for just before going back stays pending. Its `.down.sql` deletes the
+business PDFs' records (their files stay in the bucket).

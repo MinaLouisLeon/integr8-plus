@@ -296,6 +296,24 @@ may do.
 Audit actions: `quote.created`, `.updated`, `.issued`, `.accepted`, `.rejected`,
 `.revised`, `.cancelled`, `.converted`, and `crm_opportunity.won_by_quote`.
 
+## Server-made PDFs of quotes, invoices and purchase orders (1.3.0)
+
+Besides printing from the browser (which stays), an issued quote, an issued
+invoice and an approved purchase order can be printed by the server in the
+company's look, kept in the documents register, downloaded and emailed to the
+customer or supplier; a job gets a job report the same way. Source:
+`apps/api/src/routes/v1/business-documents.ts`; tests:
+`business-documents.integration.test.ts`. Every route also needs the
+`documents` module. The whole feature, the layouts and the rules are in
+[`docs/documents/BUSINESS-PDFS.md`](../documents/BUSINESS-PDFS.md).
+
+| Method and path                              | Permission (quote / invoice / purchase order / job)                                                    | What it does                                                                                                                                                                                                                    |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /v1/business-documents?kind=&recordId=` | `sales.read` / `finance.read` / `purchasing.read` and seeing prices / reading the job                  | The record's PDFs, newest 20, with `can` (`make`, `email`, `share`), the address the record names (`email`) and the company's `language`                                                                                        |
+| `POST /v1/business-documents`                | `sales.manage` / `finance.manage` / `purchasing.manage` / reading the job and managing or working jobs | `kind`, `recordId`, `language`, `shareable` (needs `document.upload`), `quoteLinkToken` (a quote's live link for its QR code). 202 pending. 409 `business_document_draft`; 422 `quote_link_invalid`. `Idempotency-Key` honoured |
+| `GET /v1/business-documents/{id}/file`       | as for the list                                                                                        | A five-minute link, `disposition` `inline` or `attachment`                                                                                                                                                                      |
+| `POST /v1/business-documents/{id}/email`     | as for making, but `work_order.manage` for a job report                                                | `to`, `message`: sends the PDF as an attachment, reply-to the sender; answers `{sent, problem}`. 409 `document_not_ready`; 422 `document_too_large_to_email` (over 10 MB). Audited `document.emailed`                           |
+
 ## Sales orders (phase S1; ADR-0006)
 
 Source: `apps/api/src/routes/v1/sales-orders.ts`; the hooks the job and parts

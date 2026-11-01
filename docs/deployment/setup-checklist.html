@@ -1218,6 +1218,13 @@ docker compose -f deploy/compose.yml --env-file deploy/.env exec postgres psql -
           <li><input type="checkbox" id="s12-ab3"><label for="s12-ab3"><b>Open the new pages</b>: <code>https://app.integr8-media.com/</code> and <code>https://app.integr8-media.com/download?company=&lt;a company's short name&gt;</code> load in the new look, and the language switch turns them to Arabic and back.</label></li>
         </ul>
 
+        <h3 id="business-pdfs-update">AC. Business PDFs: quotes, invoices, purchase orders and job reports (included in v1.3.0)</h3>
+        <p>Migration 0074 runs by itself at part D. The quote, invoice, purchase order and job screens get a <b>PDFs</b> panel: the server prints the record in the company's look, keeps it in Documents and can email it to the customer or supplier. It uses the PDF printer you already run (part K) and the email sender (Resend); no new settings. Like every new document, a business PDF's QR code opens it only once it is shared. Browser printing stays as it was. Details: <code>docs/documents/BUSINESS-PDFS.md</code>.</p>
+        <ul class="check" data-stage="s12ac">
+          <li><input type="checkbox" id="s12-ac1"><label for="s12-ac1"><b>Migration ran</b>: after part D, <code>docker compose -f deploy/compose.yml --env-file deploy/.env logs migrate | grep 0074</code> shows <code>applied 0074_business_documents</code>.</label></li>
+          <li><input type="checkbox" id="s12-ac2"><label for="s12-ac2"><b>Print one</b>: in a company with Documents and Sales on, open an issued quote, press <b>Make PDF</b>, and after a few seconds <b>View</b> opens it with the company's logo and colour; <code>docker compose -f deploy/compose.yml --env-file deploy/.env logs worker | grep "Business PDF printed"</code> shows it.</label></li>
+        </ul>
+
         <div class="note"><p><b>The test box (Stage 10)</b> updates the same way, from <code>staging</code> instead of <code>main</code>: <code>git pull</code> on its <code>staging</code> checkout, then <b>Pull</b> and <b>Redeploy</b> the stack in Arcane. Updating it first, the day before, is the cheapest rehearsal there is.</p></div>
       </section>
 
