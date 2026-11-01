@@ -78,6 +78,11 @@ export { AssetListScreen } from './assets/asset-list.js';
 export { AssetScreen } from './assets/asset-screen.js';
 export { DocumentListScreen } from './documents/document-list.js';
 export { DocumentScreen } from './documents/document-screen.js';
+export {
+  BusinessPdfPanel,
+  type BusinessPdfKind,
+  MakePdfDialog,
+} from './documents/business-pdfs.js';
 export { NewAssetDialog } from './assets/asset-parts.js';
 export { AssetTagOpener } from './assets/asset-tag-open.js';
 export { AssetSettingsDialog, WarrantyAlertsPanel } from './assets/warranty.js';

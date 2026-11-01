@@ -566,6 +566,9 @@ export const keys = {
   assetSettings: ['assets', 'settings'] as const,
   documents: (query: object) => ['documents', 'list', query] as const,
   document: (id: string) => ['documents', 'document', id] as const,
+  /** A record's business PDFs (1.3.0); under `documents` so the register's changes refresh it. */
+  businessPdfs: (kind: string, recordId: string) =>
+    ['documents', 'business', kind, recordId] as const,
   etaSettings: ['eta', 'settings'] as const,
   etaCodes: ['eta', 'codes'] as const,
   etaSchemas: ['eta', 'schemas'] as const,

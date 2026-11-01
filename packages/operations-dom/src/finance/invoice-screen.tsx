@@ -29,6 +29,7 @@ import {
 } from './finance-parts.js';
 import { InvoiceEtaPanel } from '../e-invoicing/invoice-eta-panel.js';
 import { InvoiceDocument } from './invoice-document.js';
+import { BusinessPdfPanel } from '../documents/business-pdfs.js';
 
 /**
  * One invoice (CRM/ERP plan, phase B1; ADR-0007): what it bills, what it adds
@@ -286,6 +287,10 @@ export function InvoiceScreen({ invoiceId }: { invoiceId: string }) {
         </header>
 
         {error === undefined ? null : <Failure error={error} />}
+
+        {invoice.status === 'draft' ? null : (
+          <BusinessPdfPanel kind="invoice" recordId={invoice.id} />
+        )}
 
         <section aria-labelledby="finance-invoice-amounts" className={cardClass}>
           <h2 id="finance-invoice-amounts" className="sr-only">

@@ -41,6 +41,7 @@ import { CoverageCard } from '../contracts/job-coverage.js';
 import { DeadlinesCard } from '../deadlines/deadline-parts.js';
 import { PlannedMaintenance } from '../maintenance/maintenance-parts.js';
 import { googleMapsUrl } from '../site-location.js';
+import { BusinessPdfPanel } from '../documents/business-pdfs.js';
 
 /**
  * One job.
@@ -269,6 +270,7 @@ export function WorkOrderScreen({ workOrderId }: { workOrderId: string }) {
       <Completion job={job} />
       <JobFinancePanel workOrderId={workOrder.id} state={workOrder.state} />
       <Attachments job={job} onChanged={() => void detail.refetch()} />
+      <BusinessPdfPanel kind="job_report" recordId={workOrder.id} />
       <Comments job={job} onChanged={refresh} />
       <History job={job} />
       <Previous job={job} />
