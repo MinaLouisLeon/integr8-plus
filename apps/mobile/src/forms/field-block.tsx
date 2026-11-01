@@ -64,10 +64,14 @@ export const FieldBlock = forwardRef<ComponentRef<typeof View>, FieldBlockProps>
     const translate = t as unknown as (key: string, params: Record<string, string>) => string;
 
     const heading = (
-      <Text style={[styles.label, { color: theme.text }]}>
+      <Text testID="part:label" style={[styles.label, { color: theme.text }]}>
         {label}
         {required ? (
-          <Text accessibilityLabel={` (${t('fill.required')})`} style={{ color: theme.danger }}>
+          <Text
+            testID="part:required"
+            accessibilityLabel={` (${t('fill.required')})`}
+            style={{ color: theme.danger }}
+          >
             {' *'}
           </Text>
         ) : null}
@@ -75,7 +79,9 @@ export const FieldBlock = forwardRef<ComponentRef<typeof View>, FieldBlockProps>
     );
     const help =
       field.help === undefined ? null : (
-        <Text style={[styles.help, { color: theme.textMuted }]}>{say(field.help, locale)}</Text>
+        <Text testID="part:help" style={[styles.help, { color: theme.textMuted }]}>
+          {say(field.help, locale)}
+        </Text>
       );
     // Nothing to choose from until the question this one depends on is answered.
     const noChoices =
@@ -92,6 +98,7 @@ export const FieldBlock = forwardRef<ComponentRef<typeof View>, FieldBlockProps>
           {errors.map((error) => (
             <Text
               key={`${error.code}-${error.params.rule ?? ''}`}
+              testID="part:error"
               style={[styles.error, { color: theme.danger }]}
             >
               {errorMessage(field, error, locale, translate)}
@@ -102,7 +109,7 @@ export const FieldBlock = forwardRef<ComponentRef<typeof View>, FieldBlockProps>
 
     if (isCalculated(field)) {
       return (
-        <View ref={ref} style={styles.block}>
+        <View ref={ref} testID={`question:${field.id}`} style={styles.block}>
           {heading}
           {help}
           <View
@@ -126,6 +133,7 @@ export const FieldBlock = forwardRef<ComponentRef<typeof View>, FieldBlockProps>
       field,
       value,
       label,
+      required,
       invalid: errors.length > 0,
       available: choices?.options,
       disabled: disabled || field.readOnly === true,
@@ -138,6 +146,7 @@ export const FieldBlock = forwardRef<ComponentRef<typeof View>, FieldBlockProps>
     return (
       <View
         ref={ref}
+        testID={`question:${field.id}`}
         style={[styles.block, errors.length > 0 ? { borderStartColor: theme.danger } : null]}
       >
         {field.type === 'checkbox' ? null : heading}

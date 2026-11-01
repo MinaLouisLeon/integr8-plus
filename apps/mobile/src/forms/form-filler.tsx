@@ -271,7 +271,7 @@ export function FormFiller(props: FormFillerProps) {
             )}
 
             {reviewing ? (
-              <View style={styles.content}>
+              <View testID="part:review" style={styles.content}>
                 <Text accessibilityRole="header" style={[styles.pageTitle, { color: theme.text }]}>
                   {t('fill.review.title')}
                 </Text>
@@ -366,6 +366,7 @@ export function FormFiller(props: FormFillerProps) {
                     <View
                       key={section.id}
                       ref={register(section.id)}
+                      testID={`${section.repeat === undefined ? 'section' : 'repeat'}:${section.id}`}
                       collapsable={false}
                       style={[
                         styles.section,
@@ -375,6 +376,7 @@ export function FormFiller(props: FormFillerProps) {
                       {section.title === undefined ? null : (
                         <Text
                           accessibilityRole="header"
+                          testID="part:section-title"
                           style={[styles.sectionTitle, { color: theme.text }]}
                         >
                           {say(section.title, locale)}

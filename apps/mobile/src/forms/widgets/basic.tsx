@@ -280,11 +280,12 @@ export function MultiSelectWidget(props: WidgetProps<'multi_select'>) {
 
 /** A tick box is its own label: "I have isolated the gas supply." */
 export function CheckboxWidget(props: WidgetProps<'checkbox'>) {
-  const { value, label, disabled, onAnswer, onBlur } = props;
+  const { value, label, required, disabled, onAnswer, onBlur } = props;
   return (
     <ChoiceRow
       role="checkbox"
       label={label}
+      question={{ required }}
       selected={value === true}
       disabled={disabled}
       onPress={() => {

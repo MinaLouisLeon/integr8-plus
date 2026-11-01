@@ -84,7 +84,9 @@ export function EntryList({
               },
             ]}
           >
-            <Text style={[styles.rowTitle, { color: theme.text }]}>{title}</Text>
+            <Text testID="part:entry-title" style={[styles.rowTitle, { color: theme.text }]}>
+              {title}
+            </Text>
             {problems === 0 ? null : (
               <Text
                 style={[styles.badge, { color: theme.danger, backgroundColor: theme.dangerSubtle }]}
@@ -100,7 +102,7 @@ export function EntryList({
         );
       })}
       {own.map((error) => (
-        <Problem key={error.code}>
+        <Problem key={error.code} testID="part:section-problem">
           {translate(`form.errors.${error.code}`, { ...error.params })}
         </Problem>
       ))}
@@ -179,7 +181,7 @@ export function EntryView({
     view.shownErrors.filter((error) => error.field === field && error.entry === entryId);
 
   return (
-    <View style={styles.entry}>
+    <View testID={`entry:${entryId}`} style={styles.entry}>
       <ActionButton
         tone="quiet"
         label={t('mobile.fill.entries.back', {
