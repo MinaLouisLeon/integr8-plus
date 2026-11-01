@@ -6,6 +6,7 @@ import {
   ENTRY_COUNT_OPERATORS,
   type Field,
   type FormDefinition,
+  isQuestion,
   locate,
   operatorsFor,
   type Section,
@@ -65,7 +66,7 @@ export function subjectsFor(definition: FormDefinition, elementId: string): Subj
       if (across && !own.has(section.id)) {
         subjects.push({ kind: 'entry_count', section });
       }
-      for (const field of section.fields) {
+      for (const field of section.fields.filter(isQuestion)) {
         if (!own.has(field.id)) {
           subjects.push({ kind: 'field', field, across: across ? section : undefined });
         }

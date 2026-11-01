@@ -305,6 +305,17 @@ const qrBlock = z.object({
   caption: optionalText,
 });
 
+/**
+ * One of the form's Information blocks (form schema version 2), printed as the
+ * form shows it — heading, paragraph, style — when it is shown for these
+ * answers. A block prints only where a template puts it, never by itself.
+ */
+const informationBlock = z.object({
+  type: z.literal('information'),
+  id: blockId,
+  informationId: elementId,
+});
+
 const dividerBlock = z.object({ type: z.literal('divider'), id: blockId });
 const spacerBlock = z.object({
   type: z.literal('spacer'),
@@ -325,6 +336,7 @@ const leafBlock = z.discriminatedUnion('type', [
   staticTableBlock,
   imageBlock,
   qrBlock,
+  informationBlock,
   dividerBlock,
   spacerBlock,
 ]);
@@ -355,6 +367,7 @@ export const blockSchema = z.discriminatedUnion('type', [
   staticTableBlock,
   imageBlock,
   qrBlock,
+  informationBlock,
   dividerBlock,
   spacerBlock,
   pageBreakBlock,
@@ -700,6 +713,23 @@ export function checkDesignAgainstForm(design: TemplateDesign, form: CompiledFor
               message: `"${column.fieldId}" is not a field of "${block.sectionId}".`,
             });
           }
+        }
+        break;
+      }
+      case 'information': {
+        const element = form.elements.get(block.informationId);
+        if (element?.information === undefined) {
+          issues.push({
+            path,
+            code: 'unknown_field',
+            message: `The form has no Information block "${block.informationId}".`,
+          });
+        } else if (element.entries !== undefined) {
+          issues.push({
+            path,
+            code: 'outside_section',
+            message: `"${block.informationId}" is inside a repeating section, and prints only outside one.`,
+          });
         }
         break;
       }

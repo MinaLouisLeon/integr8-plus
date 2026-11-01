@@ -7,12 +7,15 @@ import {
   type FormState,
   type FormView,
   isCalculated,
+  isQuestion,
   ownAnswer,
   storedEntries,
 } from '@integr8/form-engine';
 import {
   dependentChoices,
+  Description,
   EntryList,
+  InformationBlock,
   isRequiredNow,
   offeredOptions,
   toggleOffered,
@@ -79,6 +82,7 @@ export function FormRenderer(props: FormRendererProps) {
           {page.title === undefined ? null : (
             <h3 className="text-lg font-semibold text-content">{say(page.title, locale)}</h3>
           )}
+          <Description text={page.description} locale={locale} />
           {page.sections
             .filter((section) => view.visible.get(section.id) === true)
             .map((section) => (
@@ -96,10 +100,17 @@ export function FormRenderer(props: FormRendererProps) {
                     {say(section.title, locale)}
                   </legend>
                 )}
+                <Description text={section.description} locale={locale} />
                 {section.repeat === undefined ? (
                   section.fields
                     .filter((field) => view.visible.get(field.id) === true)
-                    .map((field) => <FieldControl key={field.id} {...props} field={field} />)
+                    .map((field) =>
+                      isQuestion(field) ? (
+                        <FieldControl key={field.id} {...props} field={field} />
+                      ) : (
+                        <InformationBlock key={field.id} item={field} locale={locale} />
+                      ),
+                    )
                 ) : (
                   <EntryList
                     section={section}

@@ -37,7 +37,7 @@ import {
  */
 
 const compiled = compileDefinition({
-  schemaVersion: 1,
+  schemaVersion: 2,
   title: { en: 'Gas safety' },
   pages: [
     {
@@ -58,6 +58,7 @@ const compiled = compileDefinition({
               ],
             },
             { id: 'photos', type: 'photo', label: { en: 'Photos' } },
+            { id: 'gas_off', type: 'information', body: { en: 'Turn the gas off first.' } },
           ],
         },
         {

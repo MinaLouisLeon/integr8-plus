@@ -453,3 +453,85 @@ describe('qrSvg and escapeHtml', () => {
     );
   });
 });
+
+describe('Information blocks (form schema version 2)', () => {
+  const withInformation = (() => {
+    const result = compileDefinition({
+      schemaVersion: 2,
+      title: { en: 'Boiler service' },
+      pages: [
+        {
+          id: 'main',
+          sections: [
+            {
+              id: 'details',
+              fields: [
+                { id: 'safe', type: 'yes_no', label: { en: 'Safe to use' } },
+                {
+                  id: 'warning',
+                  type: 'information',
+                  heading: { en: 'Do not use', ar: 'لا تستخدم' },
+                  body: { en: 'Capped off.\nCall <us>.', ar: 'مغلق.' },
+                  style: 'warning',
+                  visibleWhen: {
+                    kind: 'compare',
+                    operator: 'eq',
+                    left: { kind: 'answer', field: 'safe' },
+                    right: { kind: 'text', value: 'no' },
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    if (!result.ok) {
+      throw new Error(JSON.stringify(result.issues));
+    }
+    return result.form;
+  })();
+  const printed = (answered: Record<string, unknown>) =>
+    renderDocumentHtml({
+      design: parsed(
+        design({
+          fields: [],
+          blocks: [{ type: 'information', id: 'b1', informationId: 'warning' }],
+        }),
+      ),
+      form: withInformation,
+      answers: answered,
+      locale: 'en',
+      facts,
+      fields: [],
+      qrUrl: null,
+      images: { logo: null, files: {}, media: {} },
+      mode: 'pdf',
+    }).html;
+
+  it('prints a block the template places, when the form shows it, as plain text', () => {
+    const html = printed({ safe: 'no' });
+    expect(html).toContain('class="info info-warning"');
+    expect(html).toContain('Do not use');
+    expect(html).toContain('Capped off.<br>Call &lt;us&gt;.');
+    expect(printed({ safe: 'yes' })).not.toContain('Do not use');
+  });
+
+  it('names a block that is not one of the form’s Information blocks', () => {
+    const checked = checkDesignAgainstForm(
+      parsed(
+        design({
+          fields: [],
+          blocks: [
+            { type: 'information', id: 'b1', informationId: 'safe' },
+            { type: 'information', id: 'b2', informationId: 'warning' },
+          ],
+        }),
+      ),
+      withInformation,
+    );
+    expect(checked).toEqual([
+      expect.objectContaining({ path: 'blocks.b1', code: 'unknown_field' }),
+    ]);
+  });
+});

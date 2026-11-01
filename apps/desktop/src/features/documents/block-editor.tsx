@@ -43,6 +43,7 @@ import {
   CHOICE_TYPES,
   freshBlockId,
   IMAGE_TYPES,
+  informationBlocks,
   LEAF_TYPES,
   moved,
   newBlock,
@@ -439,6 +440,8 @@ function summary(block: AnyBlock, locale: string): string {
       return block.rows.map((row) => row.fieldId).join(', ');
     case 'repeat_table':
       return block.sectionId;
+    case 'information':
+      return block.informationId;
     case 'image':
       return block.source.kind === 'answer' ? block.source.fieldId : block.source.kind;
     case 'row':
@@ -1037,6 +1040,30 @@ function BlockSettings({
           )}
         </div>
       );
+    case 'information': {
+      const blocks = informationBlocks(form);
+      const language = locale.startsWith('ar') ? 'ar' : 'en';
+      const name = (text: Record<string, string> | undefined) =>
+        text?.[language] ?? text?.en ?? Object.values(text ?? {})[0] ?? '';
+      return blocks.length === 0 ? (
+        <p className="text-sm text-content-muted">{t('documents.designer.block.noInformation')}</p>
+      ) : (
+        <div className="flex flex-col gap-1">
+          <SelectInput
+            label={t('documents.designer.block.information')}
+            value={block.informationId}
+            options={blocks.map((candidate) => ({
+              value: candidate.id,
+              label: (name(candidate.heading) || name(candidate.body)).slice(0, 80) || candidate.id,
+            }))}
+            onChange={(informationId) => onChange({ ...block, informationId })}
+          />
+          <p className="text-xs text-content-muted">
+            {t('documents.designer.block.informationHint')}
+          </p>
+        </div>
+      );
+    }
     case 'spacer':
       return (
         <NumberInput

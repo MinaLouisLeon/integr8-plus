@@ -432,6 +432,21 @@ class Renderer {
             : `<span class="qr" style="${size}">${qrSvg(this.#input.qrUrl)}</span>`;
         return `<figure class="align-${block.align}">${code}${caption === '' ? '' : `<figcaption dir="auto">${this.#text(caption)}</figcaption>`}</figure>`;
       }
+      case 'information': {
+        const element = this.#input.form.elements.get(block.informationId);
+        const item = element?.information;
+        // Shown on the form for these answers, and outside repeating sections.
+        if (
+          item === undefined ||
+          element?.entries !== undefined ||
+          this.#evaluation.visible.get(item.id) !== true
+        ) {
+          return '';
+        }
+        const heading = this.#say(item.heading);
+        const body = escapeHtml(this.#say(item.body)).replace(/\n/gu, '<br>');
+        return `<div class="info info-${item.style ?? 'plain'}">${heading === '' ? '' : `<div class="info-heading" dir="auto">${escapeHtml(heading)}</div>`}<p dir="auto">${body}</p></div>`;
+      }
       case 'divider':
         return '<hr>';
       case 'spacer':
@@ -573,6 +588,12 @@ function css(
     .box { display: inline-flex; width: 4mm; height: 4mm; flex: none; border: 0.35mm solid #111418; border-radius: 0.5mm; align-items: center; justify-content: center; }
     .box svg { width: 3.4mm; height: 3.4mm; }
     .options { margin: 0 0 2.5mm; break-inside: avoid; }
+    .info { margin: 0 0 2.5mm; break-inside: avoid; }
+    .info p { margin: 0; }
+    .info-heading { font-weight: 600; }
+    .info-tip, .info-warning { padding: 1.5mm 3mm; border-${start}: 1mm solid; }
+    .info-tip { border-color: #3b4450; background: #f2f4f7; }
+    .info-warning { border-color: #d97706; background: #fffbeb; }
     .grid.cols-1 { display: block; }
     .grid.cols-2, .grid.cols-3, .grid.cols-4 { display: grid; column-gap: 4mm; }
     .grid.cols-2 { grid-template-columns: repeat(2, 1fr); } .grid.cols-3 { grid-template-columns: repeat(3, 1fr); } .grid.cols-4 { grid-template-columns: repeat(4, 1fr); }

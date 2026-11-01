@@ -1,6 +1,4 @@
 import {
-  AGGREGATE_OPERATORS,
-  type ArithmeticOperator,
   choiceValues,
   type ConditionModel,
   type DependsOn,
@@ -8,31 +6,24 @@ import {
   type Field,
   findField,
   type FormDefinition,
+  type Information,
+  INFORMATION_STYLES,
+  isInformation,
   fromExpression,
   generateId,
   locate,
-  referencedFields,
   revealing,
   type LocalizedText,
   type Rule,
   type Section,
   updateField,
+  updateItem,
   updatePage,
   updateSection,
 } from '@integr8/form-engine';
 import { type TFunction, useTranslation } from '@integr8/i18n';
 import { useId, useState, type ReactNode } from 'react';
 import { Button } from '~/components/ui';
-import {
-  type Calculation,
-  type CalculationSources,
-  calculationSources,
-  fromCalculation,
-  type Term,
-  termFromKey,
-  termKey,
-  toCalculation,
-} from '../model/calculation';
 import { editorFor, type PropertyEditor, specificProperties } from '../model/catalog';
 import type { EditorAction } from '../model/editor';
 import {
@@ -53,9 +44,9 @@ import {
   ConditionBuilder,
   lookupIn,
   newClause,
-  sectionTitle,
   VisibilityEditor,
 } from './condition-builder';
+import { FormulaEditor } from './formula-editor';
 
 /**
  * The panel beside the canvas: everything about the selected question, section
@@ -96,7 +87,28 @@ export function ConfigPanel({
   }
 
   if (at.kind === 'field') {
-    const field = definition.pages[at.page]!.sections[at.section!]!.fields[at.field!]!;
+    const item = definition.pages[at.page]!.sections[at.section!]!.fields[at.field!]!;
+    if (isInformation(item)) {
+      return (
+        <InformationPanel
+          key={selection}
+          definition={definition}
+          item={item}
+          locale={locale}
+          readOnly={readOnly}
+          onChange={(update) =>
+            dispatch({
+              type: 'edit',
+              apply: (current) =>
+                updateItem(current, item.id, (previous) =>
+                  isInformation(previous) ? update(previous) : previous,
+                ),
+            })
+          }
+        />
+      );
+    }
+    const field = item;
     return (
       <FieldPanel
         key={selection}
@@ -128,6 +140,7 @@ export function ConfigPanel({
   const apply = (
     update: (element: {
       title?: LocalizedText | undefined;
+      description?: LocalizedText | undefined;
       visibleWhen?: Expression | undefined;
     }) => object,
   ) =>
@@ -153,6 +166,17 @@ export function ConfigPanel({
           label={t('forms.config.title')}
           value={container.title}
           onChange={(value) => apply(() => optional('title', value))}
+        />
+        <TextInput
+          label={t('forms.descriptions.label')}
+          hint={t('forms.descriptions.hint')}
+          value={say(container.description, locale)}
+          multiline
+          onChange={(value) =>
+            apply((element) =>
+              optional('description', withText(element.description, locale, value)),
+            )
+          }
         />
       </Group>
       {at.kind === 'section' ? (
@@ -319,6 +343,82 @@ function FieldPanel({
           field={field}
           locale={locale}
           onChange={(rules) => set({ rules: rules.length === 0 ? undefined : rules })}
+        />
+      </Group>
+    </fieldset>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// An Information block (schema version 2)
+// ---------------------------------------------------------------------------
+
+/**
+ * Text among the questions: an optional heading, the paragraph, a style, and
+ * "Shown when" like a question's. Plain `LocalizedText` throughout, so every
+ * place that walks a form's texts (translations, the check before publishing)
+ * finds these too.
+ */
+function InformationPanel({
+  definition,
+  item,
+  locale,
+  readOnly,
+  onChange,
+}: {
+  definition: FormDefinition;
+  item: Information;
+  locale: string;
+  readOnly: boolean;
+  onChange: (update: (item: Information) => Information) => void;
+}) {
+  const { t } = useTranslation();
+  const set = (patch: Partial<Record<keyof Information, unknown>>) =>
+    onChange((current) => compact({ ...current, ...patch }) as Information);
+
+  return (
+    <fieldset disabled={readOnly} className="flex flex-col gap-6 p-4">
+      <h2 className="text-base font-semibold text-content">{t('forms.information.title')}</h2>
+      <p className="text-xs text-content-muted">{t('forms.information.noAnswer')}</p>
+      <Group title={t('forms.config.groups.basics')}>
+        <TextInput
+          label={t('forms.information.heading')}
+          value={say(item.heading, locale)}
+          onChange={(value) => set({ heading: withText(item.heading, locale, value) })}
+        />
+        <TextInput
+          label={t('forms.information.body')}
+          hint={t('forms.information.bodyHint')}
+          value={say(item.body, locale)}
+          multiline
+          onChange={(value) =>
+            // The paragraph is required: emptied in this language, the others stay.
+            set({ body: withText(item.body, locale, value) ?? item.body })
+          }
+        />
+        <SelectInput
+          label={t('forms.information.style')}
+          value={item.style ?? 'plain'}
+          options={INFORMATION_STYLES.map((style) => ({
+            value: style,
+            label: t(`forms.information.styles.${style}`),
+          }))}
+          onChange={(value) => set({ style: value === 'plain' ? undefined : value })}
+        />
+        <ReadOnlyValue
+          label={t('forms.config.key')}
+          value={item.id}
+          hint={t('forms.config.keyHelp')}
+          mono
+        />
+      </Group>
+      <Group title={t('forms.config.groups.visibility')}>
+        <VisibilityEditor
+          definition={definition}
+          elementId={item.id}
+          expression={item.visibleWhen}
+          locale={locale}
+          onChange={(expression) => set({ visibleWhen: expression })}
         />
       </Group>
     </fieldset>
@@ -741,7 +841,7 @@ function PropertyInput({
       );
     case 'calculation':
       return (
-        <CalculationEditor
+        <FormulaEditor
           definition={definition}
           field={field}
           expression={value as Expression | undefined}
@@ -948,223 +1048,6 @@ function PatternEditor({
           />
         </>
       )}
-    </div>
-  );
-}
-
-const OPERATORS: readonly ArithmeticOperator[] = ['add', 'subtract', 'multiply', 'divide'];
-
-function CalculationEditor({
-  definition,
-  field,
-  expression,
-  locale,
-  onChange,
-}: {
-  definition: FormDefinition;
-  field: Field;
-  expression: Expression | undefined;
-  locale: string;
-  onChange: (expression: Expression | undefined) => void;
-}) {
-  const { t } = useTranslation();
-  const [chain, setChain] = useState<Calculation | undefined>(() => toCalculation(expression));
-  // Only what this field can read where it sits: across a repeatable section, a total or a count.
-  const sources = calculationSources(definition, field.id);
-  const numeric = sources.fields;
-
-  if (expression !== undefined && chain === undefined) {
-    return (
-      <div className="flex flex-col items-start gap-2">
-        <p className="text-sm text-content-muted">
-          {referencedFields(expression).some((id) => findField(definition, id) === undefined)
-            ? t('forms.calculation.broken')
-            : t('forms.calculation.advanced')}
-        </p>
-        <Button variant="secondary" onClick={() => onChange(undefined)}>
-          {t('forms.calculation.stop')}
-        </Button>
-      </div>
-    );
-  }
-
-  if (chain === undefined) {
-    return (
-      <div>
-        <Button
-          variant="secondary"
-          onClick={() => {
-            const first: Term =
-              numeric[0] === undefined
-                ? { kind: 'number', value: '0' }
-                : { kind: 'field', field: numeric[0].id };
-            const next = { first, rest: [] };
-            setChain(next);
-            onChange(fromCalculation(next));
-          }}
-        >
-          {t('forms.calculation.start')}
-        </Button>
-      </div>
-    );
-  }
-
-  const commit = (next: Calculation) => {
-    setChain(next);
-    const terms = [next.first, ...next.rest.map((step) => step.term)];
-    if (
-      terms.every((term) => term.kind !== 'number' || /^-?[0-9]+(\.[0-9]+)?$/u.test(term.value))
-    ) {
-      onChange(fromCalculation(next));
-    }
-  };
-
-  return (
-    <div className="flex flex-col gap-2">
-      <span className="text-sm font-medium text-content">
-        {t('forms.config.property.calculation')}
-      </span>
-      <TermInput
-        term={chain.first}
-        sources={sources}
-        locale={locale}
-        onChange={(first) => commit({ ...chain, first })}
-      />
-      {chain.rest.map((step, index) => (
-        <div key={index} className="flex flex-wrap items-center gap-1">
-          <select
-            aria-label={t('forms.calculation.addStep')}
-            value={step.operator}
-            onChange={(event) =>
-              commit({
-                ...chain,
-                rest: chain.rest.map((current, at) =>
-                  at === index
-                    ? { ...current, operator: event.target.value as ArithmeticOperator }
-                    : current,
-                ),
-              })
-            }
-            className="rounded-md border border-border-subtle bg-surface px-2 py-1.5 text-sm"
-          >
-            {OPERATORS.map((operator) => (
-              <option key={operator} value={operator}>
-                {t(`forms.calculation.operator.${operator}`)}
-              </option>
-            ))}
-          </select>
-          <TermInput
-            term={step.term}
-            sources={sources}
-            locale={locale}
-            onChange={(term) =>
-              commit({
-                ...chain,
-                rest: chain.rest.map((current, at) =>
-                  at === index ? { ...current, term } : current,
-                ),
-              })
-            }
-          />
-          <Button
-            variant="ghost"
-            aria-label={t('forms.calculation.removeStep')}
-            onClick={() => commit({ ...chain, rest: chain.rest.filter((_, at) => at !== index) })}
-          >
-            ✕
-          </Button>
-        </div>
-      ))}
-      <div className="flex flex-wrap gap-2">
-        <Button
-          variant="secondary"
-          onClick={() =>
-            commit({
-              ...chain,
-              rest: [
-                ...chain.rest,
-                {
-                  operator: 'add',
-                  term:
-                    numeric[0] === undefined
-                      ? { kind: 'number', value: '0' }
-                      : { kind: 'field', field: numeric[0].id },
-                },
-              ],
-            })
-          }
-        >
-          {t('forms.calculation.addStep')}
-        </Button>
-        <Button
-          variant="ghost"
-          onClick={() => {
-            setChain(undefined);
-            onChange(undefined);
-          }}
-        >
-          {t('forms.calculation.stop')}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function TermInput({
-  term,
-  sources,
-  locale,
-  onChange,
-}: {
-  term: Term;
-  sources: CalculationSources;
-  locale: string;
-  onChange: (term: Term) => void;
-}) {
-  const { t } = useTranslation();
-  const label = (candidate: Field) => say(candidate.label, locale) || candidate.id;
-  return (
-    <div className="flex flex-wrap items-center gap-1">
-      <select
-        aria-label={t('forms.calculation.term')}
-        value={termKey(term)}
-        onChange={(event) => onChange(termFromKey(event.target.value))}
-        className="max-w-[12rem] rounded-md border border-border-subtle bg-surface px-2 py-1.5 text-sm"
-      >
-        {sources.fields.map((candidate) => (
-          <option key={candidate.id} value={candidate.id}>
-            {label(candidate)}
-          </option>
-        ))}
-        {sources.sections.flatMap(({ section, numbers }) => [
-          <option key={`#count:${section.id}`} value={`#count:${section.id}`}>
-            {t('forms.calculation.count', { section: sectionTitle(section, locale) })}
-          </option>,
-          ...numbers.flatMap((number) =>
-            AGGREGATE_OPERATORS.map((operator) => (
-              <option
-                key={`#${operator}:${section.id}:${number.id}`}
-                value={`#${operator}:${section.id}:${number.id}`}
-              >
-                {t(`forms.calculation.aggregate.${operator}`, {
-                  question: label(number),
-                  section: sectionTitle(section, locale),
-                })}
-              </option>
-            )),
-          ),
-        ])}
-        <option value="">{t('forms.calculation.number')}</option>
-      </select>
-      {term.kind === 'number' ? (
-        <input
-          aria-label={t('forms.calculation.numberValue')}
-          inputMode="decimal"
-          value={term.value}
-          onChange={(event) => onChange({ kind: 'number', value: event.target.value.trim() })}
-          className="w-24 rounded-md border border-border-subtle bg-surface px-2 py-1.5 text-sm"
-        />
-      ) : null}
     </div>
   );
 }
