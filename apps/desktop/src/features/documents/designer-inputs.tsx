@@ -271,11 +271,14 @@ export function ImageUpload({
   fileId,
   onChange,
   removable = true,
+  hint,
 }: {
   label: string;
   fileId: string | null;
   onChange: (fileId: string | null) => void;
   removable?: boolean;
+  /** Instead of the general hint: a background's pixel size for the page's orientation. */
+  hint?: string;
 }) {
   const { t } = useTranslation();
   const id = useId();
@@ -326,7 +329,7 @@ export function ImageUpload({
         ) : null}
       </div>
       <p className={failed ? 'text-xs text-danger' : 'text-xs text-content-muted'}>
-        {t('documents.designer.page.imageHint')}
+        {hint ?? t('documents.designer.page.imageHint')}
       </p>
     </div>
   );

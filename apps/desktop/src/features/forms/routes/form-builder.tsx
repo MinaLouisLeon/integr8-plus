@@ -77,6 +77,8 @@ export function FormBuilderRoute() {
         design: me.data.permissions.includes('document.design'),
         enabled: me.data.features.documents === true,
         companyName: me.data.company?.name ?? '',
+        brandColour: me.data.company?.brandColour ?? null,
+        logoMediaId: me.data.company?.logoMediaId ?? null,
       }}
     />
   );
@@ -94,7 +96,13 @@ function Builder({
   tenantId: string;
   manage: boolean;
   /** PDF templates (docs/documents): whether this seat designs them, and whether the company has them. */
-  documents: { design: boolean; enabled: boolean; companyName: string };
+  documents: {
+    design: boolean;
+    enabled: boolean;
+    companyName: string;
+    brandColour: string | null;
+    logoMediaId: string | null;
+  };
 }) {
   const { t, i18n } = useTranslation();
   const locale = i18n.language;
@@ -109,6 +117,8 @@ function Builder({
     initialEditor,
   );
   const [tab, setTab] = useState<Tab>('build');
+  // The PDF designer stays open once visited, so its unsaved work survives a look at another tab.
+  const [pdfOpened, setPdfOpened] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [notice, setNotice] = useState<string | undefined>(undefined);
   const [live, setLive] = useState(detail.live);
@@ -171,9 +181,9 @@ function Builder({
     return ids;
   }, [live, versions.data]);
 
-  // Keyboard undo and redo, as everywhere else on the desktop.
+  // Keyboard undo and redo, as everywhere else on the desktop. The PDF tab has its own.
   useEffect(() => {
-    if (!manage) {
+    if (!manage || tab === 'pdf') {
       return;
     }
     const onKey = (event: KeyboardEvent) => {
@@ -194,7 +204,7 @@ function Builder({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [manage]);
+  }, [manage, tab]);
 
   const show = (elementId: string) => {
     setTab('build');
@@ -268,7 +278,12 @@ function Builder({
             type="button"
             role="tab"
             aria-selected={tab === name}
-            onClick={() => setTab(name)}
+            onClick={() => {
+              setTab(name);
+              if (name === 'pdf') {
+                setPdfOpened(true);
+              }
+            }}
             className={[
               'border-b-2 px-3 py-2 text-sm',
               tab === name
@@ -408,15 +423,23 @@ function Builder({
 
       {tab === 'history' ? <HistoryPanel formId={formId} locale={locale} /> : null}
       {tab === 'settings' ? <SettingsPanel detail={detail} /> : null}
-      {tab === 'pdf' ? (
-        <DocumentDesigner
-          formId={formId}
-          formTitle={detail.form.title}
-          form={liveForm}
-          locale={locale}
-          enabled={documents.enabled}
-          companyName={documents.companyName}
-        />
+      {documents.design && (tab === 'pdf' || pdfOpened) ? (
+        <div className={tab === 'pdf' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
+          <DocumentDesigner
+            formId={formId}
+            formTitle={detail.form.title}
+            form={liveForm}
+            locale={locale}
+            enabled={documents.enabled}
+            active={tab === 'pdf'}
+            company={{
+              tenantId,
+              name: documents.companyName,
+              brandColour: documents.brandColour,
+              logoMediaId: documents.logoMediaId,
+            }}
+          />
+        </div>
       ) : null}
 
       {manage && publishing ? (

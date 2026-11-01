@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { Button, ErrorState, LoadingState } from '~/components/ui';
 import { checkDraft, type DraftCheck, formKeys, publishDraft, type VersionSummary } from '../api';
 import { breakingText, issueElement, issueText } from '../model/issues';
+import { AffectedTemplates } from '../../documents/affected-templates';
 import { nameOf } from './canvas';
 import { Dialog } from './dialog';
 
@@ -144,6 +145,7 @@ function CheckReport({
       {check.valid ? (
         <>
           <BreakingList diff={check.diff} definition={definition} locale={locale} />
+          <AffectedTemplates templates={check.documentTemplates} />
           <ChangeList diff={check.diff} definition={definition} locale={locale} hasLive={hasLive} />
         </>
       ) : null}
@@ -314,12 +316,19 @@ export function PublishDialog({
   const { state, run } = useCheck(formId, flush);
   const [note, setNote] = useState('');
   const [acknowledged, setAcknowledged] = useState(false);
+  // PDF templates the version would leave needing attention (1.3.0): confirmed apart.
+  const [templatesAcknowledged, setTemplatesAcknowledged] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [problem, setProblem] = useState<string | undefined>(undefined);
 
   const check = state.kind === 'done' ? state.check : undefined;
   const breaking = (check?.diff.breaking.length ?? 0) > 0;
-  const canPublish = check?.valid === true && (!breaking || acknowledged) && !publishing;
+  const affectsTemplates = (check?.documentTemplates.length ?? 0) > 0;
+  const canPublish =
+    check?.valid === true &&
+    (!breaking || acknowledged) &&
+    (!affectsTemplates || templatesAcknowledged) &&
+    !publishing;
 
   const publish = async () => {
     if (check === undefined) {
@@ -332,6 +341,7 @@ export function PublishDialog({
         expectedRevision: check.revision,
         ...(note.trim() === '' ? {} : { changeNote: note.trim() }),
         acknowledgeBreakingChanges: acknowledged,
+        acknowledgeTemplateChanges: templatesAcknowledged,
       });
       setNote('');
       await Promise.all([
@@ -405,6 +415,18 @@ export function PublishDialog({
                 className="mt-1"
               />
               {t('forms.publish.acknowledge')}
+            </label>
+          ) : null}
+          <AffectedTemplates templates={check.documentTemplates} />
+          {affectsTemplates ? (
+            <label className="flex items-start gap-2 font-medium">
+              <input
+                type="checkbox"
+                checked={templatesAcknowledged}
+                onChange={(event) => setTemplatesAcknowledged(event.target.checked)}
+                className="mt-1"
+              />
+              {t('documents.pdfBuilder.formCheck.acknowledge')}
             </label>
           ) : null}
           <ChangeList diff={check.diff} definition={definition} locale={locale} hasLive={hasLive} />

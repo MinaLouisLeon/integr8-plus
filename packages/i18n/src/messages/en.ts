@@ -7646,7 +7646,8 @@ export const en = {
     },
     designer: {
       tab: 'PDF templates',
-      intro: 'Design the PDFs this company makes from this form. Each template is A4 portrait.',
+      intro:
+        'Design the PDFs this company makes from this form. Each template is A4, portrait or landscape.',
       moduleOff:
         'Documents are not switched on for this company. Switch them on from the dashboard first.',
       notPublished: 'Publish the form before designing its PDFs.',
@@ -7801,6 +7802,127 @@ export const en = {
         column: 'Column {{number}}',
         removeItem: 'Remove',
         choose: 'Choose…',
+      },
+    },
+    // 1.3.0, the PDF template builder (decisions 6-9, 12, 13): header and footer,
+    // landscape, style, drag and drop, undo, copy and paste, recovery, the PDF
+    // preview, and templates the form has moved on from.
+    pdfBuilder: {
+      undo: 'Undo',
+      redo: 'Redo',
+      leave: {
+        title: 'Leave without saving?',
+        body: 'This template has changes that are not saved. They are kept on this computer and offered back when you open it again, but nobody else sees them until you save.',
+        stay: 'Stay',
+        leave: 'Leave',
+      },
+      recovery: {
+        title: 'Unsaved changes found',
+        restoreBody:
+          'This template has changes from {{when}} that were never saved. Bring them back?',
+        staleBody:
+          'This template has changes from {{when}} that were never saved, and someone has saved it since. Bringing them back replaces their version when you save.',
+        restore: 'Bring them back',
+        discard: 'Discard them',
+      },
+      blocks: {
+        drag: 'Drag to move',
+        dropHere: 'Drop blocks here, or add one below.',
+        duplicate: 'Duplicate',
+        copy: 'Copy',
+        pasteNothing: 'Paste',
+        copied: 'Copied. Paste it into any template of this form.',
+        paste_one: 'Paste {{count}} block',
+        paste_other: 'Paste {{count}} blocks',
+        pasted_one: 'Pasted {{count}} block at the end.',
+        pasted_other: 'Pasted {{count}} blocks at the end.',
+      },
+      attention: {
+        inRow: 'A block in one of its columns needs attention; open it to see which.',
+        badge: 'Needs attention',
+        title: 'This template needs attention',
+        body: 'A published version of the form dropped or changed questions these parts use. PDFs are still made: what is missing prints blank or is left out. Fix or remove them, then save.',
+        codes: {
+          unknown_field: 'The question it shows is no longer in the form.',
+          wrong_field_type:
+            'The question it shows is now a different kind and cannot be shown this way.',
+          unknown_option: 'The option it ticks on is no longer offered.',
+          not_repeating: 'Its repeating group is no longer in the form, or no longer repeats.',
+          outside_section: 'A question it shows has moved into or out of a repeating group.',
+        },
+      },
+      page: {
+        orientation: 'Orientation',
+        portrait: 'Portrait (A4)',
+        landscape: 'Landscape (A4)',
+        backgroundPortrait:
+          'PNG, JPEG or WebP, drawn edge to edge on a portrait A4 page: 2480 × 3508 pixels is ideal.',
+        backgroundLandscape:
+          'PNG, JPEG or WebP, drawn edge to edge on a landscape A4 page: 3508 × 2480 pixels is ideal.',
+      },
+      bands: {
+        title: 'Header and footer',
+        intro:
+          'Each has three places, mirrored in Arabic. The header sits in the top margin and the footer in the bottom one, so leave the margins room for them.',
+        header: 'Header',
+        footer: 'Footer',
+        places: { start: 'Start', center: 'Centre', end: 'End' },
+        kinds: {
+          none: 'Nothing',
+          logo: 'Company logo',
+          text: 'Text',
+          page: 'Page X of Y',
+        },
+        logoHeight: 'Logo height (mm)',
+        notOnFirstPage: 'Not on the first page',
+        placeholders: 'Texts can hold these, filled in when the PDF is made:',
+      },
+      style: {
+        title: 'Style',
+        brandColour: 'Brand colour (headings, table headers, lines)',
+        brandCompany: 'The company’s colour ({{colour}})',
+        brandOwn: 'A colour of its own',
+        brandNone: 'None (black)',
+        ownColour: 'Colour',
+        font: 'Font',
+        fonts: {
+          'noto-sans': 'Noto Sans and Noto Sans Arabic',
+          'noto-naskh': 'Noto Serif and Noto Naskh Arabic',
+          'integr8-display': 'Unbounded and Alexandria headings, Inter and IBM Plex text',
+          'integr8-text': 'Inter and IBM Plex Sans Arabic',
+        },
+        tableLines: 'Table lines',
+        linesNone: 'None',
+        linesLight: 'Light',
+        linesStrong: 'Strong',
+        headerShading: 'Shade table header rows',
+        striped: 'Shade every other row',
+        blockColour: 'Text colour',
+        colourDefault: 'As the template',
+        colours: { black: 'Black', grey: 'Grey', brand: 'Brand colour', red: 'Red' },
+        shaded: 'Light shading behind it',
+      },
+      preview: {
+        live: 'Live preview',
+        pdf: 'PDF',
+        sample: 'Sample answers',
+        print: 'Preview as PDF',
+        printAgain: 'Print again',
+        pdfHint:
+          'The server prints the design as it is now, saved or not, exactly as a document. Nothing is kept.',
+        notYet: 'Choose “Preview as PDF” to see the real PDF.',
+        drawing: 'Drawing the pages…',
+        cannotShow: 'The PDF could not be shown.',
+        pages_one: '{{count}} page',
+        pages_other: '{{count}} pages',
+        pageLabel: 'Page {{page}} of {{pages}}',
+      },
+      formCheck: {
+        title: 'PDF templates that will need attention',
+        body: 'These templates show questions this version drops or changes. PDFs are still made from them; what is missing prints blank or is left out until someone fixes the template.',
+        block: 'Block {{block}}:',
+        field: 'Document field {{field}}:',
+        acknowledge: 'I understand these PDF templates will be marked to fix after publishing.',
       },
     },
     // Words inside a generated PDF, in the document's language.

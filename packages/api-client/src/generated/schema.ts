@@ -19035,6 +19035,14 @@ export interface operations {
                         createdAt: string;
                         /** Format: date-time */
                         updatedAt: string;
+                        needsAttention: boolean;
+                        problems: {
+                            path: string;
+                            code: string;
+                            message: string;
+                            blockId: string | null;
+                            fieldKey: string | null;
+                        }[];
                     };
                 };
             };
