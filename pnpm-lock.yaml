@@ -585,8 +585,8 @@ importers:
         specifier: workspace:*
         version: link:../db
       jose:
-        specifier: 6.2.0
-        version: 6.2.0
+        specifier: 6.2.13
+        version: 6.2.13
       zod:
         specifier: 4.6.1
         version: 4.6.1
@@ -5924,6 +5924,9 @@ packages:
 
   jose@6.2.0:
     resolution: {integrity: sha512-xsfE1TcSCbUdo6U07tR0mvhg0flGxU8tPLbF03mirl2ukGQENhUg4ubGYQnhVH0b5stLlPM+WOqDkEl1R1y5sQ==}
+
+  jose@6.2.13:
+    resolution: {integrity: sha512-7TIg10ZE1x82YediN+lcrPNvGMKge9yFHQD+Qho/b8y2adfugU3AsvvHfxV0fzyFllT6l9xCjf4RWY9g/Z9PJQ==}
 
   js-levenshtein@1.1.6:
     resolution: {integrity: sha512-X2BB11YZtrRqY4EnQcLX5Rh373zbK4alC1FW7D7MBhL2gtcC17cTnr6DmfHZeS0s2rTHjUTMMHfG7gO8SSdw+g==}
@@ -13007,6 +13010,8 @@ snapshots:
   jiti@2.7.0: {}
 
   jose@6.2.0: {}
+
+  jose@6.2.13: {}
 
   js-levenshtein@1.1.6: {}
 

@@ -28,7 +28,7 @@
   "dependencies": {
     "@integr8/core": "workspace:*",
     "@integr8/db": "workspace:*",
-    "jose": "6.2.0",
+    "jose": "6.2.13",
     "zod": "4.6.1"
   },
   "devDependencies": {
