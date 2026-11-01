@@ -211,18 +211,26 @@ function walk(
   if (schema instanceof z.ZodDiscriminatedUnion) {
     const discriminator = (schema.def as { discriminator: string }).discriminator;
     const tag = isRecord(value) ? value[discriminator] : undefined;
-    const options = schema.options;
-    const match = options.find(
-      (option) =>
-        option instanceof z.ZodObject &&
-        literalMatches(option.shape[discriminator] as z.core.$ZodType | undefined, tag),
+    // A section's items are a union of a union: every type of question, and an
+    // Information block (schema version 2). The objects are looked for at any depth.
+    const match = objectOptions(schema).find((option) =>
+      literalMatches(option.shape[discriminator] as z.core.$ZodType | undefined, tag),
     );
     if (match !== undefined) {
       walk(match, value, path, optional, found, owner);
       return;
     }
     // A type this engine does not know: the keys every option shares still say what they hold.
-    walkShared(options, value, path, found, owner);
+    // Among a section's items that is a newer type of question, so the questions' union is
+    // what it is read against, not the Information block beside it.
+    const nested = schema.options.find((option) => option instanceof z.ZodDiscriminatedUnion);
+    walkShared(
+      nested === undefined ? schema.options : objectOptions(nested),
+      value,
+      path,
+      found,
+      owner,
+    );
     return;
   }
   if (schema instanceof z.ZodUnion) {
@@ -274,6 +282,17 @@ function walkShared(
       walk(child, value[key], [...path, key], false, found, owner);
     }
   }
+}
+
+/** The object schemas of a discriminated union, those of a union inside it included. */
+function objectOptions(schema: z.ZodDiscriminatedUnion): z.ZodObject[] {
+  return schema.options.flatMap((option): z.ZodObject[] =>
+    option instanceof z.ZodDiscriminatedUnion
+      ? objectOptions(option)
+      : option instanceof z.ZodObject
+        ? [option]
+        : [],
+  );
 }
 
 function literalMatches(schema: z.core.$ZodType | undefined, tag: unknown): boolean {

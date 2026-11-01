@@ -142,6 +142,52 @@ describe('collectTexts', () => {
     expect(later.map((location) => location.property)).toEqual(['label', 'help']);
   });
 
+  it('finds descriptions and Information blocks (form format 2), and counts them as missing', () => {
+    const later = form();
+    later.schemaVersion = 2;
+    later.pages[0]!.description = { en: 'Before you start', ar: 'قبل أن تبدأ' };
+    later.pages[0]!.sections[1]!.description = { en: 'One row per radiator' };
+    later.pages[0]!.sections[0]!.fields.splice(1, 0, {
+      id: 'isolate',
+      type: 'information',
+      heading: { en: 'Isolate first' },
+      body: { en: 'Turn the supply off.', ar: 'أوقف الإمداد.' },
+      style: 'warning',
+    });
+    const found = collectTexts(later).map((location) => [
+      location.pathText,
+      location.elementKind,
+      location.element ?? null,
+      location.property,
+      location.optional,
+    ]);
+    expect(found).toEqual(
+      expect.arrayContaining([
+        ['pages[0].description', 'page', 'inspection', 'description', true],
+        ['pages[0].sections[0].fields[1].heading', 'field', 'isolate', 'heading', true],
+        ['pages[0].sections[0].fields[1].body', 'field', 'isolate', 'body', false],
+        ['pages[0].sections[1].description', 'section', 'radiators', 'description', true],
+      ]),
+    );
+    // The question after the block is still read as a question.
+    expect(found).toContainEqual([
+      'pages[0].sections[0].fields[2].label',
+      'field',
+      'serial',
+      'label',
+      false,
+    ]);
+    expect(missingTranslations(later, 'ar').map((location) => location.pathText)).toEqual(
+      expect.arrayContaining([
+        'pages[0].sections[0].fields[1].heading',
+        'pages[0].sections[1].description',
+      ]),
+    );
+    expect(
+      missingTranslations(later, 'ar').some((location) => location.pathText.endsWith('body')),
+    ).toBe(false);
+  });
+
   it('skips what is not text: ids, rule expressions, option values', () => {
     const withCondition = form();
     withCondition.pages[0]!.sections[1]!.visibleWhen = eq(answer('result'), text('pass'));
