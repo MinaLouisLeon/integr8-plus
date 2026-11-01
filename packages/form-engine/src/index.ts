@@ -263,6 +263,15 @@ export {
 } from './authoring/editing.js';
 
 export {
+  collectTexts,
+  lacksLanguage,
+  missingTranslations,
+  setText,
+  withLanguage,
+  type TextLocation,
+} from './authoring/translations.js';
+
+export {
   emptyDefinition,
   generateId,
   newField,
