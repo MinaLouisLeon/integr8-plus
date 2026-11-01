@@ -27,7 +27,7 @@ import {
   memberAllowance,
   periodKeysAt,
 } from '../../ai/periods.js';
-import { type AiAccess, resolveAiAccess } from '../../ai/policy.js';
+import { type AiAccess, resolveAiAccess, sessionClientApp } from '../../ai/policy.js';
 import { defineRoute, noSchema } from '../../http/routes.js';
 import { iso } from './schemas.js';
 
@@ -157,7 +157,7 @@ export const aiCapabilitiesRoute = defineRoute({
   handler: async (_input, context) => {
     const access = await resolveAiAccess({
       principal: context.principal,
-      clientApp: context.clientApp,
+      clientApp: sessionClientApp(context),
       config: context.config,
     });
     const now = new Date();
@@ -204,7 +204,7 @@ export const aiUsageRoute = defineRoute({
   handler: async (_input, context) => {
     const access = await resolveAiAccess({
       principal: context.principal,
-      clientApp: context.clientApp,
+      clientApp: sessionClientApp(context),
       config: context.config,
     });
     return { status: 200, body: await usageOf(context.principal, access, new Date()) };
@@ -288,7 +288,7 @@ export const createConversationRoute = defineRoute({
   handler: async ({ body }, context) => {
     const access = await resolveAiAccess({
       principal: context.principal,
-      clientApp: context.clientApp,
+      clientApp: sessionClientApp(context),
       config: context.config,
     });
     assertAiLevel(access, 'help');
@@ -333,7 +333,7 @@ export const listConversationsRoute = defineRoute({
   handler: async (_input, context) => {
     const access = await resolveAiAccess({
       principal: context.principal,
-      clientApp: context.clientApp,
+      clientApp: sessionClientApp(context),
       config: context.config,
     });
     assertAiLevel(access, 'help');
@@ -481,7 +481,7 @@ export const postMessageRoute = defineRoute({
   handler: async ({ params, body }, context) => {
     const answer = await answerMessage({
       principal: context.principal,
-      clientApp: context.clientApp,
+      clientApp: sessionClientApp(context),
       conversationId: params.conversationId,
       message: body.message,
       locale: body.locale,

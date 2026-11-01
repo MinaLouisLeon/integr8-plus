@@ -5,7 +5,7 @@ import {
   type PlatformPrincipal,
   type Principal,
 } from '@integr8/core';
-import { AuthError, InvalidTokenError, SessionRevokedError } from '@integr8/auth';
+import { AuthError, InvalidTokenError, type LiveSession, SessionRevokedError } from '@integr8/auth';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import { randomUUID } from 'node:crypto';
 import type { Services } from './composition.js';
@@ -284,7 +284,7 @@ export function buildServer(options: BuildServerOptions): FastifyInstance {
           // 5a. Is the token's session still live? After the impersonation
           // check, so an ended impersonation keeps its own 403 rather than a
           // bare 401.
-          await assertSessionLive(principal, services);
+          context.session = await assertSessionLive(principal, services);
 
           // 5b. Is this company still being served? A suspension refuses reads
           // as well as writes; see http/suspension.ts for why.
@@ -501,9 +501,9 @@ async function authenticate(request: FastifyRequest, services: Services): Promis
  * ending a session must stop the device well before the token lapses. The
  * answer is cached for thirty seconds per session (`SessionService.assertLive`).
  */
-async function assertSessionLive(principal: Principal, services: Services): Promise<void> {
+async function assertSessionLive(principal: Principal, services: Services): Promise<LiveSession> {
   try {
-    await services.sessions.assertLive(principal);
+    return await services.sessions.assertLive(principal);
   } catch (error) {
     if (error instanceof SessionRevokedError) {
       throw unauthorised();

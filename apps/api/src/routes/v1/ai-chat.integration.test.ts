@@ -50,6 +50,7 @@ const OWNER_DAILY = Math.floor((40 * OWNER_SHARE) / 100);
 interface Capabilities {
   level: string;
   blockedBy: string | null;
+  channel: string;
   usage: {
     allowance: { remainingPercent: number | null; resetsAt: string | null; exhausted: boolean };
     sharePercent: number | null;
@@ -143,18 +144,18 @@ afterAll(async () => {
 
 describe('the switches between the plan and the screen', () => {
   it('serve help on the desktop, and say which switch is off elsewhere', async () => {
-    const token = await api.signIn(owner);
+    const token = await api.signIn(owner, 'desktop');
     expect(await capabilities(token, 'desktop')).toMatchObject({ level: 'help', blockedBy: null });
-    expect(await capabilities(token, 'web')).toMatchObject({
-      level: 'off',
-      blockedBy: 'channel_off',
-    });
-    expect(await capabilities(token, 'mobile')).toMatchObject({
-      level: 'off',
-      blockedBy: 'channel_off',
-    });
+    for (const app of ['web', 'mobile'] as const) {
+      const elsewhere = await api.signIn(owner, app);
+      expect(await capabilities(elsewhere, app)).toMatchObject({
+        level: 'off',
+        blockedBy: 'channel_off',
+      });
+    }
 
-    const conversation = await api.call(token, {
+    const web = await api.signIn(owner, 'web');
+    const conversation = await api.call(web, {
       method: 'POST',
       url: '/v1/ai/conversations',
       headers: { 'idempotency-key': randomUUID(), 'x-client-app': 'web' },
@@ -162,6 +163,37 @@ describe('the switches between the plan and the screen', () => {
     });
     expect(conversation.statusCode).toBe(403);
     expect(code(conversation)).toBe('ai_disabled');
+  });
+
+  it('follow the app the session signed in with, not the header (Low 11)', async () => {
+    // A phone session cannot open the desktop's door by saying it is one.
+    const phone = await api.signIn(owner, 'mobile');
+    expect(await capabilities(phone, 'desktop')).toMatchObject({
+      level: 'off',
+      blockedBy: 'channel_off',
+      channel: 'mobile',
+    });
+    const asked = await ask(phone, randomUUID(), 'How do I add a site?', { app: 'desktop' });
+    expect(asked.statusCode).toBe(403);
+
+    // And a desktop session is not shut out by a header naming the web.
+    const desktop = await api.signIn(owner, 'desktop');
+    expect(await capabilities(desktop, 'web')).toMatchObject({
+      level: 'help',
+      blockedBy: null,
+      channel: 'desktop',
+    });
+  });
+
+  it('hold Integr8 staff acting as the company to the web switch', async () => {
+    // Staff work in the company's web workspace, whatever app they used to
+    // sign in to the dashboard; the web switch is off here.
+    const staff = await api.staff(owner);
+    expect(await capabilities(staff, 'desktop')).toMatchObject({
+      level: 'off',
+      blockedBy: 'channel_off',
+      channel: 'web',
+    });
   });
 
   it('closes for one member when an admin switches them off, and opens again', async () => {

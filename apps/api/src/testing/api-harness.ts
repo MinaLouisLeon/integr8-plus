@@ -63,7 +63,12 @@ export interface ApiHarness {
    * One super admin is created per harness and reused.
    */
   staff(who: Pick<Member, 'userId'>, tenantId?: string): Promise<string>;
-  signIn(member: Member): Promise<string>;
+  /**
+   * Signs `member` in and returns the access token. The session records
+   * `clientApp` (desktop unless said), which is what the assistant's per-app
+   * switch reads, whatever header a later request sends.
+   */
+  signIn(member: Member, clientApp?: 'web' | 'desktop' | 'mobile'): Promise<string>;
   /** `app.inject` with a bearer token and the client headers every request needs. */
   call(token: string, options: InjectOptions): Promise<LightMyRequestResponse>;
   close(): Promise<void>;
@@ -149,13 +154,16 @@ export async function startApi(
     return { userId: created.userId, email, password: PASSWORD, role };
   };
 
-  const signIn = async (who: Member): Promise<string> => {
+  const signIn = async (
+    who: Member,
+    clientApp: 'web' | 'desktop' | 'mobile' = 'desktop',
+  ): Promise<string> => {
     const response = await app.inject({
       method: 'POST',
       url: '/v1/auth/sign-in',
       remoteAddress,
-      headers: { 'x-client-version': '1.0.0', 'x-client-app': 'desktop' },
-      payload: { email: who.email, password: who.password, clientApp: 'desktop' },
+      headers: { 'x-client-version': '1.0.0', 'x-client-app': clientApp },
+      payload: { email: who.email, password: who.password, clientApp },
     });
     if (response.statusCode !== 200) {
       throw new Error(`sign-in failed: ${response.statusCode} ${response.body}`);

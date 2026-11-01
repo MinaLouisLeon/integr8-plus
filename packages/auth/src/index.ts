@@ -113,6 +113,7 @@ export {
   type IssuedOfflineGrant,
   type IssuedSession,
   type IssueSessionInput,
+  type LiveSession,
   type SessionServiceDeps,
 } from './services/session-service.js';
 

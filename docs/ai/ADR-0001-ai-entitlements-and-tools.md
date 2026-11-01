@@ -70,7 +70,7 @@ the product-owner answers taken on 2026-10-15.
 AI_ENABLED (env kill switch)
   → plan policy  ai_plan_policies[tenant.plan]        (missing row ⇒ off)
   → company override  ai_tenant_policies (mode custom ⇒ replaces the plan policy entirely)
-  → company channel toggle  tenant_settings.ai_{web,desktop,mobile}_enabled  (x-client-app header)
+  → company channel toggle  tenant_settings.ai_{web,desktop,mobile}_enabled  (the session's client app)
   → member switch  tenant_users.ai_enabled
   → tenant servable (423) and, for POST, writable (402) — the existing pipeline
   → seat permission + module flag + object visibility, per tool (L2/L3)
@@ -78,6 +78,12 @@ AI_ENABLED (env kill switch)
 ```
 
 - The tenant comes only from the verified principal.
+- The channel comes from the **session**, not the request (Low 11, 1.2.4): the
+  app recorded at sign-in (`sessions.client_app`), carried by the per-request
+  liveness check and its 30-second cache, so it costs no extra query. An
+  `x-client-app` header that disagrees is ignored, so a phone cannot reach the
+  desktop's switch by naming it. Integr8 staff acting as the company are held
+  to the **web** switch, whatever they signed in to the dashboard with.
 - `custom` is a complete snapshot: every field explicit, nothing inherits. "Reset to
   plan" switches to `inherit` without touching counters.
 - Resolved policy is cached 30 s per tenant, like suspension and features, and

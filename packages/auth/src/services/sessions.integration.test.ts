@@ -472,7 +472,10 @@ describe('an access token whose session has ended', () => {
       clientApp: 'web',
     });
     const principal = await services.tokens.verifyAccessToken(signedIn.tokens.accessToken);
-    await expect(services.sessions.assertLive(principal)).resolves.toBeUndefined();
+    await expect(services.sessions.assertLive(principal)).resolves.toEqual({
+      clientApp: 'web',
+      impersonated: false,
+    });
 
     await services.sessions.revokeAllForUser(northwind.id, dana.userId, 'signed_out');
 
@@ -498,7 +501,11 @@ describe('an access token whose session has ended', () => {
       );
 
       services.setNow(new Date(start.getTime() + 29_000));
-      await expect(services.sessions.assertLive(principal)).resolves.toBeUndefined();
+      // The cached answer carries what the session recorded, too.
+      await expect(services.sessions.assertLive(principal)).resolves.toEqual({
+        clientApp: 'desktop',
+        impersonated: false,
+      });
 
       services.setNow(new Date(start.getTime() + 31_000));
       await expect(services.sessions.assertLive(principal)).rejects.toThrow(SessionRevokedError);

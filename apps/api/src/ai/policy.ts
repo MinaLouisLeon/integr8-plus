@@ -176,6 +176,28 @@ export function clampToServer(policy: AiPolicyFields, config: ApiConfig): AiPoli
 // The company's and the member's own switches
 // ---------------------------------------------------------------------------
 
+/**
+ * The app whose switch governs this request: the one the **session** signed
+ * in with, not the `x-client-app` header (Low 11, 1.2.4). A header is
+ * whatever the caller typed, so a company that switched the assistant off on
+ * phones was one changed header away from a phone using it anyway. A header
+ * that disagrees with the session is ignored; the session's app wins.
+ *
+ * Integr8 staff acting as the company always count as the web app, whatever
+ * they signed in to the dashboard with: they work in the company's web
+ * workspace. A request with no session record (none reaches here in
+ * practice) is held to the web's switch too.
+ */
+export function sessionClientApp(context: {
+  principal: Pick<Principal, 'impersonatedBy'>;
+  session?: { clientApp: ClientApp; impersonated: boolean } | undefined;
+}): ClientApp {
+  if (context.principal.impersonatedBy !== undefined || context.session?.impersonated === true) {
+    return 'web';
+  }
+  return context.session?.clientApp ?? 'web';
+}
+
 export function channelOf(clientApp: ClientApp): AiChannel {
   // An unknown client (a script, `api`) is held to the web's switch: the
   // strictest reading that still lets the web app's own callers through.
