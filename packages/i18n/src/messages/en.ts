@@ -546,7 +546,7 @@ export const en = {
         title: 'Customer website access',
         intro:
           'Choose which customer data your company website may request. Integr8 must also enable each capability, and your website must authenticate its own customers.',
-        files: 'Files and documents',
+        files: 'Documents: find one by its reference (only documents you share)',
         jobs: 'Job status',
         quotes: 'Quotes',
         invoices: 'Invoices',
@@ -823,6 +823,7 @@ export const en = {
         read: 'See generated PDFs',
         create: 'Make PDFs from submissions',
         manage: 'Expire and delete PDFs',
+        upload: 'Upload PDFs and choose which documents are shared',
         design: 'Design PDF templates (Integr8 only)',
       },
       ledger: {
@@ -4715,6 +4716,10 @@ export const en = {
     noJobs: 'Not linked to any job yet.',
     timeline: 'History',
     noHistory: 'Nothing recorded yet.',
+    // The history a page at a time (Low 14).
+    timelinePages: {
+      showOlder: 'Show older',
+    },
     tagCode: 'Tag code',
     serialShort: 'S/N {{serial}}',
     warrantyUntil: 'Warranty until {{date}}',
@@ -7416,7 +7421,7 @@ export const en = {
   documents: {
     title: 'Documents',
     intro:
-      'PDFs made from submissions. Search them by their fields, open or download them, and stop their links.',
+      'PDFs made from submissions, and PDFs your company uploaded. Search them by their fields, open or download them, choose which may be shared, and stop their links.',
     search: 'Search',
     searchIn: 'Search in',
     anyField: 'Any field and the title',
@@ -7424,7 +7429,7 @@ export const en = {
     stateFilter: 'State',
     apply: 'Search',
     empty: 'No documents match this search.',
-    emptyAll: 'No documents yet. Open a submission and choose Make PDF.',
+    emptyAll: 'No documents yet. Open a submission and choose Make PDF, or upload a PDF.',
     loadMore: 'Show more',
     back: 'All documents',
     state: {
@@ -7472,6 +7477,37 @@ export const en = {
     deleteBody:
       'Its link stops at once and its PDF is removed after the restore window. This cannot be undone here.',
     cancel: 'Cancel',
+    // Uploaded PDFs and sharing (0067).
+    upload: {
+      action: 'Upload a PDF',
+      title: 'Upload a PDF document',
+      intro:
+        'Add a PDF your company already has, such as a certificate signed on paper. It gets its own QR code link, like the PDFs made from submissions.',
+      file: 'PDF file',
+      fileHint: 'A PDF of at most 20 MB.',
+      notPdf: 'Choose a PDF file.',
+      tooLarge: 'This PDF is larger than 20 MB.',
+      documentTitle: 'Title',
+      reference: 'Reference number',
+      referenceHint: 'Such as a certificate number. Your website finds the document by it.',
+      customer: 'Customer (optional)',
+      customerHint: 'When a customer is chosen, your website also asks for their name.',
+      shareNow: 'Share it now, so the QR code link and your website can show it',
+      submit: 'Upload',
+      uploading: 'Uploading…',
+      cancel: 'Cancel',
+      badge: 'Uploaded',
+      made: 'Uploaded {{date}} by {{name}}',
+    },
+    sharing: {
+      title: 'Sharing',
+      on: 'Shared: the QR code link and your company website can show this document.',
+      off: 'Not shared: the QR code link and your company website answer as if it did not exist. Your company still sees it here.',
+      share: 'Share it',
+      unshare: 'Stop sharing',
+      badge: 'Not shared',
+      qr: 'QR code for this document’s link',
+    },
     export: {
       action: 'Make PDF',
       title: 'Make a PDF from this submission',

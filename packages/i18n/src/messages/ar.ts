@@ -526,7 +526,7 @@ export const ar: Catalogue<Messages> = {
         title: 'وصول موقع العملاء',
         intro:
           'اختر بيانات العملاء التي يمكن لموقع شركتك طلبها. يجب على Integr8 تفعيل كل ميزة أيضًا، ويجب أن يتحقق موقعك من هوية عملائه.',
-        files: 'الملفات والمستندات',
+        files: 'المستندات: البحث عن مستند برقمه المرجعي (المستندات التي تشاركها فقط)',
         jobs: 'حالة المهمة',
         quotes: 'عروض الأسعار',
         invoices: 'الفواتير',
@@ -786,6 +786,7 @@ export const ar: Catalogue<Messages> = {
         read: 'عرض ملفات PDF المُنشأة',
         create: 'إنشاء ملفات PDF من الإرساليات',
         manage: 'إنهاء صلاحية ملفات PDF وحذفها',
+        upload: 'رفع ملفات PDF واختيار المستندات المُشارَكة',
         design: 'تصميم قوالب PDF (لفريق Integr8 فقط)',
       },
       ledger: {
@@ -4740,6 +4741,10 @@ export const ar: Catalogue<Messages> = {
     noJobs: 'غير مرتبط بأي عمل بعد.',
     timeline: 'السجل',
     noHistory: 'لم يُسجَّل شيء بعد.',
+    // The history a page at a time (Low 14).
+    timelinePages: {
+      showOlder: 'عرض الأقدم',
+    },
     tagCode: 'رمز الملصق',
     serialShort: 'رقم تسلسلي {{serial}}',
     warrantyUntil: 'الضمان حتى {{date}}',
@@ -7475,7 +7480,8 @@ export const ar: Catalogue<Messages> = {
   },
   documents: {
     title: 'المستندات',
-    intro: 'ملفات PDF مصنوعة من الإرساليات. ابحث فيها بحقولها، وافتحها أو نزّلها، وأوقف روابطها.',
+    intro:
+      'ملفات PDF مصنوعة من الإرساليات، وملفات PDF رفعتها شركتك. ابحث فيها بحقولها، وافتحها أو نزّلها، واختر ما يمكن مشاركته، وأوقف روابطها.',
     search: 'بحث',
     searchIn: 'البحث في',
     anyField: 'أي حقل والعنوان',
@@ -7483,7 +7489,7 @@ export const ar: Catalogue<Messages> = {
     stateFilter: 'الحالة',
     apply: 'ابحث',
     empty: 'لا توجد مستندات تطابق هذا البحث.',
-    emptyAll: 'لا توجد مستندات بعد. افتح إرسالية واختر «إنشاء PDF».',
+    emptyAll: 'لا توجد مستندات بعد. افتح إرسالية واختر «إنشاء PDF»، أو ارفع ملف PDF.',
     loadMore: 'عرض المزيد',
     back: 'كل المستندات',
     state: {
@@ -7529,6 +7535,37 @@ export const ar: Catalogue<Messages> = {
     deleteTitle: 'حذف هذا المستند؟',
     deleteBody: 'يتوقف رابطه فورًا ويُزال ملف PDF بعد مهلة الاستعادة. لا يمكن التراجع عن ذلك هنا.',
     cancel: 'إلغاء',
+    // Uploaded PDFs and sharing (0067).
+    upload: {
+      action: 'رفع ملف PDF',
+      title: 'رفع مستند PDF',
+      intro:
+        'أضف ملف PDF موجودًا لدى شركتك، مثل شهادة موقّعة على الورق. يحصل على رابط QR خاص به، مثل ملفات PDF المصنوعة من الإرساليات.',
+      file: 'ملف PDF',
+      fileHint: 'ملف PDF حجمه 20 ميجابايت على الأكثر.',
+      notPdf: 'اختر ملف PDF.',
+      tooLarge: 'حجم ملف PDF هذا أكبر من 20 ميجابايت.',
+      documentTitle: 'العنوان',
+      reference: 'الرقم المرجعي',
+      referenceHint: 'مثل رقم الشهادة. يجد موقعك المستند به.',
+      customer: 'العميل (اختياري)',
+      customerHint: 'عند اختيار عميل، يطلب موقعك اسمه أيضًا.',
+      shareNow: 'شاركه الآن، ليتمكن رابط QR وموقعك من عرضه',
+      submit: 'رفع',
+      uploading: 'جارٍ الرفع…',
+      cancel: 'إلغاء',
+      badge: 'مرفوع',
+      made: 'رُفع في {{date}} بواسطة {{name}}',
+    },
+    sharing: {
+      title: 'المشاركة',
+      on: 'مُشارَك: يمكن لرابط QR وموقع شركتك عرض هذا المستند.',
+      off: 'غير مُشارَك: يجيب رابط QR وموقع شركتك كأنه غير موجود. ما زالت شركتك تراه هنا.',
+      share: 'شاركه',
+      unshare: 'أوقف المشاركة',
+      badge: 'غير مُشارَك',
+      qr: 'رمز QR لرابط هذا المستند',
+    },
     export: {
       action: 'إنشاء PDF',
       title: 'إنشاء ملف PDF من هذه الإرسالية',
