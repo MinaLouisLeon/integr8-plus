@@ -107,6 +107,8 @@ export const apiErrorsEn = {
   breaking_changes_unacknowledged:
     'Publishing changes fields in ways that affect existing submissions or drafts. Review the changes, then confirm to publish.',
   build_token_rejected: 'The build token was not accepted.',
+  business_document_draft:
+    'A draft cannot be made into a PDF. Issue it first, or print it from the browser.',
   category_name_taken: 'There is already a category with this name.',
   category_not_found: 'This category does not exist. Choose another.',
   category_not_usable: 'This category is no longer in use. Choose another.',
@@ -164,6 +166,7 @@ export const apiErrorsEn = {
     'Documents cannot be made yet: this server has no web address for the QR code. Ask Integr8.',
   document_preview_failed: 'The preview could not be printed just now. Try again in a minute.',
   document_not_pdf: 'Only a PDF can be uploaded as a document. Choose a PDF file.',
+  document_not_ready: 'The PDF is not ready yet. Wait a moment and try again.',
   document_template_archived: 'This template is archived. Choose another one.',
   document_template_changed:
     'Someone else saved this template meanwhile. Open it again to see their changes.',
@@ -183,6 +186,8 @@ export const apiErrorsEn = {
   document_templates_affected:
     'Some PDF templates use questions this version drops or changes. Confirm to publish; they will be marked to fix.',
   document_too_large: 'This PDF is larger than 20 MB. Upload a smaller one.',
+  document_too_large_to_email:
+    'This PDF is larger than 10 MB, too large to email. Download it and share it another way.',
   double_booked: 'This person is on another job at that time.',
   draft_changed:
     'The draft was saved again since you reviewed it. Review it again before publishing.',
@@ -431,6 +436,7 @@ export const apiErrorsEn = {
   quote_closed: 'This quote is no longer open.',
   quote_converted: 'This quote has already become a sales order.',
   quote_empty: 'Add at least one line before issuing.',
+  quote_link_invalid: 'This is not the quote’s live link any more. Make the PDF without it.',
   quote_unavailable:
     'This quote is no longer available online. Please contact the company that sent it.',
   quote_expired: 'This quote has expired. A new one has to be issued.',

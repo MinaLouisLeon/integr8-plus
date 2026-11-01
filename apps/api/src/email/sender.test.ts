@@ -58,6 +58,43 @@ describe('the Resend adapter', () => {
     });
   });
 
+  it('sends attachments as base64, and a reply-to address, when given', async () => {
+    let seen: Record<string, unknown> = {};
+    const sender = new ResendEmailSender({
+      apiKey: 'key',
+      from: 'Integr8 <hello@integr8.example>',
+      fetch: ((_url: string, init: RequestInit) => {
+        seen = JSON.parse(typeof init.body === 'string' ? init.body : '{}') as Record<
+          string,
+          unknown
+        >;
+        return Promise.resolve(new Response('{"id":"abc"}', { status: 200 }));
+      }) as unknown as typeof fetch,
+    });
+
+    await sender.send({
+      to: 'someone@example.com',
+      subject: 'Invoice',
+      text: 'plain',
+      html: '<p>rich</p>',
+      replyTo: 'office@company.example',
+      attachments: [
+        {
+          filename: 'INV-000001.pdf',
+          contentType: 'application/pdf',
+          content: new TextEncoder().encode('%PDF-1.7'),
+        },
+      ],
+    });
+
+    expect(seen).toMatchObject({
+      reply_to: 'office@company.example',
+      attachments: [
+        { filename: 'INV-000001.pdf', content: 'JVBERi0xLjc=', content_type: 'application/pdf' },
+      ],
+    });
+  });
+
   it('treats a rejected address as final, and a rate limit as worth retrying', async () => {
     const rejected = await new ResendEmailSender({
       apiKey: 'k',

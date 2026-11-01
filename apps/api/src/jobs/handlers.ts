@@ -1,6 +1,7 @@
 import { withTenant } from '@integr8/db';
 import type { Services } from '../composition.js';
 import type { ApiConfig } from '../config.js';
+import { BUSINESS_DOCUMENT_QUEUE, renderBusinessDocument } from '../documents/business.js';
 import { DOCUMENT_RENDER_QUEUE, renderDocument } from '../documents/render.js';
 import { ETA_RECONCILE_QUEUE, ETA_SUBMIT_QUEUE } from '../eta/documents.js';
 import { runReconcile, runSubmission } from '../eta/jobs.js';
@@ -159,6 +160,18 @@ export const buildJobHandlers = (
       },
     );
     context.logger.info('Document job finished', { jobId: context.jobId, documentId, ...outcome });
+  },
+
+  [BUSINESS_DOCUMENT_QUEUE]: async (payload, context) => {
+    const outcome = await renderBusinessDocument(
+      { media: services.media, pdf: services.pdf, config, logger: context.logger },
+      { tenantId: context.tenantId, attempt: context.attempt, payload },
+    );
+    context.logger.info('Business PDF job finished', {
+      jobId: context.jobId,
+      documentId: text(payload, 'documentId'),
+      ...outcome,
+    });
   },
 
   [ETA_SUBMIT_QUEUE]: async (payload, context) => {

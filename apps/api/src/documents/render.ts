@@ -143,7 +143,7 @@ export async function renderDocument(
 }
 
 /** The document was deleted or settled by someone else: nothing to do. */
-class NotPending extends Error {}
+export class NotPending extends Error {}
 
 async function render(
   deps: RenderDeps,
@@ -411,7 +411,7 @@ export async function printDesign(
 }
 
 /** A file's bytes may go into a document: not deleted, and a picture. */
-function printable(file: FileRecord): boolean {
+export function printable(file: FileRecord): boolean {
   return file.deletedAt === null && file.purgedAt === null && file.contentType.startsWith('image/');
 }
 

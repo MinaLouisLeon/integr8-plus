@@ -1659,6 +1659,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/business-documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The PDFs printed from one quote, invoice, purchase order or job
+         * @description Newest first, at most 20, with what this seat may do with the record’s PDFs. Each kind follows its module (a quote needs `sales.read`, an invoice `finance.read`, a purchase order a seat that sees its prices, a job report the right to read the job), and every one the `documents` module. 404 for a record this seat may not read.
+         */
+        get: operations["listBusinessDocuments"];
+        put?: never;
+        /**
+         * Print a quote, invoice, purchase order or job report as a PDF
+         * @description Takes the record as this seat sees it now and asks the worker to print it in the company’s look: answers 202 with the document pending, which becomes `ready` or `failed` like any document, and is kept in the register. `language` defaults to the company’s. A draft is refused (409 `business_document_draft`). The QR code opens the PDF’s own page, which shows it only once it is shareable; `shareable: true` needs `document.upload`. For a quote, `quoteLinkToken` (the token the issue step returned) prints the customer’s quote page in the QR code instead, if it is still the quote’s live link (422 `quote_link_invalid` if not). Honours `Idempotency-Key`.
+         */
+        post: operations["createBusinessDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/business-documents/{documentId}/file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A link to a business PDF
+         * @description Five minutes long, like the register’s own link, for a seat that may see the record’s PDFs (see `listBusinessDocuments`). `disposition=attachment` saves it under its title.
+         */
+        get: operations["getBusinessDocumentFile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/business-documents/{documentId}/email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Email a business PDF to the customer or supplier
+         * @description Sends the ready PDF as an attachment, with the company’s name in the subject, in the company’s language, and replies going to the person who sent it. Who may: `sales.manage` for a quote, `finance.manage` for an invoice, `purchasing.manage` for a purchase order, `work_order.manage` for a job report. Answers whether it went: an email the provider refused is `sent: false` with the reason, not an error. Refused while the PDF is not ready (409 `document_not_ready`) or when it is larger than 10 MB (422 `document_too_large_to_email`). Recorded in the audit log. Honours `Idempotency-Key`.
+         */
+        post: operations["emailBusinessDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/public/documents/{code}": {
         parameters: {
             query?: never;
@@ -17868,7 +17932,7 @@ export interface operations {
                         id: string;
                         title: string;
                         /** @enum {string} */
-                        source: "generated" | "uploaded";
+                        source: "generated" | "uploaded" | "quote" | "invoice" | "purchase_order" | "job_report";
                         /** Format: uuid */
                         templateId: string | null;
                         templateRevision: number | null;
@@ -17877,6 +17941,12 @@ export interface operations {
                         /** Format: uuid */
                         formId: string | null;
                         reference: string | null;
+                        record: {
+                            /** @enum {string} */
+                            kind: "quote" | "invoice" | "purchase_order" | "job_report";
+                            /** Format: uuid */
+                            id: string;
+                        } | null;
                         customer: {
                             /** Format: uuid */
                             id: string;
@@ -17998,7 +18068,7 @@ export interface operations {
                 formId?: string;
                 templateId?: string;
                 submissionId?: string;
-                source?: "generated" | "uploaded";
+                source?: "generated" | "uploaded" | "quote" | "invoice" | "purchase_order" | "job_report";
                 state?: "active" | "expired" | "pending" | "failed";
                 from?: string;
                 before?: string;
@@ -18023,7 +18093,7 @@ export interface operations {
                             id: string;
                             title: string;
                             /** @enum {string} */
-                            source: "generated" | "uploaded";
+                            source: "generated" | "uploaded" | "quote" | "invoice" | "purchase_order" | "job_report";
                             /** Format: uuid */
                             templateId: string | null;
                             templateRevision: number | null;
@@ -18032,6 +18102,12 @@ export interface operations {
                             /** Format: uuid */
                             formId: string | null;
                             reference: string | null;
+                            record: {
+                                /** @enum {string} */
+                                kind: "quote" | "invoice" | "purchase_order" | "job_report";
+                                /** Format: uuid */
+                                id: string;
+                            } | null;
                             customer: {
                                 /** Format: uuid */
                                 id: string;
@@ -18166,7 +18242,7 @@ export interface operations {
                         id: string;
                         title: string;
                         /** @enum {string} */
-                        source: "generated" | "uploaded";
+                        source: "generated" | "uploaded" | "quote" | "invoice" | "purchase_order" | "job_report";
                         /** Format: uuid */
                         templateId: string | null;
                         templateRevision: number | null;
@@ -18175,6 +18251,12 @@ export interface operations {
                         /** Format: uuid */
                         formId: string | null;
                         reference: string | null;
+                        record: {
+                            /** @enum {string} */
+                            kind: "quote" | "invoice" | "purchase_order" | "job_report";
+                            /** Format: uuid */
+                            id: string;
+                        } | null;
                         customer: {
                             /** Format: uuid */
                             id: string;
@@ -18301,7 +18383,7 @@ export interface operations {
                         id: string;
                         title: string;
                         /** @enum {string} */
-                        source: "generated" | "uploaded";
+                        source: "generated" | "uploaded" | "quote" | "invoice" | "purchase_order" | "job_report";
                         /** Format: uuid */
                         templateId: string | null;
                         templateRevision: number | null;
@@ -18310,6 +18392,12 @@ export interface operations {
                         /** Format: uuid */
                         formId: string | null;
                         reference: string | null;
+                        record: {
+                            /** @enum {string} */
+                            kind: "quote" | "invoice" | "purchase_order" | "job_report";
+                            /** Format: uuid */
+                            id: string;
+                        } | null;
                         customer: {
                             /** Format: uuid */
                             id: string;
@@ -18521,7 +18609,7 @@ export interface operations {
                         id: string;
                         title: string;
                         /** @enum {string} */
-                        source: "generated" | "uploaded";
+                        source: "generated" | "uploaded" | "quote" | "invoice" | "purchase_order" | "job_report";
                         /** Format: uuid */
                         templateId: string | null;
                         templateRevision: number | null;
@@ -18530,6 +18618,12 @@ export interface operations {
                         /** Format: uuid */
                         formId: string | null;
                         reference: string | null;
+                        record: {
+                            /** @enum {string} */
+                            kind: "quote" | "invoice" | "purchase_order" | "job_report";
+                            /** Format: uuid */
+                            id: string;
+                        } | null;
                         customer: {
                             /** Format: uuid */
                             id: string;
@@ -18748,7 +18842,7 @@ export interface operations {
                         id: string;
                         title: string;
                         /** @enum {string} */
-                        source: "generated" | "uploaded";
+                        source: "generated" | "uploaded" | "quote" | "invoice" | "purchase_order" | "job_report";
                         /** Format: uuid */
                         templateId: string | null;
                         templateRevision: number | null;
@@ -18757,6 +18851,12 @@ export interface operations {
                         /** Format: uuid */
                         formId: string | null;
                         reference: string | null;
+                        record: {
+                            /** @enum {string} */
+                            kind: "quote" | "invoice" | "purchase_order" | "job_report";
+                            /** Format: uuid */
+                            id: string;
+                        } | null;
                         customer: {
                             /** Format: uuid */
                             id: string;
@@ -18886,7 +18986,7 @@ export interface operations {
                         id: string;
                         title: string;
                         /** @enum {string} */
-                        source: "generated" | "uploaded";
+                        source: "generated" | "uploaded" | "quote" | "invoice" | "purchase_order" | "job_report";
                         /** Format: uuid */
                         templateId: string | null;
                         templateRevision: number | null;
@@ -18895,6 +18995,12 @@ export interface operations {
                         /** Format: uuid */
                         formId: string | null;
                         reference: string | null;
+                        record: {
+                            /** @enum {string} */
+                            kind: "quote" | "invoice" | "purchase_order" | "job_report";
+                            /** Format: uuid */
+                            id: string;
+                        } | null;
                         customer: {
                             /** Format: uuid */
                             id: string;
@@ -19086,6 +19192,498 @@ export interface operations {
                 content?: never;
             };
             /** @description A question is not matched (`document_template_unmatched`), a choice in `answerMap` does not fit (`document_template_mapping_invalid`), or the result does not fit the form (`document_template_invalid`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listBusinessDocuments: {
+        parameters: {
+            query: {
+                kind: "quote" | "invoice" | "purchase_order" | "job_report";
+                recordId: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The PDFs, and what may be done. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            title: string;
+                            /** @enum {string} */
+                            source: "generated" | "uploaded" | "quote" | "invoice" | "purchase_order" | "job_report";
+                            /** Format: uuid */
+                            templateId: string | null;
+                            templateRevision: number | null;
+                            /** Format: uuid */
+                            submissionId: string | null;
+                            /** Format: uuid */
+                            formId: string | null;
+                            reference: string | null;
+                            record: {
+                                /** @enum {string} */
+                                kind: "quote" | "invoice" | "purchase_order" | "job_report";
+                                /** Format: uuid */
+                                id: string;
+                            } | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            shareable: boolean;
+                            /** @enum {string} */
+                            status: "pending" | "ready" | "failed";
+                            failureCode: string | null;
+                            linkOpens: boolean;
+                            link: string | null;
+                            publicCode: string;
+                            pageCount: number | null;
+                            byteSize: number | null;
+                            /** Format: date-time */
+                            renderedAt: string | null;
+                            /** Format: date-time */
+                            expiredAt: string | null;
+                            /** Format: date-time */
+                            expiresAt: string | null;
+                            createdBy: {
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            createdAt: string;
+                            fields: {
+                                key: string;
+                                label: {
+                                    [key: string]: string;
+                                };
+                                value: string;
+                                /** @enum {string|null} */
+                                lookupRole: "key" | "confirm" | null;
+                            }[];
+                        }[];
+                        can: {
+                            make: boolean;
+                            email: boolean;
+                            share: boolean;
+                        };
+                        email: string | null;
+                        /** @enum {string} */
+                        language: "en" | "ar";
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The module is off (`feature_disabled`) or the seat may not. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such record this seat may read. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createBusinessDocument: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    kind: "quote" | "invoice" | "purchase_order" | "job_report";
+                    /** Format: uuid */
+                    recordId: string;
+                    /** @enum {string} */
+                    language?: "en" | "ar";
+                    /** @default false */
+                    shareable?: boolean;
+                    quoteLinkToken?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The document, pending. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        title: string;
+                        /** @enum {string} */
+                        source: "generated" | "uploaded" | "quote" | "invoice" | "purchase_order" | "job_report";
+                        /** Format: uuid */
+                        templateId: string | null;
+                        templateRevision: number | null;
+                        /** Format: uuid */
+                        submissionId: string | null;
+                        /** Format: uuid */
+                        formId: string | null;
+                        reference: string | null;
+                        record: {
+                            /** @enum {string} */
+                            kind: "quote" | "invoice" | "purchase_order" | "job_report";
+                            /** Format: uuid */
+                            id: string;
+                        } | null;
+                        customer: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        shareable: boolean;
+                        /** @enum {string} */
+                        status: "pending" | "ready" | "failed";
+                        failureCode: string | null;
+                        linkOpens: boolean;
+                        link: string | null;
+                        publicCode: string;
+                        pageCount: number | null;
+                        byteSize: number | null;
+                        /** Format: date-time */
+                        renderedAt: string | null;
+                        /** Format: date-time */
+                        expiredAt: string | null;
+                        /** Format: date-time */
+                        expiresAt: string | null;
+                        createdBy: {
+                            id: string;
+                            name: string;
+                        };
+                        /** Format: date-time */
+                        createdAt: string;
+                        fields: {
+                            key: string;
+                            label: {
+                                [key: string]: string;
+                            };
+                            value: string;
+                            /** @enum {string|null} */
+                            lookupRole: "key" | "confirm" | null;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The module is off, or the seat may not make (or share) it. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such record this seat may read. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A draft (`business_document_draft`), or storage full (`storage_quota_exceeded`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The quote link is not this quote’s live link (`quote_link_invalid`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No web address for the QR link (`document_link_unavailable`). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getBusinessDocumentFile: {
+        parameters: {
+            query?: {
+                disposition?: "inline" | "attachment";
+            };
+            header?: never;
+            path: {
+                documentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The link. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        url: string;
+                        /** Format: date-time */
+                        expiresAt: string;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `documents` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such business PDF this seat may see, or it is not ready. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    emailBusinessDocument: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                documentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: email */
+                    to: string;
+                    message?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Whether it went. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        sent: boolean;
+                        problem: string | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `documents` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such business PDF this seat may email. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The PDF is not ready yet (`document_not_ready`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Too large to email (`document_too_large_to_email`). */
             422: {
                 headers: {
                     [name: string]: unknown;

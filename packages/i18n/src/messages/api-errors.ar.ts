@@ -85,6 +85,7 @@ export const apiErrorsAr: Catalogue<typeof apiErrorsEn> = {
   breaking_changes_unacknowledged:
     'يغيّر النشر حقولًا بطرق تؤثر في الإرسالات أو المسودات الحالية. راجع التغييرات، ثم أكّد للنشر.',
   build_token_rejected: 'لم يُقبل رمز البناء.',
+  business_document_draft: 'لا يمكن تحويل المسودة إلى ملف PDF. أصدرها أولًا، أو اطبعها من المتصفح.',
   category_name_taken: 'توجد فئة بهذا الاسم بالفعل.',
   category_not_found: 'هذه الفئة غير موجودة. اختر غيرها.',
   category_not_usable: 'هذه الفئة لم تعد مستخدمة. اختر غيرها.',
@@ -137,6 +138,7 @@ export const apiErrorsAr: Catalogue<typeof apiErrorsEn> = {
     'لا يمكن إنشاء المستندات بعد: لا يوجد لهذا الخادم عنوان ويب لرمز QR. تواصل مع Integr8.',
   document_preview_failed: 'تعذرت طباعة المعاينة الآن. حاول مرة أخرى بعد دقيقة.',
   document_not_pdf: 'لا يمكن رفع مستند إلا بصيغة PDF. اختر ملف PDF.',
+  document_not_ready: 'ملف PDF ليس جاهزًا بعد. انتظر قليلًا ثم حاول مرة أخرى.',
   document_template_archived: 'هذا القالب مؤرشف. اختر قالبًا آخر.',
   document_template_changed: 'حفظ شخص آخر هذا القالب في الأثناء. افتحه من جديد لترى تغييراته.',
   document_template_image_missing:
@@ -153,6 +155,8 @@ export const apiErrorsAr: Catalogue<typeof apiErrorsEn> = {
   document_templates_affected:
     'بعض قوالب PDF تستخدم أسئلة يحذفها هذا الإصدار أو يغيّرها. أكّد للنشر، وستُعلَّم لإصلاحها.',
   document_too_large: 'حجم ملف PDF هذا أكبر من 20 ميجابايت. ارفع ملفًا أصغر.',
+  document_too_large_to_email:
+    'حجم ملف PDF هذا أكبر من ١٠ ميجابايت، فلا يمكن إرساله بالبريد. نزّله وشاركه بطريقة أخرى.',
   double_booked: 'هذا الشخص مكلَّف بمهمة أخرى في ذلك الوقت.',
   draft_changed: 'حُفظت المسودة مرة أخرى منذ راجعتها. راجعها من جديد قبل النشر.',
   draft_conflict:
@@ -383,6 +387,7 @@ export const apiErrorsAr: Catalogue<typeof apiErrorsEn> = {
   quote_closed: 'لم يعد عرض السعر هذا مفتوحًا.',
   quote_converted: 'أصبح عرض السعر هذا طلب بيع بالفعل.',
   quote_empty: 'أضف سطرًا واحدًا على الأقل قبل الإصدار.',
+  quote_link_invalid: 'لم يعد هذا رابط العرض الفعّال. أنشئ ملف PDF بدونه.',
   quote_unavailable:
     'لم يعد عرض السعر هذا متاحًا على الإنترنت. يُرجى التواصل مع الشركة التي أرسلته.',
   quote_expired: 'انتهت صلاحية عرض السعر هذا. يجب إصدار عرض جديد.',

@@ -122,18 +122,39 @@ const documentFieldSchema = z.object({
   lookupRole: z.enum(['key', 'confirm']).nullable(),
 });
 
-const documentSchema = z.object({
+/** Where a document came from (0067, 0074). */
+const documentSourceSchema = z.enum([
+  'generated',
+  'uploaded',
+  'quote',
+  'invoice',
+  'purchase_order',
+  'job_report',
+]);
+
+export const documentSchema = z.object({
   id: z.uuid(),
   title: z.string(),
-  /** `generated` from a submission, or `uploaded` as a PDF by a person (0067). */
-  source: z.enum(['generated', 'uploaded']),
+  /**
+   * `generated` from a submission, `uploaded` as a PDF by a person (0067), or
+   * printed by the server from a record: `quote`, `invoice`, `purchase_order`,
+   * `job_report` (0074).
+   */
+  source: documentSourceSchema,
   /** Null for an uploaded document. */
   templateId: z.uuid().nullable(),
   templateRevision: z.number().int().nullable(),
   submissionId: z.uuid().nullable(),
   formId: z.uuid().nullable(),
-  /** An uploaded document's reference number; null for a generated one. */
+  /** An uploaded document's reference number, or a business PDF's record number; null for a generated one. */
   reference: z.string().nullable(),
+  /** The record a business PDF was printed from (0074); null for the others. */
+  record: z
+    .object({
+      kind: z.enum(['quote', 'invoice', 'purchase_order', 'job_report']),
+      id: z.uuid(),
+    })
+    .nullable(),
   /** The customer an uploaded document is for. */
   customer: z.object({ id: z.uuid(), name: z.string() }).nullable(),
   /**
@@ -201,7 +222,7 @@ export async function templateBodies(
   );
 }
 
-async function documentBodies(
+export async function documentBodies(
   tx: TenantTransaction,
   context: RequestContext,
   documents: readonly DocumentRecord[],
@@ -226,6 +247,7 @@ async function documentBodies(
     submissionId: document.submissionId,
     formId: document.formId,
     reference: document.reference,
+    record: document.record === null ? null : { ...document.record },
     customer:
       document.customerId === null
         ? null
@@ -338,7 +360,7 @@ async function linkTemplateFiles(
   }
 }
 
-async function audit(
+export async function audit(
   tx: TenantTransaction,
   context: RequestContext,
   action: string,
@@ -969,8 +991,8 @@ export const listDocumentsRoute = defineRoute({
     formId: z.uuid().optional(),
     templateId: z.uuid().optional(),
     submissionId: z.uuid().optional(),
-    /** Only documents made from submissions, or only uploaded ones (0067). */
-    source: z.enum(['generated', 'uploaded']).optional(),
+    /** Only documents made from submissions, only uploaded ones (0067), or one kind of business PDF (0074). */
+    source: documentSourceSchema.optional(),
     state: z.enum(['active', 'expired', 'pending', 'failed']).optional(),
     from: z.iso.date().optional(),
     before: z.iso.date().optional(),

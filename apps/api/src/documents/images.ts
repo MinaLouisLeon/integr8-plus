@@ -23,8 +23,15 @@ export const BACKGROUND_PIXELS = {
   landscape: { width: 3508, height: 2480 },
 } as const;
 
-export async function inlineImage(bytes: Uint8Array): Promise<string | undefined> {
-  const prepared = await prepare(bytes, { width: CONTENT_MAX_PX, height: CONTENT_MAX_PX });
+/**
+ * A picture as a data URI for the page. `maxPx` lowers the longest side for
+ * pictures printed small, such as a job report's photo grid.
+ */
+export async function inlineImage(
+  bytes: Uint8Array,
+  maxPx: number = CONTENT_MAX_PX,
+): Promise<string | undefined> {
+  const prepared = await prepare(bytes, { width: maxPx, height: maxPx });
   return prepared === undefined
     ? undefined
     : `data:image/${prepared.format};base64,${Buffer.from(prepared.bytes).toString('base64')}`;
