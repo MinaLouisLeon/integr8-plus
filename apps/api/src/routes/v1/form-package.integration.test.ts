@@ -20,6 +20,7 @@ import {
 } from '@integr8/form-package/testing';
 import sharp from 'sharp';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { VERSION } from '../../app-info.js';
 import { getLibraryStore } from '../../documents/template-copies.js';
 import { forgetTenantStatus } from '../../http/suspension.js';
 import { forgetAllowances } from '../../media/quota.js';
@@ -296,7 +297,7 @@ describe('exporting a form', () => {
     );
 
     const file = unpackFormPackage(bytes);
-    expect(file.manifest.createdBy).toEqual({ app: 'integr8-plus', version: '1.3.0' });
+    expect(file.manifest.createdBy).toEqual({ app: 'integr8-plus', version: VERSION });
     expect(file.manifest.form).toMatchObject({ source: 'published', versionNumber: 1 });
     expect(file.form).toEqual(certificate);
     expect(file.settings).toEqual({
@@ -352,7 +353,7 @@ describe('importing a form into a company', () => {
       imagesCopied: 2,
       source: {
         app: 'integr8-plus',
-        version: '1.3.0',
+        version: VERSION,
         exportedFrom: 'published',
         versionNumber: 1,
       },
@@ -405,7 +406,7 @@ describe('importing a form into a company', () => {
     expect(inside.audit[0]?.action).toBe('form.imported');
     expect(inside.audit[0]?.metadata).toMatchObject({
       sourceApp: 'integr8-plus',
-      sourceVersion: '1.3.0',
+      sourceVersion: VERSION,
     });
     const platform = await getPlatformDataSource().platformAudit.list({ action: 'form.imported' });
     expect(platform.entries[0]).toMatchObject({ targetId: body.formId, tenantId: other.id });
