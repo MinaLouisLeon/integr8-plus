@@ -13,12 +13,16 @@ import { GUIDE_SECTIONS, guideContents, guideSection } from './guide.js';
 import { FileExistsError, openPackage, savePackage } from './package-files.js';
 import { previewTemplate } from './preview.js';
 import { formatCheck, formatError } from './report.js';
+import { checkWebsite, formatWebsiteCheck } from '../website/check.js';
+import { WEBSITE_GUIDE_SECTIONS, websiteApiText, websiteGuideSection } from '../website/guide.js';
+import { nextExampleText, ROUTE_PATTERN } from '../website/nextjs.js';
 
 /**
  * The MCP server: the tools an AI coding assistant calls to write a
- * `.integr8form` file. Offline by design (decision 15): no tool makes a
- * network request, none holds a credential, and files are read only where
- * the AI passes a path.
+ * `.integr8form` file, and to add the shared PDF search to a company's
+ * Next.js website. Offline by design (decision 15): no tool makes a network
+ * request, none holds a credential, and files are read only where the AI
+ * passes a path.
  */
 
 export interface ServerOptions {
@@ -31,7 +35,9 @@ export interface ServerOptions {
 
 const INSTRUCTIONS = `Integr8 Forms builds .integr8form files: an Integr8 Plus form (questions, rules, calculations, English and Arabic) with its PDF templates, for Integr8 staff to import.
 Start with get_format_guide (section "overview"), look at list_examples/get_example, then write the form definition and check it with check_form until it is OK. Add PDF templates and check them with check_package; look at them with preview_pdf. Save with save_package. To edit an existing file, open_package it first.
-Always write every text in both English ("en") and Arabic ("ar").`;
+Always write every text in both English ("en") and Arabic ("ar").
+
+It also helps add a shared PDF search and download page to a company's own Next.js website, using the company's Integr8 website key: start with get_website_guide, then get_website_api and get_website_example, and check the website with check_website_integration. These tools never call Integr8 and never need the key; never ask the user to paste the key into the chat.`;
 
 const definition = z
   .record(z.string(), z.unknown())
@@ -419,6 +425,94 @@ export function createFormsServer(options: ServerOptions = {}): McpServer {
           )}`,
         );
       }),
+  );
+
+  server.registerTool(
+    'get_website_guide',
+    {
+      title: 'Read the company website guide',
+      description:
+        'How to add a shared PDF search and download page to an Integr8 Plus company\'s own Next.js website: what the company and Integr8 must switch on, the website key and environment, the security rules the code must keep, and why a search finds nothing. Read "overview" first.',
+      inputSchema: {
+        section: z
+          .enum(WEBSITE_GUIDE_SECTIONS)
+          .optional()
+          .describe('Which section; "overview" when absent.'),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    ({ section }) => guarded(() => text(websiteGuideSection(section ?? 'overview'))),
+  );
+
+  server.registerTool(
+    'get_website_api',
+    {
+      title: 'Read the website document API',
+      description:
+        'The exact request and answers of the two Integr8 Plus endpoints a company website uses for shared PDFs: POST /v1/website/documents/lookup (one document by reference and customer name) and GET /v1/website/files/{documentId}, with every field, refusal code and what the website should show for it.',
+      inputSchema: {},
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    () => guarded(() => text(websiteApiText())),
+  );
+
+  server.registerTool(
+    'get_website_example',
+    {
+      title: 'Get the Next.js search page',
+      description:
+        'Ready files for a Next.js (App Router) website: a server-only Integr8 client, a Server Action, the search form with View/Download in English and Arabic (right-to-left), the page, and the .env.example lines. Returns them as text with their paths; write them into the project and fit them to its styling and i18n.',
+      inputSchema: {
+        route: z
+          .string()
+          .regex(ROUTE_PATTERN)
+          .optional()
+          .describe(
+            'The page folder under app/, e.g. "certificates" (default) or "[locale]/certificates".',
+          ),
+        srcDir: z.boolean().optional().describe('The project keeps app/ inside src/.'),
+        secondValue: z
+          .enum(['required', 'optional', 'none'])
+          .optional()
+          .describe(
+            'Whether visitors must also type the customer name (default "required"; ask the company which of its documents have one).',
+          ),
+        language: z
+          .enum(['en', 'ar', 'both'])
+          .optional()
+          .describe('The page language; "both" (default) reads ?lang=ar.'),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    (input) =>
+      guarded(() =>
+        text(
+          nextExampleText({
+            route: input.route,
+            srcDir: input.srcDir,
+            secondValue: input.secondValue,
+            language: input.language,
+          }),
+        ),
+      ),
+  );
+
+  server.registerTool(
+    'check_website_integration',
+    {
+      title: "Check a website's Integr8 integration",
+      description:
+        "Reads a company website's source files (the folders or files you pass; node_modules, .next and the like are skipped) and reports what would leak the website key or break the shared PDF search: a key written in code or in .env.example, a NEXT_PUBLIC_ name, Integr8 called from browser code, an invented endpoint, refusal reasons shown to visitors, cached or stored five-minute links, the key in a log or a response. Read-only; never calls Integr8.",
+      inputSchema: {
+        paths: z
+          .array(z.string())
+          .min(1)
+          .max(20)
+          .describe("Absolute paths of the website's folder (best) or of single files."),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    ({ paths }) => guarded(() => text(formatWebsiteCheck(checkWebsite(paths)))),
   );
 
   return server;
