@@ -159,6 +159,14 @@ the end of any piece of work that changes one of them, and date each section.
   130 MB, unsigned), linked from `/download`; double-clicked it opens a terminal installer
   that connects Claude Code, Codex, Claude Desktop, Cursor, VS Code, Windsurf and Gemini CLI
   globally and offers updates from GitHub releases.
+- **Forms for AI also helps build company websites (2026-11-02, unreleased, on `dev`'s working
+  tree), as the owner chose it:** four more tools (`get_website_guide`, `get_website_api`,
+  `get_website_example`, `check_website_integration`, in `apps/forms-ai/src/website/`) help an
+  AI tool add the shared PDF search to a company's own website. Next.js App Router only; one
+  match or none (no list endpoint, no API change); still offline and keyless (the developer
+  tests against the real API). The contract is hand-written and `contract.test.ts` holds it to
+  `apps/api/openapi.json`. Website keys stay staff-made on the dashboard; the program stays in
+  `/download`'s staff section.
 - **The demo seeder goes through the API**, in-process with Fastify's `inject`, as the
   company's own people (plus a staff impersonation for staff-only setup). Direct inserts
   were rejected: they skip numbering, stock, ledger postings and audit, and produce data

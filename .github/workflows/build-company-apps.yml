@@ -143,7 +143,7 @@ jobs:
               exit 0
             fi
             if [ "$status" != 200 ]; then
-              echo "::error::$API_URL/v1/build/companies answered $status. A 401 means the BUILD_TOKEN secret differs from the API's BUILD_TOKEN."; exit 1
+              echo "::error::$API_URL/v1/build/companies answered $status. A 403 means the BUILD_TOKEN secret differs from BUILD_TOKEN in the server's deploy/.env; a 404, that the server has none."; exit 1
             fi
             companies=$(node -e 'const r=JSON.parse(require("fs").readFileSync("companies.json","utf8")); console.log(JSON.stringify(r.items.map(i=>i.slug)))')
           else
