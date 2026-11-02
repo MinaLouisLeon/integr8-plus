@@ -19,3 +19,9 @@ ac99074d4566f49d6f05a0fab9b58abf1c9c9121:deploy/.env.example:generic-api-key:100
 # The digits are a counting pattern, not a credential.
 eec9d4520cf963c08e01c4325601a2df3a094bc7:apps/api/src/check-env-script.test.ts:generic-api-key:68
 eec9d4520cf963c08e01c4325601a2df3a094bc7:apps/api/src/check-env-script.test.ts:generic-api-key:95
+
+# Browser storage key names, not secrets: the generic rule reads any quoted
+# string assigned to a name ending in KEY. A full-history scan (a release run
+# by hand) reaches the commits that added them.
+58046f42a518ea3231bbeffb10c94303dead7aad:packages/operations-dom/src/announcements.tsx:generic-api-key:42
+a863fca053eafb2ebdcfcfd7816fcb5302e90d8b:packages/operations-dom/src/schedule/schedule-screen.tsx:generic-api-key:88

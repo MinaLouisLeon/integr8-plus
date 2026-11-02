@@ -131,8 +131,22 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # Only this release's own files. Every other artifact in the run (the
+      # secret scan's report, for one) would otherwise be attached as well,
+      # and a folder among them makes the upload fail.
       - uses: actions/download-artifact@v8
         with:
+          pattern: server-*
+          path: dist
+          merge-multiple: true
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: desktop-*
+          path: dist
+          merge-multiple: true
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: forms-ai-*
           path: dist
           merge-multiple: true
 
