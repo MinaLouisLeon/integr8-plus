@@ -122,13 +122,30 @@ jobs:
         run: |
           set -euo pipefail
           if [ "$COMPANY" = all ]; then
+            # `all` is what every version release asks for. A deployment with
+            # no token yet, or a server that is not up, means there is no list
+            # of companies to build for: that is skipped with a warning, so the
+            # release itself still goes out. A server that answers with an
+            # error (a wrong token) still fails the run.
             if [ -z "$BUILD_TOKEN" ]; then
-              echo "::error::Building for every company needs the BUILD_TOKEN secret, the same value the API has as BUILD_TOKEN."; exit 1
+              echo "::warning::No BUILD_TOKEN secret, so no company apps were built. Set it to the API's BUILD_TOKEN to build them."
+              echo "companies=[]" >> "$GITHUB_OUTPUT"
+              echo "Companies: none (no BUILD_TOKEN secret)" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
             fi
-            response=$(curl -fsS "$API_URL/v1/build/companies" \
+            status=$(curl -sS -o companies.json -w '%{http_code}' "$API_URL/v1/build/companies" \
               -H "authorization: Bearer $BUILD_TOKEN" \
-              -H 'x-client-app: web' -H 'x-client-version: 1.0.0')
-            companies=$(node -e 'const r=JSON.parse(process.argv[1]); console.log(JSON.stringify(r.items.map(i=>i.slug)))' "$response")
+              -H 'x-client-app: web' -H 'x-client-version: 1.0.0') || status=000
+            if [ "$status" = 000 ]; then
+              echo "::warning::$API_URL could not be reached, so no company apps were built. Run Build company apps by hand once the server is up."
+              echo "companies=[]" >> "$GITHUB_OUTPUT"
+              echo "Companies: none ($API_URL could not be reached)" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            if [ "$status" != 200 ]; then
+              echo "::error::$API_URL/v1/build/companies answered $status. A 401 means the BUILD_TOKEN secret differs from the API's BUILD_TOKEN."; exit 1
+            fi
+            companies=$(node -e 'const r=JSON.parse(require("fs").readFileSync("companies.json","utf8")); console.log(JSON.stringify(r.items.map(i=>i.slug)))')
           else
             if ! [[ "$COMPANY" =~ ^[a-z0-9][a-z0-9-]*[a-z0-9]$ ]]; then
               echo "::error::'$COMPANY' is not a company short name (lower case letters, digits, hyphens)."; exit 1

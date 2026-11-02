@@ -7,10 +7,17 @@ the end of any piece of work that changes one of them, and date each section.
 
 ## Snapshot (2026-11-01, after the form builder and PDF builder round)
 
-- **Version:** root `package.json` is **1.3.0** on branch `ccr-4f86fb34-8uvkk9` (not merged
-  yet); `dev` is 1.2.4 (PRs #139, #143), `main` is 1.2.2 (released 31 Oct from PR #136). The root `package.json` is the only
+- **Version:** root `package.json` is **1.3.1**. 1.3.0 reached `main` (PR #148) but its
+  release never published: the publish job attached the secret scan's report folder
+  (`dist/work`) and failed, so there is no v1.3.0 tag. The owner bumped `main` to 1.3.1 on
+  GitHub (PR #151, `package.json` only, which failed `app-info.test.ts`); branch
+  `ccr-4f86fb34-8uvkk9` carries the rest of the bump and the release fixes (publish downloads
+  only `server-*`, `desktop-*`, `forms-ai-*`; company apps skip with a warning when the API
+  is down or `BUILD_TOKEN` is missing; two gitleaks fingerprints for manual full-history runs).
+  The root `package.json` is the only
   source: the phone (`app.config.ts`) and the web build (`next.config.ts`) read it, and
-  `apps/api/src/app-info.ts` has a copy a test keeps equal.
+  `apps/api/src/app-info.ts` has a copy a test keeps equal. A version bump must also change
+  every place listed under "Places that state the version".
 - **Migrations:** `packages/db/migrations` reaches **0074**. **0059 was never used** (workers
   had reserved ranges) and the migrator does not need contiguous numbers; the next one is
   **0075**. 1.2.2 carries 0054–0057; 1.2.3 adds 0058 and 0060–0066; 1.2.4 adds 0067–0068;
