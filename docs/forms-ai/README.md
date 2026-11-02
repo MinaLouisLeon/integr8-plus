@@ -8,6 +8,11 @@ server that works **offline**: it never talks to an Integr8 Plus server, holds n
 and reads files only where the AI passes a path. The one network request it ever makes is the
 installer's check for a newer release on GitHub.
 
+It also helps the developer of a company's own Next.js website add a **shared PDF search and
+download page**, which uses the company's website key (see
+[For a company website](#for-a-company-website)). The same rules hold: it never calls Integr8
+and never holds the key.
+
 The program is `apps/forms-ai` (`@integr8/forms-ai`). It is released with the app, at the app's
 version, so a tool and a server of the same version always agree on the file format.
 
@@ -70,22 +75,53 @@ To connect a tool by hand, give it the same: command = the installed program, ar
 
 ## The tools the AI sees
 
-| Tool               | Does                                                                                                                                                                                                                                            |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `get_format_guide` | The format, by section: question types and every option, rules, calculations, repeating sections, Information blocks, English and Arabic, PDF templates (blocks, placeholders, header and footer, look, fonts, landscape), limits, JSON Schemas |
-| `list_examples`    | The six library forms, two more (the demo service report, a form using every 1.3.0 feature) and three PDF templates                                                                                                                             |
-| `get_example`      | One of them as JSON                                                                                                                                                                                                                             |
-| `new_picture_ids`  | Fresh ids for the pictures a template uses                                                                                                                                                                                                      |
-| `check_form`       | The publish compile (`checkFormPackage`): every problem with its JSON path and code, and warnings such as missing Arabic                                                                                                                        |
-| `check_package`    | The form, its templates checked against it as the API checks them, and the pictures against the templates                                                                                                                                       |
-| `preview_pdf`      | Prints one template with sample answers as the server would, returns the PDF's path and pictures of its first pages                                                                                                                             |
-| `save_package`     | Writes `<output folder>/<title>.integr8form` and reports the check; refuses to replace a file unless asked                                                                                                                                      |
-| `open_package`     | Reads a `.integr8form` for editing: definition, settings, templates, and its pictures written out with their paths                                                                                                                              |
+| Tool                        | Does                                                                                                                                                                                                                                            |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `get_format_guide`          | The format, by section: question types and every option, rules, calculations, repeating sections, Information blocks, English and Arabic, PDF templates (blocks, placeholders, header and footer, look, fonts, landscape), limits, JSON Schemas |
+| `list_examples`             | The six library forms, two more (the demo service report, a form using every 1.3.0 feature) and three PDF templates                                                                                                                             |
+| `get_example`               | One of them as JSON                                                                                                                                                                                                                             |
+| `new_picture_ids`           | Fresh ids for the pictures a template uses                                                                                                                                                                                                      |
+| `check_form`                | The publish compile (`checkFormPackage`): every problem with its JSON path and code, and warnings such as missing Arabic                                                                                                                        |
+| `check_package`             | The form, its templates checked against it as the API checks them, and the pictures against the templates                                                                                                                                       |
+| `preview_pdf`               | Prints one template with sample answers as the server would, returns the PDF's path and pictures of its first pages                                                                                                                             |
+| `save_package`              | Writes `<output folder>/<title>.integr8form` and reports the check; refuses to replace a file unless asked                                                                                                                                      |
+| `open_package`              | Reads a `.integr8form` for editing: definition, settings, templates, and its pictures written out with their paths                                                                                                                              |
+| `get_website_guide`         | Company website: what Integr8 and the company switch on, the key and environment, the security rules, why a search finds nothing                                                                                                                |
+| `get_website_api`           | Company website: the lookup and file endpoints, every field and refusal, and what the website shows for each                                                                                                                                    |
+| `get_website_example`       | Company website: the Next.js files for the search page (server-only client, Server Action, English/Arabic form, page, `.env.example` lines)                                                                                                     |
+| `check_website_integration` | Company website: reads the site's files and reports a leaked key, `NEXT_PUBLIC_` names, browser calls, invented endpoints, refusal reasons shown, stored links                                                                                  |
 
 The guide's lists come from the same schemas and registries Integr8 Plus validates with
 (`@integr8/form-engine`, `@integr8/document-render`, `@integr8/form-package`); its prose is keyed
 by those registries' types, so a new question type, rule kind or block fails the type check and
 `guide.test.ts` until it is described.
+
+## For a company website
+
+A company can let its customers find their shared PDFs (certificates, reports) on the company's
+own website. The website's server asks Integr8 with a **website key** that an Integr8 staff
+manager creates on the dashboard (company → Website keys); the request and rules are in
+[`docs/documents/WEBSITE-LOOKUP.md`](../documents/WEBSITE-LOOKUP.md). The four `website` tools
+let an AI coding tool working in the website's code add the page correctly:
+
+1. Connect the AI tool as above, open the website's project, and ask, for example: _"Use
+   integr8-forms to add a page where our customers find their certificate by number and customer
+   name and download it."_
+2. The AI reads the guide and the API, takes the example (Next.js App Router only; options: the
+   page's folder, `src/`, whether the customer name is required, English/Arabic/both), fits it to
+   the site and runs `check_website_integration` on the project folder until it is OK.
+3. The developer puts `INTEGR8_API_URL` and `INTEGR8_WEBSITE_KEY` in `.env.local` and in Vercel
+   (never in the chat), runs the site and tries a shared document and a wrong number.
+
+Search finds **one document or none**, never a list: the API has no list endpoint, by design.
+Before anything is found, Integr8 turns on the company's `website_files` grant, the company turns
+on Settings → Website access, and each document's Sharing switch is on (new ones start off).
+
+The tools work offline: the example and the check never call the API and never see the key. The
+website contract (`src/website/contract.ts`) is written by hand, because this program cannot
+import the API; `contract.test.ts` compares it with `apps/api/openapi.json`, so a changed route
+fails the test until the contract follows. `nextjs.test.ts` compiles every variant of the example
+and runs the check over it. The check is a set of text patterns, not a security review.
 
 ## For maintainers
 
@@ -94,6 +130,7 @@ by those registries' types, so a new question type, rule kind or block fails the
 ```
 src/cli.ts            setup (default) | serve | --version
 src/mcp/              the MCP server: tools, guide, examples, check output, save/open, preview
+src/website/          the company website tools: contract, guide, Next.js example, integration check
 src/preview/          finding Chrome/Edge, a minimal DevTools-protocol client, printing, pdf.js pictures
 src/setup/            the installer: menus, tool adapters, JSON/TOML edits, self-test, self-install, update
 scripts/bundle.mjs    esbuild → dist/integr8-forms-ai.cjs (the version written in)

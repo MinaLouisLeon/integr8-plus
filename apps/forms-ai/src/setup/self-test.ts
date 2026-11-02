@@ -18,6 +18,10 @@ export const EXPECTED_TOOLS = [
   'preview_pdf',
   'save_package',
   'open_package',
+  'get_website_guide',
+  'get_website_api',
+  'get_website_example',
+  'check_website_integration',
 ] as const;
 
 export interface SelfTestResult {
