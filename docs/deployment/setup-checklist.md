@@ -432,7 +432,7 @@ api.integr8-media.com {
 
 _about 30 minutes_
 
-One file holds every setting: `deploy/.env` on the machine. It is never committed. Start from the template and fill it from the key sheet, in the order below. `nano` is a small editor inside the SSH session: arrow keys move, type to edit, **Ctrl-O** then Enter saves, **Ctrl-X** leaves; right-click pastes in the Windows Terminal.
+One file holds every setting: `deploy/.env` on the machine. It is never committed. Start from the template and fill it from the key sheet. The steps below go through the file from top to bottom, in the same order as `deploy/.env.example`, so you can work down the file without jumping around. `nano` is a small editor inside the SSH session: arrow keys move, type to edit, **Ctrl-W** searches, **Ctrl-O** then Enter saves, **Ctrl-X** leaves; right-click pastes in the Windows Terminal.
 
 ```bash
 # machine (SSH session)
@@ -441,9 +441,34 @@ cp deploy/.env.example deploy/.env
 nano deploy/.env
 ```
 
+A line that starts with `#` is ignored. Several settings in the template are commented out on purpose; the steps say which to leave that way and which to take the `# ` off. A line still starting with `#` is the usual reason a service "is not configured" after you are sure you pasted the key.
+
 - [ ] **Mode.** `APP_ENV=staging` for now. Stage 9 flips it to `production`, which makes the API refuse to start if any service below is missing; staging mode starts anyway and only warns, which is kinder while you check each piece.
-- [ ] **Addresses.** Replace `your-domain.example` everywhere: `PUBLIC_API_URL`, `API_PUBLIC_URL`, `AUTH_ISSUER` = `https://api.integr8-media.com`; `WEB_APP_URL` = `https://app.integr8-media.com`; `API_CORS_ORIGINS=https://app.integr8-media.com,tauri://localhost,http://tauri.localhost`. Then `PUBLIC_SIGNUP=off` and `CONTACT_EMAIL=info@integr8-media.com`: there is no public sign-up form (you create every company from the dashboard) and the contact page shows that address.
-- [ ] **Database passwords, eight lines that must agree.** The four passwords from the key sheet go into `POSTGRES_PASSWORD`, `INTEGR8_APP_PASSWORD`, `INTEGR8_AUTH_PASSWORD`, `INTEGR8_PLATFORM_PASSWORD`, and again into the four connection addresses below them. An address has the shape `postgres://USER:PASSWORD@HOST:PORT/DATABASE`; replace only the `change-me-…` part of each:
+- [ ] **The images.** Leave `# API_IMAGE=` and `# WEB_IMAGE=` commented out: Stage 4 builds both images on this machine. To pull GitHub's ready-made images instead, see the note at the end of Stage 4; it is always a release tag such as `v1.3.0`, never `:main` or `:staging`.
+- [ ] **Addresses.** In the block headed `# Addresses`, replace `your-domain.example` everywhere: `PUBLIC_API_URL` and `API_PUBLIC_URL` = `https://api.integr8-media.com`; `WEB_APP_URL` = `https://app.integr8-media.com`; `API_CORS_ORIGINS=https://app.integr8-media.com,tauri://localhost,http://tauri.localhost`. Then `PUBLIC_SIGNUP=off` and `CONTACT_EMAIL=info@integr8-media.com`: there is no public sign-up form (you create every company from the dashboard) and the contact page shows that address. (`AUTH_ISSUER`, the fourth API address, comes later, with the signing keys.)
+- [ ] **Starting app builds from the dashboard.** Leave the three lines `# APP_BUILDS=github`, `# GITHUB_BUILD_TOKEN=` and `# GITHUB_BUILD_REPOSITORY=…` commented out for now: company apps are then started by hand from GitHub Actions. Stage 8, part A makes the token and takes the `# ` off all three.
+- [ ] **Build token.** `BUILD_TOKEN=`, just under them. If you build company apps, paste the key-sheet value here and into the GitHub secret of the same name. Otherwise leave it blank; the API starts without it, but GitHub cannot ask the API for a company list.
+- [ ] **Desktop updates.** `GITHUB_RELEASES_REPOSITORY=your-github-owner/integr8-plus` becomes `GITHUB_RELEASES_REPOSITORY=minalouisleon/integr8-plus`: installed desktop apps find their updates there (Stage 6). Leave `# GITHUB_RELEASES_TOKEN=` commented out while the repository is public.
+- [ ] **Ports.** `API_PORT=3000` and `WEB_PORT=3001` stay as they are: Caddy (Stage 2) forwards to exactly these two, and they listen on the machine itself only.
+
+```text
+PUBLIC_API_URL=https://api.integr8-media.com
+WEB_APP_URL=https://app.integr8-media.com
+API_PUBLIC_URL=https://api.integr8-media.com
+API_CORS_ORIGINS=https://app.integr8-media.com,tauri://localhost,http://tauri.localhost
+PUBLIC_SIGNUP=off
+CONTACT_EMAIL=info@integr8-media.com
+# APP_BUILDS=github
+# GITHUB_BUILD_TOKEN=
+# GITHUB_BUILD_REPOSITORY=your-github-owner/integr8-plus
+BUILD_TOKEN=9c1e…                                         ← or blank
+GITHUB_RELEASES_REPOSITORY=minalouisleon/integr8-plus
+# GITHUB_RELEASES_TOKEN=
+API_PORT=3000
+WEB_PORT=3001
+```
+
+- [ ] **Database passwords, eight lines that must agree.** The block headed `# Database`. The four passwords from the key sheet go into `POSTGRES_PASSWORD`, `INTEGR8_APP_PASSWORD`, `INTEGR8_AUTH_PASSWORD`, `INTEGR8_PLATFORM_PASSWORD`, and again into the four connection addresses below them. An address has the shape `postgres://USER:PASSWORD@HOST:PORT/DATABASE`; replace only the `change-me-…` part of each:
 
 ```text
 POSTGRES_PASSWORD=aaaa…                 ┐ same value
@@ -459,7 +484,10 @@ INTEGR8_PLATFORM_PASSWORD=dddd…         ┐ same value
 DATABASE_URL_PLATFORM=postgres://integr8_platform:dddd…@postgres:5432/integr8  ┘
 ```
 
-- [ ] **Signing keys.** Below the database lines is a block headed `# Tokens and secrets`. It has four variables with nothing after the `=`: `AUTH_SIGNING_KEY_ID=`, `AUTH_SIGNING_KEY=`, `AUTH_VERIFICATION_KEYS=`, `PLATFORM_SECRET_KEY=`. The key generator in Stage 0, Part B produced exactly these four lines, each already in the form `NAME=value`. For each one, delete the empty line in the file and paste the whole line from your password manager in its place; the names must match and nothing else on the line changes. The values are long (the second is a few hundred characters) and must stay on one line each. The `AUTH_ISSUER` line just above them was already set in step 2.
+- [ ] **Backups and the heartbeat.** Just below the database lines: leave `# BACKUP_REMOTE=`, `# BACKUP_REMOTE_KEEP=`, `# BACKUP_PING_URL=`, `# HEALTH_PING_URL=` and `# HEALTH_PING_FAIL=` commented out for now. No container reads them; the backup and heartbeat scripts do, and Stage 9 (parts B and C) sets them up and takes the `# ` off the ones you use.
+- [ ] **Signing keys.** The block headed `# Tokens and secrets`. First `AUTH_ISSUER` = `https://api.integr8-media.com`, the same address as `PUBLIC_API_URL`. Under it are four variables with nothing after the `=`: `AUTH_SIGNING_KEY_ID=`, `AUTH_SIGNING_KEY=`, `AUTH_VERIFICATION_KEYS=`, `PLATFORM_SECRET_KEY=`. The key generator in Stage 0, Part B produced exactly these four lines, each already in the form `NAME=value`. For each one, delete the empty line in the file and paste the whole line from your password manager in its place; the names must match and nothing else on the line changes. The values are long (the second is a few hundred characters) and must stay on one line each.
+- [ ] **HR data key.** `HR_DATA_KEY=`, right after `PLATFORM_SECRET_KEY`: paste the key-sheet value. Production refuses to start without it. Leave `HR_DATA_KEYS_PREVIOUS=` under it blank; it is only for changing the key (Stage 11, part Z). On a rebuilt machine it must be the **same** value the old machine had, or restored employee numbers cannot be read.
+- [ ] **E-invoicing key.** `ETA_CREDENTIALS_KEY=`, next: paste the value from the key sheet after the `=`, or leave it blank if you have not made one yet: a blank line is the same as no key, and the server starts. Leave `ETA_ALLOW_PRODUCTION=false` as it is, and `# ETA_PREPROD_CA_FILE=` commented out. On a rebuilt machine the key must be the **same** value the old machine had.
 - [ ] **Sign-in secrets.** The next block, headed `# Sign-in: the self-hosted Supabase Auth container`, has three variables with nothing after the `=`: `SUPABASE_AUTH_JWT_SECRET=`, `SUPABASE_SERVICE_ROLE_KEY=`, `SUPABASE_AUTH_DB_PASSWORD=`. Paste the last three lines from `integr8-keys.txt` (now in your password manager) in their place, the same way. Leave the commented `# SUPABASE_AUTH_URL=` line as it is: the compose file already points the API at the Auth container. There is no `SUPABASE_URL` line any more, and the API refuses to start if one is added. Afterwards the two blocks read like this, with your own values:
 
 ```text
@@ -468,10 +496,16 @@ AUTH_SIGNING_KEY_ID=integr8-2026-10-09-4bv1e4          ← from integr8-keys.txt
 AUTH_SIGNING_KEY={"crv":"Ed25519",…}                    ← line 2, one long line
 AUTH_VERIFICATION_KEYS=[{"crv":"Ed25519",…}]            ← line 3, one long line
 PLATFORM_SECRET_KEY=6h6lZzXnyuuOeG…                     ← line 4
+HR_DATA_KEY=q8Zr…                                       ← key sheet
+HR_DATA_KEYS_PREVIOUS=
+ETA_CREDENTIALS_KEY=Vx3m…                               ← key sheet, or blank
+ETA_ALLOW_PRODUCTION=false
+# ETA_PREPROD_CA_FILE=
 
 SUPABASE_AUTH_JWT_SECRET=Rk9P3m…                     ← line 5
 SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIs…       ← line 6, one long line
 SUPABASE_AUTH_DB_PASSWORD=x7Kp2Q…                    ← line 7
+# SUPABASE_AUTH_URL=http://auth:9999
 ```
 
 - [ ] **Errors and version.** The block headed `# Release identity and error reporting` comes next. `APP_VERSION` and `API_RELEASE` already say `1.3.0`, matching the root `package.json`; at every release they change to the new number (Stage 11). The three Sentry lines are empty: paste the Node.js project's DSN after `SENTRY_DSN=` and the Next.js project's DSN after **both** `WEB_SENTRY_DSN=` and `WEB_PUBLIC_SENTRY_DSN=`. Afterwards:
@@ -484,7 +518,7 @@ WEB_SENTRY_DSN=https://d4e5f6@o123456.ingest.us.sentry.io/4502222
 WEB_PUBLIC_SENTRY_DSN=https://d4e5f6@o123456.ingest.us.sentry.io/4502222
 ```
 
-Then the last block, headed `# External services`. Every service in it is written the same way: a line that chooses the real service or the fake, followed by its keys **commented out** with a `#` and a space at the start. For each service you change the chooser and remove the `# ` from the start of each key line so it takes effect. A line that still starts with `#` is ignored, which is the usual reason a service "is not configured" after you are sure you pasted the key.
+Then the block headed `# External services`. Every service in it is written the same way: a line that chooses the real service or the fake, followed by its keys **commented out** with a `#` and a space at the start. For each service you change the chooser and remove the `# ` from the start of each key line so it takes effect.
 
 - [ ] **Files.** `MEDIA_STORAGE=local` becomes `r2`. Uncomment the five lines under it and fill them from Stage 0, Part D; the prefix becomes `integr8-production` (the template says `integr8-staging`), and `CLOUDFLARE_API_TOKEN` is the analytics token, not the R2 one. Before and after:
 
@@ -516,16 +550,13 @@ MAPBOX_ACCESS_TOKEN=pk.eyJ1IjoiaW50ZWdyOCIsImEiOiJjbG…
 ```
 
 - [ ] **Push.** `PUSH_SENDER=recording` becomes `expo`. Leave `# EXPO_ACCESS_TOKEN=` commented out: it is only needed if you turn on Expo's "enhanced push security", and you have not. (This is a different token from the `EXPO_TOKEN` GitHub uses.)
-- [ ] **HR data key.** Find `HR_DATA_KEY=` (below the signing keys) and paste the key-sheet value: production refuses to start without it. Leave `HR_DATA_KEYS_PREVIOUS=` under it blank; it is only for changing the key (Stage 11, part Z). On a rebuilt machine it must be the **same** value the old machine had, or restored employee numbers cannot be read.
-- [ ] **E-invoicing key.** Find `ETA_CREDENTIALS_KEY=` (just after `HR_DATA_KEY`) and paste the value from the key sheet after the `=`, or leave it blank if you have not made one yet: a blank line is the same as no key, and the server starts. Leave `ETA_ALLOW_PRODUCTION=false` as it is. On a rebuilt machine it must be the **same** value the old machine had.
-- [ ] **Build token.** Find `BUILD_TOKEN=` (near `CONTACT_EMAIL`). If you build company apps, paste the key-sheet value here and into the GitHub secret of the same name. Otherwise leave it blank; the API starts without it, but GitHub cannot ask the API for a company list.
 
 ```text
 PUSH_SENDER=expo
 # EXPO_ACCESS_TOKEN=
 ```
 
-- [ ] **Billing.** Leave `BILLING_PROVIDER=none` and the two Stripe lines commented: you invoice every company, every company's billing page says so, and production needs nothing more. Only if you did Part G: `none` becomes `stripe`, uncomment the two key lines and put the test-mode secret key and the webhook signing secret from Part G in place of their placeholders, as in the second block. Leave `BILLING_TRIAL_DAYS` and `BILLING_GRACE_DAYS` as they are (14 and 14: the trial a pays-in-the-app company gets, and the days between a failed payment and read-only; with `none` nobody has a trial).
+- [ ] **Billing.** Leave `BILLING_PROVIDER=none` and the two Stripe lines commented: you invoice every company, every company's billing page says so, and production needs nothing more. Only if you did Part G: `none` becomes `stripe`, uncomment the two key lines and put the secret key and the webhook signing secret from Part G in place of their placeholders, as in the second block (a test-mode `sk_test_` key works in staging; production refuses it and needs the live one, Stage 9). Leave `BILLING_TRIAL_DAYS` and `BILLING_GRACE_DAYS` as they are (14 and 14: the trial a pays-in-the-app company gets, and the days between a failed payment and read-only; with `none` nobody has a trial).
 
 ```text
 BILLING_PROVIDER=none
@@ -549,6 +580,8 @@ EMAIL_SENDER=resend
 RESEND_API_KEY=re_7Kd9…
 EMAIL_FROM=Integr8 Plus <info@integr8-media.com>
 ```
+
+- [ ] **PDF documents.** Nothing to add: the template's `PDF_RENDERER=chromium` line stays as it is, and the API image brings Chromium and the fonts. Check that `WEB_APP_URL` is the web app's address, `https://app.integr8-media.com`: every document's QR code points there, and without it the API refuses to make documents. Never set `PDF_RENDERER=recording` here: it prints placeholder pages, and production refuses to start with it.
 
 - [ ] **The AI assistant** (skip it to leave the assistant off; nothing else depends on it). The block headed `# The AI assistant`, just before the limits: `AI_ENABLED=false` becomes `true`, and `AI_PROVIDER=recording` becomes the choice from Part M: `none`, `openai`, `groq`, `gemini` or `anthropic`. Then the lines for that choice only, from the blocks below and the key sheet. Each price is in **micros per million tokens**: dollars × 1,000,000, so $0.10 is `100000`, $0.075 is `75000` and $2.50 is `2500000`. The `provider` in each price row is the same word as `AI_PROVIDER`, and the whole price list stays on one line.
 
@@ -625,15 +658,13 @@ AI_MODEL_PRICES=[{"provider":"anthropic","model":"claude-haiku-4-5","inputPerMil
 - [ ] **Only if companies' own records may go to the provider** (the Insights and Agent levels): add one new line under the block naming the provider, for example `AI_PROVIDER_APPROVED_DATA_CLASSES=openai:company_operational` (or `groq:`, `gemini:`, `anthropic:`), once you have read that provider's data terms (Part M). Not needed for `none`: the help library sends nothing anywhere. It is not in the template. Without it, a company on Insights or Agent gets Help answers and a note that company data is not enabled; each company must also agree on its own page (Stage 7).
 - [ ] **Know what a mistake here does.** A **missing** value never stops the server: no key or no Help model, or the fake `recording` provider once `APP_ENV=production`, gives every company help-library answers instead; a missing Insights or Agent model only lowers that level; a model with no price row is charged at cautious default rates and marked as estimated. The API, the apps and every other module start and run regardless, and the dashboard's **Plans** page, panel **AI provider** (Stage 5), lists what needs fixing. A **mistyped** value is different: a word that is not one of the allowed ones (`AI_ENABLED=yes`, `AI_PROVIDER=OpenAI` with capitals, a reasoning value other than `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`), an address that is not a URL, or a broken `AI_MODEL_PRICES` list (a missing bracket or quote, a line break inside it) makes the API refuse to start, and its log names the line (`Invalid API configuration` or `AI_MODEL_PRICES is not a list of prices`). Fix the line, or put a `# ` back in front of it, and start again. OpenAI only: two optional lines keep their defaults unless you have a reason, `AI_OPENAI_BASE_URL=https://api.openai.com/v1` and `AI_CREDIT_EXHAUSTED_PAUSE_SECONDS=300`; leave `AI_OPENAI_REASONING_EFFORT` out for a model that does not reason, which refuses it. Each provider also has an address line (`AI_GROQ_BASE_URL`, `AI_GEMINI_BASE_URL`, `AI_ANTHROPIC_BASE_URL`) that is right as it is.
 
-- [ ] **PDF documents.** Nothing to add: the template's `PDF_RENDERER=chromium` line stays as it is, and the API image brings Chromium and the fonts. Check that `WEB_APP_URL` is the web app's address, `https://app.integr8-media.com`: every document's QR code points there, and without it the API refuses to make documents. Never set `PDF_RENDERER=recording` here: it prints placeholder pages, and production refuses to start with it.
-
 - [ ] **The two lines at the very end.** `API_MIN_SUPPORTED_CLIENT=0.1.0` stays. Leave `# API_UPDATE_URL=` commented out: unset, an app too old to be served is sent to `https://app.integr8-media.com/download`, the web app's download page (`WEB_APP_URL` with `/download` added). Production refuses an example address there.
-- [ ] **Check before saving.** Each database password appears on exactly two lines, and the only key lines still commented out are `EXPO_ACCESS_TOKEN`, `SUPABASE_AUTH_URL` and `API_UPDATE_URL` (plus the commented `AI_` lines you did not need):
+- [ ] **Check before saving.** Each database password appears on exactly two lines. The second command lists the setting lines still commented out; each should be one the steps above left that way on purpose: `API_IMAGE`, `WEB_IMAGE`, `APP_BUILDS`, `GITHUB_BUILD_TOKEN`, `GITHUB_BUILD_REPOSITORY`, `GITHUB_RELEASES_TOKEN`, the five `BACKUP_`/`HEALTH_PING_` lines, `ETA_PREPROD_CA_FILE`, `SUPABASE_AUTH_URL`, `EXPO_ACCESS_TOKEN`, the two `STRIPE_` lines (with `BILLING_PROVIDER=none`), `API_UPDATE_URL`, and the `AI_` lines you did not need. Anything else on that list, such as `MAPBOX_ACCESS_TOKEN` or `RESEND_API_KEY`, still needs its `# ` taken off:
 
 ```bash
 # machine (SSH session)
 grep -n 'PASSWORD=\|DATABASE_URL' deploy/.env
-grep -n '^# [A-Z_]*=' deploy/.env               # should print only EXPO_ACCESS_TOKEN, SUPABASE_AUTH_URL and API_UPDATE_URL (and AI_ lines if the assistant stays off)
+grep -n '^# [A-Z_]*=' deploy/.env               # only the lines named above, left commented on purpose
 grep -n '^AI_' deploy/.env                      # the assistant's lines, as you set them
 ```
 
