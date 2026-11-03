@@ -156,7 +156,10 @@ export const pushRoute = defineRoute({
     },
   },
   handler: async ({ body }, context) => {
-    const received = Date.now();
+    // Taken when the request arrived, not now: sign-in checks and rate limits
+    // have run since, and on a busy server that delay would push every phone
+    // time later, past a job's close for a form started just before it.
+    const received = context.receivedAt?.getTime() ?? Date.now();
     const sentAt = Date.parse(body.sentAt);
     // The phone's clock may be hours out, but it measures elapsed time well
     // enough: how long before sending something happened, subtracted from when
