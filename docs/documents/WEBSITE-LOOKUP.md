@@ -2,7 +2,8 @@
 
 For the developer of a company's own website (Next.js on Vercel), and for the
 company deciding what its website may show. It lets the company's customer find
-a document by its reference (a certificate number, say), and an authenticated
+documents by what the company gave them (a certificate number, say), open a
+shared document's own page on the company's site, and an authenticated
 customer see a job's status, a quote or an invoice, through Integr8's API.
 
 The website's **server** asks Integr8 Plus with a **website key**. The key is a
@@ -44,13 +45,14 @@ the website's code for a leaked key or a wrong call.
 The register holds two kinds of PDF, and the website finds both the same way:
 
 - **Made from a submission** with a template Integr8 designed. Its reference is
-  the template's lookup field (a certificate number, say), and the template may
-  name a second field that must match too (the customer's name, say).
+  the template's lookup field (a certificate number, say). A second field the
+  template names (the customer's name, say) is asked for only by the older
+  two-value search; the one search box never matches it.
 - **Uploaded** by the company (Documents → **Upload a PDF**): a PDF it already
   has, such as a certificate signed on paper, with a **reference number** and,
-  optionally, the **customer** it is for. The reference is what the website
-  finds it by; when a customer was chosen, the customer's name is the second
-  value and must match too.
+  optionally, the **customer** it is for, and any **extra fields** typed for
+  it (a serial number, say; 0075). The reference and the extra fields are what
+  the website's search finds it by; the customer's name never is.
 
 A document is found only while it is **shared** and its link is live:
 
@@ -70,9 +72,13 @@ A document is found only while it is **shared** and its link is live:
 ## The QR code
 
 Every document, made or uploaded, has its own page at
-`https://app.integr8-media.com/d/<code>`: the company, the title, the form (or,
+`https://app.integr8-media.com/d/<code>`, or on the company's own website when
+Integr8 set a document link address (see "The document page" below): the company, the title, the form (or,
 for an uploaded document, its reference) and the date, with View and Download.
-A made document carries the code on the PDF when its template has a QR block;
+A made document carries the code on the PDF when its template has a share QR block, but
+only once it is shared: until then the place is blank, and sharing re-prints the PDF with
+the code in it (0075). An uploaded PDF given a QR place gets the code stamped in the same
+way. A template's **fixed** QR code is a link or text printed from the start instead;
 every document shows its QR code on its page in the register, to print or send.
 The page opens only while the document is shared and its link is live.
 
@@ -91,72 +97,77 @@ Redeploy after adding them.
 Read these variables only in a Next.js Server Action, Route Handler or other
 server-side module. Never pass them as props or return them in a response.
 
-## The request
+## The search
 
-By reference, with the second value when the document has one:
+One search box (since 0075). Send what the visitor typed as `q`:
 
 ```http
 POST /v1/website/documents/lookup
 Authorization: Bearer i8wk_…
 Content-Type: application/json
 
-{ "reference": "GS-2026-0042", "customer": "Nile Towers" }
+{ "q": "GS-2026-0042" }
 ```
 
-`reference` is matched against whatever field is each document's reference: an
-uploaded document's reference number, or a made document's lookup field,
-whatever its template calls it. `customer` is the second value: the customer's
-name for an uploaded document with a customer, or the template's second field.
-A document that has a second value is found only when it matches too; one
-without is found by its reference alone. Values are compared exactly, ignoring
-capitals and extra spaces.
+`q` is matched against every **searchable** field of every shared document:
 
-Naming the template's fields still works, for websites built before 1.2.4:
+- a made document's lookup field (whatever its template calls it);
+- an uploaded document's reference number;
+- the **extra fields** typed for an uploaded document (Documents → **Upload a
+  PDF** → **Add field**, or later on its page), such as a serial number.
 
-```json
-{
-  "key": { "field": "certificate", "value": "GS-2026-0042" },
-  "confirm": { "field": "customer", "value": "Nile Towers" }
-}
-```
+It is never matched against the customer's name, so typing a company's name
+lists nothing. Values are compared exactly, ignoring capitals and extra
+spaces: part of a value does not match. Every match comes back, newest first,
+at most ten.
 
-Send one form or the other: `reference` (with `customer`), or `key` (with
-`confirm`).
+The older forms still work, for websites built before the one box, and find
+one document or none: `reference` with `customer` as the second value (a
+document that has one is found only when it matches too), and, from before
+1.2.4, `key` with `confirm` naming the template's fields. Send exactly one of
+`q`, `reference` and `key`.
 
 ## The answer
 
-Always `200` when the key is good, with one document or none:
+Always `200` when the key is good:
 
 ```json
 {
   "found": true,
-  "document": {
-    "title": "Gas certificate · GS-2026-0042",
-    "formTitle": "Gas safety certificate",
-    "createdAt": "2026-10-16T09:00:00.000Z",
-    "pageCount": 2,
-    "link": "https://app.integr8-media.com/d/2Xq…",
-    "viewUrl": "https://…",
-    "downloadUrl": "https://…",
-    "expiresAt": "2026-10-16T09:05:00.000Z",
-    "fields": [
-      { "key": "certificate", "label": { "en": "Certificate number" }, "value": "GS-2026-0042" }
-    ]
-  }
+  "documents": [
+    {
+      "title": "Gas certificate · GS-2026-0042",
+      "formTitle": "Gas safety certificate",
+      "createdAt": "2026-10-16T09:00:00.000Z",
+      "pageCount": 2,
+      "link": "https://www.example.com/documents/2Xq…",
+      "code": "2Xq…",
+      "viewUrl": "https://…",
+      "downloadUrl": "https://…",
+      "expiresAt": "2026-10-16T09:05:00.000Z",
+      "fields": [
+        { "key": "certificate", "label": { "en": "Certificate number" }, "value": "GS-2026-0042" }
+      ]
+    }
+  ],
+  "document": { "…": "the first of documents, for older websites" }
 }
 ```
 
 ```json
-{ "found": false, "document": null }
+{ "found": false, "document": null, "documents": [] }
 ```
 
-- `link` is the document's own page, the one its QR code opens. It is stable:
-  safe to show and to link to.
+- `link` is the document's own page, the one its QR code opens: the company
+  website's document page when Integr8 set a document link address, Integr8's
+  `/d/` page otherwise. It is stable: safe to show and to link to. `code` is
+  the code in it.
 - `viewUrl` opens the PDF in the browser and `downloadUrl` saves it. Both stop
   working at `expiresAt`, five minutes after they were made, so use them at once
   and never store them.
 - An uploaded document has an empty `formTitle` and no page count; its fields
-  are `reference` and, when it has a customer, `customer`.
+  are `reference`, `customer` when it has one, and its typed fields
+  (`custom_1`, …).
 - A document that is not shared, was stopped, has expired or was deleted is not
   found: the same `found: false` as for a reference nobody issued.
 
@@ -164,37 +175,66 @@ Other answers:
 
 | Status | `error.code`          | Meaning                                                                                                             |
 | ------ | --------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| 422    | `validation_failed`   | The body is not as above (for example both `reference` and `key`, or neither).                                      |
+| 422    | `validation_failed`   | The body is not as above (not exactly one of `q`, `reference` and `key`, or a value too long).                      |
 | 401    | `website_key_invalid` | No key, a mistyped key, or a revoked one.                                                                           |
 | 403    | `feature_disabled`    | The documents module is off for the company, or Integr8's `website_files` grant or the company's own switch is off. |
 | 429    | `rate_limited`        | More than 60 lookups a minute with this key; slow down.                                                             |
 
+## The document page
+
+Integr8 staff can point a company's document links at its own website (the
+company's page on the dashboard → Website and apps → **Document link
+address**): an https address on the registered website, with `{code}` where
+the document's code goes, such as `https://www.example.com/documents/{code}`.
+From then on every link the register shows or copies, every share by email or
+WhatsApp, and the QR code on every new PDF open that address. QR codes printed
+before keep opening Integr8's `/d/` page, which keeps working. Set the address
+only once the page is live, or the links land on a 404.
+
+The page reads the code from its address and asks, from the server:
+
+```http
+GET /v1/website/documents/by-code/2Xq…
+Authorization: Bearer i8wk_…
+```
+
+```json
+{
+  "found": true,
+  "document": { "title": "…", "code": "2Xq…", "viewUrl": "https://…", "…": "as in the search" }
+}
+```
+
+`found: false` for a code that is not one of this company's documents, or is
+not shared, stopped, expired or deleted: the page shows "This link is not
+valid" alike. A code that is not 22 characters of A–Z a–z 0–9 `_` `-` is
+refused with 422; check it before asking. Render the page on the server for
+every visit (`dynamic = 'force-dynamic'`), so its five-minute links are fresh,
+and keep it out of search engines (`robots: { index: false }`).
+
 ## A Next.js example
 
-A Server Action does the lookup on the server; the page only ever sees the
-result. App Router, TypeScript.
+**Integr8 Forms for AI** (`get_website_example`) writes both pages, the search
+and the document page, in English and Arabic, with a server-only client, and
+`check_website_integration` checks them. The core of it, a Server Action and
+the document page, App Router, TypeScript:
 
 `app/certificates/actions.ts`:
 
 ```ts
 'use server';
 
-export interface LookupResult {
-  found: boolean;
-  title?: string;
-  link?: string;
-  viewUrl?: string;
-  downloadUrl?: string;
+export interface Found {
+  title: string;
+  link: string | null;
+  viewUrl: string;
+  downloadUrl: string;
 }
 
-export async function findCertificate(
-  _previous: LookupResult | null,
-  form: FormData,
-): Promise<LookupResult> {
-  const number = String(form.get('number') ?? '').trim();
-  const customer = String(form.get('customer') ?? '').trim();
-  if (number === '') {
-    return { found: false };
+export async function findDocuments(_previous: Found[] | null, form: FormData): Promise<Found[]> {
+  const q = String(form.get('q') ?? '').trim();
+  if (q === '') {
+    return [];
   }
   const response = await fetch(`${process.env.INTEGR8_API_URL}/v1/website/documents/lookup`, {
     method: 'POST',
@@ -202,65 +242,50 @@ export async function findCertificate(
       authorization: `Bearer ${process.env.INTEGR8_WEBSITE_KEY}`,
       'content-type': 'application/json',
     },
-    body: JSON.stringify({ reference: number, ...(customer === '' ? {} : { customer }) }),
+    body: JSON.stringify({ q }),
     cache: 'no-store',
   });
   if (!response.ok) {
     // 401, 403 or 429: log it on the server, show the visitor "not found".
-    console.error('Integr8 lookup failed', response.status);
-    return { found: false };
+    console.error('Integr8 search failed', response.status);
+    return [];
   }
-  const body = (await response.json()) as {
-    found: boolean;
-    document: { title: string; link: string; viewUrl: string; downloadUrl: string } | null;
-  };
-  return body.document === null
-    ? { found: false }
-    : {
-        found: true,
-        title: body.document.title,
-        link: body.document.link,
-        viewUrl: body.document.viewUrl,
-        downloadUrl: body.document.downloadUrl,
-      };
+  const body = (await response.json()) as { documents: Found[] };
+  return body.documents.map(({ title, link, viewUrl, downloadUrl }) => ({
+    title,
+    link,
+    viewUrl,
+    downloadUrl,
+  }));
 }
 ```
 
-`app/certificates/page.tsx`:
+`app/documents/[code]/page.tsx`:
 
 ```tsx
-'use client';
+export const dynamic = 'force-dynamic';
+export const metadata = { robots: { index: false } };
 
-import { useActionState } from 'react';
-import { findCertificate, type LookupResult } from './actions';
-
-export default function CertificatesPage() {
-  const [result, search, searching] = useActionState<LookupResult | null, FormData>(
-    findCertificate,
-    null,
-  );
+export default async function DocumentPage({ params }: { params: Promise<{ code: string }> }) {
+  const { code } = await params;
+  const response = /^[A-Za-z0-9_-]{22}$/.test(code)
+    ? await fetch(`${process.env.INTEGR8_API_URL}/v1/website/documents/by-code/${code}`, {
+        headers: { authorization: `Bearer ${process.env.INTEGR8_WEBSITE_KEY}` },
+        cache: 'no-store',
+      })
+    : undefined;
+  const body = response?.ok
+    ? ((await response.json()) as {
+        document: { title: string; viewUrl: string; downloadUrl: string } | null;
+      })
+    : { document: null };
+  if (body.document === null) {
+    return <p>This link is not valid.</p>;
+  }
   return (
     <main>
-      <h1>Check a certificate</h1>
-      <form action={search}>
-        <label>
-          Certificate number <input name="number" required />
-        </label>
-        <label>
-          Customer name <input name="customer" required />
-        </label>
-        <button type="submit" disabled={searching}>
-          Find
-        </button>
-      </form>
-      {result === null ? null : result.found ? (
-        <p>
-          {result.title}: <a href={result.viewUrl}>View</a> ·{' '}
-          <a href={result.downloadUrl}>Download</a> · <a href={result.link}>Permanent link</a>
-        </p>
-      ) : (
-        <p>No certificate matches.</p>
-      )}
+      <h1>{body.document.title}</h1>
+      <a href={body.document.viewUrl}>View</a> · <a href={body.document.downloadUrl}>Download</a>
     </main>
   );
 }
@@ -268,10 +293,9 @@ export default function CertificatesPage() {
 
 ## Good practice
 
-- Ask for both values: a number alone is easy to guess, a number and a name
-  together are not. Ask the company to choose the customer when it uploads a
-  document, and Integr8 to give its templates a second field, so its documents
-  need both.
+- Give each document something hard to guess to be found by: its reference, or
+  an extra field typed when it is uploaded. The search never asks for the
+  customer's name, and never matches it.
 - Ask the company to share a document only once its customer may see it:
   sharing is what lets the website and the QR code show it.
 - Show the same "not found" whatever went wrong, so the page teaches nothing
@@ -289,13 +313,14 @@ The OpenAPI source of truth is `apps/api/openapi.json`. Every request uses the
 same `Authorization: Bearer <website key>` header. These endpoints return one
 known record by its UUID; they do not list or search across company records.
 
-| Method | Endpoint                           | Returns                                                                                                 |
-| ------ | ---------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `POST` | `/v1/website/documents/lookup`     | One shared document found by its reference, and the customer's name when it has one.                    |
-| `GET`  | `/v1/website/files/{documentId}`   | Five-minute view and download links for one shared, ready document.                                     |
-| `GET`  | `/v1/website/jobs/{workOrderId}`   | Customer-safe job reference, status, title and due dates.                                               |
-| `GET`  | `/v1/website/quotes/{quoteId}`     | One issued quote with customer-visible terms, totals and lines. Drafts and internal notes are excluded. |
-| `GET`  | `/v1/website/invoices/{invoiceId}` | One issued invoice summary. Drafts and internal notes are excluded.                                     |
+| Method | Endpoint                               | Returns                                                                                                 |
+| ------ | -------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `POST` | `/v1/website/documents/lookup`         | The search: every shared document whose reference or searchable field is what the visitor typed (≤ 10). |
+| `GET`  | `/v1/website/documents/by-code/{code}` | One shared document by its link's code, for the website's document page.                                |
+| `GET`  | `/v1/website/files/{documentId}`       | Five-minute view and download links for one shared, ready document.                                     |
+| `GET`  | `/v1/website/jobs/{workOrderId}`       | Customer-safe job reference, status, title and due dates.                                               |
+| `GET`  | `/v1/website/quotes/{quoteId}`         | One issued quote with customer-visible terms, totals and lines. Drafts and internal notes are excluded. |
+| `GET`  | `/v1/website/invoices/{invoiceId}`     | One issued invoice summary. Drafts and internal notes are excluded.                                     |
 
 Each capability is checked separately against the company's switch and
 Integr8's grant, both off for a new company; documents, quotes and invoices

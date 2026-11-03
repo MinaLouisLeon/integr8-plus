@@ -166,6 +166,13 @@ export const apiErrorsEn = {
     'Documents cannot be made yet: this server has no web address for the QR code. Ask Integr8.',
   document_preview_failed: 'The preview could not be printed just now. Try again in a minute.',
   document_not_pdf: 'Only a PDF can be uploaded as a document. Choose a PDF file.',
+  document_not_uploaded: 'Only an uploaded document has extra fields to change.',
+  document_link_invalid:
+    'The document link address must start with https://, have {code} in it, and be at most 500 characters.',
+  document_link_needs_website:
+    'Add the company’s website first: document links may only point to it.',
+  document_link_other_site: 'The document link address must be on the company’s own website.',
+  unknown_tab: 'One of these is not a tab that can be switched. Reload the page and try again.',
   document_not_ready: 'The PDF is not ready yet. Wait a moment and try again.',
   document_template_archived: 'This template is archived. Choose another one.',
   document_template_changed:

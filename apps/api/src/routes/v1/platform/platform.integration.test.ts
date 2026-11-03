@@ -118,6 +118,59 @@ describe('onboarding a company', () => {
     expect(bucket?.bucket).toBe(body.storage.bucket);
   });
 
+  it('onboards with the tabs staff chose, switching modules to match (0075)', async () => {
+    const name = slug();
+    const unknown = await api.call(admin.accessToken, {
+      method: 'POST',
+      url: '/v1/platform/companies',
+      payload: { slug: name, name: 'Tabs Co', ownerEmail: `owner@${name}.example`, tabs: ['nope'] },
+    });
+    expect(unknown.statusCode).toBe(422);
+    // Nothing was made for the refused request.
+    expect(await getPlatformDataSource().tenants.findBySlug(name)).toBeUndefined();
+
+    const made = await api.call(admin.accessToken, {
+      method: 'POST',
+      url: '/v1/platform/companies',
+      payload: {
+        slug: name,
+        name: 'Tabs Co',
+        ownerEmail: `owner@${name}.example`,
+        tabs: ['workOrders', 'customers', 'quotes'],
+      },
+    });
+    expect(made.statusCode, made.body).toBe(201);
+    const id = (JSON.parse(made.body) as { company: { id: string } }).company.id;
+    const detail = JSON.parse(
+      (await api.call(admin.accessToken, { method: 'GET', url: `/v1/platform/companies/${id}` }))
+        .body,
+    ) as {
+      featureFlags: Record<string, boolean>;
+      settings: { tabs: string[]; hiddenSections: string[] };
+    };
+    expect(detail.featureFlags.sales).toBe(true);
+    expect(detail.featureFlags.crm).toBe(false);
+    expect(detail.settings.tabs.sort()).toEqual(['customers', 'quotes', 'workOrders']);
+    expect(detail.settings.hiddenSections).toContain('salesOrders');
+    expect(detail.settings.hiddenSections).toContain('timesheets');
+    // A module that ended up off keeps its tabs off the list.
+    expect(detail.settings.hiddenSections).not.toContain('leads');
+
+    // Changed later from the company's page, and seen by the company's people.
+    const changed = await api.call(admin.accessToken, {
+      method: 'PUT',
+      url: `/v1/platform/companies/${id}/tabs`,
+      payload: { tabs: ['workOrders', 'timesheets'] },
+    });
+    expect(changed.statusCode, changed.body).toBe(200);
+    const after = JSON.parse(changed.body) as { tabs: string[]; flags: Record<string, boolean> };
+    expect(after.tabs.sort()).toEqual(['timesheets', 'workOrders']);
+    expect(after.flags.sales).toBe(false);
+    const settings = await withTenant(id, (tx) => tx.settings.get());
+    expect(settings.hiddenNavSections).toContain('customers');
+    expect(settings.hiddenNavSections).not.toContain('timesheets');
+  });
+
   it('refuses a slug somebody already has', async () => {
     const name = slug();
     const payload = { slug: name, name: 'First', ownerEmail: `a@${name}.example` };

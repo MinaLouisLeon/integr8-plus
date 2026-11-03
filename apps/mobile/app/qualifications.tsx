@@ -15,13 +15,14 @@ import {
 } from '~/components/ui';
 import { formatDay, formatWhen } from '~/lib/format';
 import { useLocalQuery } from '~/local/react';
+import { ScreenGate } from '~/components/screen-gate';
 
 /**
  * The engineer's own skills and certificates (P26), from the phone: what they
  * hold, and when each certificate expires, expired ones first. Read only — the
  * office records them — and kept from the last sync, so it opens with no signal.
  */
-export default function QualificationsScreen() {
+function QualificationsScreenBody() {
   return (
     <LocalGate>
       <Qualifications />
@@ -120,3 +121,12 @@ const styles = StyleSheet.create({
   },
   title: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
 });
+
+/** Shown only while the company keeps its tab (0075). */
+export default function QualificationsScreen() {
+  return (
+    <ScreenGate screen="qualifications">
+      <QualificationsScreenBody />
+    </ScreenGate>
+  );
+}

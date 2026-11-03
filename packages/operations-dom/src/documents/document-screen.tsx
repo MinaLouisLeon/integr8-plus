@@ -7,7 +7,6 @@ import {
   buttonClass,
   cardClass,
   copyText,
-  Dialog,
   Failure,
   Field,
   fromLocalInput,
@@ -16,6 +15,13 @@ import {
   toLocalInput,
 } from '../ui.js';
 import { QrCode } from '../assets/asset-tag.js';
+import { UploadedQrSection } from './qr-placer.js';
+import {
+  DeleteDocumentDialog,
+  ShareDialog,
+  TypedFieldsForm,
+  useDocumentActions,
+} from './document-actions.js';
 import {
   DocumentMarks,
   documentState,
@@ -43,6 +49,10 @@ export function DocumentScreen({ documentId }: { documentId: string }) {
   const open = useOpenDocument();
   const [copied, setCopied] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const actions = useDocumentActions(documentId, () =>
+    navigate(paths.documents, { replace: true }),
+  );
 
   const detail = useQuery({
     queryKey: keys.document(documentId),
@@ -69,26 +79,7 @@ export function DocumentScreen({ documentId }: { documentId: string }) {
       ).data!,
     onSuccess: saved,
   });
-  const share = useMutation({
-    mutationFn: async (shareable: boolean) =>
-      (
-        await client.POST('/v1/documents/{documentId}/share', {
-          params: { path: { documentId } },
-          body: { shareable },
-        })
-      ).data!,
-    onSuccess: saved,
-  });
-  const remove = useMutation({
-    mutationFn: async () => {
-      await client.DELETE('/v1/documents/{documentId}', { params: { path: { documentId } } });
-    },
-    onSuccess: () => {
-      queries.removeQueries({ queryKey: keys.document(documentId) });
-      void queries.invalidateQueries({ queryKey: ['documents', 'list'] });
-      navigate(paths.documents, { replace: true });
-    },
-  });
+  const { share, remove } = actions;
 
   if (detail.isPending) {
     return <Loading />;
@@ -174,7 +165,9 @@ export function DocumentScreen({ documentId }: { documentId: string }) {
                     <span className="ms-2 rounded border border-border-subtle px-1 text-xs">
                       {field.lookupRole === 'key'
                         ? t('documents.lookupKey')
-                        : t('documents.lookupConfirm')}
+                        : field.lookupRole === 'search'
+                          ? t('documents.lookupTyped')
+                          : t('documents.lookupConfirm')}
                     </span>
                   )}
                 </dt>
@@ -185,6 +178,15 @@ export function DocumentScreen({ documentId }: { documentId: string }) {
             ))}
           </dl>
         )}
+        {document.source === 'uploaded' && access.upload ? (
+          <div className="mt-4 border-t border-border-subtle pt-4">
+            <TypedFieldsForm
+              key={document.fields.map((field) => `${field.key}=${field.value}`).join('|')}
+              document={document}
+              onSaved={saved}
+            />
+          </div>
+        ) : null}
         {document.submissionId === null ? null : (
           <p className="mt-4 text-sm">
             <a
@@ -209,16 +211,41 @@ export function DocumentScreen({ documentId }: { documentId: string }) {
           <p className="text-sm text-content-muted">
             {document.shareable ? t('documents.sharing.on') : t('documents.sharing.off')}
           </p>
+          {document.qr.spot && document.source !== 'uploaded' ? (
+            <p className="mt-1 text-sm text-content-muted">
+              {document.qr.printed
+                ? t('documents.qrPlace.statePrinted')
+                : t('documents.qrPlace.stateWaiting')}
+            </p>
+          ) : null}
           {access.upload ? (
-            <div className="mt-3">
-              <button
-                type="button"
-                className={document.shareable ? buttonClass.secondary : buttonClass.primary}
-                disabled={share.isPending}
-                onClick={() => share.mutate(!document.shareable)}
-              >
-                {document.shareable ? t('documents.sharing.unshare') : t('documents.sharing.share')}
-              </button>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {document.link === null ? null : (
+                <button
+                  type="button"
+                  className={buttonClass.primary}
+                  disabled={share.isPending}
+                  onClick={() => {
+                    if (document.shareable) {
+                      setSharing(true);
+                    } else {
+                      share.mutate(true, { onSuccess: () => setSharing(true) });
+                    }
+                  }}
+                >
+                  {t('documents.actions.share')}
+                </button>
+              )}
+              {document.shareable ? (
+                <button
+                  type="button"
+                  className={buttonClass.secondary}
+                  disabled={share.isPending}
+                  onClick={() => share.mutate(false)}
+                >
+                  {t('documents.sharing.unshare')}
+                </button>
+              ) : null}
             </div>
           ) : null}
           {share.isError ? <Failure error={share.error} /> : null}
@@ -284,6 +311,10 @@ export function DocumentScreen({ documentId }: { documentId: string }) {
         </section>
       )}
 
+      {document.source === 'uploaded' && document.status === 'ready' && access.upload ? (
+        <UploadedQrSection document={document} onSaved={saved} />
+      ) : null}
+
       {access.manage ? (
         <div>
           <button type="button" className={buttonClass.danger} onClick={() => setDeleting(true)}>
@@ -293,33 +324,14 @@ export function DocumentScreen({ documentId }: { documentId: string }) {
       ) : null}
 
       {deleting ? (
-        <Dialog
-          title={t('documents.deleteTitle')}
+        <DeleteDocumentDialog
+          pending={remove.isPending}
+          error={remove.error}
+          onConfirm={() => remove.mutate()}
           onClose={() => setDeleting(false)}
-          footer={
-            <>
-              <button
-                type="button"
-                className={buttonClass.secondary}
-                onClick={() => setDeleting(false)}
-              >
-                {t('documents.cancel')}
-              </button>
-              <button
-                type="button"
-                className={buttonClass.danger}
-                disabled={remove.isPending}
-                onClick={() => remove.mutate()}
-              >
-                {t('documents.delete')}
-              </button>
-            </>
-          }
-        >
-          <p className="text-sm text-content">{t('documents.deleteBody')}</p>
-          {remove.isError ? <Failure error={remove.error} /> : null}
-        </Dialog>
+        />
       ) : null}
+      {sharing ? <ShareDialog document={document} onClose={() => setSharing(false)} /> : null}
     </div>
   );
 }

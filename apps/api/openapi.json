@@ -6285,6 +6285,9 @@
                     },
                     "aiMobileEnabled": {
                       "type": "boolean"
+                    },
+                    "showCompanyName": {
+                      "type": "boolean"
                     }
                   },
                   "required": [
@@ -6303,7 +6306,8 @@
                     "workingDays",
                     "aiWebEnabled",
                     "aiDesktopEnabled",
-                    "aiMobileEnabled"
+                    "aiMobileEnabled",
+                    "showCompanyName"
                   ],
                   "additionalProperties": false
                 }
@@ -6471,6 +6475,9 @@
                   },
                   "aiMobileEnabled": {
                     "type": "boolean"
+                  },
+                  "showCompanyName": {
+                    "type": "boolean"
                   }
                 }
               }
@@ -6555,6 +6562,9 @@
                     },
                     "aiMobileEnabled": {
                       "type": "boolean"
+                    },
+                    "showCompanyName": {
+                      "type": "boolean"
                     }
                   },
                   "required": [
@@ -6573,7 +6583,8 @@
                     "workingDays",
                     "aiWebEnabled",
                     "aiDesktopEnabled",
-                    "aiMobileEnabled"
+                    "aiMobileEnabled",
+                    "showCompanyName"
                   ],
                   "additionalProperties": false
                 }
@@ -7056,6 +7067,9 @@
                       "nullable": true,
                       "type": "string"
                     },
+                    "showCompanyName": {
+                      "type": "boolean"
+                    },
                     "logoPath": {
                       "nullable": true,
                       "type": "string"
@@ -7072,6 +7086,7 @@
                     "shellColour",
                     "defaultTheme",
                     "websiteUrl",
+                    "showCompanyName",
                     "logoPath",
                     "appIconPath"
                   ],
@@ -7985,6 +8000,15 @@
                         "websiteUrl": {
                           "nullable": true,
                           "type": "string"
+                        },
+                        "showCompanyName": {
+                          "type": "boolean"
+                        },
+                        "hiddenSections": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
                         }
                       },
                       "required": [
@@ -7995,7 +8019,9 @@
                         "brandColour",
                         "shellColour",
                         "defaultTheme",
-                        "websiteUrl"
+                        "websiteUrl",
+                        "showCompanyName",
+                        "hiddenSections"
                       ],
                       "additionalProperties": false
                     },
@@ -17979,6 +18005,53 @@
                     "shareable": {
                       "type": "boolean"
                     },
+                    "qr": {
+                      "type": "object",
+                      "properties": {
+                        "spot": {
+                          "type": "boolean"
+                        },
+                        "printed": {
+                          "type": "boolean"
+                        },
+                        "placement": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "page": {
+                              "type": "string",
+                              "enum": [
+                                "first",
+                                "last",
+                                "all"
+                              ]
+                            },
+                            "x": {
+                              "type": "number"
+                            },
+                            "y": {
+                              "type": "number"
+                            },
+                            "size": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "page",
+                            "x",
+                            "y",
+                            "size"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "spot",
+                        "printed",
+                        "placement"
+                      ],
+                      "additionalProperties": false
+                    },
                     "status": {
                       "type": "string",
                       "enum": [
@@ -18074,7 +18147,8 @@
                             "type": "string",
                             "enum": [
                               "key",
-                              "confirm"
+                              "confirm",
+                              "search"
                             ]
                           }
                         },
@@ -18100,6 +18174,7 @@
                     "record",
                     "customer",
                     "shareable",
+                    "qr",
                     "status",
                     "failureCode",
                     "linkOpens",
@@ -18424,6 +18499,53 @@
                           "shareable": {
                             "type": "boolean"
                           },
+                          "qr": {
+                            "type": "object",
+                            "properties": {
+                              "spot": {
+                                "type": "boolean"
+                              },
+                              "printed": {
+                                "type": "boolean"
+                              },
+                              "placement": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "page": {
+                                    "type": "string",
+                                    "enum": [
+                                      "first",
+                                      "last",
+                                      "all"
+                                    ]
+                                  },
+                                  "x": {
+                                    "type": "number"
+                                  },
+                                  "y": {
+                                    "type": "number"
+                                  },
+                                  "size": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "page",
+                                  "x",
+                                  "y",
+                                  "size"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "required": [
+                              "spot",
+                              "printed",
+                              "placement"
+                            ],
+                            "additionalProperties": false
+                          },
                           "status": {
                             "type": "string",
                             "enum": [
@@ -18519,7 +18641,8 @@
                                   "type": "string",
                                   "enum": [
                                     "key",
-                                    "confirm"
+                                    "confirm",
+                                    "search"
                                   ]
                                 }
                               },
@@ -18545,6 +18668,7 @@
                           "record",
                           "customer",
                           "shareable",
+                          "qr",
                           "status",
                           "failureCode",
                           "linkOpens",
@@ -18699,6 +18823,65 @@
                   "shareable": {
                     "default": false,
                     "type": "boolean"
+                  },
+                  "fields": {
+                    "default": [],
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "label": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 60
+                        },
+                        "value": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 500
+                        }
+                      },
+                      "required": [
+                        "label",
+                        "value"
+                      ]
+                    }
+                  },
+                  "qrPlacement": {
+                    "nullable": true,
+                    "type": "object",
+                    "properties": {
+                      "page": {
+                        "type": "string",
+                        "enum": [
+                          "first",
+                          "last",
+                          "all"
+                        ]
+                      },
+                      "x": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "y": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "size": {
+                        "type": "number",
+                        "minimum": 0.05,
+                        "maximum": 0.5
+                      }
+                    },
+                    "required": [
+                      "page",
+                      "x",
+                      "y",
+                      "size"
+                    ]
                   }
                 },
                 "required": [
@@ -18812,6 +18995,53 @@
                     "shareable": {
                       "type": "boolean"
                     },
+                    "qr": {
+                      "type": "object",
+                      "properties": {
+                        "spot": {
+                          "type": "boolean"
+                        },
+                        "printed": {
+                          "type": "boolean"
+                        },
+                        "placement": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "page": {
+                              "type": "string",
+                              "enum": [
+                                "first",
+                                "last",
+                                "all"
+                              ]
+                            },
+                            "x": {
+                              "type": "number"
+                            },
+                            "y": {
+                              "type": "number"
+                            },
+                            "size": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "page",
+                            "x",
+                            "y",
+                            "size"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "spot",
+                        "printed",
+                        "placement"
+                      ],
+                      "additionalProperties": false
+                    },
                     "status": {
                       "type": "string",
                       "enum": [
@@ -18907,7 +19137,8 @@
                             "type": "string",
                             "enum": [
                               "key",
-                              "confirm"
+                              "confirm",
+                              "search"
                             ]
                           }
                         },
@@ -18933,6 +19164,7 @@
                     "record",
                     "customer",
                     "shareable",
+                    "qr",
                     "status",
                     "failureCode",
                     "linkOpens",
@@ -19134,6 +19366,53 @@
                     "shareable": {
                       "type": "boolean"
                     },
+                    "qr": {
+                      "type": "object",
+                      "properties": {
+                        "spot": {
+                          "type": "boolean"
+                        },
+                        "printed": {
+                          "type": "boolean"
+                        },
+                        "placement": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "page": {
+                              "type": "string",
+                              "enum": [
+                                "first",
+                                "last",
+                                "all"
+                              ]
+                            },
+                            "x": {
+                              "type": "number"
+                            },
+                            "y": {
+                              "type": "number"
+                            },
+                            "size": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "page",
+                            "x",
+                            "y",
+                            "size"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "spot",
+                        "printed",
+                        "placement"
+                      ],
+                      "additionalProperties": false
+                    },
                     "status": {
                       "type": "string",
                       "enum": [
@@ -19229,7 +19508,8 @@
                             "type": "string",
                             "enum": [
                               "key",
-                              "confirm"
+                              "confirm",
+                              "search"
                             ]
                           }
                         },
@@ -19255,6 +19535,7 @@
                     "record",
                     "customer",
                     "shareable",
+                    "qr",
                     "status",
                     "failureCode",
                     "linkOpens",
@@ -19485,6 +19766,53 @@
                     "shareable": {
                       "type": "boolean"
                     },
+                    "qr": {
+                      "type": "object",
+                      "properties": {
+                        "spot": {
+                          "type": "boolean"
+                        },
+                        "printed": {
+                          "type": "boolean"
+                        },
+                        "placement": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "page": {
+                              "type": "string",
+                              "enum": [
+                                "first",
+                                "last",
+                                "all"
+                              ]
+                            },
+                            "x": {
+                              "type": "number"
+                            },
+                            "y": {
+                              "type": "number"
+                            },
+                            "size": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "page",
+                            "x",
+                            "y",
+                            "size"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "spot",
+                        "printed",
+                        "placement"
+                      ],
+                      "additionalProperties": false
+                    },
                     "status": {
                       "type": "string",
                       "enum": [
@@ -19580,7 +19908,8 @@
                             "type": "string",
                             "enum": [
                               "key",
-                              "confirm"
+                              "confirm",
+                              "search"
                             ]
                           }
                         },
@@ -19606,6 +19935,7 @@
                     "record",
                     "customer",
                     "shareable",
+                    "qr",
                     "status",
                     "failureCode",
                     "linkOpens",
@@ -20059,6 +20389,53 @@
                     "shareable": {
                       "type": "boolean"
                     },
+                    "qr": {
+                      "type": "object",
+                      "properties": {
+                        "spot": {
+                          "type": "boolean"
+                        },
+                        "printed": {
+                          "type": "boolean"
+                        },
+                        "placement": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "page": {
+                              "type": "string",
+                              "enum": [
+                                "first",
+                                "last",
+                                "all"
+                              ]
+                            },
+                            "x": {
+                              "type": "number"
+                            },
+                            "y": {
+                              "type": "number"
+                            },
+                            "size": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "page",
+                            "x",
+                            "y",
+                            "size"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "spot",
+                        "printed",
+                        "placement"
+                      ],
+                      "additionalProperties": false
+                    },
                     "status": {
                       "type": "string",
                       "enum": [
@@ -20154,7 +20531,8 @@
                             "type": "string",
                             "enum": [
                               "key",
-                              "confirm"
+                              "confirm",
+                              "search"
                             ]
                           }
                         },
@@ -20180,6 +20558,7 @@
                     "record",
                     "customer",
                     "shareable",
+                    "qr",
                     "status",
                     "failureCode",
                     "linkOpens",
@@ -20274,7 +20653,7 @@
       "post": {
         "operationId": "setDocumentShareable",
         "summary": "Let a document be shown outside the company, or stop it",
-        "description": "Needs `document.upload`. `shareable: false` stops the QR code’s link (it answers as if the code did not exist) and the website lookup at once; `true` lets them show it again, while it is not expired. Each change is recorded in the audit log. Works the same for generated and uploaded documents.",
+        "description": "Needs `document.upload`. `shareable: false` stops the QR code’s link (it answers as if the code did not exist) and the website lookup at once; `true` lets them show it again, while it is not expired. A document with a place for its share QR code that does not carry it yet gets it now (0075): the worker re-prints it, or stamps an uploaded PDF, within seconds, and the PDF served meanwhile is the one it had; stopping sharing keeps the code. Each change is recorded in the audit log. Works the same for generated and uploaded documents.",
         "tags": [
           "documents"
         ],
@@ -20410,6 +20789,53 @@
                     "shareable": {
                       "type": "boolean"
                     },
+                    "qr": {
+                      "type": "object",
+                      "properties": {
+                        "spot": {
+                          "type": "boolean"
+                        },
+                        "printed": {
+                          "type": "boolean"
+                        },
+                        "placement": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "page": {
+                              "type": "string",
+                              "enum": [
+                                "first",
+                                "last",
+                                "all"
+                              ]
+                            },
+                            "x": {
+                              "type": "number"
+                            },
+                            "y": {
+                              "type": "number"
+                            },
+                            "size": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "page",
+                            "x",
+                            "y",
+                            "size"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "spot",
+                        "printed",
+                        "placement"
+                      ],
+                      "additionalProperties": false
+                    },
                     "status": {
                       "type": "string",
                       "enum": [
@@ -20505,7 +20931,8 @@
                             "type": "string",
                             "enum": [
                               "key",
-                              "confirm"
+                              "confirm",
+                              "search"
                             ]
                           }
                         },
@@ -20531,6 +20958,7 @@
                     "record",
                     "customer",
                     "shareable",
+                    "qr",
                     "status",
                     "failureCode",
                     "linkOpens",
@@ -20582,6 +21010,961 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/documents/{documentId}/fields": {
+      "put": {
+        "operationId": "setDocumentFields",
+        "summary": "Replace the fields typed on an uploaded document",
+        "description": "Needs `document.upload`. The whole list, at most ten, each a name and a value (0075): what is sent replaces what was typed before, and an empty list removes them all. The reference and the customer are not touched. Only an uploaded document has typed fields (422 `document_not_uploaded`). Each change is recorded in the audit log.",
+        "tags": [
+          "documents"
+        ],
+        "parameters": [
+          {
+            "name": "documentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "fields": {
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "label": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 60
+                        },
+                        "value": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 500
+                        }
+                      },
+                      "required": [
+                        "label",
+                        "value"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "fields"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The document.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "source": {
+                      "type": "string",
+                      "enum": [
+                        "generated",
+                        "uploaded",
+                        "quote",
+                        "invoice",
+                        "purchase_order",
+                        "job_report"
+                      ]
+                    },
+                    "templateId": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "templateRevision": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "submissionId": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "formId": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "reference": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "record": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "quote",
+                            "invoice",
+                            "purchase_order",
+                            "job_report"
+                          ]
+                        },
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "id"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "customer": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "name": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "shareable": {
+                      "type": "boolean"
+                    },
+                    "qr": {
+                      "type": "object",
+                      "properties": {
+                        "spot": {
+                          "type": "boolean"
+                        },
+                        "printed": {
+                          "type": "boolean"
+                        },
+                        "placement": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "page": {
+                              "type": "string",
+                              "enum": [
+                                "first",
+                                "last",
+                                "all"
+                              ]
+                            },
+                            "x": {
+                              "type": "number"
+                            },
+                            "y": {
+                              "type": "number"
+                            },
+                            "size": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "page",
+                            "x",
+                            "y",
+                            "size"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "spot",
+                        "printed",
+                        "placement"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "pending",
+                        "ready",
+                        "failed"
+                      ]
+                    },
+                    "failureCode": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "linkOpens": {
+                      "type": "boolean"
+                    },
+                    "link": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "publicCode": {
+                      "type": "string"
+                    },
+                    "pageCount": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "byteSize": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "renderedAt": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "expiredAt": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "expiresAt": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "createdBy": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "fields": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "key": {
+                            "type": "string"
+                          },
+                          "label": {
+                            "type": "object",
+                            "additionalProperties": {
+                              "type": "string"
+                            }
+                          },
+                          "value": {
+                            "type": "string"
+                          },
+                          "lookupRole": {
+                            "nullable": true,
+                            "type": "string",
+                            "enum": [
+                              "key",
+                              "confirm",
+                              "search"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "key",
+                          "label",
+                          "value",
+                          "lookupRole"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "title",
+                    "source",
+                    "templateId",
+                    "templateRevision",
+                    "submissionId",
+                    "formId",
+                    "reference",
+                    "record",
+                    "customer",
+                    "shareable",
+                    "qr",
+                    "status",
+                    "failureCode",
+                    "linkOpens",
+                    "link",
+                    "publicCode",
+                    "pageCount",
+                    "byteSize",
+                    "renderedAt",
+                    "expiredAt",
+                    "expiresAt",
+                    "createdBy",
+                    "createdAt",
+                    "fields"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller lacks the required permission, or the company does not have the `documents` module switched on (`feature_disabled`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such document."
+          },
+          "422": {
+            "description": "Not an uploaded document (`document_not_uploaded`), or two fields share a name."
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/documents/{documentId}/qr-placement": {
+      "put": {
+        "operationId": "setDocumentQrPlacement",
+        "summary": "Place, move or remove an uploaded PDF’s share QR code",
+        "description": "Needs `document.upload` (0075). `placement`: the first, the last or every page, and the code’s top-left corner and width as fractions of the page; null for no code. A document that is shared, or was, is stamped again from the PDF as uploaded within seconds (or goes back to it, for null); one never shared gets its code when it is. Only an uploaded document (422 `document_not_uploaded`). Recorded in the audit log.",
+        "tags": [
+          "documents"
+        ],
+        "parameters": [
+          {
+            "name": "documentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "placement": {
+                    "nullable": true,
+                    "type": "object",
+                    "properties": {
+                      "page": {
+                        "type": "string",
+                        "enum": [
+                          "first",
+                          "last",
+                          "all"
+                        ]
+                      },
+                      "x": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "y": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "size": {
+                        "type": "number",
+                        "minimum": 0.05,
+                        "maximum": 0.5
+                      }
+                    },
+                    "required": [
+                      "page",
+                      "x",
+                      "y",
+                      "size"
+                    ]
+                  }
+                },
+                "required": [
+                  "placement"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The document.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "source": {
+                      "type": "string",
+                      "enum": [
+                        "generated",
+                        "uploaded",
+                        "quote",
+                        "invoice",
+                        "purchase_order",
+                        "job_report"
+                      ]
+                    },
+                    "templateId": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "templateRevision": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "submissionId": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "formId": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "reference": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "record": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "quote",
+                            "invoice",
+                            "purchase_order",
+                            "job_report"
+                          ]
+                        },
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "id"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "customer": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "name": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "shareable": {
+                      "type": "boolean"
+                    },
+                    "qr": {
+                      "type": "object",
+                      "properties": {
+                        "spot": {
+                          "type": "boolean"
+                        },
+                        "printed": {
+                          "type": "boolean"
+                        },
+                        "placement": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "page": {
+                              "type": "string",
+                              "enum": [
+                                "first",
+                                "last",
+                                "all"
+                              ]
+                            },
+                            "x": {
+                              "type": "number"
+                            },
+                            "y": {
+                              "type": "number"
+                            },
+                            "size": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "page",
+                            "x",
+                            "y",
+                            "size"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "spot",
+                        "printed",
+                        "placement"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "pending",
+                        "ready",
+                        "failed"
+                      ]
+                    },
+                    "failureCode": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "linkOpens": {
+                      "type": "boolean"
+                    },
+                    "link": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "publicCode": {
+                      "type": "string"
+                    },
+                    "pageCount": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "byteSize": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "renderedAt": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "expiredAt": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "expiresAt": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "createdBy": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "fields": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "key": {
+                            "type": "string"
+                          },
+                          "label": {
+                            "type": "object",
+                            "additionalProperties": {
+                              "type": "string"
+                            }
+                          },
+                          "value": {
+                            "type": "string"
+                          },
+                          "lookupRole": {
+                            "nullable": true,
+                            "type": "string",
+                            "enum": [
+                              "key",
+                              "confirm",
+                              "search"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "key",
+                          "label",
+                          "value",
+                          "lookupRole"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "title",
+                    "source",
+                    "templateId",
+                    "templateRevision",
+                    "submissionId",
+                    "formId",
+                    "reference",
+                    "record",
+                    "customer",
+                    "shareable",
+                    "qr",
+                    "status",
+                    "failureCode",
+                    "linkOpens",
+                    "link",
+                    "publicCode",
+                    "pageCount",
+                    "byteSize",
+                    "renderedAt",
+                    "expiredAt",
+                    "expiresAt",
+                    "createdBy",
+                    "createdAt",
+                    "fields"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller lacks the required permission, or the company does not have the `documents` module switched on (`feature_disabled`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such document."
+          },
+          "422": {
+            "description": "Not an uploaded document (`document_not_uploaded`), or a place off the page."
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/documents/{documentId}/original": {
+      "get": {
+        "operationId": "getDocumentOriginal",
+        "summary": "An uploaded PDF as uploaded, to place its QR code on",
+        "description": "Needs `document.upload` (0075). The PDF as it was uploaded, before any QR code was stamped in, base64 in JSON like the template preview, for the screen where the code is dragged into place. Only an uploaded document (422 `document_not_uploaded`).",
+        "tags": [
+          "documents"
+        ],
+        "parameters": [
+          {
+            "name": "documentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The PDF.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "contentType": {
+                      "type": "string",
+                      "enum": [
+                        "application/pdf"
+                      ]
+                    },
+                    "base64": {
+                      "type": "string"
+                    },
+                    "byteSize": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "contentType",
+                    "base64",
+                    "byteSize"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller lacks the required permission, or the company does not have the `documents` module switched on (`feature_disabled`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such document, or its file is gone."
+          },
+          "422": {
+            "description": "Not an uploaded document (`document_not_uploaded`)."
           },
           "429": {
             "description": "Rate limit exceeded.",
@@ -20989,6 +22372,53 @@
                           "shareable": {
                             "type": "boolean"
                           },
+                          "qr": {
+                            "type": "object",
+                            "properties": {
+                              "spot": {
+                                "type": "boolean"
+                              },
+                              "printed": {
+                                "type": "boolean"
+                              },
+                              "placement": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "page": {
+                                    "type": "string",
+                                    "enum": [
+                                      "first",
+                                      "last",
+                                      "all"
+                                    ]
+                                  },
+                                  "x": {
+                                    "type": "number"
+                                  },
+                                  "y": {
+                                    "type": "number"
+                                  },
+                                  "size": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "page",
+                                  "x",
+                                  "y",
+                                  "size"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "required": [
+                              "spot",
+                              "printed",
+                              "placement"
+                            ],
+                            "additionalProperties": false
+                          },
                           "status": {
                             "type": "string",
                             "enum": [
@@ -21084,7 +22514,8 @@
                                   "type": "string",
                                   "enum": [
                                     "key",
-                                    "confirm"
+                                    "confirm",
+                                    "search"
                                   ]
                                 }
                               },
@@ -21110,6 +22541,7 @@
                           "record",
                           "customer",
                           "shareable",
+                          "qr",
                           "status",
                           "failureCode",
                           "linkOpens",
@@ -21400,6 +22832,53 @@
                     "shareable": {
                       "type": "boolean"
                     },
+                    "qr": {
+                      "type": "object",
+                      "properties": {
+                        "spot": {
+                          "type": "boolean"
+                        },
+                        "printed": {
+                          "type": "boolean"
+                        },
+                        "placement": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "page": {
+                              "type": "string",
+                              "enum": [
+                                "first",
+                                "last",
+                                "all"
+                              ]
+                            },
+                            "x": {
+                              "type": "number"
+                            },
+                            "y": {
+                              "type": "number"
+                            },
+                            "size": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "page",
+                            "x",
+                            "y",
+                            "size"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "spot",
+                        "printed",
+                        "placement"
+                      ],
+                      "additionalProperties": false
+                    },
                     "status": {
                       "type": "string",
                       "enum": [
@@ -21495,7 +22974,8 @@
                             "type": "string",
                             "enum": [
                               "key",
-                              "confirm"
+                              "confirm",
+                              "search"
                             ]
                           }
                         },
@@ -21521,6 +23001,7 @@
                     "record",
                     "customer",
                     "shareable",
+                    "qr",
                     "status",
                     "failureCode",
                     "linkOpens",
@@ -22107,8 +23588,8 @@
     "/v1/website/documents/lookup": {
       "post": {
         "operationId": "lookupWebsiteDocument",
-        "summary": "Find one document from the company’s own website",
-        "description": "For a company’s website server, never a browser: `Authorization: Bearer <website key>`. Either `reference` (what a visitor typed, matched against any document’s lookup key, an uploaded document’s reference number included) with `customer` as the second value, or `key` (a named template field) with `confirm`. The second value is required when the document has one. Exact after trimming and ignoring case. Only documents the company has made shareable, and whose link has not expired, are found. Answers `found: false` rather than 404, and never more than one document. Needs the company’s documents switch on both sides (Integr8’s `website_files` and the company’s own). Rate-limited per key (429).",
+        "summary": "Find documents from the company’s own website",
+        "description": "For a company’s website server, never a browser: `Authorization: Bearer <website key>`. Send `q`, what a visitor typed in the one search box (0075): it is matched exactly, after trimming and ignoring case, against every searchable field of a document (its reference, or a made document’s lookup field, and the fields typed on an uploaded one), never against the customer’s name, and every match is returned in `documents`, newest first, at most ten. The older forms still work and find one document or none: `reference` with `customer` as the second value, or `key` (a named template field) with `confirm`; the second value is required when the document has one. Only documents the company has made shareable, and whose link has not expired, are found. Answers `found: false` rather than 404. Needs the company’s documents switch on both sides (Integr8’s `website_files` and the company’s own). Rate-limited per key (429).",
         "tags": [
           "documents"
         ],
@@ -22119,6 +23600,11 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "q": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
                   "key": {
                     "type": "object",
                     "properties": {
@@ -22174,7 +23660,7 @@
         },
         "responses": {
           "200": {
-            "description": "One document, or none.",
+            "description": "The documents found, or none.",
             "content": {
               "application/json": {
                 "schema": {
@@ -22206,6 +23692,9 @@
                         },
                         "link": {
                           "nullable": true,
+                          "type": "string"
+                        },
+                        "code": {
                           "type": "string"
                         },
                         "viewUrl": {
@@ -22252,6 +23741,257 @@
                         "createdAt",
                         "pageCount",
                         "link",
+                        "code",
+                        "viewUrl",
+                        "downloadUrl",
+                        "expiresAt",
+                        "fields"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "documents": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "title": {
+                            "type": "string"
+                          },
+                          "formTitle": {
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          },
+                          "pageCount": {
+                            "nullable": true,
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "link": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "code": {
+                            "type": "string"
+                          },
+                          "viewUrl": {
+                            "type": "string"
+                          },
+                          "downloadUrl": {
+                            "type": "string"
+                          },
+                          "expiresAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          },
+                          "fields": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "key": {
+                                  "type": "string"
+                                },
+                                "label": {
+                                  "type": "object",
+                                  "additionalProperties": {
+                                    "type": "string"
+                                  }
+                                },
+                                "value": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "key",
+                                "label",
+                                "value"
+                              ],
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "required": [
+                          "title",
+                          "formTitle",
+                          "createdAt",
+                          "pageCount",
+                          "link",
+                          "code",
+                          "viewUrl",
+                          "downloadUrl",
+                          "expiresAt",
+                          "fields"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "found",
+                    "document",
+                    "documents"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No website key, or not a live one (`website_key_invalid`)."
+          },
+          "403": {
+            "description": "The company does not have documents switched on (`feature_disabled`)."
+          },
+          "422": {
+            "description": "The request failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many lookups with this key; slow down."
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "websiteKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/website/documents/by-code/{code}": {
+      "get": {
+        "operationId": "getWebsiteDocumentByCode",
+        "summary": "One document by its link’s code, for the company’s own website",
+        "description": "For a company’s website server, never a browser: `Authorization: Bearer <website key>`. The page a document’s QR code and shared link open when the company’s links point at its own website (0075), such as `https://example.com/documents/<code>`, asks this with the code from its address. Found only when the code is one of this company’s documents, shared, and its link has not expired or been stopped; every other case answers `found: false` alike, so the page learns nothing it should not. Same switches and rate limit as the lookup.",
+        "tags": [
+          "documents"
+        ],
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{22}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The document, or none.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "found": {
+                      "type": "boolean"
+                    },
+                    "document": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "title": {
+                          "type": "string"
+                        },
+                        "formTitle": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "pageCount": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "link": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "viewUrl": {
+                          "type": "string"
+                        },
+                        "downloadUrl": {
+                          "type": "string"
+                        },
+                        "expiresAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "fields": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "key": {
+                                "type": "string"
+                              },
+                              "label": {
+                                "type": "object",
+                                "additionalProperties": {
+                                  "type": "string"
+                                }
+                              },
+                              "value": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "key",
+                              "label",
+                              "value"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "title",
+                        "formTitle",
+                        "createdAt",
+                        "pageCount",
+                        "link",
+                        "code",
                         "viewUrl",
                         "downloadUrl",
                         "expiresAt",
@@ -191783,6 +193523,14 @@
                         "code"
                       ]
                     }
+                  },
+                  "tabs": {
+                    "maxItems": 200,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 64
+                    }
                   }
                 },
                 "required": [
@@ -192190,6 +193938,25 @@
                         },
                         "aiMobileEnabled": {
                           "type": "boolean"
+                        },
+                        "showCompanyName": {
+                          "type": "boolean"
+                        },
+                        "documentLinkPattern": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "hiddenSections": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "tabs": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
                         }
                       },
                       "required": [
@@ -192202,7 +193969,11 @@
                         "appsEnabled",
                         "aiWebEnabled",
                         "aiDesktopEnabled",
-                        "aiMobileEnabled"
+                        "aiMobileEnabled",
+                        "showCompanyName",
+                        "documentLinkPattern",
+                        "hiddenSections",
+                        "tabs"
                       ],
                       "additionalProperties": false
                     },
@@ -193160,8 +194931,8 @@
     "/v1/platform/companies/{tenantId}/settings": {
       "patch": {
         "operationId": "updateCompanySettings",
-        "summary": "Change a company’s website, or whether its own apps are built",
-        "description": "The two branding facts the dashboard owns. The rest of the look — logo, icon, colours, theme — is set from the desktop app while acting as the company, where it can be previewed. Switching `appsEnabled` on puts the company in the list the release pipeline builds for and, when the deployment can start builds (`APP_BUILDS=github`), starts its first build at once; `appBuild` says how that went, and is null when this change did not switch apps on.",
+        "summary": "Change a company’s website, its document links, or whether its own apps are built",
+        "description": "The branding facts the dashboard owns. `documentLinkPattern` (0075) points the company’s document links at its own website: an https address with `{code}` in it, on the registered website’s host or one under it (422 `document_link_invalid`, `document_link_needs_website`, `document_link_other_site`); null goes back to Integr8’s page, and codes already printed keep working there either way. The rest of the look — logo, icon, colours, theme — is set from the desktop app while acting as the company, where it can be previewed. Switching `appsEnabled` on puts the company in the list the release pipeline builds for and, when the deployment can start builds (`APP_BUILDS=github`), starts its first build at once; `appBuild` says how that went, and is null when this change did not switch apps on.",
         "tags": [
           "platform"
         ],
@@ -193201,6 +194972,11 @@
                   },
                   "aiMobileEnabled": {
                     "type": "boolean"
+                  },
+                  "documentLinkPattern": {
+                    "nullable": true,
+                    "type": "string",
+                    "maxLength": 500
                   }
                 }
               }
@@ -193259,6 +195035,25 @@
                     "aiMobileEnabled": {
                       "type": "boolean"
                     },
+                    "showCompanyName": {
+                      "type": "boolean"
+                    },
+                    "documentLinkPattern": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "hiddenSections": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "tabs": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
                     "appBuild": {
                       "nullable": true,
                       "type": "object",
@@ -193304,6 +195099,10 @@
                     "aiWebEnabled",
                     "aiDesktopEnabled",
                     "aiMobileEnabled",
+                    "showCompanyName",
+                    "documentLinkPattern",
+                    "hiddenSections",
+                    "tabs",
                     "appBuild"
                   ],
                   "additionalProperties": false
@@ -193325,7 +195124,10 @@
             "description": "No such company."
           },
           "422": {
-            "description": "The request failed validation.",
+            "description": "A document link address that cannot be used."
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
             "content": {
               "application/json": {
                 "schema": {
@@ -193333,6 +195135,130 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/platform/companies/{tenantId}/tabs": {
+      "put": {
+        "operationId": "setCompanyTabs",
+        "summary": "Choose exactly which menu tabs a company sees",
+        "description": "Staff only (0075). `tabs` lists the tabs to show, by navigation key; every other switchable tab is hidden from the company’s web, desktop and phone apps, and its page says it is not available. A module with tabs follows them: on when any of its tabs is listed (with the module it is built on), off when none is, which is what stops its data on the server. The dashboard, the form builder, branding and the e-invoicing switch cannot be hidden. Recorded in the platform audit log.",
+        "tags": [
+          "platform"
+        ],
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tabs": {
+                    "maxItems": 200,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 64
+                    }
+                  }
+                },
+                "required": [
+                  "tabs"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The company’s tabs and flags, as they now are.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "tabs": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "hiddenSections": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "flags": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "boolean"
+                      }
+                    }
+                  },
+                  "required": [
+                    "tabs",
+                    "hiddenSections",
+                    "flags"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A platform session is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such company."
+          },
+          "422": {
+            "description": "A key that is not a switchable tab (`unknown_tab`)."
           },
           "429": {
             "description": "Rate limit exceeded.",

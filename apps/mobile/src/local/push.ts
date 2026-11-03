@@ -167,7 +167,7 @@ function jobOf(data: unknown): string | undefined {
   return typeof id === 'string' ? id : undefined;
 }
 
-/** A warranty alert the phone raised itself (`warranty-alerts.ts`): it names an asset, and needs no sync. */
+/** A warranty alert an older build of the phone raised itself: it names an asset, and needs no sync. */
 function warrantyAlertOf(data: unknown): { assetId?: string } | undefined {
   const content = data as { kind?: unknown; assetId?: unknown } | null;
   if (content?.kind !== 'warranty') {

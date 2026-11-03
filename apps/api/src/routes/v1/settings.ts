@@ -53,6 +53,8 @@ const settingsSchema = z.object({
   aiWebEnabled: z.boolean(),
   aiDesktopEnabled: z.boolean(),
   aiMobileEnabled: z.boolean(),
+  /** Whether the apps print the company name beside its logo; ignored without a logo (0075). */
+  showCompanyName: z.boolean(),
 });
 
 export const getSettingsRoute = defineRoute({
@@ -118,6 +120,8 @@ export const updateSettingsRoute = defineRoute({
     aiWebEnabled: z.boolean().optional(),
     aiDesktopEnabled: z.boolean().optional(),
     aiMobileEnabled: z.boolean().optional(),
+    /** Integr8's to set, with the rest of the look (0075). */
+    showCompanyName: z.boolean().optional(),
   }),
   responses: {
     200: { description: 'The settings, as they now are.', schema: settingsSchema },
@@ -375,6 +379,7 @@ const BRANDING_FIELDS = [
   'websiteUrl',
   'appIconMediaId',
   'appsEnabled',
+  'showCompanyName',
 ] as const;
 
 /**
@@ -417,6 +422,7 @@ function toBody(settings: {
   aiWebEnabled: boolean;
   aiDesktopEnabled: boolean;
   aiMobileEnabled: boolean;
+  showCompanyName: boolean;
 }) {
   return {
     logoMediaId: settings.logoMediaId,
@@ -435,6 +441,7 @@ function toBody(settings: {
     aiWebEnabled: settings.aiWebEnabled,
     aiDesktopEnabled: settings.aiDesktopEnabled,
     aiMobileEnabled: settings.aiMobileEnabled,
+    showCompanyName: settings.showCompanyName,
   };
 }
 

@@ -76,7 +76,7 @@ function design(language: 'en' | 'ar'): TemplateDesign {
         ],
         rows,
       },
-      { type: 'qr', id: 'qr', size: 30, align: 'end' },
+      { type: 'qr', id: 'qr', content: { kind: 'share' }, size: 30, align: 'end' },
     ],
   };
 }

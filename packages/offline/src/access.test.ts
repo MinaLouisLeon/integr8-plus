@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  access,
   type Announcement,
   announcements,
   announcementText,
   dismissAnnouncement,
   mayCorrectAccess,
   saveAccess,
+  screenShown,
 } from './access.js';
 import { applySnapshot } from './snapshot.js';
 import { customerDetail, me, siteBody, uuid, workOrderDetail } from './testing/fixtures.js';
@@ -148,5 +150,17 @@ describe('correcting access notes from the phone', () => {
       saveAccess(sql, { permissions: ['customer.manage'], features: {} }),
     );
     expect(await db.read((sql) => mayCorrectAccess(sql, other.id))).toBe(true);
+  });
+});
+
+describe('the tabs switched off for the company (0075)', () => {
+  it('hides the phone screen of a hidden tab, and nothing before the server has said', async () => {
+    const { db } = await phone();
+    expect(screenShown(await db.read((sql) => access(sql)), 'expenses')).toBe(true);
+    const company = { ...me().company, hiddenSections: ['myExpenses'] };
+    await db.write(['meta'], (sql) => saveAccess(sql, { permissions: [], features: {}, company }));
+    const granted = await db.read((sql) => access(sql));
+    expect(screenShown(granted, 'expenses')).toBe(false);
+    expect(screenShown(granted, 'documents')).toBe(true);
   });
 });

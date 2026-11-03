@@ -4,6 +4,7 @@ import { useTranslation } from '@integr8/i18n';
 import { type OperationsConfig, OperationsContext } from '@integr8/operations-dom';
 import { useRouter } from 'next/navigation';
 import { useMemo, type ReactNode } from 'react';
+import { renderPdfPage } from '~/lib/pdf-page';
 import { apiClient } from '~/lib/session';
 
 /**
@@ -121,6 +122,8 @@ export function OperationsScreens({ children }: { children: ReactNode }) {
         submissions: '/submissions',
       },
       download: saveFile,
+      // Drawing an uploaded PDF's page to place its QR code on (0075).
+      pdfPage: renderPdfPage,
     }),
     [router, i18n.language],
   );

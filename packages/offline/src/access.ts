@@ -1,4 +1,9 @@
-import { CLOSED_WORK_ORDER_STATES } from '@integr8/core';
+import {
+  CLOSED_WORK_ORDER_STATES,
+  isSectionHidden,
+  PHONE_SCREEN_SECTIONS,
+  type PhoneScreen,
+} from '@integr8/core';
 import type { Me, WorkOrderDetail } from './api-types.js';
 import { identity } from './queries.js';
 import type { SqlConnection } from './sql.js';
@@ -13,6 +18,10 @@ import type { SqlConnection } from './sql.js';
  * The announcements in the same answer are kept beside them (P15, P17): the
  * notices Integr8 posts — planned maintenance, a payment reminder — shown on
  * the phone as last heard, so one posted yesterday still shows in a basement.
+ *
+ * So are the tabs Integr8 switched off for the company (0075): the phone has
+ * no menu, but each of its home-screen screens belongs to a tab, and a hidden
+ * tab takes its phone screen with it.
  */
 
 export type Permission = Me['permissions'][number];
@@ -20,6 +29,8 @@ export type Permission = Me['permissions'][number];
 export interface LocalAccess {
   permissions: ReadonlySet<string>;
   features: Readonly<Record<string, boolean>>;
+  /** The tabs switched off for the company, by navigation key (0075). */
+  hidden: readonly string[];
 }
 
 export type Announcement = Me['announcements'][number];
@@ -52,10 +63,14 @@ async function readJson<T>(sql: SqlConnection, key: string, fallback: T): Promis
  */
 export async function saveAccess(
   sql: SqlConnection,
-  me: Pick<Me, 'permissions' | 'features'> & Partial<Pick<Me, 'announcements'>>,
+  me: Pick<Me, 'permissions' | 'features'> & Partial<Pick<Me, 'announcements' | 'company'>>,
 ): Promise<void> {
   await setMeta(sql, 'permissions', JSON.stringify(me.permissions));
   await setMeta(sql, 'features', JSON.stringify(me.features));
+  if (me.company !== undefined) {
+    // A server older than 0075 sends no list: nothing is hidden.
+    await setMeta(sql, 'hidden_sections', JSON.stringify(me.company.hiddenSections ?? []));
+  }
   if (me.announcements !== undefined) {
     const ids = new Set(me.announcements.map((announcement) => announcement.id));
     const dismissed = await readJson<string[]>(sql, 'announcements_dismissed', []);
@@ -71,15 +86,22 @@ export async function saveAccess(
 /** What the person may do, as last heard; nothing before the server has said. */
 export async function access(sql: SqlConnection): Promise<LocalAccess> {
   const rows = await sql.all<{ key: string; value: string }>(
-    `select key, value from meta where key in ('permissions', 'features')`,
+    `select key, value from meta where key in ('permissions', 'features', 'hidden_sections')`,
   );
   const meta = new Map(rows.map((row) => [row.key, row.value]));
   const permissions = meta.get('permissions');
   const features = meta.get('features');
+  const hidden = meta.get('hidden_sections');
   return {
     permissions: new Set(permissions === undefined ? [] : (JSON.parse(permissions) as string[])),
     features: features === undefined ? {} : (JSON.parse(features) as Record<string, boolean>),
+    hidden: hidden === undefined ? [] : (JSON.parse(hidden) as string[]),
   };
+}
+
+/** Whether the company still shows this phone screen: its tab is not switched off (0075). */
+export function screenShown(granted: LocalAccess, screen: PhoneScreen): boolean {
+  return !isSectionHidden(PHONE_SCREEN_SECTIONS[screen], granted.hidden);
 }
 
 /** Whether `granted` holds `permission`, and the company has `feature` switched on. */

@@ -16,6 +16,7 @@ import {
 import { formatMoney, formatQuantity } from '~/lib/format';
 import { fetchMyPayslips, type Payslip } from '~/local/online';
 import { useOnlineRequest } from '~/local/use-online';
+import { ScreenGate } from '~/components/screen-gate';
 
 /**
  * One's own payslips, read only (ADR-0012), from `/v1/hr/me/payslips`: the
@@ -23,7 +24,7 @@ import { useOnlineRequest } from '~/local/use-online';
  * headed by the company that pays, as the printed payslip is. Online: a
  * payslip is the office's to show, so the phone keeps no copy of it.
  */
-export default function PayslipsScreen() {
+function PayslipsScreenBody() {
   const { t } = useTranslation();
   const { state, reload } = useOnlineRequest('payslips', fetchMyPayslips);
 
@@ -163,3 +164,12 @@ const styles = StyleSheet.create({
   toggle: { alignItems: 'flex-start' },
   breakdown: { gap: spacing[3] },
 });
+
+/** Shown only while the company keeps its tab (0075). */
+export default function PayslipsScreen() {
+  return (
+    <ScreenGate screen="payslips">
+      <PayslipsScreenBody />
+    </ScreenGate>
+  );
+}

@@ -507,6 +507,9 @@ importers:
       next:
         specifier: 16.4.3
         version: 16.4.3(@opentelemetry/api@1.9.1)(@types/node@26.6.5)(babel-plugin-react-compiler@1.0.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      pdfjs-dist:
+        specifier: 4.10.38
+        version: 4.10.38
       react:
         specifier: 19.3.0
         version: 19.3.0

@@ -16,6 +16,7 @@ import {
 } from '~/components/ui';
 import { documentFileUrl, type DocumentRow, fetchDocuments } from '~/local/online';
 import { useOnlineRequest } from '~/local/use-online';
+import { ScreenGate } from '~/components/screen-gate';
 
 /**
  * The company's PDF documents (docs/documents ADR-0001 D8), read on the
@@ -23,7 +24,7 @@ import { useOnlineRequest } from '~/local/use-online';
  * only — a document is the office's to keep, so the phone holds no copy.
  * Expiring and deleting stay in the web and desktop apps.
  */
-export default function DocumentsScreen() {
+function DocumentsScreenBody() {
   const { t } = useTranslation();
   const [text, setText] = useState('');
   const [searched, setSearched] = useState('');
@@ -116,3 +117,12 @@ const styles = StyleSheet.create({
   },
   actions: { alignItems: 'flex-start', marginTop: spacing[2] },
 });
+
+/** Shown only while the company keeps its tab (0075). */
+export default function DocumentsScreen() {
+  return (
+    <ScreenGate screen="documents">
+      <DocumentsScreenBody />
+    </ScreenGate>
+  );
+}

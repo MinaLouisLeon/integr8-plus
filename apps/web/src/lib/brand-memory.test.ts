@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { BRAND_STORAGE_KEY, publicLogoUrl, recallBrand, rememberBrand } from './brand-memory';
+import {
+  BRAND_STORAGE_KEY,
+  parseBrand,
+  publicLogoUrl,
+  recallBrand,
+  rememberBrand,
+} from './brand-memory';
 
 /**
  * The sign-in page reads this before anybody is signed in, so whatever is in
@@ -25,6 +31,12 @@ afterEach(() => {
 });
 
 describe('remembering the brand', () => {
+  it('shows the name for a brand remembered before the switch existed', () => {
+    expect(parseBrand(JSON.stringify({ name: 'Acme', defaultTheme: 'light' }))?.showName).toBe(
+      true,
+    );
+  });
+
   it('round-trips what the shell learned', () => {
     const storage = fakeStorage();
     vi.stubGlobal('window', { localStorage: storage });
@@ -34,6 +46,7 @@ describe('remembering the brand', () => {
       brandColour: '#1d4ed8',
       shellColour: null,
       defaultTheme: 'dark',
+      showName: false,
     });
     expect(recallBrand()).toEqual({
       name: 'Acme',
@@ -41,6 +54,7 @@ describe('remembering the brand', () => {
       brandColour: '#1d4ed8',
       shellColour: null,
       defaultTheme: 'dark',
+      showName: false,
     });
   });
 
@@ -70,6 +84,7 @@ describe('remembering the brand', () => {
         brandColour: null,
         shellColour: null,
         defaultTheme: 'system',
+        showName: true,
       }),
     ).not.toThrow();
   });

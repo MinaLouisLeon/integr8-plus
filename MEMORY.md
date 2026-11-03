@@ -23,10 +23,10 @@ the end of any piece of work that changes one of them, and date each section.
   source: the phone (`app.config.ts`) and the web build (`next.config.ts`) read it, and
   `apps/api/src/app-info.ts` has a copy a test keeps equal. A version bump must also change
   every place listed under "Places that state the version".
-- **Migrations:** `packages/db/migrations` reaches **0074**. **0059 was never used** (workers
-  had reserved ranges) and the migrator does not need contiguous numbers; the next one is
-  **0075**. 1.2.2 carries 0054–0057; 1.2.3 adds 0058 and 0060–0066; 1.2.4 adds 0067–0068;
-  1.3.0 adds 0069 and 0074 (0070–0073 were reserved by workers and never used).
+- **Migrations:** `packages/db/migrations` reaches **0075** (unreleased, branch
+  `bugfix/ui-issue`). **0059 was never used** (workers had reserved ranges) and the migrator
+  does not need contiguous numbers; the next one is **0076**. 1.2.2 carries 0054–0057;
+  1.2.3 adds 0058 and 0060–0066; 1.2.4 adds 0067–0068; 1.3.0 adds 0069 and 0074 (0070–0073 were reserved by workers and never used).
 - **Pre-production audit (2026-10-31):** plans, docs and code compared area by area; the
   report is the claude.ai artifact https://claude.ai/artifact/FB7vANrUc691VfMXkR5h2U. Its
   6 blockers and 14 High items shipped in 1.2.2 (PR #136). The owner then reviewed the 24
@@ -182,6 +182,33 @@ the end of any piece of work that changes one of them, and date each section.
   The `staging`/`main` rulesets require only `PR source is allowed` (CI no longer reports
   there). `STAGING_PUBLIC_API_URL`, `NIGHTLY_DESKTOP_PLATFORMS` and `RELEASE_EAS_PROFILE`
   are unused.
+- **Company display and document links (2026-11-03, unreleased, branch `bugfix/ui-issue`;
+  migration 0075), as the owner chose them:** staff switch each menu tab on or off per company
+  (onboarding form and company page, `PUT /v1/platform/companies/{id}/tabs`); one switch hides
+  the tab in web, desktop and phone (`PHONE_SCREEN_SECTIONS` maps the phone's home buttons) and
+  its page says "Not available"; a tab switched on turns its module on, a module with none of its
+  tabs on is turned off, and the tabs of a module that ends up off stay off the hidden list
+  (`tabChoice` in `@integr8/core`). Data is still guarded by modules only. The dashboard, form
+  builder, branding and e-invoicing switch cannot be hidden. "Show the company name beside the
+  logo" on the staff branding screen (ignored without a logo). "Warranties ending soon" removed
+  from web/desktop dashboards and the phone's warranty reminders removed. Uploaded documents take
+  up to 10 typed fields (`lookup_role = 'search'`, editable via `PUT /v1/documents/{id}/fields`).
+  The website lookup takes one box, `q`: exact match on key and search fields, never the customer
+  name, up to 10 in `documents`; the old `reference`/`key` forms still work.
+  `document_link_pattern` (staff, company page) points links and new QR codes at the company's
+  site (`https://<site>/documents/{code}`, same host or below), served by the new
+  `GET /v1/website/documents/by-code/{code}`; Forms for AI writes that page. Document list rows
+  have Share (switch on + share menu: copy, email, WhatsApp, QR), Stop sharing and Delete. No
+  demo data for uploads (the seeder cannot upload files). Second round, same branch: a template
+  QR block is `content: share | fixed` (fixed = text with placeholders, incl. the new
+  `{{company.website}}`); a share code prints blank until the document is shared, and sharing
+  queues `documents.reprint`, which re-prints from `printed_design` (generated) or stamps the
+  original with pdf-lib (uploaded, `qr_placement` page fractions, `original_file_id` kept);
+  stopping sharing keeps the code; business PDFs unchanged. The "share now" boxes stay. Uploads
+  place the code by dragging on a pdf.js page (each app passes `pdfPage` to operations-dom; web
+  now depends on `pdfjs-dist` 4.10.38). Submitted photos open in a viewer (next/previous, zoom,
+  open/download). Forms for AI interviews the person first (`get_interview_guide`,
+  `summarize_form`, "To confirm" items for QR blocks without a kind).
 - **The demo seeder goes through the API**, in-process with Fastify's `inject`, as the
   company's own people (plus a staff impersonation for staff-only setup). Direct inserts
   were rejected: they skip numbering, stock, ledger postings and audit, and produce data

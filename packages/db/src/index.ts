@@ -889,6 +889,7 @@ export {
   type FormVersionStatus,
   type MediaCategory,
   type DocumentLookupRole,
+  type QrPlacement,
   type DocumentStatus,
   type DocumentSource,
   type SubmissionFileUseSource,

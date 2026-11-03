@@ -20,7 +20,6 @@ import { registerBackgroundSync, unregisterBackgroundSync } from '~/local/backgr
 import { localData } from '~/local/local-data';
 import { refreshAccess } from '~/local/online';
 import { channelNames, listenForPush, registerForPush, unregisterForPush } from '~/local/push';
-import { WarrantyAlerts } from '~/local/warranty-alerts';
 import { useLocalStatus } from '~/local/react';
 import { saveRoute } from '~/local/resume';
 
@@ -127,7 +126,6 @@ function RootLayout() {
         <AppLock>
           <BrandProvider>
             <RouteMemory />
-            <WarrantyAlerts />
             <Stack screenOptions={{ headerShown: false }} />
             <UpdateRequired />
           </BrandProvider>

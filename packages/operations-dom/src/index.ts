@@ -2,6 +2,7 @@ export {
   OperationsContext,
   useOperations,
   type OperationsConfig,
+  type PdfPageRenderer,
   type RowAction,
   type RowActionsEvent,
   type RowActionsHandler,

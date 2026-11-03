@@ -1,12 +1,14 @@
 'use client';
 
 import { ApiRequestError } from '@integr8/api-client';
+import { shownTabs } from '@integr8/core';
 import { useTranslation } from '@integr8/i18n';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
 import { Button, EmptyState, ErrorState, Field, LoadingState } from '~/components/ui';
 import { StatusBadge } from '~/components/platform-bits';
+import { TabPicker } from '~/components/tab-picker';
 import { messageForError } from '~/lib/errors';
 import {
   formatBytes,
@@ -198,6 +200,11 @@ function OnboardForm({ onDone }: { onDone: () => void }) {
   const [aiDesktop, setAiDesktop] = useState(false);
   const [aiMobile, setAiMobile] = useState(false);
   const [copied, setCopied] = useState(false);
+  // What a new company sees before anybody chooses (0075): every tab outside
+  // the modules, which all start off. Sent only once staff change it, so a
+  // company onboarded without choosing keeps the platform's module defaults.
+  const [tabs, setTabs] = useState<string[]>(() => shownTabs([], {}));
+  const [tabsTouched, setTabsTouched] = useState(false);
 
   const effectiveSlug = slugTouched ? slug : suggestSlug(name);
 
@@ -214,6 +221,7 @@ function OnboardForm({ onDone }: { onDone: () => void }) {
           websiteUrl: website.trim() === '' ? null : website.trim(),
           sendInvitation,
           aiChannels: { web: aiWeb, desktop: aiDesktop, mobile: aiMobile },
+          ...(tabsTouched ? { tabs } : {}),
         },
       });
       return data;
@@ -407,6 +415,19 @@ function OnboardForm({ onDone }: { onDone: () => void }) {
           </div>
           <p className="text-content-muted">{t('platform.onboard.aiChannelsHint')}</p>
         </fieldset>
+        <details className="flex flex-col gap-2 text-sm sm:col-span-2">
+          <summary className="cursor-pointer font-medium text-content">
+            {t('platform.tabs.title')}
+          </summary>
+          <p className="py-2 text-content-muted">{t('platform.tabs.hint')}</p>
+          <TabPicker
+            value={tabs}
+            onChange={(next) => {
+              setTabs(next);
+              setTabsTouched(true);
+            }}
+          />
+        </details>
       </div>
 
       <div className="flex gap-2">

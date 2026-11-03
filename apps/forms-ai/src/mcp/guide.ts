@@ -205,7 +205,7 @@ export const BLOCK_NOTES: Readonly<Record<BlockType, string>> = {
   static_table: 'A fixed table typed into the template (`header` and `rows` of texts), no answers.',
   image:
     'A picture: the company logo ({ "kind": "logo" }), a picture file of the template ({ "kind": "file", "fileId": "<uuid>" }), or a photo/signature answer ({ "kind": "answer", "fieldId": "<id>" }). `width` in mm.',
-  qr: "A QR code that opens the document's online page; `size` in mm.",
+  qr: 'A QR code; `size` in mm. `content` says what it opens, and the person must choose: { "kind": "share" } is the document\'s own share link, left blank until the document is shared and then printed in; { "kind": "fixed", "text": "…" } is a link or text printed from the start, placeholders allowed ({{company.website}}, {{answer.<id>}}). Ask which before writing one.',
   information:
     "One of the form's Information blocks (`informationId`), printed as the form shows it, only when it is shown for these answers.",
   divider: 'A horizontal line in the brand colour.',
@@ -224,6 +224,8 @@ export const BLOCK_OPTION_NOTES: Readonly<Record<string, string>> = {
   align:
     'start, center or end (default start); start is the left in English and the right in Arabic.',
   size: 'text: small/normal/large; qr: millimetres 15–80.',
+  content:
+    'qr: { "kind": "share" } (the document\'s share link, blank until shared) or { "kind": "fixed", "text": "<link or text, placeholders allowed>" }.',
   bold: 'Bold text.',
   fieldId: "The question's answer key (id).",
   label: "Overrides the question's own label; absent = the form's label.",
@@ -265,6 +267,10 @@ export const PLACEHOLDERS: readonly { placeholder: string; meaning: string }[] =
     meaning: 'A document field\'s value (see "fields" below).',
   },
   { placeholder: '{{company.name}}', meaning: "The company's name." },
+  {
+    placeholder: '{{company.website}}',
+    meaning: "The company's website as registered with Integr8 (empty when it has none).",
+  },
   { placeholder: '{{form.title}}', meaning: "The form's title." },
   { placeholder: '{{submission.date}}', meaning: 'When the form was submitted.' },
   { placeholder: '{{submission.submitted_by}}', meaning: 'Who submitted it.' },
