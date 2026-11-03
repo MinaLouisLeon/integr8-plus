@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -227,5 +227,47 @@ describe('the MCP tools', () => {
     const result = await call('open_package', { path: join(root, 'missing.integr8form') });
     expect(result.error).toBe(true);
     expect(result.text).toMatch(/No file at/u);
+  });
+});
+
+describe('the company website tools', () => {
+  it('gives the website guide and the API', async () => {
+    const overview = await call('get_website_guide');
+    expect(overview.text).toMatch(/Shared PDF search on a company website/u);
+    expect(overview.text).toMatch(/`security`/u);
+    const security = await call('get_website_guide', { section: 'security' });
+    expect(security.text).toMatch(/The key stays on the server/u);
+    const api = await call('get_website_api');
+    expect(api.text).toMatch(/## POST \/v1\/website\/documents\/lookup/u);
+    expect(api.text).toMatch(/website_key_invalid/u);
+  });
+
+  it('gives the Next.js example with the options asked for', async () => {
+    const example = await call('get_website_example', {
+      route: 'certificates',
+      srcDir: true,
+      secondValue: 'none',
+    });
+    expect(example.error).toBe(false);
+    expect(example.text).toMatch(/## src\/app\/certificates\/page\.tsx/u);
+    expect(example.text).not.toMatch(/name="customer"/u);
+    const refused = await call('get_website_example', { route: '../etc' });
+    expect(refused.error).toBe(true);
+  });
+
+  it('checks a website folder', async () => {
+    const folder = join(root, 'website');
+    mkdirSync(join(folder, 'app'), { recursive: true });
+    writeFileSync(
+      join(folder, 'app', 'page.tsx'),
+      `'use client';
+export default function Page() { void fetch('/v1/website/documents/lookup'); return null; }
+`,
+    );
+    const result = await call('check_website_integration', { paths: [folder] });
+    expect(result.text).toMatch(/^NOT OK/u);
+    expect(result.text).toMatch(/\[browser_code\]/u);
+    const relative = await call('check_website_integration', { paths: ['website'] });
+    expect(relative.error).toBe(true);
   });
 });
