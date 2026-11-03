@@ -1,8 +1,7 @@
 # Rule 8 — a merge into main publishes a versioned release.
 #
-# main only ever takes staging, so everything released here has already been
-# built and published as a nightly from the same commit history and the same
-# workflow. The release build is not the first time the release is built.
+# main only ever takes staging. Docker images are not built here: the server
+# builds its own from the code.
 #
 # The version comes from the root package.json and nowhere else. If a release
 # already exists for it, this fails and says to bump it: releasing twice from
@@ -90,14 +89,10 @@ jobs:
     with:
       version: ${{ needs.preflight.outputs.version }}
       base-version: ${{ needs.preflight.outputs.version }}
-      channel: release
-      # The full matrix here, unlike the nightly. A versioned release happens
-      # rarely enough that a macOS runner's ten-times billing is affordable, and
-      # a release with no macOS installer is not a release.
+      # The full matrix. A versioned release happens rarely enough that a macOS
+      # runner's ten-times billing is affordable, and a release with no macOS
+      # installer is not a release.
       desktop-platforms: ${{ vars.RELEASE_DESKTOP_PLATFORMS || '["ubuntu-latest","windows-latest","macos-latest"]' }}
-      eas-profile: ${{ vars.RELEASE_EAS_PROFILE || 'production' }}
-      # The same variables the web image is built with, so the installer and the
-      # web app on a release talk to the same API.
       api-url: ${{ vars.PUBLIC_API_URL }}
       app-env: production
       desktop-sentry-dsn: ${{ vars.DESKTOP_PUBLIC_SENTRY_DSN }}
@@ -160,8 +155,7 @@ jobs:
           ls -la dist
 
           cat > notes.md <<'PREAMBLE'
-          Built from `main`, which takes `staging` and nothing else. Every commit
-          in this release has already shipped as a nightly.
+          Built from `main`, which takes `staging` and nothing else.
 
           The API and web archives are build output, not a deployment package.
 
@@ -185,18 +179,3 @@ jobs:
             echo
             echo "[\`$TAG\`](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/tag/${TAG})"
           } >> "$GITHUB_STEP_SUMMARY"
-
-  # The server images of this release: `integr8-api:vX.Y.Z` and
-  # `integr8-web:vX.Y.Z`, and `latest`, which production pins to. Called here
-  # rather than left to publish-images.yml's own `v*` trigger, because the tag
-  # the step above creates with github.token does not start other workflows.
-  # After the release, so an image never exists for a version that failed.
-  images:
-    name: Release images
-    needs: [preflight, publish]
-    uses: ./.github/workflows/publish-images.yml
-    permissions:
-      contents: read
-      packages: write
-    with:
-      tag: ${{ needs.preflight.outputs.tag }}

@@ -496,18 +496,19 @@ See [`docs/database/migrations.md`](./docs/database/migrations.md) and the
 ```
 your branch ──▶ dev ──▶ staging ──▶ main
                  │         │          │
-            test build  nightly   version release
+         CI on the PR   test box   version release
 ```
 
-| Workflow                 | When                                                                 | Does                                                                                                                              |
-| ------------------------ | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `ci.yml`                 | Every pull request                                                   | Format, lint, typecheck, unit tests, OpenAPI drift, integration suites on Postgres, secret scan                                   |
-| `branch-policy.yml`      | Pull requests                                                        | Checks which branch may merge into which                                                                                          |
-| `release-dev.yml`        | Merge into `dev`                                                     | A test build                                                                                                                      |
-| `release-staging.yml`    | Merge into `staging`                                                 | A nightly pre-release against the staging API, including a generic phone build for testers                                        |
-| `release-main.yml`       | Merge into `main`                                                    | Version release: API and web archives, the staff desktop installers, then every company's apps                                    |
-| `build-company-apps.yml` | By hand, or from a release                                           | One company's (or every company's) desktop installers and phone app, as their own release                                         |
-| `publish-images.yml`     | Push to `staging` or `main`; the version release; by hand with a tag | The API and web images to GHCR: `:vX.Y.Z` and `:latest` per release (production), `:main`, `:staging` and per commit (unreleased) |
+| Workflow                      | When                                       | Does                                                                                                   |
+| ----------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| `ci.yml`                      | Pull requests into `dev`                   | Format, lint, typecheck, unit tests, OpenAPI drift, integration suites on Postgres, secret scan        |
+| `branch-policy.yml`           | Pull requests and pushes to the 3 branches | Checks which branch may merge into which, and flags a push with no pull request                        |
+| `release-main.yml`            | Merge into `main`                          | Version release: checks, API and web archives, the staff desktop installers, then every company's apps |
+| `verify.yml`                  | Called by `release-main.yml`               | The same checks as `ci.yml`, on the merge result                                                       |
+| `build-release-artifacts.yml` | Called by `release-main.yml`               | The release's files: API and web archives, staff desktop installers, Forms for AI                      |
+| `build-company-apps.yml`      | By hand, or from a release                 | One company's (or every company's) desktop installers and phone app, as their own release              |
+
+No workflow builds Docker images: each server builds its own from the code.
 
 The version is the root `package.json` `version` and nothing else: bump it to
 release, and a release for a version that already exists is refused. Repository

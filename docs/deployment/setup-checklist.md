@@ -205,7 +205,7 @@ The phone app is built by Expo's build service, told to start by GitHub. Nothing
 
 ### K. GitHub: the repository's settings
 
-GitHub builds the server images, the desktop installers and (through Expo) the phone app. Three things to do, all on the website. The repository is public, so the build minutes are free, including macOS.
+GitHub builds the desktop installers and (through Expo) the phone apps; each machine builds its own server images. Three things to do, all on the website. The repository is public, so the build minutes are free, including macOS.
 
 - [ ] **Nothing to merge.** All changes this guide previously asked for are in `main`, now at version **1.3.1**. Its release builds include the CRM/ERP suite, AI assistant, PDF documents, ETA e-invoicing, the company website data API, the schedule, skills and certificates, contracts, maintenance and deadlines, and self-hosted sign-in, plus the API image/config fixes from v1.1.1 and the staff-app refresh button from v1.1.2. A new install sets all of it up in the stages below; a server on an older version also needs the three sign-in secrets of Stage 11 part Q and the new settings of parts T to AD. Use `main` as it is; a new install continues at Stage 3, and an older server is updated through Stage 11.
 - [ ] **Check the Expo Project ID in the repository.** It is one line near the top of `apps/mobile/app.config.ts`, `const EAS_PROJECT_ID = '…';`, and the file uses it for both the build and the update address. If it already holds your Project ID, there is nothing to do. Otherwise change only the id between the quotes on that one line, in a pull request into `dev`, never by editing `main` directly; leave the rest of the file as it is.
@@ -214,11 +214,11 @@ GitHub builds the server images, the desktop installers and (through Expo) the p
 const EAS_PROJECT_ID = 'b950cc9e-9e26-477a-905f-4c216767fde4';   ← your Project ID, between the quotes
 ```
 
-- [ ] **Actions variables and secrets**: repository → Settings → Secrets and variables → Actions. Under **Variables**: `PUBLIC_API_URL` = `https://api.integr8-media.com`; `STAGING_PUBLIC_API_URL` = `https://api.integr8-media.com` for now (Stage 10 changes it to the test box's address); `CONTACT_EMAIL` = `info@integr8-media.com`; `PUBLIC_SIGNUP` = `off`; `WEB_PUBLIC_SENTRY_DSN` and `DESKTOP_PUBLIC_SENTRY_DSN` from I; `EAS_BUILDS` = `enabled`. Do **not** set `EAS_PLATFORMS`: without it phone builds are Android only, which is right until an Apple developer account is connected to Expo (then set it to `all`). Do not set `STORE_SUBMIT` or `COMPANY_APPS` either: unset, company phone builds are not sent to the stores, and the version release builds every company's apps (Stage 8). Under **Secrets**: `EXPO_TOKEN` from J and `BUILD_TOKEN` from B. Make sure no variable named `DESKTOP_BUILDS` is set to `disabled`.
+- [ ] **Actions variables and secrets**: repository → Settings → Secrets and variables → Actions. Under **Variables**: `PUBLIC_API_URL` = `https://api.integr8-media.com`; `DESKTOP_PUBLIC_SENTRY_DSN` from I; `EAS_BUILDS` = `enabled`. Do **not** set `EAS_PLATFORMS`: without it phone builds are Android only, which is right until an Apple developer account is connected to Expo (then set it to `all`). Do not set `STORE_SUBMIT` or `COMPANY_APPS` either: unset, company phone builds are not sent to the stores, and the version release builds every company's apps (Stage 8). Under **Secrets**: `EXPO_TOKEN` from J and `BUILD_TOKEN` from B. Make sure no variable named `DESKTOP_BUILDS` is set to `disabled`.
 - [ ] **Know the version rule.** Every merge into `main` runs the release workflow, which reads the version from the root `package.json` and refuses to release a number it has released before. The merge that should produce installers (Stage 6) must bump it: one line in `package.json`, in the same pull request.
 
 > [!NOTE]
-> **GitHub also builds the server images**, for Intel and ARM. Each release publishes its own: release `v1.3.1` makes `ghcr.io/minalouisleon/integr8-api:v1.3.1` and `integr8-web:v1.3.1` (and moves `latest` to the newest release). Those are what production pulls. Every push to `main` and `staging` also publishes `:main` and `:staging`, which carry code that is not released yet: they are for the test box only, never for production. The web image bakes in `PUBLIC_API_URL`, `CONTACT_EMAIL` and `PUBLIC_SIGNUP`, which is why they are set here before anything is built. The machine in Stage 4 can either build its own images or pull a release's.
+> **GitHub does not build the server images.** Each machine builds its own from the code it has checked out: Stage 4 the first time, Stage 11 part D at each update. The web image bakes in `PUBLIC_API_URL`, `CONTACT_EMAIL` and `PUBLIC_SIGNUP` from that machine's `deploy/.env` while it is built, so a change to one of them needs a rebuild (`up -d --build`). The variables above are only for the desktop and phone apps GitHub builds.
 
 ### L. Only if you will build the test box (Stage 10)
 
@@ -296,13 +296,13 @@ Every value, where it came from, and where it goes. `deploy/.env` is the one fil
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`                                                                                                   | Part G, only with Stripe              | `deploy/.env`                                                                                         |
 | Stripe price IDs                                                                                                                               | Part G, only with Stripe              | Dashboard → Plans (Stage 5)                                                                           |
 | `MAPBOX_ACCESS_TOKEN`                                                                                                                          | Part H                                | `deploy/.env`                                                                                         |
-| `SENTRY_DSN`, `WEB_SENTRY_DSN`, `WEB_PUBLIC_SENTRY_DSN`                                                                                        | Part I                                | `deploy/.env`; the public one also GitHub                                                             |
+| `SENTRY_DSN`, `WEB_SENTRY_DSN`, `WEB_PUBLIC_SENTRY_DSN`                                                                                        | Part I                                | `deploy/.env`                                                                                         |
 | `DESKTOP_PUBLIC_SENTRY_DSN`                                                                                                                    | Part I                                | GitHub variable                                                                                       |
 | `EXPO_PUBLIC_SENTRY_DSN`                                                                                                                       | Part I                                | Expo environment variable (Stage 8)                                                                   |
 | Expo Project ID                                                                                                                                | Part J                                | `apps/mobile/app.config.ts`, the `EAS_PROJECT_ID` line (Part K)                                       |
 | `EXPO_TOKEN`                                                                                                                                   | Part J                                | GitHub secret                                                                                         |
 | `google-services.json`, the FCM key                                                                                                            | Part J                                | Expo: the file as `GOOGLE_SERVICES_JSON`, the key under Credentials (Stage 8)                         |
-| `PUBLIC_API_URL`, `STAGING_PUBLIC_API_URL`, `CONTACT_EMAIL`, `PUBLIC_SIGNUP`, `EAS_BUILDS`                                                     | Part K, chosen                        | GitHub variables                                                                                      |
+| `PUBLIC_API_URL`, `EAS_BUILDS`                                                                                                                 | Part K, chosen                        | GitHub variables                                                                                      |
 | Play Console and Apple developer accounts, their keys                                                                                          | Stage 8, later                        | GitHub (`STORE_SUBMIT` and the store secrets), only when the apps go to the stores                    |
 | Second secrets, tunnel token                                                                                                                   | Part L, optional                      | The test box's env file and its `cloudflared` container (Stage 10)                                    |
 | The chosen provider's key: `AI_OPENAI_API_KEY`, `AI_GROQ_API_KEY`, `AI_GEMINI_API_KEY` or `AI_ANTHROPIC_API_KEY` (none for `AI_PROVIDER=none`) | Part M                                | `deploy/.env` only. Never a GitHub variable, never anything starting `NEXT_PUBLIC_` or `EXPO_PUBLIC_` |
@@ -444,7 +444,7 @@ nano deploy/.env
 A line that starts with `#` is ignored. Several settings in the template are commented out on purpose; the steps say which to leave that way and which to take the `# ` off. A line still starting with `#` is the usual reason a service "is not configured" after you are sure you pasted the key.
 
 - [ ] **Mode.** `APP_ENV=staging` for now. Stage 9 flips it to `production`, which makes the API refuse to start if any service below is missing; staging mode starts anyway and only warns, which is kinder while you check each piece.
-- [ ] **The images.** Leave `# API_IMAGE=` and `# WEB_IMAGE=` commented out: Stage 4 builds both images on this machine. To pull GitHub's ready-made images instead, see the note at the end of Stage 4; it is always a release tag such as `v1.3.1`, never `:main` or `:staging`.
+- [ ] **The images.** Leave `# API_IMAGE=` and `# WEB_IMAGE=` commented out: Stage 4 builds both images on this machine. GitHub publishes no ready-made images, so there is nothing to pull.
 - [ ] **Addresses.** In the block headed `# Addresses`, replace `your-domain.example` everywhere: `PUBLIC_API_URL` and `API_PUBLIC_URL` = `https://api.integr8-media.com`; `WEB_APP_URL` = `https://app.integr8-media.com`; `API_CORS_ORIGINS=https://app.integr8-media.com,tauri://localhost,http://tauri.localhost`. Then `PUBLIC_SIGNUP=off` and `CONTACT_EMAIL=info@integr8-media.com`: there is no public sign-up form (you create every company from the dashboard) and the contact page shows that address. (`AUTH_ISSUER`, the fourth API address, comes later, with the signing keys.)
 - [ ] **Starting app builds from the dashboard.** Leave the three lines `# APP_BUILDS=github`, `# GITHUB_BUILD_TOKEN=` and `# GITHUB_BUILD_REPOSITORY=…` commented out for now: company apps are then started by hand from GitHub Actions. Stage 8, part A makes the token and takes the `# ` off all three.
 - [ ] **Build token.** `BUILD_TOKEN=`, just under them. If you build company apps, paste the key-sheet value here and into the GitHub secret of the same name. Otherwise leave it blank; the API starts without it, but GitHub cannot ask the API for a company list.
@@ -715,9 +715,6 @@ curl -sI https://app.integr8-media.com | grep -iE 'strict-transport|content-secu
 > [!NOTE]
 > If the API refuses to start, its log says exactly which variable is wrong or missing: `docker compose -f deploy/compose.yml --env-file deploy/.env logs api`. Fix the env file and run the same `up -d` command again. Throughout this guide, "restart" means exactly that command; it recreates only the containers whose settings changed.
 
-> [!NOTE]
-> **Pulling instead of building.** GitHub publishes the same two images for every release (Stage 0, Part K). Add `API_IMAGE=ghcr.io/minalouisleon/integr8-api:v1.3.1` and `WEB_IMAGE=ghcr.io/minalouisleon/integr8-web:v1.3.1` to `deploy/.env`, with the release you are installing, and from then on deploy with `docker compose … pull && docker compose … up -d` instead of `--build`: no ten-minute build on the machine. Always a release tag, never `:main`, `:staging` or `:latest`: those move by themselves, `:main` and `:staging` with code not released yet. A pinned tag makes each update a one-line change and a rollback "set the previous tag" (Stage 11, parts D and I). If GitHub → your profile → **Packages** shows no images for that release yet, Actions → **Publish images** → **Run workflow** with its tag builds them (30 to 60 minutes). Either way works; this guide shows `--build`.
-
 ---
 
 ## Stage 5 — The super admin, your staff, the plans, and a first look
@@ -941,11 +938,11 @@ The workflow `Build company apps` reads the company's brand from the API with no
 - [ ] **Switch a company on.** Dashboard → the company's page → **Website and apps**: check the website, tick **Build apps for this company**, Save. Only companies with this on are built; a company you are still setting up stays off. With the next step done, saving also starts the company's first build and the panel links the run on GitHub; without it, the panel says to build by hand (the step after).
 - [ ] **Let the dashboard start builds (optional, once).** Without this, every company build is started by hand from GitHub Actions. GitHub → your avatar → **Settings** → **Developer settings** → **Personal access tokens** → **Fine-grained tokens** → **Generate new token**: name `integr8-app-builds`, an expiry (a year at most; put the date in your calendar), **Repository access** → **Only select repositories** → `integr8-plus`, **Permissions** → **Actions** → **Read and write** (GitHub adds Metadata: read itself), nothing else. It is shown once: key sheet, `GITHUB_BUILD_TOKEN`. On the machine, `nano deploy/.env` and add `APP_BUILDS=github`, `GITHUB_BUILD_TOKEN=` the token and `GITHUB_BUILD_REPOSITORY=minalouisleon/integr8-plus`, then restart (Stage 4's `up -d`); with `github` and either of the other two missing, the API refuses to start and its log says which. Check: a company with apps on → **Rebuild apps** → "Build started on GitHub" and **Watch the build** opens the run. A refused token says so in the panel (401: wrong or expired, make a new one; 403 or 404: the repository or the permission is wrong).
 - [ ] **Set its look first**, from the staff desktop app → Set-up → Company branding (Stage 7). A company without an app icon gets the product's own icon; without colours, the product's own look. Changing the look later repaints the web app and the already installed apps on their next load; the installers and store listings carry the old icon until the next build.
-- [ ] **The phone app's build settings, once.** expo.dev → the `integr8-plus` project → **Environment variables** → Add, each for the **production** environment, and for **preview** too with the test box's values if you have one (Stage 10): `EXPO_PUBLIC_SENTRY_DSN` = the React Native DSN from Stage 0, Part I (visibility Plain text); `EXPO_PUBLIC_AUTH_VERIFICATION_KEYS` = exactly the `AUTH_VERIFICATION_KEYS` line from the machine's env file (Plain text: public keys, with which the phone checks its offline grant when it has no signal); `GOOGLE_SERVICES_JSON`, type **File**, the `google-services.json` from Part J (visibility Sensitive). Each build profile in `apps/mobile/eas.json` names the environment it reads them from. Without the DSN a phone's crashes reach nobody; without the keys a phone checks only when its offline grant ends, and Sentry says `built_without_keys`; without the file Android phones get no notifications. A phone takes changed values with its next build.
+- [ ] **The phone app's build settings, once.** expo.dev → the `integr8-plus` project → **Environment variables** → Add, each for the **production** environment: `EXPO_PUBLIC_SENTRY_DSN` = the React Native DSN from Stage 0, Part I (visibility Plain text); `EXPO_PUBLIC_AUTH_VERIFICATION_KEYS` = exactly the `AUTH_VERIFICATION_KEYS` line from the machine's env file (Plain text: public keys, with which the phone checks its offline grant when it has no signal); `GOOGLE_SERVICES_JSON`, type **File**, the `google-services.json` from Part J (visibility Sensitive). Each build profile in `apps/mobile/eas.json` names the environment it reads them from. Without the DSN a phone's crashes reach nobody; without the keys a phone checks only when its offline grant ends, and Sentry says `built_without_keys`; without the file Android phones get no notifications. A phone takes changed values with its next build.
 - [ ] **Each company in Firebase, before its first phone build.** Firebase → Project settings → General → **Add app** → Android, package `com.integr8.plus.<short name with - as _>` (a short name starting with a digit gets a `c` in front: `7up` becomes `c7up`), the same id as in Play Console. Download `google-services.json` again, which now lists every app, and replace the `GOOGLE_SERVICES_JSON` file on Expo with it. A company missing from the file still gets its app, without notifications, and the build's log names the package to add.
 - [ ] **Build one company now.** From the dashboard, when the step above is done: the company's page → **Rebuild apps** (after its look changed, or for a version released before it was switched on). By hand otherwise: repository → **Actions** → **Build company apps** → **Run workflow**. **company**: the short name. Leave **version** empty (the root `package.json` version), **api-url** empty (the `PUBLIC_API_URL` variable), the platforms empty (Windows, macOS and Linux; Android). The run is three jobs per company; the macOS one is the slow one.
 - [ ] **Or build every company.** Same workflow, **company** = `all`. GitHub asks the API for the list using the `BUILD_TOKEN` secret, which has to equal `BUILD_TOKEN` in the machine's env file (Stage 3); if they differ the run stops in its first minute and says so.
-- [ ] **Every new version does this by itself.** Merging a version bump into `main` runs the version release, which builds the staff app, the images, and then every switched-on company's apps at the same version, each as its own release. Set the GitHub variable `COMPANY_APPS` = `disabled` if you ever want a release without them.
+- [ ] **Every new version does this by itself.** Merging a version bump into `main` runs the version release, which builds the staff app and then every switched-on company's apps at the same version, each as its own release. Set the GitHub variable `COMPANY_APPS` = `disabled` if you ever want a release without them.
 - [ ] **Hand the apps over.** Give the company the link to the installer for their system (the Windows `-setup.exe`), with Stage 6's note on installing before the apps are code-signed, and, for phones, the `.apk` from the release (open on the phone, download, allow installing from this source). Android keeps the app's signing key on Expo, so the next version installs over the old one; the app also receives the JavaScript side over the air on its channel `production-<short name>`. If the owner has not been invited yet, this is the moment: the company's page → **Invitations** → **Send invitation**.
 - [ ] **Notifications for each company's phone app, after its first build.** expo.dev → the project → **Credentials** → Android → the company's application identifier → **FCM V1 service account key**: upload the FCM key from Stage 0, Part J the first time, and choose the same key for every later company. Then, with the app in the background on one of the company's phones, assign a job to that engineer: the notification arrives within half a minute. If it does not, Sentry's React Native project shows `Push registration failed at token` when the build had no `google-services.json` for its package, and Expo's push tool (expo.dev → the project → Push notifications) names a credential problem.
 - [ ] **Rebuild the phone apps once to give them voice.** The microphone button on the phone needs new permissions (the microphone, and speech recognition on iOS), and permissions are part of the build, so they cannot arrive over the air. A company's phone app built before voice shows no microphone button until you run **Build company apps** for that company again (step 3, or every company at the next version release) and its people install the new `.apk`. Nothing breaks on an older phone build: it simply has no microphone. The website needs nothing, and the desktop app shows its voice button after the next release's installer is installed.
@@ -1052,7 +1049,6 @@ docker compose -f deploy/compose.yml --env-file deploy/.env exec -T postgres psq
 ### D. GitHub, for the long run
 
 - [ ] **Protect the long-lived branches.** `dev` was deleted by GitHub's "automatically delete head branches" once already. Turn that setting off (Settings → General → Pull Requests) or add `dev` and `staging` to a ruleset that forbids deletion. The flow is feature branch → `dev` → `staging` → `main`, and the checks refuse shortcuts.
-- [ ] **Check the release images**: GitHub → your profile → **Packages** lists `integr8-api` and `integr8-web` with the current release's tag (for example `v1.3.1`) for both `amd64` and `arm64`; the version release's **Release images** job makes them. A release made before releases built their own images (`v1.2.2` is one) has none until you run Actions → **Publish images** → **Run workflow** with **tag** = `v1.2.2`, once. The ARM half runs under emulation and takes 30 to 60 minutes.
 
 ### E. The first real company
 
@@ -1076,15 +1072,15 @@ docker compose -f deploy/compose.yml --env-file deploy/.env exec -T postgres psq
 
 _about 2 hours · optional_
 
-The Oracle machine is production. This is a second machine that is allowed to break: a PC at home running Ubuntu 24.04 LTS, with the same containers, pulling the `staging` images instead of `main`. Every change is merged to `staging`, tried here, then promoted to `main`. The box already runs Arcane, which looks after Docker stacks, and Webmin and Samba for other things; they stay as they are. Stage 0, Part L collected what it needs.
+The Oracle machine is production. This is a second machine that is allowed to break: a PC at home running Ubuntu 24.04 LTS, with the same containers, built from the `staging` branch instead of `main`. Every change is merged to `staging`, tried here, then promoted to `main`. The box already runs Arcane, which looks after Docker stacks, and Webmin and Samba for other things; they stay as they are. Stage 0, Part L collected what it needs.
 
 > [!NOTE]
-> **Hardware**: an i5-7500 or similar with **16 GB** and an SSD. With its memory caps the stack needs about 3 GB at most; the rest is left for whatever else the box does. The box never builds images.
+> **Hardware**: an i5-7500 or similar with **16 GB** and an SSD. With its memory caps the stack needs about 3 GB at most; the rest is left for whatever else the box does. The box builds its own images, like production: ten minutes or so the first time, less after.
 
 - [ ] **Ubuntu 24.04 LTS, SSH, Docker and Compose.** Connect from the laptop with `ssh YOUR-USER@BOX-IP` and check `docker compose version`. Stage 1's setup script is **not** used here: Docker is already installed, and the box needs no Caddy and no open port.
-- [ ] **Arcane is running** and its page opens in the laptop's browser at the address you gave it when it was set up. It is how the stack is created and updated below; it runs the same `docker compose` underneath, so the SSH commands shown beside it do the same thing.
+- [ ] **Arcane is running** and its page opens in the laptop's browser at the address you gave it when it was set up. It shows the stack, its containers and their logs. The stack is built and updated over SSH below, with the same `docker compose` commands as on Oracle.
 - [ ] **Webmin and Samba stay as they are.** They keep their own ports, and the stack publishes only 3000 and 3001, on `127.0.0.1`, so nothing clashes. If Webmin manages the firewall, it needs no new rule: the tunnel below connects outward.
-- [ ] **Get the deployment files** (only `deploy/` is used, since the box pulls images):
+- [ ] **Get the code** on the `staging` branch; the box builds its images from it:
 
 ```bash
 # box (SSH session)
@@ -1092,8 +1088,7 @@ sudo mkdir -p /opt/integr8 && sudo chown "$USER" /opt/integr8
 git clone -b staging https://github.com/MinaLouisLeon/integr8-plus.git /opt/integr8
 ```
 
-- [ ] **Change the GitHub variable** `STAGING_PUBLIC_API_URL` to `https://api-test.integr8-media.com` and push something to `staging` (or run "Publish images" from the Actions tab). The staging web image and the nightly desktop installer are then built for the test box.
-- [ ] **The env file**, `/opt/integr8/deploy/.env`, as Stage 3 but from Part L's values: `APP_ENV=staging`; `API_IMAGE=ghcr.io/minalouisleon/integr8-api:staging` and `WEB_IMAGE=ghcr.io/minalouisleon/integr8-web:staging` (unreleased code, which is what this box is for; production only ever pins a release tag); the test names (`https://api-test.integr8-media.com` for the three API addresses, `https://test.integr8-media.com` for the two web ones, `API_CORS_ORIGINS=https://test.integr8-media.com,tauri://localhost,http://tauri.localhost`); the **second** set of passwords, signing keys and sign-in secrets; and every fake on: `MEDIA_STORAGE=local`, `GEOCODER=fake`, `PUSH_SENDER=recording`, `BILLING_PROVIDER=recording`, `EMAIL_SENDER=recording`. The box can then never email a real person or charge a card; invitation links and sign-in codes are read from the API log (`docker compose … logs api | grep -o 'https://test[^" ]*accept-invitation[^" ]*' | tail -1`, and `logs api | grep sign_in_code` for a code).
+- [ ] **The env file**, `/opt/integr8/deploy/.env`, as Stage 3 but from Part L's values: `APP_ENV=staging`; `# API_IMAGE=` and `# WEB_IMAGE=` left commented out, so the box builds both images; the test names (`https://api-test.integr8-media.com` for the three API addresses, `https://test.integr8-media.com` for the two web ones, `API_CORS_ORIGINS=https://test.integr8-media.com,tauri://localhost,http://tauri.localhost`); the **second** set of passwords, signing keys and sign-in secrets; and every fake on: `MEDIA_STORAGE=local`, `GEOCODER=fake`, `PUSH_SENDER=recording`, `BILLING_PROVIDER=recording`, `EMAIL_SENDER=recording`. The box can then never email a real person or charge a card; invitation links and sign-in codes are read from the API log (`docker compose … logs api | grep -o 'https://test[^" ]*accept-invitation[^" ]*' | tail -1`, and `logs api | grep sign_in_code` for a code).
 - [ ] **Run the Cloudflare Tunnel connector** with the token from Part L. This replaces Caddy and port forwarding: your router opens nothing, and the web app's sign-in cookies are only sent over HTTPS, so a plain `http://BOX-IP:3001` could never sign in (with the ports on `127.0.0.1` it is not reachable from the network anyway). Cloudflare terminates HTTPS at its edge for the two test names. The connector runs on the host network, so it reaches the two ports on `127.0.0.1`.
 
 ```bash
@@ -1102,20 +1097,19 @@ docker run -d --name cloudflared --restart unless-stopped --network host \
   cloudflare/cloudflared:latest tunnel --no-autoupdate run --token TUNNEL-TOKEN
 ```
 
-- [ ] **The stack, in Arcane.** Arcane → **Stacks** (called **Projects** in newer versions) → add the existing compose file `/opt/integr8/deploy/compose.yml`, with `/opt/integr8/deploy/.env` as its env file. The stack's name comes from the file: `integr8`. Then **Pull** and **Deploy**. From SSH the same is:
+- [ ] **The stack, in Arcane.** Arcane → **Stacks** (called **Projects** in newer versions) → add the existing compose file `/opt/integr8/deploy/compose.yml`, with `/opt/integr8/deploy/.env` as its env file. The stack's name comes from the file: `integr8`. Build and start it over SSH, as Stage 4 does on Oracle; Arcane then shows its containers and logs:
 
 ```bash
-# box (SSH session) — the same as Arcane's Pull and Deploy
+# box (SSH session)
 cd /opt/integr8
-docker compose -f deploy/compose.yml --env-file deploy/.env pull
-docker compose -f deploy/compose.yml --env-file deploy/.env up -d
+docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build
 docker compose -f deploy/compose.yml --env-file deploy/.env ps     # auth: Up (healthy)
 curl -s http://127.0.0.1:3000/health/ready; echo
 ```
 
 - [ ] **Its own super admin** (Stage 5 command, from `/opt/integr8`), then Stage 7 on it with a test company. Sign in once with **Email me a sign-in code**, reading the code from the API log, and change the password under **Change password**.
-- [ ] **The nightly apps**: the pre-release on the Releases page (the staff desktop app) and the `preview` phone build on the Expo dashboard talk to the test box. The preview phone build is the one generic phone app left: no company baked in, so it signs in anybody, for your own testing only. Install the nightly desktop app beside the release one; Windows keeps both.
-- [ ] **The loop**: merge to `staging` → wait for green → in Arcane, **Pull** and **Redeploy** the stack (or `pull && up -d` over SSH) → test → promote `staging` to `main` with the version bumped → Stage 11 on Oracle. The box's data is disposable: `down -v` and `up -d` gives a clean database, sign-in accounts included. To rehearse a migration on real data, restore a production dump into it first.
+- [ ] **Test in the web app**, at `https://test.integr8-media.com`. GitHub builds no apps for the box: the staff desktop app and every company's apps talk to production, so they are checked after the release (Stage 11, part G).
+- [ ] **The loop**: merge to `staging` → on the box, `git pull` in `/opt/integr8` and `up -d --build` → test → promote `staging` to `main` with the version bumped → Stage 11 on Oracle. The box's data is disposable: `down -v` and `up -d --build` gives a clean database, sign-in accounts included. To rehearse a migration on real data, restore a production dump into it first.
 
 > [!WARNING]
 > **What the box cannot catch.** Oracle is ARM and the box is Intel. And every fake stays a fake here: a Stripe webhook or a Resend bounce gets its first real test on Oracle, which is why Stage 9 keeps the real-card step.
@@ -1134,7 +1128,7 @@ Everything on the machine, in the order that keeps it safe: make the release, ba
 ### A. Make the release
 
 - [ ] **Bump the version and merge into `main`.** The root `package.json` version goes up (for example `1.3.1` → `1.3.2`); the change reaches `main` through `dev` and `staging` as usual. That merge is the release.
-- [ ] **Wait for it to finish green.** Repository → **Actions**: "Version release" builds the installers and every company's apps (about 30 minutes), then its **Release images** job builds the release's server images, `integr8-api:v…` and `integr8-web:v…` (30 to 60 minutes). Do not touch the machine until all of it is green; a red release changes nothing anywhere.
+- [ ] **Wait for it to finish green.** Repository → **Actions**: "Version release" builds the installers and every company's apps (about 30 minutes). The server images are not part of it: part D builds them on the machine. Do not touch the machine until all of it is green; a red release changes nothing anywhere.
 - [ ] **Read what changed.** Repository → **Releases** → the new `v…`. Look for three things: a **new setting** (part C), a **database migration** (it runs by itself, but it is why part B exists), and a change to `deploy/vps/setup.sh` or the Caddyfile (part F).
 
 ### B. Back up first
@@ -1177,25 +1171,16 @@ grep -E '^(APP_VERSION|API_RELEASE)=' deploy/.env
 
 ### D. Restart on the new version
 
-One command does it all, in order: the new images are built (or pulled), `migrate` applies any new migrations and exits, then the sign-in server, the API, the worker and the web app are recreated. If a migration fails, the API is never started on the new code and the old database is untouched.
+One command does it all, in order: the new images are built, `migrate` applies any new migrations and exits, then the sign-in server, the API, the worker and the web app are recreated. If a migration fails, the API is never started on the new code and the old database is untouched.
 
 ```bash
-# machine (SSH session) — if the machine builds its own images (this guide's default)
+# machine (SSH session)
 cd /opt/integr8
 docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build
 docker compose -f deploy/compose.yml --env-file deploy/.env logs -f migrate api
-
-# — or, if deploy/.env pins API_IMAGE and WEB_IMAGE to GitHub's release images (Stage 4):
-#   put the new release's tag in both lines first (use the real one)
-cd /opt/integr8
-sed -i -E 's#^((API|WEB)_IMAGE=.*):[^:/]+$#\1:v1.3.1#' deploy/.env
-grep -E '^(API|WEB)_IMAGE=' deploy/.env
-docker compose -f deploy/compose.yml --env-file deploy/.env pull
-docker compose -f deploy/compose.yml --env-file deploy/.env up -d
-docker compose -f deploy/compose.yml --env-file deploy/.env logs -f migrate api
 ```
 
-- [ ] **The migrations ran.** The `migrate` log ends with one `applied` line per new migration (or says there was nothing to apply), and exits. Building on the ARM machine takes ten to fifteen minutes; pulling takes one or two. When pulling, the `grep` showed both lines with the new release's tag; `pull` saying `manifest unknown` means that release has no images yet (Stage 9, Part D).
+- [ ] **The migrations ran.** The `migrate` log ends with one `applied` line per new migration (or says there was nothing to apply), and exits. Building on the ARM machine takes ten to fifteen minutes.
 - [ ] **The API started** and its log shows requests being answered, with no error about a setting. Ctrl-C leaves the log; the containers keep running.
 
 ### E. Check it worked
@@ -1248,7 +1233,7 @@ Every update leaves the previous images on the disk. Keep them for a day in case
 ```bash
 # machine (SSH session)
 docker image prune -f            # images no container uses any more
-docker builder prune -f          # the build cache, if the machine builds its own images
+docker builder prune -f          # the build cache
 df -h /
 ls -lh /var/backups/integr8      # the backup script keeps the newest ones and deletes older ones by itself
 ```
@@ -1274,7 +1259,6 @@ docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build
 git checkout main && git pull
 ```
 
-- [ ] **With GitHub's images instead**: in `deploy/.env` set `API_IMAGE` and `WEB_IMAGE` back to the release you were on before the update (GitHub → your profile → **Packages** → `integr8-api` lists every release's tag, for example `ghcr.io/minalouisleon/integr8-api:v1.2.4`), and `APP_VERSION`/`API_RELEASE` to its number. Then `pull` and `up -d`; no `git checkout` is needed, the images carry the code. To go forward again, the newer tag, `pull` and `up -d`. Releases before v1.2.2 have no images (v1.2.2 has them once Stage 9 part D's one-off run is done): go back to one of those by building, with the commands above, after putting `#` in front of both lines.
 - [ ] **The older version is running.** The `migrate` log ends with "the database is ahead of this build" and the new migrations' names, and part E's checks pass. Going forward again later applies nothing: the migrations are already there.
 - [ ] **Undoing one migration**, only when the release notes or the error say it is the cause, after reading its `.down.sql` file in `packages/db/migrations/`. Do it **before** going back, while the new version still runs, because only its image has that file: `docker compose -f deploy/compose.yml --env-file deploy/.env run --rm api node node_modules/@integr8/db/dist/migrator/cli.js down --steps 1`. The older version refuses to undo a migration it has no file for.
 - [ ] **Restoring part B's backup** replaces the whole database with how it was before the update, losing anything done since. Stop the web app, the API, the worker and the sign-in server first (`docker compose … stop web api worker auth`), restore with the command at the top of `deploy/vps/backup-postgres.sh` (the backup replaces each table as it goes, so nothing has to be emptied first), then start the older version as above.
@@ -1375,7 +1359,7 @@ docker compose -f deploy/compose.yml --env-file deploy/.env \
 ```
 
 > [!WARNING]
-> **Rolling back with self-hosted sign-in.** A version before this one signs in through a Supabase cloud project, which does not have the accounts made since. Fix forward instead. If you must roll back (part I), put `SUPABASE_URL` and the cloud project's service role key back in `deploy/.env` first, and leave migrations 0054 to 0057 applied: the older version ignores their columns and table. v1.2.1 is older than part I's ahead-of-build check, so its `migrate` step stops at 0054 ("its file is gone") and its API and worker would never start. After part I's `git checkout v1.2.1` and `sed`, start them without that step: `docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build --no-deps api worker web` (v1.2.1 has no GitHub images, so it is always built: if `deploy/.env` names `API_IMAGE` and `WEB_IMAGE`, put `#` in front of both lines first). Until you go forward again, its `/health/ready` says `degraded` and names 0054 to 0057, so the heartbeat alerts; the API answers requests all the same.
+> **Rolling back with self-hosted sign-in.** A version before this one signs in through a Supabase cloud project, which does not have the accounts made since. Fix forward instead. If you must roll back (part I), put `SUPABASE_URL` and the cloud project's service role key back in `deploy/.env` first, and leave migrations 0054 to 0057 applied: the older version ignores their columns and table. v1.2.1 is older than part I's ahead-of-build check, so its `migrate` step stops at 0054 ("its file is gone") and its API and worker would never start. After part I's `git checkout v1.2.1` and `sed`, start them without that step: `docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build --no-deps api worker web`. Until you go forward again, its `/health/ready` says `degraded` and names 0054 to 0057, so the heartbeat alerts; the API answers requests all the same.
 
 ### R. Backups off the machine, and the restore drill (included in v1.2.2)
 
@@ -1506,7 +1490,7 @@ Migration 0069 runs by itself at part D: staff can save a form as a library temp
 - [ ] **Preview a PDF**: in a company with Documents on, open a PDF template in the designer and press **Preview as PDF**; the PDF opens after a few seconds.
 
 > [!NOTE]
-> **The test box (Stage 10)** updates the same way, from `staging` instead of `main`: `git pull` on its `staging` checkout, then **Pull** and **Redeploy** the stack in Arcane. Updating it first, the day before, is the cheapest rehearsal there is.
+> **The test box (Stage 10)** updates the same way, from `staging` instead of `main`: `git pull` on its `staging` checkout, then `up -d --build`. Updating it first, the day before, is the cheapest rehearsal there is.
 
 ---
 
@@ -1897,7 +1881,7 @@ One command on the machine creates a new company, **Nile Delta Facilities (Demo)
 ### A. Put the seeder on the machine
 
 - [ ] **Get the seeder into the repository.** It is the folder `apps/api/src/demo/` (the command, `cli.ts`, and one file per section under `sections/`) plus one line in `apps/api/package.json`, `"demo-company"`. Merge it into the branch the machine runs (`main`, or `staging` on the test box). The API image builds everything under `apps/api/src`, so nothing else changes.
-- [ ] **Rebuild the API on the machine.** Pull the code and rebuild the API and worker images, the same way as a normal update (Stage 11, part D). If the machine pulls GitHub's images instead: the test box waits for "Publish images" on `staging` to go green; production gets the seeder with the release that includes it, by putting that release's tag in `deploy/.env` (Stage 11, part D). Then `pull` and `up -d`.
+- [ ] **Rebuild the API on the machine.** Pull the code and rebuild the API and worker images, the same way as a normal update (Stage 11, part D).
 
 ```bash
 # machine (SSH session)

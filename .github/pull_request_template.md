@@ -1,8 +1,8 @@
 <!--
 Where this can go:
 
-    your branch  ->  dev        any branch may open this
-    dev          ->  staging    publishes a nightly
+    your branch  ->  dev        any branch may open this; CI runs here only
+    dev          ->  staging    the test box builds it
     staging      ->  main       publishes a version
 
 A pull request into staging or main from anywhere else is refused by the
