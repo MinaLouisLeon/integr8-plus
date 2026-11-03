@@ -14,7 +14,12 @@ the end of any piece of work that changes one of them, and date each section.
   `ccr-4f86fb34-8uvkk9` carries the rest of the bump and the release fixes (publish downloads
   only `server-*`, `desktop-*`, `forms-ai-*`; company apps skip with a warning when the API
   is down or `BUILD_TOKEN` is missing; two gitleaks fingerprints for manual full-history runs).
-  The root `package.json` is the only
+  **2026-11-03:** `main` was bumped to 1.3.2 on GitHub (PR #163, `package.json` only) and its
+  release failed again: `app-info.ts` still said 1.3.1, and two phone-sync integration tests
+  failed on a slow runner (`/v1/sync/push` read the server clock after sign-in checks, so
+  phone times landed ~300 ms late). Branch `fix/release-1.3.3` (from `main`) stamps the
+  arrival time in `onRequest` (`context.receivedAt`) and bumps every copy to **1.3.3**; no
+  v1.3.1 or v1.3.2 tag exists. The root `package.json` is the only
   source: the phone (`app.config.ts`) and the web build (`next.config.ts`) read it, and
   `apps/api/src/app-info.ts` has a copy a test keeps equal. A version bump must also change
   every place listed under "Places that state the version".
