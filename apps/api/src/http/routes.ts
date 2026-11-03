@@ -41,6 +41,13 @@ export interface BaseRequestContext {
    * Session routes never read this: authentication has already verified it.
    */
   bearerToken: string | null;
+  /**
+   * When the request reached the server, by the server's clock, taken before
+   * rate limits, sign-in checks or the body are read. Phone sync measures the
+   * phone's times from here, so the server's own work on the request does not
+   * shift them. Optional so hand-built contexts in tests need not say.
+   */
+  receivedAt?: Date;
   /** The body exactly as it arrived, for a route that declared `rawBody`. */
   rawBody?: string | undefined;
   /**
