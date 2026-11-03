@@ -150,6 +150,7 @@ describe('the public brand', () => {
       websiteUrl: 'https://www.example-company.test/',
       logoPath: null,
       appIconPath: null,
+      showCompanyName: true,
     });
   });
 

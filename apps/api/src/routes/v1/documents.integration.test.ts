@@ -432,7 +432,9 @@ describe('making a document', () => {
     const printer = api.services.pdf as RecordingPrinter;
     const printed = printer.printed.at(-1)!;
     expect(printed.html).toContain('Certificate GS-2026-0042');
-    expect(printed.html).toContain('<svg');
+    // Not shared yet: the share QR code's place is printed blank (0075).
+    expect(printed.html).toContain('class="qr blank"');
+    expect(printed.html).not.toContain('class="qr"');
     expect(printed.html).toMatch(/data:image\/(png|jpeg);base64,/u);
 
     const link = json<{ url: string }>(
@@ -788,13 +790,13 @@ describe('website keys and the website lookup', () => {
       await lookup(secret, { key: { field: 'certificate', value: 'GS-2026-0042' } }),
     );
     expect(unconfirmed.found).toBe(false);
-    const wrong = json<{ found: boolean; document: null }>(
+    const wrong = json<{ found: boolean; document: null; documents: [] }>(
       await lookup(secret, {
         key: { field: 'certificate', value: 'GS-2026-9999' },
         confirm: { field: 'customer', value: 'Nile Towers' },
       }),
     );
-    expect(wrong).toEqual({ found: false, document: null });
+    expect(wrong).toEqual({ found: false, document: null, documents: [] });
   });
 
   it('does not find an expired document', async () => {
