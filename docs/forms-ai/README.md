@@ -182,8 +182,7 @@ in the table above.
 The version release (`release-main.yml` → `build-release-artifacts.yml`, job **Forms for AI**)
 builds the executable on GitHub's runners for Windows x64, macOS arm64, macOS x64 (Intel), Linux
 x64 and Linux arm64, and the release attaches each as
-`integr8-forms-ai-<version>-<windows|macos|linux>-<x64|arm64>[.exe]` with its `.sha256`. The
-nightly gets them too. Set the repository variable `FORMS_AI_BUILDS=disabled` to skip the job.
+`integr8-forms-ai-<version>-<windows|macos|linux>-<x64|arm64>[.exe]` with its `.sha256`. Set the repository variable `FORMS_AI_BUILDS=disabled` to skip the job.
 The `/download` page lists them in the staff section from the newest staff release that has them
 (`apps/web/src/lib/desktop-updates.ts`, `formsAi`).
 

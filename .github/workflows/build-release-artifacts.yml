@@ -1,10 +1,5 @@
-# Everything a release is made of, built once and the same way for both
-# channels.
-#
-# Nightly (staging) and versioned (main) call this with different inputs and
-# nothing else. That is the point of a staging channel: if the nightly and the
-# release were built by two different workflows, a green nightly would say
-# nothing useful about the release.
+# Everything a version release is made of. Called only by release-main.yml,
+# on a merge into main; there is no nightly channel any more.
 #
 # What this does not do is deploy. The API and the web app are built here and
 # attached as build output; turning that into something a server runs is P19
@@ -16,30 +11,21 @@ on:
   workflow_call:
     inputs:
       version:
-        description: Full version, e.g. 0.1.0 or 0.1.0-nightly.20260910.gabc1234
+        description: Full version, e.g. 0.1.0
         type: string
         required: true
       base-version:
         description: The plain X.Y.Z part. Installers use this; MSI rejects prerelease suffixes.
         type: string
         required: true
-      channel:
-        description: nightly | release
-        type: string
-        required: true
       desktop-platforms:
         description: JSON array of runner labels for the Tauri matrix.
-        type: string
-        required: true
-      eas-profile:
-        description: The eas.json build profile to use, when EAS builds are enabled.
         type: string
         required: true
       api-url:
         description: >
           The API the desktop installer talks to, e.g. https://api.example.com. Vite inlines
-          it at build time, so there is one installer per API hostname; the nightly points at
-          the staging API and the release at production's. Empty refuses the desktop build
+          it at build time, so there is one installer per API hostname: production's. Empty refuses the desktop build
           rather than shipping an installer that talks to localhost.
         type: string
         required: true
@@ -188,7 +174,7 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "$API_URL" ]; then
-            echo "::error::No API address for the desktop installer. Set the PUBLIC_API_URL repository variable (STAGING_PUBLIC_API_URL for the nightly) to the API's https address."
+            echo "::error::No API address for the desktop installer. Set the PUBLIC_API_URL repository variable to the API's https address."
             exit 1
           fi
           case "$API_URL" in
@@ -268,9 +254,7 @@ jobs:
       # older one.
       #
       # The plain X.Y.Z, not the full version: Windows MSI product versions are
-      # three numbers and reject a prerelease suffix outright. Which nightly an
-      # installer came from is recorded by the release it is attached to. Giving
-      # the updater a way to tell nightlies apart is P20.
+      # three numbers and reject a prerelease suffix outright.
       #
       # The same step points the window's content-security policy at the API.
       # The policy in tauri.conf.json names a placeholder host; an installer
@@ -284,17 +268,14 @@ jobs:
       # suffix) and points the window's content-security policy at the API,
       # without which every sign-in would fail inside the window.
       #
-      # A versioned release also gets its updater feed, the web app's
+      # The release also gets its updater feed, the web app's
       # /desktop-updates/staff/…, which offers the newest `v*` release's
-      # latest.json, and the signed update bundles the feed points at. A
-      # nightly keeps the placeholder feed: it talks to the staging API and
-      # must never update itself into a production release.
+      # latest.json, and the signed update bundles the feed points at.
       - name: Stamp the staff flavour, the version and the API origin into the bundle
         shell: bash
         env:
           BASE_VERSION: ${{ inputs.base-version }}
           API_URL: ${{ inputs.api-url }}
-          CHANNEL: ${{ inputs.channel }}
           UPDATER_BASE: ${{ vars.DESKTOP_UPDATES_URL || 'https://app.integr8-media.com/desktop-updates' }}
           THUMBPRINT: ${{ steps.windows-certificate.outputs.thumbprint }}
           AZURE_SIGNING_ENDPOINT: ${{ vars.AZURE_SIGNING_ENDPOINT }}
@@ -303,13 +284,11 @@ jobs:
         run: |
           set -euo pipefail
           flags=(--version "$BASE_VERSION" --api-url "$API_URL" --flavor staff)
-          if [ "$CHANNEL" = release ]; then
-            flags+=(--updater-base "$UPDATER_BASE")
-            if [ "$SIGN_UPDATES" = true ]; then
-              flags+=(--updater-artifacts)
-            else
-              echo "::warning::No TAURI_SIGNING_PRIVATE_KEY secret: this release cannot be offered to installed apps as an update."
-            fi
+          flags+=(--updater-base "$UPDATER_BASE")
+          if [ "$SIGN_UPDATES" = true ]; then
+            flags+=(--updater-artifacts)
+          else
+            echo "::warning::No TAURI_SIGNING_PRIVATE_KEY secret: this release cannot be offered to installed apps as an update."
           fi
           if [ -n "$THUMBPRINT" ]; then
             flags+=(--windows-certificate-thumbprint "$THUMBPRINT")
@@ -413,8 +392,8 @@ jobs:
       - name: Build the packages it bundles
         run: pnpm turbo run build --filter=@integr8/forms-ai^...
 
-      # The release's own version goes into the program (a nightly's full
-      # version too), so the update check compares like with like.
+      # The release's own version goes into the program, so the update check
+      # compares like with like.
       - name: Build the single executable
         shell: bash
         env:
@@ -427,55 +406,3 @@ jobs:
           path: forms-ai-out/*
           if-no-files-found: error
           retention-days: 30
-
-  # ---------------------------------------------------------------------------
-  # Mobile, when there is an Expo account behind it
-  # ---------------------------------------------------------------------------
-  mobile:
-    name: Mobile build (EAS, generic, nightly only)
-    # Gated on a repository variable rather than on the secret, because a job
-    # cannot branch on whether a secret exists. Local development needs none of it.
-    #
-    # Nightly only. The phone app a customer installs is built once per company
-    # with that company baked in (build-company-apps.yml, run from the version
-    # release); this generic build, with no company, is for Integr8's own
-    # testers against the staging API and would be the wrong thing to hand to
-    # a customer.
-    if: vars.EAS_BUILDS == 'enabled' && inputs.channel == 'nightly'
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v6
-
-      - name: Install Node
-        uses: actions/setup-node@v7
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - uses: expo/expo-github-action@v9
-        with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-
-      # --no-wait: the binaries are built and kept by EAS, not by this run. The
-      # release notes link to them rather than attaching them.
-      #
-      # Android only until there are iOS credentials: an iOS build needs an
-      # Apple developer account connected to Expo, and in non-interactive mode
-      # EAS fails the whole command when it cannot find them, which took the
-      # release down with it. Set the EAS_PLATFORMS repository variable to
-      # `all` once the Apple side exists.
-      - name: Queue the build
-        working-directory: apps/mobile
-        env:
-          EAS_PLATFORMS: ${{ vars.EAS_PLATFORMS || 'android' }}
-        run: eas build --platform "$EAS_PLATFORMS" --profile ${{ inputs.eas-profile }} --non-interactive --no-wait

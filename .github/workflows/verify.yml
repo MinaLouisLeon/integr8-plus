@@ -1,11 +1,7 @@
 # The verification every build shares, in one place.
 #
-# Called by the three branch builds rather than copied into them, because three
-# copies of a build is three chances for the release build to be checking
-# something the test build is not.
-#
-# Nothing here publishes anything. What each branch does with a green run is the
-# calling workflow's business.
+# Called by the version release (release-main.yml) before it builds anything.
+# Nothing here publishes anything.
 #
 # It runs everything ci.yml runs on a pull request, on the merge result: the
 # licence and setup-guide checks, the real Supabase Auth suite and the secret
@@ -94,7 +90,7 @@ jobs:
           fi
 
   # The same suites the pull request ran, on the merge result, because the
-  # merge result is the commit a nightly or a release is actually built from.
+  # merge result is the commit a release is actually built from.
   database:
     name: Migrations, isolation, authentication and API
     runs-on: ubuntu-latest
