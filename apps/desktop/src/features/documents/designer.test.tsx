@@ -149,7 +149,7 @@ describe('the content list', () => {
       ...emptyDesign(),
       blocks: [
         { type: 'heading', id: 'title', text: { en: 'Certificate' }, level: 1, align: 'start' },
-        { type: 'qr', id: 'qr-1', size: 30, align: 'end' },
+        { type: 'qr', id: 'qr-1', content: { kind: 'share' }, size: 30, align: 'end' },
       ],
     };
     const html = renderToStaticMarkup(
@@ -189,7 +189,12 @@ function withRow(): TemplateDesign {
         type: 'row',
         id: 'row-1',
         columns: [
-          { width: 1, blocks: [{ type: 'qr', id: 'qr-1', size: 30, align: 'end' }] },
+          {
+            width: 1,
+            blocks: [
+              { type: 'qr', id: 'qr-1', content: { kind: 'share' }, size: 30, align: 'end' },
+            ],
+          },
           { width: 1, blocks: [] },
         ],
       },

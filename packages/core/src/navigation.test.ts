@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { NAV_GROUPS, NAV_SECTIONS, visibleNavigation } from './navigation.js';
+import {
+  isSectionHidden,
+  NAV_GROUPS,
+  NAV_SECTIONS,
+  PHONE_SCREEN_SECTIONS,
+  shownTabs,
+  SWITCHABLE_NAV_SECTIONS,
+  tabChoice,
+  visibleNavigation,
+} from './navigation.js';
 import { permissionsFor, permissionsHeld } from './permissions.js';
 
 describe('the dashboard map', () => {
@@ -242,5 +251,60 @@ describe('the dashboard map', () => {
     expect(group('web', { role: 'owner' }, 'inventory', { inventory: true })).not.toContain(
       'reorder',
     );
+  });
+});
+
+describe('the tabs staff switch per company (0075)', () => {
+  const owner = permissionsFor('owner');
+  const keysOf = (groups: ReturnType<typeof visibleNavigation>) =>
+    groups.flatMap((group) => group.sections).map((section) => section.key);
+
+  it('never offers a switch for the dashboard or the staff-only screens', () => {
+    const keys = SWITCHABLE_NAV_SECTIONS.map((section) => section.key);
+    expect(keys).not.toContain('dashboard');
+    expect(keys).not.toContain('forms');
+    expect(keys).not.toContain('branding');
+    expect(keys).toContain('timesheets');
+    expect(keys).toContain('quotes');
+  });
+
+  it('leaves a hidden tab out of the menu, but never the dashboard', () => {
+    const shown = keysOf(
+      visibleNavigation('web', owner, undefined, { hidden: ['timesheets', 'dashboard'] }),
+    );
+    expect(shown).not.toContain('timesheets');
+    expect(shown).toContain('dashboard');
+    expect(shown).toContain('workOrders');
+  });
+
+  it('switches a module on with any of its tabs, its base with it, and off with none', () => {
+    const choice = tabChoice(['payRuns', 'quotes']);
+    expect(choice.modules.payroll).toBe(true);
+    expect(choice.modules.hr).toBe(true);
+    expect(choice.modules.sales).toBe(true);
+    expect(choice.modules.crm).toBe(false);
+    expect(choice.hidden).toContain('salesOrders');
+    expect(choice.hidden).toContain('employees');
+    expect(choice.hidden).not.toContain('quotes');
+    expect(choice.hidden).toContain('timesheets');
+    // CRM ends up off, which hides its tabs; they stay off the list so that
+    // switching CRM back on later brings them back.
+    expect(choice.hidden).not.toContain('leads');
+    expect(choice.modules).not.toHaveProperty('website_files');
+  });
+
+  it('reads back the tabs chosen', () => {
+    const choice = tabChoice(['quotes', 'timesheets']);
+    const features = Object.fromEntries(
+      Object.entries(choice.modules).map(([module, on]) => [module, on === true]),
+    );
+    expect(shownTabs(choice.hidden, features).sort()).toEqual(['quotes', 'timesheets']);
+  });
+
+  it('maps every phone screen to a tab that can be switched', () => {
+    for (const key of Object.values(PHONE_SCREEN_SECTIONS)) {
+      expect(isSectionHidden(key, [key])).toBe(true);
+    }
+    expect(isSectionHidden('dashboard', ['dashboard'])).toBe(false);
   });
 });

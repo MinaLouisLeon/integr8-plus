@@ -143,12 +143,15 @@ export default function SignInPage() {
             // image hides rather than showing a broken picture.
             <img
               src={brand.logoUrl}
-              alt=""
+              alt={brand.showName ? '' : brand.name}
               className="h-10 w-auto max-w-40 object-contain"
               onError={() => setLogoBroken(true)}
             />
           )}
-          <span className="text-lg font-semibold text-content">{brand.name}</span>
+          {/* The logo stands alone when Integr8 switched the name off (0075). */}
+          {brand.showName || brand.logoUrl === null || logoBroken ? (
+            <span className="text-lg font-semibold text-content">{brand.name}</span>
+          ) : null}
         </div>
       )}
 

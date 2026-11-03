@@ -68,8 +68,13 @@ export interface RenderInput {
   facts: SubmissionFacts;
   /** The document fields as resolved for this document. */
   fields: readonly ResolvedField[];
-  /** The link the QR code opens; null in a preview made before there is one. */
+  /** The link a share QR code opens; null in a preview, or while the document is not shared. */
   qrUrl: string | null;
+  /**
+   * With no `qrUrl`, leave a share QR code's place empty rather than marked
+   * (0075): a real document not shared yet. A preview leaves it marked.
+   */
+  qrBlank?: boolean;
   images: RenderImages;
   mode: 'pdf' | 'preview';
   /** `YYYY-MM-DD`, for any calculation that reads today. */
@@ -178,6 +183,14 @@ class Renderer {
     return own !== '' ? own : this.#say(this.#field(id)?.label);
   }
 
+  /** A template text with its placeholders filled in, not escaped: what a fixed QR code holds. */
+  #filled(template: string): string {
+    return template.replace(
+      /\{\{\s*([a-z_]+)(?:\.([a-z0-9_]+))?\s*\}\}/gu,
+      (whole, scope: string, name: string | undefined) => this.placeholder(scope, name) ?? whole,
+    );
+  }
+
   /** A template text with its placeholders filled in, escaped, line breaks kept. */
   #text(template: string): string {
     const placeholder = /\{\{\s*([a-z_]+)(?:\.([a-z0-9_]+))?\s*\}\}/gu;
@@ -205,7 +218,11 @@ class Renderer {
       case 'field':
         return name === undefined ? undefined : (this.#fieldValues.get(name) ?? '');
       case 'company':
-        return name === 'name' ? facts.companyName : undefined;
+        return name === 'name'
+          ? facts.companyName
+          : name === 'website'
+            ? (facts.companyWebsite ?? '')
+            : undefined;
       case 'form':
         return name === 'title' ? facts.formTitle : undefined;
       case 'submission':
@@ -426,10 +443,22 @@ class Renderer {
       case 'qr': {
         const caption = this.#say(block.caption);
         const size = `width:${String(block.size)}mm;height:${String(block.size)}mm`;
-        const code =
-          this.#input.qrUrl === null
-            ? `<span class="qr placeholder" style="${size}">${escapeHtml(this.#format.words.qrPlaceholder)}</span>`
-            : `<span class="qr" style="${size}">${qrSvg(this.#input.qrUrl)}</span>`;
+        let code: string;
+        if (block.content.kind === 'fixed') {
+          const value = this.#filled(block.content.text).trim();
+          // Nothing to encode for this document (an unanswered question): no code.
+          code =
+            value === ''
+              ? `<span class="qr blank" style="${size}"></span>`
+              : `<span class="qr" style="${size}">${qrSvg(value)}</span>`;
+        } else if (this.#input.qrUrl !== null) {
+          code = `<span class="qr" style="${size}">${qrSvg(this.#input.qrUrl)}</span>`;
+        } else if (this.#input.qrBlank === true) {
+          // Not shared yet: the place is kept, so the page does not move when it is.
+          code = `<span class="qr blank" style="${size}"></span>`;
+        } else {
+          code = `<span class="qr placeholder" style="${size}">${escapeHtml(this.#format.words.qrPlaceholder)}</span>`;
+        }
         return `<figure class="align-${block.align}">${code}${caption === '' ? '' : `<figcaption dir="auto">${this.#text(caption)}</figcaption>`}</figure>`;
       }
       case 'information': {

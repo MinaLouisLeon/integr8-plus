@@ -494,6 +494,9 @@ export const en = {
       appsEnabled: 'Build apps for this company',
       appsEnabledHint:
         'The release pipeline then builds this company’s installers and phone apps, wearing this brand.',
+      showName: 'Show the company name beside the logo',
+      showNameHint:
+        'Turn off when the logo already spells the name. Applies to the menu, the dashboard and the sign-in page; without a logo the name always shows.',
       preview: 'Preview',
       previewHint: 'How the menu, title bar and buttons will look, before you save.',
       previewButton: 'New work order',
@@ -1706,6 +1709,16 @@ export const en = {
   // the screens around it. Written for whoever is filling it in — often an
   // engineer on site — so short, and never about the form's machinery.
   fill: {
+    photoViewer: {
+      openPhoto: '{{question}}: open photo {{number}} large',
+      count: 'Photo {{number}} of {{total}}',
+      zoomIn: 'Zoom in',
+      zoomOut: 'Zoom out',
+      open: 'Open original',
+      download: 'Download',
+      previous: 'Previous',
+      next: 'Next',
+    },
     // Schema version 2 (1.3.0): Information blocks, and a form too new for this app.
     information: {
       tip: 'Tip',
@@ -7690,6 +7703,56 @@ export const en = {
     noFields: 'This template has no document fields.',
     lookupKey: 'Website search',
     lookupConfirm: 'Website check',
+    lookupTyped: 'Searchable',
+    typedFields: {
+      title: 'Extra fields',
+      hint: 'Add any details to find this document by, such as a serial number. The search here and on the company website finds it by any of them.',
+      name: 'Field {{number}} name',
+      value: 'Field {{number}} value',
+      namePlaceholder: 'Name, e.g. Serial number',
+      valuePlaceholder: 'Value',
+      add: 'Add field',
+      remove: 'Remove field {{number}}',
+      removeShort: 'Remove',
+      duplicate: 'Each field needs its own name.',
+      incomplete: 'Fill in both the name and the value, or remove the field.',
+      save: 'Save fields',
+      saved: 'Saved.',
+    },
+    qrPlace: {
+      title: 'QR code on the PDF',
+      page: 'On',
+      first: 'The first page',
+      last: 'The last page',
+      all: 'Every page',
+      size: 'Size',
+      hint: 'Drag the square to where the QR code goes. Arrow keys move it a little at a time.',
+      square: 'QR code, {{x}}% across and {{y}}% down. Drag or use the arrow keys to move it.',
+      noPreview: 'The page could not be shown; place the code on the blank page instead.',
+      addToUpload: 'Add the share QR code to the PDF',
+      addToUploadHint:
+        'It is put into the PDF when the document is shared, at the place you choose. The PDF as uploaded is kept.',
+      stateNone: 'This PDF has no share QR code.',
+      stateWaiting: 'The share QR code is added to the PDF when the document is shared.',
+      statePrinted: 'The PDF carries its share QR code.',
+      add: 'Add a QR code',
+      move: 'Move the QR code',
+      remove: 'Remove the QR code',
+      save: 'Save the place',
+    },
+    shareMenu: {
+      title: 'Share document',
+      message: '{{title}}: {{link}}',
+      email: 'Email',
+      whatsapp: 'WhatsApp',
+      qr: 'QR code',
+      done: 'Done',
+    },
+    actions: {
+      share: 'Share',
+      unshare: 'Stop sharing',
+      delete: 'Delete',
+    },
     view: 'View',
     download: 'Download',
     link: 'QR code link',
@@ -7995,6 +8058,14 @@ export const en = {
         captionEn: 'Caption (English, optional)',
         captionAr: 'Caption (Arabic, optional)',
         qrSize: 'Size (mm)',
+        qrContent: 'What the code opens',
+        qrShare: 'The document’s share link',
+        qrFixed: 'A fixed link or text',
+        qrShareHint:
+          'Left blank until the document is shared from the Documents page; sharing adds the code here.',
+        qrText: 'Link or text',
+        qrTextHint:
+          'Printed on every PDF from the start. Placeholders work, such as {{website}} or {{serial}}.',
         height: 'Height (mm)',
         columnWidth: 'Relative width',
         column: 'Column {{number}}',
@@ -8441,6 +8512,11 @@ export const en = {
 
   nav: {
     menu: 'Menu',
+    unavailable: {
+      title: 'Not available',
+      body: 'This part of the app is not switched on for your company. Ask Integr8 if you need it.',
+      back: 'Back to the dashboard',
+    },
     openMenu: 'Open the menu',
     closeMenu: 'Close the menu',
     collapse: 'Collapse the menu',
@@ -8585,6 +8661,16 @@ export const en = {
   },
 
   platform: {
+    tabs: {
+      title: 'Tabs the company sees',
+      hint: 'Switch each tab on or off for this company’s web, desktop and phone apps. A tab switched on turns its module on; a module with none of its tabs on is turned off. The company does not see these switches.',
+      all: 'All',
+      none: 'None',
+      webOnly: '(web)',
+      desktopOnly: '(desktop)',
+      moduleHint: 'Module: {{modules}}',
+      save: 'Save tabs',
+    },
     funnel: {
       title: 'Signup funnel',
       subtitle: 'Where people give up, over the last thirty days.',
@@ -8781,6 +8867,11 @@ export const en = {
       description:
         'Their own desktop installers and phone apps are built from a GitHub Actions workflow and carry their name, icon and colours. The logo, icon, colours and theme are set from the desktop app while acting as this company.',
       website: 'Company website',
+      documentLink: 'Document link address',
+      documentLinkHint:
+        'Where shared document links and new QR codes open, on the company website, with {code} where the document’s code goes. Leave empty to use Integr8’s page. The website needs a page at this address (Integr8 Forms for AI builds it).',
+      documentLinkInvalid: 'Enter an https:// address with {code} in it.',
+      documentLinkSuggest: 'Use the suggested address',
       websiteHint: 'Starts with https://. Shown in their phone app before sign-in.',
       buildApps: 'Build apps for this company',
       buildAppsHint:

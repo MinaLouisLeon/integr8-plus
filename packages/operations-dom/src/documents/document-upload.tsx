@@ -6,6 +6,13 @@ import { type Customer, type DocumentDetail, keys, useOperations } from '../api.
 import { CustomerPicker } from '../crm/opportunity-parts.js';
 import { useIdempotencyKey } from '../purchasing/purchasing-parts.js';
 import { buttonClass, Dialog, Failure, Field, inputClass } from '../ui.js';
+import { DEFAULT_QR_PLACEMENT, type QrPlacement, QrPlacer } from './qr-placer.js';
+import {
+  completeFields,
+  type TypedField,
+  TypedFieldsEditor,
+  typedFieldsProblem,
+} from './document-actions.js';
 
 /** The largest PDF the register takes (0067); the API refuses anything larger too. */
 export const DOCUMENT_UPLOAD_MAX_BYTES = 20 * 1024 * 1024;
@@ -17,8 +24,9 @@ const isPdf = (file: File) =>
 /**
  * Uploading a PDF the company already has into the register (docs/documents,
  * 0067): the file, a title, its reference number (what the website lookup
- * finds it by) and, optionally, the customer it is for. It is not shared
- * unless the box is ticked.
+ * finds it by) and, optionally, the customer it is for, and any fields the
+ * person types for it (0075), such as a serial number, which search finds it
+ * by too. It is not shared unless the box is ticked.
  */
 export function UploadDocumentDialog({
   onClose,
@@ -37,6 +45,11 @@ export function UploadDocumentDialog({
   const [reference, setReference] = useState('');
   const [customer, setCustomer] = useState<Pick<Customer, 'id' | 'name'> | null>(null);
   const [share, setShare] = useState(false);
+  const [fields, setFields] = useState<TypedField[]>([]);
+  // The share QR code stamped in once the document is shared (0075).
+  const [withQr, setWithQr] = useState(false);
+  const [placement, setPlacement] = useState<QrPlacement>(DEFAULT_QR_PLACEMENT);
+  const [bytes, setBytes] = useState<Uint8Array | null>(null);
   const idempotencyKey = useIdempotencyKey({
     name: file?.name ?? null,
     size: file?.size ?? null,
@@ -44,6 +57,8 @@ export function UploadDocumentDialog({
     reference,
     customer: customer?.id ?? null,
     share,
+    fields,
+    qr: withQr ? placement : null,
   });
 
   const problem =
@@ -54,7 +69,12 @@ export function UploadDocumentDialog({
         : file.size > DOCUMENT_UPLOAD_MAX_BYTES
           ? t('documents.upload.tooLarge')
           : null;
-  const ready = file !== null && problem === null && title.trim() !== '' && reference.trim() !== '';
+  const ready =
+    file !== null &&
+    problem === null &&
+    title.trim() !== '' &&
+    reference.trim() !== '' &&
+    typedFieldsProblem(fields) === null;
 
   const upload = useMutation({
     mutationFn: async () => {
@@ -68,6 +88,8 @@ export function UploadDocumentDialog({
             reference: reference.trim(),
             ...(customer === null ? {} : { customerId: customer.id }),
             shareable: share,
+            fields: completeFields(fields),
+            qrPlacement: withQr ? placement : null,
           },
         })
       ).data!;
@@ -121,6 +143,10 @@ export function UploadDocumentDialog({
               onChange={(event) => {
                 const chosen = event.target.files?.[0] ?? null;
                 setFile(chosen);
+                setBytes(null);
+                if (chosen !== null && isPdf(chosen)) {
+                  void chosen.arrayBuffer().then((buffer) => setBytes(new Uint8Array(buffer)));
+                }
                 if (chosen !== null && isPdf(chosen) && title.trim() === '') {
                   setTitle(chosen.name.replace(/\.pdf$/iu, '').slice(0, 200));
                 }
@@ -166,6 +192,22 @@ export function UploadDocumentDialog({
           onChange={setCustomer}
         />
         <p className="text-xs text-content-muted">{t('documents.upload.customerHint')}</p>
+        <TypedFieldsEditor value={fields} onChange={setFields} />
+        <label className="flex items-start gap-2 text-sm text-content">
+          <input
+            type="checkbox"
+            className="mt-1"
+            checked={withQr}
+            onChange={(event) => setWithQr(event.target.checked)}
+          />
+          <span>
+            {t('documents.qrPlace.addToUpload')}
+            <span className="block text-xs text-content-muted">
+              {t('documents.qrPlace.addToUploadHint')}
+            </span>
+          </span>
+        </label>
+        {withQr ? <QrPlacer bytes={bytes} value={placement} onChange={setPlacement} /> : null}
         <label className="flex items-start gap-2 text-sm text-content">
           <input
             type="checkbox"

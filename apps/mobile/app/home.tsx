@@ -8,6 +8,7 @@ import {
   myVisits,
   openJobs,
   recentlyClosedJobs,
+  screenShown,
   searchLocal,
   sectionJobs,
   van,
@@ -75,16 +76,25 @@ function Jobs() {
 
   const assets = useLocalQuery('assets-enabled', ['meta'], assetsEnabled);
   const expenses = useLocalQuery('expenses-enabled', ['meta'], expensesEnabled);
-  // The van, the store's receiving and payslips (ADR-0012), offered to those they are for.
+  // The van, the store's receiving and payslips (ADR-0012), offered to those they are for,
+  // and none whose tab Integr8 switched off for the company (0075).
   const more = useLocalQuery('more', ['meta', 'van_stock'], async (sql) => {
     const granted = await access(sql);
     const myVan = await van(sql);
     const stocked = await sql.get<{ n: number }>('select count(*) as n from van_stock');
     return {
-      van: myVan !== null && (myVan !== undefined || (stocked?.n ?? 0) > 0),
-      receive: allows(granted, 'purchasing.manage', 'purchasing'),
-      payslips: granted.features.payroll === true,
-      documents: allows(granted, 'document.read', 'documents'),
+      van:
+        screenShown(granted, 'van') &&
+        myVan !== null &&
+        (myVan !== undefined || (stocked?.n ?? 0) > 0),
+      receive:
+        screenShown(granted, 'receive') && allows(granted, 'purchasing.manage', 'purchasing'),
+      payslips: screenShown(granted, 'payslips') && granted.features.payroll === true,
+      documents: screenShown(granted, 'documents') && allows(granted, 'document.read', 'documents'),
+      assets: screenShown(granted, 'assets'),
+      expenses: screenShown(granted, 'expenses'),
+      qualifications: screenShown(granted, 'qualifications'),
+      assistant: screenShown(granted, 'assistant'),
     };
   });
   // What the person may do, asked once a launch when there is signal.
@@ -143,7 +153,7 @@ function Jobs() {
 
       <SyncBanner />
 
-      {assets.status === 'ready' && assets.data ? (
+      {assets.status === 'ready' && assets.data && more.status === 'ready' && more.data.assets ? (
         <Button
           label={t('mobile.assets.scan')}
           variant="secondary"
@@ -151,7 +161,10 @@ function Jobs() {
         />
       ) : null}
 
-      {expenses.status === 'ready' && expenses.data ? (
+      {expenses.status === 'ready' &&
+      expenses.data &&
+      more.status === 'ready' &&
+      more.data.expenses ? (
         <Button
           label={t('mobile.expenses.title')}
           variant="secondary"
@@ -191,13 +204,18 @@ function Jobs() {
         />
       ) : null}
 
-      <Button
-        label={t('mobile.qualifications.title')}
-        variant="secondary"
-        onPress={() => router.push('/qualifications')}
-      />
+      {more.status === 'ready' && more.data.qualifications ? (
+        <Button
+          label={t('mobile.qualifications.title')}
+          variant="secondary"
+          onPress={() => router.push('/qualifications')}
+        />
+      ) : null}
 
-      {assistant.status === 'ready' && assistant.data.level !== 'off' ? (
+      {assistant.status === 'ready' &&
+      assistant.data.level !== 'off' &&
+      more.status === 'ready' &&
+      more.data.assistant ? (
         <Button
           label={t('mobile.ai.title')}
           variant="secondary"

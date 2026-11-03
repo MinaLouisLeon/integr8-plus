@@ -1,6 +1,7 @@
 import { compileDefinition, type CompiledForm } from '@integr8/form-engine';
 import { describe, expect, it } from 'vitest';
 import {
+  designHasShareQr,
   checkDesignAgainstForm,
   designFileIds,
   designMediaFields,
@@ -171,7 +172,10 @@ function design(overrides: Partial<TemplateDesign> = {}): TemplateDesign {
             width: 2,
             blocks: [{ type: 'field', id: 'gas', fieldId: 'gas_off', layout: 'inline' }],
           },
-          { width: 1, blocks: [{ type: 'qr', id: 'qr', size: 30, align: 'end' }] },
+          {
+            width: 1,
+            blocks: [{ type: 'qr', id: 'qr', content: { kind: 'share' }, size: 30, align: 'end' }],
+          },
         ],
       },
     ],
@@ -437,6 +441,37 @@ describe('renderDocumentHtml', () => {
     expect(html).toContain('class="qr placeholder"');
     expect(html).toContain('url("data:image/png;base64,BBBB")');
     expect(html).toContain('class="sheet"');
+  });
+
+  it('leaves the share QR code blank until the document is shared, keeping its place (0075)', () => {
+    const { html } = render({ qrUrl: null, qrBlank: true });
+    expect(html).toContain('class="qr blank"');
+    expect(html).not.toContain('class="qr placeholder"');
+    expect(html).not.toContain('class="qr"');
+  });
+
+  it('prints a fixed QR code from the start, its placeholders filled (0075)', () => {
+    const fixed = parsed({
+      ...design(),
+      blocks: [
+        {
+          type: 'qr',
+          id: 'site',
+          size: 25,
+          align: 'start',
+          content: { kind: 'fixed', text: '{{company.website}}/check?c={{field.certificate}}' },
+        },
+      ],
+    });
+    const { html } = render({
+      design: fixed,
+      qrUrl: null,
+      qrBlank: true,
+      facts: { ...facts, companyWebsite: 'https://nile.example' },
+    });
+    expect(html).toMatch(/class="qr" style="[^"]*"><svg/u);
+    expect(designHasShareQr(fixed)).toBe(false);
+    expect(designHasShareQr(parsed(design()))).toBe(true);
   });
 });
 

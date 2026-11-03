@@ -474,6 +474,9 @@ export const ar: Catalogue<Messages> = {
       appsEnabled: 'إنشاء تطبيقات لهذه الشركة',
       appsEnabledHint:
         'عندئذٍ يبني خط الإصدار مثبّتات هذه الشركة وتطبيقاتها على الهاتف بهذه الهوية.',
+      showName: 'إظهار اسم الشركة بجوار الشعار',
+      showNameHint:
+        'أوقفه عندما يحمل الشعار اسم الشركة بالفعل. يسري على القائمة ولوحة التحكم وصفحة تسجيل الدخول؛ وبدون شعار يظهر الاسم دائمًا.',
       preview: 'المعاينة',
       previewHint: 'كيف ستبدو القائمة وشريط العنوان والأزرار قبل الحفظ.',
       previewButton: 'أمر عمل جديد',
@@ -1641,6 +1644,16 @@ export const ar: Catalogue<Messages> = {
   },
 
   fill: {
+    photoViewer: {
+      openPhoto: '{{question}}: فتح الصورة {{number}} بحجم كبير',
+      count: 'الصورة {{number}} من {{total}}',
+      zoomIn: 'تكبير',
+      zoomOut: 'تصغير',
+      open: 'فتح الأصل',
+      download: 'تنزيل',
+      previous: 'السابقة',
+      next: 'التالية',
+    },
     // Schema version 2 (1.3.0): Information blocks, and a form too new for this app.
     information: {
       tip: 'نصيحة',
@@ -7752,6 +7765,56 @@ export const ar: Catalogue<Messages> = {
     noFields: 'لا يحتوي هذا القالب على حقول مستند.',
     lookupKey: 'بحث الموقع',
     lookupConfirm: 'تحقق الموقع',
+    lookupTyped: 'قابل للبحث',
+    typedFields: {
+      title: 'حقول إضافية',
+      hint: 'أضف أي تفاصيل يُعثر بها على هذا المستند، مثل الرقم التسلسلي. يجده البحث هنا وعلى موقع الشركة بأيٍّ منها.',
+      name: 'اسم الحقل {{number}}',
+      value: 'قيمة الحقل {{number}}',
+      namePlaceholder: 'الاسم، مثل: الرقم التسلسلي',
+      valuePlaceholder: 'القيمة',
+      add: 'إضافة حقل',
+      remove: 'إزالة الحقل {{number}}',
+      removeShort: 'إزالة',
+      duplicate: 'يحتاج كل حقل إلى اسم خاص به.',
+      incomplete: 'املأ الاسم والقيمة معًا، أو أزل الحقل.',
+      save: 'حفظ الحقول',
+      saved: 'تم الحفظ.',
+    },
+    qrPlace: {
+      title: 'رمز QR على ملف PDF',
+      page: 'على',
+      first: 'الصفحة الأولى',
+      last: 'الصفحة الأخيرة',
+      all: 'كل الصفحات',
+      size: 'الحجم',
+      hint: 'اسحب المربع إلى مكان رمز QR. تحرّكه مفاتيح الأسهم قليلًا في كل مرة.',
+      square: 'رمز QR، على بعد {{x}}% عرضًا و{{y}}% طولًا. اسحبه أو استخدم مفاتيح الأسهم لتحريكه.',
+      noPreview: 'تعذّر عرض الصفحة؛ ضع الرمز على الصفحة الفارغة بدلًا منها.',
+      addToUpload: 'إضافة رمز QR للمشاركة إلى ملف PDF',
+      addToUploadHint:
+        'يُضاف إلى ملف PDF عند مشاركة المستند، في المكان الذي تختاره. ويُحتفظ بالملف كما رُفع.',
+      stateNone: 'لا يحتوي ملف PDF هذا على رمز QR للمشاركة.',
+      stateWaiting: 'يُضاف رمز QR للمشاركة إلى ملف PDF عند مشاركة المستند.',
+      statePrinted: 'يحمل ملف PDF رمز QR للمشاركة الخاص به.',
+      add: 'إضافة رمز QR',
+      move: 'نقل رمز QR',
+      remove: 'إزالة رمز QR',
+      save: 'حفظ المكان',
+    },
+    shareMenu: {
+      title: 'مشاركة المستند',
+      message: '{{title}}: {{link}}',
+      email: 'البريد الإلكتروني',
+      whatsapp: 'واتساب',
+      qr: 'رمز QR',
+      done: 'تم',
+    },
+    actions: {
+      share: 'مشاركة',
+      unshare: 'إيقاف المشاركة',
+      delete: 'حذف',
+    },
     view: 'عرض',
     download: 'تنزيل',
     link: 'رابط رمز QR',
@@ -8050,6 +8113,13 @@ export const ar: Catalogue<Messages> = {
         captionEn: 'التعليق (بالإنجليزية، اختياري)',
         captionAr: 'التعليق (بالعربية، اختياري)',
         qrSize: 'الحجم (مم)',
+        qrContent: 'ما يفتحه الرمز',
+        qrShare: 'رابط مشاركة المستند',
+        qrFixed: 'رابط أو نص ثابت',
+        qrShareHint: 'يبقى فارغًا حتى يُشارَك المستند من صفحة المستندات؛ تضيف المشاركة الرمز هنا.',
+        qrText: 'الرابط أو النص',
+        qrTextHint:
+          'يُطبع على كل ملف PDF منذ البداية. تعمل العناصر النائبة مثل {{website}} أو {{serial}}.',
         height: 'الارتفاع (مم)',
         columnWidth: 'العرض النسبي',
         column: 'العمود {{number}}',
@@ -8495,6 +8565,11 @@ export const ar: Catalogue<Messages> = {
 
   nav: {
     menu: 'القائمة',
+    unavailable: {
+      title: 'غير متاح',
+      body: 'هذا الجزء من التطبيق غير مفعّل لشركتك. تواصل مع Integr8 إذا احتجت إليه.',
+      back: 'العودة إلى لوحة التحكم',
+    },
     openMenu: 'فتح القائمة',
     closeMenu: 'إغلاق القائمة',
     collapse: 'طيّ القائمة',
@@ -8639,6 +8714,16 @@ export const ar: Catalogue<Messages> = {
   },
 
   platform: {
+    tabs: {
+      title: 'التبويبات التي تراها الشركة',
+      hint: 'شغّل كل تبويب أو أوقفه لتطبيقات هذه الشركة على الويب وسطح المكتب والهاتف. تشغيل تبويب يشغّل وحدته، والوحدة التي لا يعمل أي من تبويباتها تُوقَف. لا ترى الشركة هذه المفاتيح.',
+      all: 'الكل',
+      none: 'لا شيء',
+      webOnly: '(الويب)',
+      desktopOnly: '(سطح المكتب)',
+      moduleHint: 'الوحدة: {{modules}}',
+      save: 'حفظ التبويبات',
+    },
     funnel: {
       title: 'مسار التسجيل',
       subtitle: 'أين يتوقف الناس، خلال آخر ثلاثين يومًا.',
@@ -8831,6 +8916,11 @@ export const ar: Catalogue<Messages> = {
       description:
         'تُبنى حزم تثبيت سطح المكتب وتطبيقات الهاتف الخاصة بهم من سير عمل GitHub Actions، وتحمل اسمهم وأيقونتهم وألوانهم. ويُحدَّد الشعار والأيقونة والألوان والمظهر من تطبيق سطح المكتب أثناء التصرّف باسم هذه الشركة.',
       website: 'موقع الشركة الإلكتروني',
+      documentLink: 'عنوان رابط المستندات',
+      documentLinkHint:
+        'المكان الذي تفتح فيه روابط المستندات المشتركة ورموز QR الجديدة على موقع الشركة، مع {code} في موضع رمز المستند. اتركه فارغًا لاستخدام صفحة Integr8. يحتاج الموقع إلى صفحة على هذا العنوان (يبنيها Integr8 Forms for AI).',
+      documentLinkInvalid: 'أدخل عنوانًا يبدأ بـ https:// ويحتوي على {code}.',
+      documentLinkSuggest: 'استخدام العنوان المقترح',
       websiteHint: 'يبدأ بـhttps://. يُعرض في تطبيق الهاتف لديهم قبل تسجيل الدخول.',
       buildApps: 'بناء تطبيقات لهذه الشركة',
       buildAppsHint:

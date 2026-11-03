@@ -177,7 +177,7 @@ function design(background: string | null, extra: Record<string, unknown>[] = []
       { type: 'heading', id: 'title', text: { en: 'Certificate {{field.certificate}}' }, level: 1 },
       { type: 'field', id: 'result', fieldId: 'result', layout: 'inline' },
       { type: 'image', id: 'photos', source: { kind: 'answer', fieldId: 'photos' }, width: 60 },
-      { type: 'qr', id: 'qr', size: 30, align: 'end' },
+      { type: 'qr', id: 'qr', content: { kind: 'share' }, size: 30, align: 'end' },
       ...extra,
     ],
   };
@@ -252,13 +252,11 @@ async function makeDocument(
 }
 
 /** Runs the render job the export queued, through the handler the worker uses. */
-async function runRenderJobs() {
-  const jobs = await withTenant(api.tenantId, (tx) =>
-    tx.jobs.list({ queue: 'documents.render', status: 'pending' }),
-  );
+async function runRenderJobs(queue = 'documents.render') {
+  const jobs = await withTenant(api.tenantId, (tx) => tx.jobs.list({ queue, status: 'pending' }));
   const handlers = buildJobHandlers(api.services, api.config);
   for (const job of jobs) {
-    await handlers['documents.render']!(job.payload, {
+    await handlers[queue]!(job.payload, {
       tenantId: api.tenantId,
       jobId: job.id,
       attempt: 1,
@@ -448,6 +446,31 @@ describe('making a document', () => {
     const pdf = await PDFDocument.load(file.rawPayload);
     expect(pdf.getPageCount()).toBe(1);
     expect(pdf.getTitle()).toBe('Gas certificate · GS-2026-0042');
+  });
+
+  it('leaves the share QR code blank until shared, then re-prints it in (0075)', async () => {
+    const printer = api.services.pdf as RecordingPrinter;
+    expect(printer.printed.at(-1)!.html).toContain('class="qr blank"');
+    const before = json<DocumentBody & { qr: { spot: boolean; printed: boolean } }>(
+      await as(viewer, 'GET', `/v1/documents/${document.id}`),
+    );
+    expect(before.qr).toMatchObject({ spot: true, printed: false });
+
+    await as(owner, 'POST', `/v1/documents/${document.id}/share`, { shareable: true });
+    expect(await runRenderJobs('documents.reprint')).toBe(1);
+    expect(printer.printed.at(-1)!.html).toMatch(/class="qr" style="[^"]*"><svg/u);
+    const after = json<DocumentBody & { qr: { printed: boolean } }>(
+      await as(viewer, 'GET', `/v1/documents/${document.id}`),
+    );
+    expect(after.qr.printed).toBe(true);
+    expect(after.status).toBe('ready');
+
+    // Stopping sharing keeps the code; sharing again queues nothing new (the
+    // helper still lists the first job, which this harness never marks done).
+    await as(owner, 'POST', `/v1/documents/${document.id}/share`, { shareable: false });
+    await as(owner, 'POST', `/v1/documents/${document.id}/share`, { shareable: true });
+    expect(await runRenderJobs('documents.reprint')).toBe(1);
+    await as(owner, 'POST', `/v1/documents/${document.id}/share`, { shareable: false });
   });
 });
 
@@ -885,6 +908,105 @@ describe('website keys and the website lookup', () => {
       ).statusCode,
     ).toBe(422);
     expect((await lookup(secret, {})).statusCode).toBe(422);
+  });
+
+  it('finds by the one search box (typed fields too, never the customer), and by code (0075)', async () => {
+    // Fields typed on the uploaded document: searchable here and on the website.
+    const typed = await as(owner, 'PUT', `/v1/documents/${uploaded.id}/fields`, {
+      fields: [
+        { label: 'Serial number', value: 'SN-7781' },
+        { label: 'Lift', value: 'North tower, lift 2' },
+      ],
+    });
+    expect(typed.statusCode, typed.body).toBe(200);
+    expect(json<DocumentBody>(typed).fields).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: 'custom_1', value: 'SN-7781', lookupRole: 'search' }),
+        expect.objectContaining({ key: 'reference', value: 'LIFT-2026-17', lookupRole: 'key' }),
+      ]),
+    );
+    const twice = await as(owner, 'PUT', `/v1/documents/${uploaded.id}/fields`, {
+      fields: [
+        { label: 'Serial', value: 'A' },
+        { label: 'serial', value: 'B' },
+      ],
+    });
+    expect(twice.statusCode).toBe(422);
+    expect(
+      (await as(viewer, 'PUT', `/v1/documents/${uploaded.id}/fields`, { fields: [] })).statusCode,
+    ).toBe(403);
+    const inApp = json<{ items: { id: string }[] }>(
+      await as(viewer, 'GET', '/v1/documents?q=sn-7781'),
+    );
+    expect(inApp.items.map((item) => item.id)).toEqual([uploaded.id]);
+
+    const search = async (q: string) =>
+      json<{ found: boolean; documents: { code: string }[]; document: { code: string } | null }>(
+        await lookup(secret, { q }),
+      );
+    const bySerial = await search(' sn-7781 ');
+    expect(bySerial.found).toBe(true);
+    expect(bySerial.documents.map((found) => found.code)).toEqual([uploaded.publicCode]);
+    expect(bySerial.document?.code).toBe(uploaded.publicCode);
+    expect((await search('LIFT-2026-17')).documents).toHaveLength(1);
+    expect((await search('GS-2026-0042')).found).toBe(true);
+    // Never by the customer's name, and never by part of a value.
+    expect(await search('Delta Mills')).toEqual({ found: false, document: null, documents: [] });
+    expect((await search('SN-778')).found).toBe(false);
+    // One way of asking at a time.
+    expect((await lookup(secret, { q: 'SN-7781', reference: 'SN-7781' })).statusCode).toBe(422);
+
+    const byCode = (value: string) =>
+      api.app.inject({
+        method: 'GET',
+        url: `/v1/website/documents/by-code/${value}`,
+        remoteAddress: api.remoteAddress,
+        headers: { authorization: `Bearer ${secret}` },
+      });
+    const opened = await byCode(uploaded.publicCode);
+    expect(opened.statusCode, opened.body).toBe(200);
+    expect(json<{ found: boolean; document: { title: string } }>(opened)).toMatchObject({
+      found: true,
+      document: { title: 'Lift inspection certificate' },
+    });
+    expect(json<{ found: boolean }>(await byCode('A'.repeat(22))).found).toBe(false);
+    expect((await byCode('not-a-code')).statusCode).toBe(422);
+
+    // Staff point the links at the company's own website; the link follows.
+    const settings = `/v1/platform/companies/${api.tenantId}/settings`;
+    const elsewhere = await api.call(admin.accessToken, {
+      method: 'PATCH',
+      url: settings,
+      payload: {
+        websiteUrl: 'https://www.deltamills.example',
+        documentLinkPattern: 'https://evil.example/{code}',
+      },
+    });
+    expect(elsewhere.statusCode).toBe(422);
+    expect(code(elsewhere)).toBe('document_link_other_site');
+    const pointed = await api.call(admin.accessToken, {
+      method: 'PATCH',
+      url: settings,
+      payload: {
+        websiteUrl: 'https://www.deltamills.example',
+        documentLinkPattern: 'https://deltamills.example/documents/{code}',
+      },
+    });
+    expect(pointed.statusCode, pointed.body).toBe(200);
+    const linked = json<DocumentBody>(await as(viewer, 'GET', `/v1/documents/${uploaded.id}`));
+    expect(linked.link).toBe(`https://deltamills.example/documents/${uploaded.publicCode}`);
+    // Back to Integr8's page; codes printed earlier never stopped working there.
+    await api.call(admin.accessToken, {
+      method: 'PATCH',
+      url: settings,
+      payload: { documentLinkPattern: null },
+    });
+    expect(json<DocumentBody>(await as(viewer, 'GET', `/v1/documents/${uploaded.id}`)).link).toBe(
+      `${WEB}/d/${uploaded.publicCode}`,
+    );
+
+    await as(owner, 'PUT', `/v1/documents/${uploaded.id}/fields`, { fields: [] });
+    expect((await search('SN-7781')).found).toBe(false);
   });
 
   it('finds nothing the company has not shared, and gives no link to it', async () => {

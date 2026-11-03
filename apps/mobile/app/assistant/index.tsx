@@ -27,6 +27,7 @@ import {
   fetchAiConversations,
 } from '~/local/online';
 import { useOnlineRequest } from '~/local/use-online';
+import { ScreenGate } from '~/components/screen-gate';
 
 /**
  * The assistant's front door (docs/ai §10.4): what it may do for this
@@ -34,7 +35,7 @@ import { useOnlineRequest } from '~/local/use-online';
  * connection it says so and offers nothing, because nothing here is kept on
  * the phone. Off is an answer: the screen says which switch closed it.
  */
-export default function AssistantScreen() {
+function AssistantScreenBody() {
   const { t, i18n } = useTranslation();
   const { state, reload } = useOnlineRequest('assistant', loadAssistant);
   const [starting, setStarting] = useState(false);
@@ -145,3 +146,12 @@ const styles = StyleSheet.create({
   conversation: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
   grow: { flex: 1 },
 });
+
+/** Shown only while the company keeps its tab (0075). */
+export default function AssistantScreen() {
+  return (
+    <ScreenGate screen="assistant">
+      <AssistantScreenBody />
+    </ScreenGate>
+  );
+}

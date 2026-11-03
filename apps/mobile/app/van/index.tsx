@@ -17,6 +17,7 @@ import {
 import { VanStockItem } from '~/components/van-stock-row';
 import { formatWhen } from '~/lib/format';
 import { useLocalQuery } from '~/local/react';
+import { ScreenGate } from '~/components/screen-gate';
 
 /**
  * The engineer's van as the office last had it (ADR-0012), offline: each
@@ -24,7 +25,7 @@ import { useLocalQuery } from '~/local/react';
  * available, less this phone's own unsent uses. Refilling it is online only,
  * and is one tap from here.
  */
-export default function VanScreen() {
+function VanScreenBody() {
   return (
     <LocalGate>
       <Van />
@@ -89,5 +90,14 @@ function Van() {
         </>
       )}
     </ScrollScreen>
+  );
+}
+
+/** Shown only while the company keeps its tab (0075). */
+export default function VanScreen() {
+  return (
+    <ScreenGate screen="van">
+      <VanScreenBody />
+    </ScreenGate>
   );
 }

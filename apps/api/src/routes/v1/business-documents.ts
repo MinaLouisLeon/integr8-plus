@@ -769,7 +769,9 @@ export const createBusinessDocumentRoute = defineRoute({
         documentId: id,
         data: snapshot.data,
         locale,
-        qrUrl: quoteUrl ?? documentLink(config, publicCode),
+        qrUrl:
+          quoteUrl ??
+          documentLink(config, publicCode, (await tx.settings.get()).documentLinkPattern),
         qrOpensQuote: quoteUrl !== null,
       };
       await tx.jobs.enqueue({

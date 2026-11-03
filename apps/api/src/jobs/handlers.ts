@@ -2,7 +2,12 @@ import { withTenant } from '@integr8/db';
 import type { Services } from '../composition.js';
 import type { ApiConfig } from '../config.js';
 import { BUSINESS_DOCUMENT_QUEUE, renderBusinessDocument } from '../documents/business.js';
-import { DOCUMENT_RENDER_QUEUE, renderDocument } from '../documents/render.js';
+import {
+  DOCUMENT_RENDER_QUEUE,
+  DOCUMENT_REPRINT_QUEUE,
+  renderDocument,
+  reprintDocument,
+} from '../documents/render.js';
 import { ETA_RECONCILE_QUEUE, ETA_SUBMIT_QUEUE } from '../eta/documents.js';
 import { runReconcile, runSubmission } from '../eta/jobs.js';
 import { GEOCODE_QUEUE, geocodeSite } from '../geo/geocode-site.js';
@@ -160,6 +165,20 @@ export const buildJobHandlers = (
       },
     );
     context.logger.info('Document job finished', { jobId: context.jobId, documentId, ...outcome });
+  },
+
+  // The share QR code, once a document is shared (0075).
+  [DOCUMENT_REPRINT_QUEUE]: async (payload, context) => {
+    const documentId = text(payload, 'documentId');
+    if (documentId === null) {
+      context.logger.warn('Re-print job without a document id', { jobId: context.jobId });
+      return;
+    }
+    const outcome = await reprintDocument(
+      { media: services.media, pdf: services.pdf, config, logger: context.logger },
+      { tenantId: context.tenantId, documentId, attempt: context.attempt },
+    );
+    context.logger.info('Re-print job finished', { jobId: context.jobId, documentId, ...outcome });
   },
 
   [BUSINESS_DOCUMENT_QUEUE]: async (payload, context) => {

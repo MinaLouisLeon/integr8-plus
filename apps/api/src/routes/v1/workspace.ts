@@ -133,6 +133,8 @@ async function companyBrand(
     shellColour: string | null;
     defaultTheme: 'light' | 'dark' | 'system';
     websiteUrl: string | null;
+    showCompanyName: boolean;
+    hiddenNavSections: readonly string[];
   },
 ) {
   const tenant = await getPlatformDataSource().tenants.findById(tenantId);
@@ -145,6 +147,8 @@ async function companyBrand(
     shellColour: settings.shellColour,
     defaultTheme: settings.defaultTheme,
     websiteUrl: settings.websiteUrl,
+    showCompanyName: settings.showCompanyName,
+    hiddenSections: [...settings.hiddenNavSections],
   };
 }
 
