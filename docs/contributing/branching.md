@@ -3,33 +3,37 @@
 ```
    your branch ──▶ dev ──▶ staging ──▶ main
                     │         │          │
-                 test build  nightly   version
-                 only        release   release
+                 CI on the  nothing   version
+                 PR         (test box) release
 ```
 
 Three long-lived branches. `dev` is where work lands, `staging` is what is
 being tested, `main` is what has shipped. The intent is that nothing skips a step,
-but nothing enforces it yet: see "Why rules 1 and 2 are not in force". So anything on
-`main` has already been built twice and released once as a nightly.
+but nothing enforces it yet: see "Why rules 1 and 2 are not in force". CI checks a
+change once, on its pull request into `dev`; promotions to `staging` and `main` carry
+code that already passed there.
 
-| Branch    | Takes          | A merge into it produces           |
-| --------- | -------------- | ---------------------------------- |
-| `dev`     | any branch     | a test build, and nothing else     |
-| `staging` | `dev` only     | a nightly pre-release              |
-| `main`    | `staging` only | a versioned release, marked latest |
+| Branch    | Takes          | A pull request into it runs | A merge into it produces           |
+| --------- | -------------- | --------------------------- | ---------------------------------- |
+| `dev`     | any branch     | `ci.yml`, `branch-policy`   | nothing                            |
+| `staging` | `dev` only     | `branch-policy` only        | nothing (the test box builds it)   |
+| `main`    | `staging` only | `branch-policy` only        | a versioned release, marked latest |
+
+No workflow builds or publishes Docker images: each server builds its own from
+the code.
 
 ## The rules, and what actually enforces each one
 
-| #   | Rule                                  | Enforced by                                | In force                 |
-| --- | ------------------------------------- | ------------------------------------------ | ------------------------ |
-| 1   | The three branches cannot be deleted  | `.github/rulesets/*.json` (`deletion`)     | **No — not applied yet** |
-| 2   | Nothing is pushed to them directly    | `.github/rulesets/*.json` (`pull_request`) | **No — not applied yet** |
-| 3   | Any branch may merge into `dev`       | `branch-policy.yml`                        | Yes                      |
-| 4   | Only `dev` may merge into `staging`   | `branch-policy.yml`, as a required check   | Check yes, blocking no   |
-| 5   | Only `staging` may merge into `main`  | `branch-policy.yml`, as a required check   | Check yes, blocking no   |
-| 6   | Merge into `dev` builds for test      | `release-dev.yml`                          | Yes                      |
-| 7   | Merge into `staging` builds a nightly | `release-staging.yml`                      | Yes                      |
-| 8   | Merge into `main` builds a version    | `release-main.yml`                         | Yes                      |
+| #   | Rule                                 | Enforced by                                | In force                 |
+| --- | ------------------------------------ | ------------------------------------------ | ------------------------ |
+| 1   | The three branches cannot be deleted | `.github/rulesets/*.json` (`deletion`)     | **No — not applied yet** |
+| 2   | Nothing is pushed to them directly   | `.github/rulesets/*.json` (`pull_request`) | **No — not applied yet** |
+| 3   | Any branch may merge into `dev`      | `branch-policy.yml`                        | Yes                      |
+| 4   | Only `dev` may merge into `staging`  | `branch-policy.yml`, as a required check   | Check yes, blocking no   |
+| 5   | Only `staging` may merge into `main` | `branch-policy.yml`, as a required check   | Check yes, blocking no   |
+| 6   | A pull request into `dev` is checked | `ci.yml`                                   | Yes                      |
+| 7   | (retired: no nightly on `staging`)   | —                                          | —                        |
+| 8   | Merge into `main` builds a version   | `release-main.yml`                         | Yes                      |
 
 ### Why rules 1 and 2 are not in force
 
@@ -96,11 +100,14 @@ Two settings worth understanding before you run it:
   pull request. On a repository with one person, any number above zero blocks
   every merge, permanently, with no way out but to edit the ruleset. Raise it
   when there is a second reviewer.
-- **The CI jobs are required checks.** All three ruleset files list `Lint,
+- **The CI jobs are required checks into `dev` only.** `dev.json` lists `Lint,
 typecheck, test, build`, `Conventional commits`, `Migrations, isolation,
 authentication and API` and `Secret scan` from `ci.yml` beside `PR source is
-allowed`, so a red pull request cannot be merged. Renaming one of those jobs
-  blocks every merge until the ruleset is edited to match.
+allowed`, so a red pull request cannot be merged. `ci.yml` does not run on pull
+  requests into `staging` or `main`, so `staging.json` and `main.json` require
+  only `PR source is allowed`; listing a CI job there would block every promotion,
+  because a required check that never reports never passes. Renaming one of those
+  jobs blocks every merge until the ruleset is edited to match.
 
 ## Day to day
 
@@ -124,32 +131,22 @@ A pull request into `staging` or `main` from anywhere else is refused by the
 
 ## What each build does
 
-### `dev` — test only
+### `dev` — checked on the pull request
 
-`release-dev.yml` runs the shared verification (`verify.yml`: format, lint,
-typecheck, test, build, and the OpenAPI drift check) against the **merge
-result**, which is not the commit the pull request tested. It publishes nothing.
-There is deliberately no artifact anybody could mistake for a release.
+`ci.yml` runs on every pull request into `dev`: formatting, licences, exact
+versions, setup-guide parity, lint, typecheck, unit tests, build, the OpenAPI
+drift check, commit messages, the form engine in Hermes, the Postgres and real
+Auth suites, and the secret scan. Nothing runs after the merge.
 
-### `staging` — a nightly
+### `staging` — the test box
 
-`release-staging.yml` verifies, then calls `build-release-artifacts.yml` and
-publishes a GitHub **pre-release**:
-
-```
-v0.1.0-nightly.20260910.g1f2a9f1
-```
-
-The `g` before the hash is the `git describe` convention, and it is not
-decoration: a commit hash of digits only would otherwise be read as a numeric
-semver identifier, and one with a leading zero would not be valid semver at all.
-
-Pre-releases never become "latest", so nothing that reads the latest release
-picks up a nightly by accident.
+A merge into `staging` runs nothing on GitHub. The home test box checks out
+`staging` and builds it (setup guide, Stage 10).
 
 ### `main` — a version
 
-`release-main.yml` reads the version from the **root `package.json` and nowhere
+`release-main.yml` runs the shared verification (`verify.yml`, the same checks
+as `ci.yml`) on the merge result, then reads the version from the **root `package.json` and nowhere
 else**, and refuses to run if a release already exists for it:
 
 ```
@@ -178,9 +175,9 @@ The API and the web app deploy; they do not install. Turning their build output
 into something a server runs is P19 and P20, and calling a tarball a deployment
 before then would be a promise this repository cannot keep.
 
-Both channels build through the **same** workflow with different inputs. If the
-nightly and the release were built by two different files, a green nightly would
-say nothing useful about the release that follows it.
+The release files are built by `build-release-artifacts.yml`, which only the
+version release calls. There are no Docker images in a release: the server
+builds them from the code.
 
 ## Runner minutes, which are finite
 
@@ -188,18 +185,12 @@ A private repository on the Free plan gets 2,000 minutes a month, and they are
 not billed evenly (a public repository's standard runners are free): **Linux ×1, Windows ×2, macOS ×10**. A Tauri build takes
 15–25 minutes, so one macOS desktop build costs roughly 150–250 charged minutes.
 
-Hence the default split:
-
-| Channel | Desktop platforms     | Variable to override        |
-| ------- | --------------------- | --------------------------- |
-| nightly | Linux, Windows        | `NIGHTLY_DESKTOP_PLATFORMS` |
-| release | Linux, Windows, macOS | `RELEASE_DESKTOP_PLATFORMS` |
-
-A nightly runs on every promotion from `dev`; a version release does not. Set
-either variable to a JSON array of runner labels, for example:
+A version release builds the desktop app for Linux, Windows and macOS. Set
+`RELEASE_DESKTOP_PLATFORMS` to a JSON array of runner labels to change that, for
+example:
 
 ```bash
-gh variable set NIGHTLY_DESKTOP_PLATFORMS --body '["ubuntu-latest"]'
+gh variable set RELEASE_DESKTOP_PLATFORMS --body '["ubuntu-latest","windows-latest"]'
 gh variable set DESKTOP_BUILDS --body 'disabled'   # skip desktop builds entirely
 ```
 
@@ -216,11 +207,10 @@ gh variable set DESKTOP_BUILDS --body 'disabled'   # skip desktop builds entirel
 | `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY` | secret   | macOS apps are not signed (Gatekeeper blocks the first open). A Developer ID Application certificate as base64 .p12 |
 | `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID`                               | secret   | Notarisation uses the `ASC_*` key below when it exists; otherwise these, or a signed but un-notarised app           |
 | `EXPO_TOKEN`                                                                | secret   | Mobile builds cannot authenticate                                                                                   |
-| `EAS_BUILDS`                                                                | variable | Mobile builds are skipped. Set to `enabled` to run them                                                             |
+| `EAS_BUILDS`                                                                | variable | Company phone builds are skipped. Set to `enabled` to run them                                                      |
 | `EAS_PLATFORMS`                                                             | variable | Android only. Set to `all` once Apple credentials exist on Expo                                                     |
 | `DESKTOP_BUILDS`                                                            | variable | Set to `disabled` to skip desktop builds                                                                            |
-| `PUBLIC_API_URL`                                                            | variable | The release desktop build refuses to run: an installer must know its API. Shared with the web image                 |
-| `STAGING_PUBLIC_API_URL`                                                    | variable | As above, for the nightly's installer and the staging web image                                                     |
+| `PUBLIC_API_URL`                                                            | variable | The release desktop build refuses to run: an installer must know its API                                            |
 | `DESKTOP_PUBLIC_SENTRY_DSN`                                                 | variable | Desktop installers report no errors to Sentry                                                                       |
 | `BUILD_TOKEN`                                                               | secret   | "Build company apps" for `all` cannot list the companies; the API's `BUILD_TOKEN` must be the same                  |
 | `COMPANY_APPS`                                                              | variable | Set to `disabled` to stop the version release building every company's apps                                         |
@@ -229,15 +219,10 @@ gh variable set DESKTOP_BUILDS --body 'disabled'   # skip desktop builds entirel
 | `ASC_API_KEY`, `ASC_KEY_ID`, `ASC_ISSUER_ID`                                | secret   | With `STORE_SUBMIT`, iOS is not submitted. An App Store Connect API key (.p8 contents, key id, issuer id)           |
 | `ASC_APP_IDS`                                                               | variable | iOS submission needs each company's App Store Connect app id: `{"acme":"1234567890"}`                               |
 
-The desktop installer inlines its API address at build time, so the nightly
-is built against `STAGING_PUBLIC_API_URL` and the release against
-`PUBLIC_API_URL`; a missing value fails the desktop job rather than producing
-an installer that talks to `localhost`. The phone app's addresses live in
-`apps/mobile/eas.json`, one per build profile, for the same reason. The
-`production` profile builds a Play Store bundle; `production-internal` is the
-same app as a file a phone installs directly, for handing to engineers before
-the store listing exists. Point `RELEASE_EAS_PROFILE` at it to get that from a
-release.
+The desktop installer inlines its API address at build time, so the release
+is built against `PUBLIC_API_URL`; a missing value fails the desktop job rather
+than producing an installer that talks to `localhost`. The phone app's addresses
+live in `apps/mobile/eas.json`, one per build profile, for the same reason.
 
 The Tauri signing key is the private half of the updater keypair — the one in
 `apps/desktop/src-tauri/updater.key`, which is git-ignored. Whoever holds it can
@@ -278,6 +263,6 @@ gh pr create --base dev --head foundation --title "feat: foundation phases P01�
 
 That is allowed — rule 3 lets any branch into `dev` — and it is a fair test of
 the whole pipeline, since it is the change that gives `dev`, `staging` and
-`main` an application to build in the first place. Until it lands, all three
-release workflows notice there is no `package.json` and stop with a note rather
-than a red run.
+`main` an application to build in the first place. Until it lands, the version
+release notices there is no `package.json` and stops with a note rather than a
+red run.

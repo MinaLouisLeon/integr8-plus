@@ -167,6 +167,16 @@ the end of any piece of work that changes one of them, and date each section.
   tests against the real API). The contract is hand-written and `contract.test.ts` holds it to
   `apps/api/openapi.json`. Website keys stay staff-made on the dashboard; the program stays in
   `/download`'s staff section.
+- **Fewer workflows (2026-11-03, unreleased, on `dev`'s working tree), as the owner chose
+  them:** `ci.yml` runs only on pull requests into `dev`; `release-dev.yml` (dev build),
+  `release-staging.yml` (nightly pre-release, and with it the generic `preview` phone build)
+  and `publish-images.yml` (GHCR images) are deleted. GitHub publishes no Docker images:
+  every machine, production and the test box, builds its own with `--build`.
+  `release-main.yml` keeps verify → artifacts → company apps → release, without the images
+  job; `build-release-artifacts.yml` lost its `channel`/`eas-profile` inputs and mobile job.
+  The `staging`/`main` rulesets require only `PR source is allowed` (CI no longer reports
+  there). `STAGING_PUBLIC_API_URL`, `NIGHTLY_DESKTOP_PLATFORMS` and `RELEASE_EAS_PROFILE`
+  are unused.
 - **The demo seeder goes through the API**, in-process with Fastify's `inject`, as the
   company's own people (plus a staff impersonation for staff-only setup). Direct inserts
   were rejected: they skip numbering, stock, ledger postings and audit, and produce data
@@ -205,8 +215,7 @@ Update them together at each release or new migration:
   runs only in CI. Not built (no screen existed): accepting an invitation inside the
   desktop or phone app; the email link opens the web page.
 
-- **Owner steps for 1.2.3 (2026-11-01):** run Actions → Publish images with `tag=v1.2.2`
-  once; `INTEGR8_PLATFORM_PASSWORD` and `DATABASE_URL_PLATFORM` in `deploy/.env`; copy the
+- **Owner steps for 1.2.3 (2026-11-01):** `INTEGR8_PLATFORM_PASSWORD` and `DATABASE_URL_PLATFORM` in `deploy/.env`; copy the
   new Caddyfile blocks; the heartbeat monitor, `HEALTH_PING_URL` and its cron line, then
   delete the public uptime monitor; `CLOUDFLARE_API_TOKEN`; `HR_DATA_KEY` set; watch
   Sentry's CSP reports ~2 weeks before enforcing; the Tauri updater key secrets (does anyone
@@ -235,7 +244,7 @@ Update them together at each release or new migration:
 - GitHub branch protection is **not** in force. The repository is **public** (rulesets
   would be free) but they have never been applied. The `staging` branch exists again since
   2026-11-01, created on GitHub from `dev` at `812a550` (1.3.0 with the Dependabot updates);
-  pushes to it publish the `:staging` images and a nightly. The only guard against pushing to `main`/`staging`/`dev` is the local pre-push hook
+  since 2026-11-03 pushes to it run nothing on GitHub. The only guard against pushing to `main`/`staging`/`dev` is the local pre-push hook
   (`scripts/git-hooks/pre-push-branch-guard.sh`); `INTEGR8_ALLOW_PROTECTED_PUSH=1`
   bypasses it.
 - Until 1.2.2 feature PRs were merged straight into `main`; from 1.2.3 work goes into `dev`

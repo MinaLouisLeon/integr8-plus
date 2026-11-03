@@ -51,7 +51,8 @@ Code signing, store submission and release channels. **Start the certificate wor
   `API_IMAGE`/`WEB_IMAGE` to a release tag; `:main` and `:staging` are unreleased and for the
   test box. A tag created with `github.token` never started the `v*` trigger, which is why no
   release image existed before; "Publish images" can be run by hand with a tag for a release
-  that already exists (v1.2.2).
+  that already exists (v1.2.2). **Superseded 2026-11-03:** `publish-images.yml` was removed;
+  servers build their own images.
 - **Desktop auto-update (2026-10-31).** Release builds (staff and company) set
   `createUpdaterArtifacts` when `TAURI_SIGNING_PRIVATE_KEY` exists, so Tauri signs each
   bundle; `collect-bundles.mjs` names the assets so GitHub keeps them and writes each

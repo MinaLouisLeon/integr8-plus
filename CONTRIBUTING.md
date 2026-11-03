@@ -50,8 +50,8 @@ Rules that hold across the workspace:
 | Branch        | Purpose                                                              |
 | ------------- | -------------------------------------------------------------------- |
 | `main`        | What has shipped. Takes `staging` only; a merge is a version release |
-| `staging`     | What is being tested. Takes `dev` only; a merge is a nightly         |
-| `dev`         | Where work lands. Takes any branch; a merge is a test build          |
+| `staging`     | What is being tested. Takes `dev` only; the test box builds it       |
+| `dev`         | Where work lands. Takes any branch; CI checks its pull requests      |
 | `feat/<slug>` | A feature, e.g. `feat/maintenance-contracts-deadlines`               |
 | `fix/<slug>`  | A bug fix                                                            |
 
