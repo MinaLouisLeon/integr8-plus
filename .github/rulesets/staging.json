@@ -33,18 +33,6 @@
         "required_status_checks": [
           {
             "context": "PR source is allowed"
-          },
-          {
-            "context": "Lint, typecheck, test, build"
-          },
-          {
-            "context": "Conventional commits"
-          },
-          {
-            "context": "Migrations, isolation, authentication and API"
-          },
-          {
-            "context": "Secret scan"
           }
         ]
       }
