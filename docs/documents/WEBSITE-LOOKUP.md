@@ -12,8 +12,8 @@ The company website must authenticate its own customers before asking for a
 job, a quote or an invoice; the key identifies the company website, not an
 individual customer.
 
-Building the website with an AI coding tool? **Integr8 Forms for AI** (the program on
-`/download`, see [`docs/forms-ai/README.md`](../forms-ai/README.md#for-a-company-website)) gives
+Building the website with an AI coding tool? **Integr8 Forms for AI** (the program on the
+staff dashboard's Downloads page, see [`docs/forms-ai/README.md`](../forms-ai/README.md#for-a-company-website)) gives
 it this guide, the exact API, a ready Next.js search page in English and Arabic, and a check of
 the website's code for a leaked key or a wrong call.
 

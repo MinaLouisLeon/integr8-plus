@@ -18,8 +18,8 @@ version, so a tool and a server of the same version always agree on the file for
 
 ## For staff
 
-1. Open the download page (`/download` on the web app) and, under **Integr8 Plus Staff**, take
-   **Integr8 Forms for AI** for your computer: Windows, macOS (Apple silicon or Intel) or Linux.
+1. Sign in to the staff dashboard on the web app and open **Downloads** (`/platform/downloads`),
+   then take **Integr8 Forms for AI** for your computer: Windows, macOS (Apple silicon or Intel) or Linux.
 2. Double-click it. It is not signed, so the computer warns the first time:
    - **Windows**: "Windows protected your PC" → **More info** → **Run anyway**.
    - **macOS**: a browser does not keep a downloaded program runnable, so once, in Terminal:
@@ -205,7 +205,7 @@ The version release (`release-main.yml` → `build-release-artifacts.yml`, job *
 builds the executable on GitHub's runners for Windows x64, macOS arm64, macOS x64 (Intel), Linux
 x64 and Linux arm64, and the release attaches each as
 `integr8-forms-ai-<version>-<windows|macos|linux>-<x64|arm64>[.exe]` with its `.sha256`. Set the repository variable `FORMS_AI_BUILDS=disabled` to skip the job.
-The `/download` page lists them in the staff section from the newest staff release that has them
+The dashboard's **Downloads** page (`/platform/downloads`, staff only) lists them from the newest staff release that has them
 (`apps/web/src/lib/desktop-updates.ts`, `formsAi`).
 
 Locally:

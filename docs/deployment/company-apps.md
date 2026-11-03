@@ -85,7 +85,8 @@ shows the company's newest release with installers (Windows, macOS, Linux and th
 Android `.apk`), found through the same cached release list as the desktop update
 feed (`GITHUB_RELEASES_REPOSITORY`, and `GITHUB_RELEASES_TOKEN` for a private
 repository, when the files are passed through `/desktop-updates/<slug>/download/…`).
-`/download` alone lists the staff desktop app. A short name with no release, or no
+`/download` lists companies' apps only: the staff desktop app and Integr8 Forms for AI are
+on the dashboard's **Downloads** page (`/platform/downloads`), for signed-in staff. A short name with no release, or no
 company, gets a sentence asking the reader to check with their administrator; a
 release with no `.apk` (store builds, or phone builds switched off) says the company
 sends the phone app. Send people that link rather than GitHub's.
@@ -145,6 +146,22 @@ placeholder address and must be reinstalled once.
 
 Phone apps receive over-the-air updates on their own channel,
 `production-<slug>`.
+
+## One Expo project and one Firebase project for every company
+
+Every company's phone app is built in the one EAS project (`integr8-plus`, its ID in
+`apps/mobile/app.config.ts`). EAS refuses a build whose Expo `slug` is not that project's,
+so the slug stays `integr8-plus` for every company (`EAS_PROJECT_SLUG` in
+`apps/mobile/src/lib/company-config.ts`); what makes the app the company's is its name, icon,
+store identifiers (`com.integr8.plus.<slug>`), link scheme (`integr8-<slug>`) and update
+channel. EAS keeps each company's signing key under its own identifier.
+
+Push: one Firebase project with an Android app per company (package
+`com.integr8.plus.<slug with - as _>`). Its `google-services.json` lists them all, so the one
+file in the EAS environment variable `GOOGLE_SERVICES_JSON` serves every company: download it
+again and replace the variable after adding a company. The server sends every push through
+Expo (`PUSH_SENDER=expo`), which hands it to Firebase with the FCM V1 key uploaded in the EAS
+project's credentials.
 
 When a release raises `API_MIN_SUPPORTED_CLIENT` past an app's build, the API
 refuses it with `client_too_old` and the address of the web app's download page

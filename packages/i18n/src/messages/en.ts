@@ -8735,7 +8735,15 @@ export const en = {
       releases: 'Releases',
       health: 'Health',
       staff: 'Staff',
+      downloads: 'Downloads',
       signOut: 'Sign out',
+    },
+    downloads: {
+      title: 'Downloads',
+      subtitle:
+        'The apps for Integr8’s own team. Only signed-in staff see this page; companies download their apps from /download.',
+      staffNone: 'No staff release has been published yet.',
+      formsAiNone: 'No release carries Integr8 Forms for AI yet.',
     },
     companies: {
       title: 'Companies',

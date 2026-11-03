@@ -5,6 +5,7 @@ import type { ConfigContext, ExpoConfig } from 'expo/config';
 import {
   type CompanyBuild,
   companyIdentifiers,
+  EAS_PROJECT_SLUG,
   parseCompanyBuild,
 } from './src/lib/company-config.ts';
 import { googleServicesDecision } from './src/lib/google-services.ts';
@@ -94,7 +95,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   return {
     ...config,
     name: company?.name ?? 'Integr8 Plus',
-    slug: identifiers?.slug ?? 'integr8-plus',
+    slug: identifiers?.slug ?? EAS_PROJECT_SLUG,
     version: productVersion(),
     orientation: 'portrait',
     scheme: identifiers?.scheme ?? 'integr8',

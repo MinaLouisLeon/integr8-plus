@@ -19,12 +19,13 @@ the end of any piece of work that changes one of them, and date each section.
   failed on a slow runner (`/v1/sync/push` read the server clock after sign-in checks, so
   phone times landed ~300 ms late). Branch `fix/release-1.3.3` (from `main`) stamps the
   arrival time in `onRequest` (`context.receivedAt`) and bumps every copy to **1.3.3**; no
-  v1.3.1 or v1.3.2 tag exists. The root `package.json` is the only
+  v1.3.1 or v1.3.2 tag exists. **2026-11-04:** branch `bugfix/fix-build` bumps every copy to
+  **1.3.4** (it carries migration 0075 and this round's fixes). The root `package.json` is the only
   source: the phone (`app.config.ts`) and the web build (`next.config.ts`) read it, and
   `apps/api/src/app-info.ts` has a copy a test keeps equal. A version bump must also change
   every place listed under "Places that state the version".
-- **Migrations:** `packages/db/migrations` reaches **0075** (unreleased, branch
-  `bugfix/ui-issue`). **0059 was never used** (workers had reserved ranges) and the migrator
+- **Migrations:** `packages/db/migrations` reaches **0075** (merged into `dev`, released with
+  1.3.4). **0059 was never used** (workers had reserved ranges) and the migrator
   does not need contiguous numbers; the next one is **0076**. 1.2.2 carries 0054–0057;
   1.2.3 adds 0058 and 0060–0066; 1.2.4 adds 0067–0068; 1.3.0 adds 0069 and 0074 (0070–0073 were reserved by workers and never used).
 - **Pre-production audit (2026-10-31):** plans, docs and code compared area by area; the
@@ -78,7 +79,10 @@ the end of any piece of work that changes one of them, and date each section.
 - The owner keeps a published copy of the setup guide as a claude.ai artifact:
   https://claude.ai/artifact/HCVbJdp3u9YJT28cCaRw29 (the HTML with its CSS and JS as separate
   files). On 1 Nov it was republished from branch `ccr-4f86fb34-8uvkk9` (1.3.0);
-  republish it from `setup-checklist.html` whenever the guide changes.
+  republish it from `setup-checklist.html` whenever the guide changes. **2026-11-04:** the owner
+  asked for a short steps-only checklist instead (no per-release sections), in the Integr8 Media
+  look: https://claude.ai/artifact/KrY8XQBYC5ehzjG7DU4khX, a hand-written page (not generated
+  from the repository guide); update it when a setup or update step changes.
 
 ## Decisions
 
@@ -209,6 +213,19 @@ the end of any piece of work that changes one of them, and date each section.
   now depends on `pdfjs-dist` 4.10.38). Submitted photos open in a viewer (next/previous, zoom,
   open/download). Forms for AI interviews the person first (`get_interview_guide`,
   `summarize_form`, "To confirm" items for QR blocks without a kind).
+- **Company phone builds and staff downloads (2026-11-04, branch `bugfix/fix-build`), as the
+  owner chose them:** the repository is now **private**. Every company phone build failed in
+  EAS ("Slug … (integr8-plus) does not match … (integr8-pioneers)"): the slug is now always
+  `integr8-plus` (`EAS_PROJECT_SLUG`); one Expo account/project and one Firebase project (an
+  Android app per company) for all companies, not one each. Company apps are built by hand
+  from GitHub (Build company apps on `main`) for now; the dashboard button needs a new
+  `GITHUB_BUILD_TOKEN` (Actions: read and write) for the private repository, and `/download`
+  and desktop updates need `GITHUB_RELEASES_TOKEN`. `/download` shows companies' apps only;
+  the staff app and Forms for AI moved to the dashboard's **Downloads** page
+  (`/platform/downloads`, list from `/api/platform/downloads`, which checks `/v1/platform/me`).
+  The file links themselves stay plain links (the staff app's updater needs them without a
+  sign-in). Forms for AI's own update check reads GitHub's public API and finds nothing in a
+  private repository (not fixed yet).
 - **The demo seeder goes through the API**, in-process with Fastify's `inject`, as the
   company's own people (plus a staff impersonation for staff-only setup). Direct inserts
   were rejected: they skip numbering, stock, ledger postings and audit, and produce data
@@ -273,8 +290,8 @@ Update them together at each release or new migration:
 
 ## Gotchas
 
-- GitHub branch protection is **not** in force. The repository is **public** (rulesets
-  would be free) but they have never been applied. The `staging` branch exists again since
+- GitHub branch protection is **not** in force. The repository became **private** on
+  2026-11-04 (rulesets on a private repository need a paid plan); none were ever applied. The `staging` branch exists again since
   2026-11-01, created on GitHub from `dev` at `812a550` (1.3.0 with the Dependabot updates);
   since 2026-11-03 pushes to it run nothing on GitHub. The only guard against pushing to `main`/`staging`/`dev` is the local pre-push hook
   (`scripts/git-hooks/pre-push-branch-guard.sh`); `INTEGR8_ALLOW_PROTECTED_PUSH=1`

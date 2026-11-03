@@ -92,6 +92,7 @@ export const PLATFORM_NAV_PATHS: Readonly<Record<PlatformNavPath, string>> = {
   releases: '/platform/releases',
   health: '/platform/health',
   staff: '/platform/staff',
+  downloads: '/platform/downloads',
 };
 
 export const PLATFORM_NAV_ALIASES: Readonly<Partial<Record<PlatformNavPath, readonly string[]>>> = {

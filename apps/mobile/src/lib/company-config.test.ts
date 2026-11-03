@@ -2,9 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { companyIdentifiers, isCompanySlug, parseCompanyBuild } from './company-config';
 
 describe('companyIdentifiers', () => {
-  it('derives the slug, scheme and both store identifiers from the company slug', () => {
+  it('derives the scheme and both store identifiers from the company slug', () => {
     expect(companyIdentifiers('northwind')).toEqual({
-      slug: 'integr8-northwind',
+      // One EAS project builds every company's app; EAS refuses another slug.
+      slug: 'integr8-plus',
       scheme: 'integr8-northwind',
       iosBundleIdentifier: 'com.integr8.plus.northwind',
       androidPackage: 'com.integr8.plus.northwind',
