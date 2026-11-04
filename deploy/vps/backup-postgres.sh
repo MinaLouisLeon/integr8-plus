@@ -12,7 +12,7 @@
 # Restore one file into a running stack (this replaces the database's contents;
 # stop web, api, worker and auth first — the runbook has every step):
 #
-#   gunzip -c /var/backups/integr8/integr8-20261004-0300.sql.gz \
+#   gunzip -c /home/integr8-backup/integr8-20261004-0300.sql.gz \
 #     | docker compose -f /opt/integr8/deploy/compose.yml --env-file /opt/integr8/deploy/.env \
 #         exec -T postgres psql -U postgres -d integr8 -v ON_ERROR_STOP=1
 #
@@ -29,9 +29,20 @@
 set -euo pipefail
 
 REPO="${INTEGR8_DIR:-/opt/integr8}"
-DEST="${BACKUP_DIR:-/var/backups/integr8}"
+DEST="${BACKUP_DIR:-/home/integr8-backup}"
 KEEP="${KEEP:-14}"
 ENV_FILE="$REPO/deploy/.env"
+
+# The dumps hold every company's data, so nobody else on the machine may read
+# them, not even while one is being written.
+umask 077
+
+# The folder and its files belong to the person who logs in to the machine (the
+# owner of the checkout, which the setup guide gives to that login), so they can
+# list the backups and copy them to a laptop with scp without sudo. That person
+# can already run docker, and with it read the whole database, so this gives
+# them nothing new. BACKUP_OWNER names somebody else; root keeps them root's.
+OWNER="${BACKUP_OWNER:-$(stat -c %U "$REPO" 2> /dev/null || echo root)}"
 
 compose() {
   docker compose -f "$REPO/deploy/compose.yml" --env-file "$ENV_FILE" "$@"
@@ -95,11 +106,23 @@ done
 
 mkdir -p "$DEST"
 chmod 700 "$DEST"
+id -u "$OWNER" > /dev/null 2>&1 || fail "BACKUP_OWNER \"$OWNER\" is not a user on this machine"
+# Backups used to live in /var/backups/integr8. The first run with the default
+# folder moves those older files here, so the restore drill and the KEEP count
+# see them, and removes the old folder once it is empty.
+LEGACY_DEST=/var/backups/integr8
+if [ -z "${BACKUP_DIR:-}" ] && [ -d "$LEGACY_DEST" ]; then
+  find "$LEGACY_DEST" -maxdepth 1 -name 'integr8-*.sql.gz' -exec mv -n {} "$DEST"/ \;
+  rmdir "$LEGACY_DEST" 2> /dev/null || log "left $LEGACY_DEST in place: it still holds other files"
+fi
+# Every run, so files from before this change follow too.
+chown -R "$OWNER" "$DEST"
 
 # Plain SQL, so a restore needs nothing but psql. --clean lets the file be
 # applied over an existing schema when restoring.
 compose exec -T postgres pg_dump -U postgres -d integr8 --clean --if-exists | gzip -9 > "$file.tmp"
 mv "$file.tmp" "$file"
+chown "$OWNER" "$file"
 
 # Keep the newest KEEP files; the rest go.
 ls -1t "$DEST"/integr8-*.sql.gz 2>/dev/null | tail -n +"$((KEEP + 1))" | xargs -r rm -f
