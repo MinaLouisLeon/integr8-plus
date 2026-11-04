@@ -1,6 +1,6 @@
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Host } from '../host.js';
 import { getEntry } from './jsonc.js';
@@ -59,9 +59,7 @@ function write(path: string, text: string): void {
 }
 
 const backups = (file: string) =>
-  readdirSync(dirname(file)).filter((name) =>
-    name.startsWith(`${file.split('/').pop() ?? ''}.integr8-backup-`),
-  );
+  readdirSync(dirname(file)).filter((name) => name.startsWith(`${basename(file)}.integr8-backup-`));
 
 beforeEach(() => {
   home = mkdtempSync(join(tmpdir(), 'forms-ai-tools-'));

@@ -1,5 +1,5 @@
 import { accessSync, constants, statSync } from 'node:fs';
-import { delimiter as hostDelimiter } from 'node:path';
+import { posix } from 'node:path';
 import { type Host, joinFor } from '../host.js';
 
 /**
@@ -70,7 +70,7 @@ export function browserCandidates(host: Host): string[] {
         'brave-browser',
       ];
       const path = (host.env.PATH ?? '/usr/local/bin:/usr/bin:/bin')
-        .split(hostDelimiter)
+        .split(posix.delimiter)
         .filter((part) => part !== '');
       return [
         ...names.flatMap((name) => path.map((folder) => joinFor(host, folder, name))),
