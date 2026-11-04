@@ -10,7 +10,7 @@
 #
 # Run it as root, on the machine or on the test box:
 #
-#   sudo /opt/integr8/deploy/vps/restore-drill.sh              # newest dump in /var/backups/integr8
+#   sudo /opt/integr8/deploy/vps/restore-drill.sh              # newest dump in /home/integr8-backup
 #   sudo /opt/integr8/deploy/vps/restore-drill.sh FILE.sql.gz  # that dump
 #   sudo /opt/integr8/deploy/vps/restore-drill.sh --remote     # newest copy on BACKUP_REMOTE
 #
@@ -20,7 +20,7 @@
 set -euo pipefail
 
 REPO="${INTEGR8_DIR:-/opt/integr8}"
-DEST="${BACKUP_DIR:-/var/backups/integr8}"
+DEST="${BACKUP_DIR:-/home/integr8-backup}"
 ENV_FILE="$REPO/deploy/.env"
 
 started=$(date +%s)
