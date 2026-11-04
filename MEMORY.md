@@ -20,7 +20,8 @@ the end of any piece of work that changes one of them, and date each section.
   phone times landed ~300 ms late). Branch `fix/release-1.3.3` (from `main`) stamps the
   arrival time in `onRequest` (`context.receivedAt`) and bumps every copy to **1.3.3**; no
   v1.3.1 or v1.3.2 tag exists. **2026-11-04:** branch `bugfix/fix-build` bumps every copy to
-  **1.3.4** (it carries migration 0075 and this round's fixes). The root `package.json` is the only
+  **1.3.4** (it carries migration 0075 and this round's fixes). Branch `chore/bump-1.3.5` (from
+  `dev`) bumps every copy to **1.3.5**. The root `package.json` is the only
   source: the phone (`app.config.ts`) and the web build (`next.config.ts`) read it, and
   `apps/api/src/app-info.ts` has a copy a test keeps equal. A version bump must also change
   every place listed under "Places that state the version".
