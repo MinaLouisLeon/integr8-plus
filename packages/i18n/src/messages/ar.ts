@@ -8786,7 +8786,15 @@ export const ar: Catalogue<Messages> = {
       releases: 'الإصدارات',
       health: 'سلامة النظام',
       staff: 'فريق العمل',
+      downloads: 'التنزيلات',
       signOut: 'تسجيل الخروج',
+    },
+    downloads: {
+      title: 'التنزيلات',
+      subtitle:
+        'تطبيقات فريق Integr8. لا يرى هذه الصفحة إلا فريق العمل بعد تسجيل الدخول؛ أما الشركات فتنزّل تطبيقاتها من ‎/download.',
+      staffNone: 'لم يُنشر إصدار لتطبيق فريق العمل بعد.',
+      formsAiNone: 'لا يحتوي أي إصدار على Integr8 Forms for AI بعد.',
     },
     companies: {
       title: 'الشركات',

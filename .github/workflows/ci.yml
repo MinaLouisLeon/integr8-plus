@@ -59,8 +59,11 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      # Two packages at a time: a private repository's runner has 2 cores, and
+      # running every package's tests at once made timer- and Chrome-bound tests
+      # (the schedule screen, Forms for AI's PDF preview) miss their limits.
       - name: Test
-        run: pnpm test
+        run: pnpm exec turbo run test --concurrency=2
 
       - name: Build
         run: pnpm build

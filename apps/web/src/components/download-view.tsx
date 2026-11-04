@@ -3,25 +3,12 @@
 import { ApiRequestError } from '@integr8/api-client';
 import { useTranslation } from '@integr8/i18n';
 import { useQuery } from '@tanstack/react-query';
-import type { ReactNode } from 'react';
 import { MarketingShell, PageIntro, pillClass } from '~/components/marketing-shell';
 import { Magnetic } from '~/components/site/motion';
-import type {
-  AppRelease,
-  FormsAiRelease,
-  Installer,
-  InstallerPlatform,
-} from '~/lib/desktop-updates';
+import type { Installer, InstallerPlatform } from '~/lib/desktop-updates';
 import { formatBytes } from '~/lib/platform-format';
+import type { ReleaseLookup } from '~/lib/release-lookup';
 import { apiClient } from '~/lib/session';
-
-/** What the server found for one app (see `app/download/page.tsx`). */
-export type ReleaseLookup =
-  { status: 'found'; release: AppRelease } | { status: 'none' } | { status: 'unavailable' };
-
-/** Integr8 Forms for AI, from the newest staff release that carries it. */
-export type FormsAiLookup =
-  { status: 'found'; release: FormsAiRelease } | { status: 'none' } | { status: 'unavailable' };
 
 export interface CompanyLookup {
   slug: string;
@@ -33,22 +20,15 @@ export interface CompanyLookup {
 const DESKTOP: readonly InstallerPlatform[] = ['windows', 'macos', 'linux'];
 
 /**
- * The download page's words and layout, from what the server looked up.
+ * The download page's words and layout, from what the server looked up:
+ * companies' apps only (the staff apps are on the dashboard's Downloads page).
  *
  * The company's name is asked of the API's public brand route, the one its
  * apps are built from: it turns `acme` into "Acme Services", and a 404 there
  * with no release is what tells "no such company" from "nothing published
  * yet". If the API cannot be reached the short name stands in for the name.
  */
-export function DownloadView({
-  staff,
-  formsAi,
-  company,
-}: {
-  staff: ReleaseLookup;
-  formsAi: FormsAiLookup;
-  company: CompanyLookup | null;
-}) {
+export function DownloadView({ company }: { company: CompanyLookup | null }) {
   const { t } = useTranslation();
 
   return (
@@ -91,7 +71,7 @@ export function DownloadView({
         </div>
       </form>
 
-      <div className="mt-10 grid items-start gap-5 lg:grid-cols-3">
+      <div className="mt-10 grid items-start gap-5 lg:grid-cols-2">
         <InfoCard
           title={t('site.download.general.companyDesktopTitle')}
           body={t('site.download.general.companyDesktopBody')}
@@ -102,27 +82,6 @@ export function DownloadView({
           body={t('site.download.general.phoneBody')}
           colour="var(--site-lime)"
         />
-        <InfoCard
-          title={t('site.download.staff.title')}
-          body={t('site.download.staff.body')}
-          colour="var(--site-violet)"
-        >
-          {staff.status === 'found' ? (
-            <>
-              <p className="font-mono text-xs text-site-muted">
-                {t('site.download.company.version', { version: staff.release.version })}
-              </p>
-              <InstallerList installers={staff.release.installers} platforms={DESKTOP} />
-            </>
-          ) : (
-            <p className="text-sm text-site-muted">
-              {staff.status === 'unavailable'
-                ? t('site.download.unavailable')
-                : t('site.download.staff.none')}
-            </p>
-          )}
-          {formsAi.status === 'found' ? <FormsAiSection release={formsAi.release} /> : null}
-        </InfoCard>
       </div>
     </MarketingShell>
   );
@@ -238,63 +197,6 @@ function CompanyPanel({ company }: { company: CompanyLookup }) {
   );
 }
 
-/**
- * Integr8 Forms for AI inside the staff card: one program file per computer,
- * linked like the installers. Shown only when a release carries it; the
- * program itself is English only, these words are the page's.
- */
-function FormsAiSection({ release }: { release: FormsAiRelease }) {
-  const { t, i18n } = useTranslation();
-  return (
-    <section
-      aria-labelledby="forms-ai"
-      className="mt-2 flex flex-col gap-3 border-t border-site-line pt-5"
-    >
-      <h3 id="forms-ai" className="font-display text-lg font-semibold">
-        {t('site.download.formsAi.title')}
-      </h3>
-      <p className="text-sm leading-relaxed text-site-muted">{t('site.download.formsAi.body')}</p>
-      <p className="font-mono text-xs text-site-muted">
-        {t('site.download.company.version', { version: release.version })}
-      </p>
-      <ul className="flex flex-col gap-2">
-        {release.downloads.map((file) => (
-          <li key={file.name}>
-            <a
-              href={file.url}
-              download
-              aria-label={t('site.download.file', { name: file.name })}
-              className="group flex w-full items-center justify-between gap-3 rounded-2xl border border-site-line bg-white/[0.02] px-4 py-3 transition-colors hover:border-lime"
-            >
-              <span className="flex min-w-0 flex-col">
-                <span className="text-sm text-site-fg">
-                  {t(`site.download.platforms.${file.platform}`)}
-                </span>
-                <span className="truncate font-mono text-[11px] text-site-muted">
-                  {[
-                    t('site.download.formsAi.program'),
-                    t(`site.download.architecture.${file.arch}`),
-                    file.size === null ? null : formatBytes(file.size, i18n.language),
-                  ]
-                    .filter((part) => part !== null)
-                    .join(' · ')}
-                </span>
-              </span>
-              <span
-                aria-hidden="true"
-                className="flex size-8 shrink-0 items-center justify-center rounded-full bg-lime text-site-bg transition-transform group-hover:translate-y-0.5"
-              >
-                ↓
-              </span>
-            </a>
-          </li>
-        ))}
-      </ul>
-      <p className="text-xs text-site-muted">{t('site.download.formsAi.warning')}</p>
-    </section>
-  );
-}
-
 /** The files for the given platforms, a group per platform, each a download link. */
 function InstallerList({
   installers,
@@ -358,23 +260,12 @@ function InstallerList({
   );
 }
 
-function InfoCard({
-  title,
-  body,
-  colour,
-  children,
-}: {
-  title: string;
-  body: string;
-  colour: string;
-  children?: ReactNode;
-}) {
+function InfoCard({ title, body, colour }: { title: string; body: string; colour: string }) {
   return (
     <section className="relative flex flex-col gap-4 overflow-hidden rounded-3xl border border-site-line bg-site-soft p-7">
       <span aria-hidden="true" className="h-0.5 w-12 rounded-full" style={{ background: colour }} />
       <h2 className="font-display text-xl font-semibold">{title}</h2>
       <p className="text-sm leading-relaxed text-site-muted">{body}</p>
-      {children}
     </section>
   );
 }
