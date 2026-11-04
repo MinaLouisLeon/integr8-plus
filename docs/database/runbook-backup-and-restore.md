@@ -48,7 +48,7 @@ nights off the machine). A restore of such a backup puts the old key back in
 
 | Setting       | Default                        | Meaning                                                 |
 | ------------- | ------------------------------ | ------------------------------------------------------- |
-| Files         | `/var/backups/integr8`         | `BACKUP_DIR`; the directory is `0700`                   |
+| Files         | `/home/integr8-backup`         | `BACKUP_DIR`; the directory is `0700`                   |
 | Owner         | owner of `/opt/integr8`        | `BACKUP_OWNER`; the login can list and `scp` the files  |
 | Name          | `integr8-YYYYMMDD-HHMM.sql.gz` | UTC time of the dump                                    |
 | Kept          | 14                             | `KEEP`; older files are deleted                         |
@@ -94,7 +94,7 @@ Until Part 2 is done, every run ends with
 Weekly, or after any change to the server:
 
 ```bash
-ls -lh /var/backups/integr8 | tail -n 3
+ls -lh /home/integr8-backup | tail -n 3
 sudo tail -n 5 /var/log/integr8-backup.log
 ```
 
@@ -104,7 +104,7 @@ The log's last lines say `copied … to …` and `keeping …`, not `ERROR`. Che
 the file is readable:
 
 ```bash
-gunzip -t /var/backups/integr8/integr8-<newest>.sql.gz && echo readable
+gunzip -t /home/integr8-backup/integr8-<newest>.sql.gz && echo readable
 ```
 
 ## Part 2 — copy each dump off the machine
@@ -209,7 +209,7 @@ same passphrase):
 
 ```bash
 sudo rclone lsf r2crypt:                                    # every copy, by date
-sudo rclone copy r2crypt:integr8-20261101-0300.sql.gz /var/backups/integr8/
+sudo rclone copy r2crypt:integr8-20261101-0300.sql.gz /home/integr8-backup/
 ```
 
 The file is then an ordinary dump: restore it as in Part 3.
@@ -339,7 +339,7 @@ compose stop web api worker auth
 compose run --rm bootstrap
 
 # 3. Restore.
-gunzip -c /var/backups/integr8/integr8-20261004-0300.sql.gz \
+gunzip -c /home/integr8-backup/integr8-20261004-0300.sql.gz \
   | compose exec -T postgres psql -U postgres -d integr8 -v ON_ERROR_STOP=1
 
 # 4. Start again. migrate applies anything newer than the dump; Auth checks its

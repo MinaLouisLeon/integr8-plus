@@ -986,7 +986,7 @@ curl -s http://127.0.0.1:3000/health/ready; echo
 ### B. The database and backups
 
 - [ ] **The database stays on the machine**, and the sign-in server's tables live in it too: one nightly dump holds both. The next steps are what make that safe; `docs/database/runbook-backup-and-restore.md` is the full version.
-- [ ] **Schedule the backup**: `sudo crontab -e` and add the line below. It writes a compressed dump to `/var/backups/integr8` nightly and keeps fourteen. Those files share a disk with the database, so until the next four steps are done each night's log ends with "backups are on this machine only".
+- [ ] **Schedule the backup**: `sudo crontab -e` and add the line below. It writes a compressed dump to `/home/integr8-backup` nightly and keeps fourteen. Those files share a disk with the database, so until the next four steps are done each night's log ends with "backups are on this machine only".
 
 ```bash
 # machine (SSH session), one line inside the crontab editor
@@ -1138,7 +1138,7 @@ A migration changes the database in place. A backup from a minute ago turns a ba
 ```bash
 # machine (SSH session)
 sudo /opt/integr8/deploy/vps/backup-postgres.sh
-ls -lh /var/backups/integr8 | tail -3      # the newest file has today's date and time
+ls -lh /home/integr8-backup | tail -3      # the newest file has today's date and time
 
 df -h /                                    # keep at least 5 GB free
 docker system df                           # how much old images are taking
@@ -1235,7 +1235,7 @@ Every update leaves the previous images on the disk. Keep them for a day in case
 docker image prune -f            # images no container uses any more
 docker builder prune -f          # the build cache
 df -h /
-ls -lh /var/backups/integr8      # the backup script keeps the newest ones and deletes older ones by itself
+ls -lh /home/integr8-backup      # the backup script keeps the newest ones and deletes older ones by itself
 ```
 
 - [ ] **Old images removed** once the new version has run cleanly for a day. Never use `docker volume prune` or `docker system prune --volumes`: the database lives in a volume.
@@ -1533,12 +1533,12 @@ ls -l ~/integr8.env.keep        # one file, a few kilobytes
 ```bash
 # machine (SSH session)
 sudo /opt/integr8/deploy/vps/backup-postgres.sh
-ls -lt /var/backups/integr8 | head -3   # the newest file is the one just made
+ls -lt /home/integr8-backup | head -3   # the newest file is the one just made
 ```
 
 ```powershell
 # laptop (PowerShell): copies every dump into your Downloads folder
-scp "LOGIN-USER@SERVER-IP:/var/backups/integr8/*.sql.gz" $env:USERPROFILE\Downloads\
+scp "LOGIN-USER@SERVER-IP:/home/integr8-backup/*.sql.gz" $env:USERPROFILE\Downloads\
 ```
 
 ### B. Remove the stack and everything Docker holds
@@ -1574,7 +1574,7 @@ docker system df
 # machine (SSH session)
 sudo rm -rf /opt/integr8
 crontab -l 2>/dev/null | grep -v backup-postgres.sh | crontab -
-sudo rm -rf /var/backups/integr8
+sudo rm -rf /home/integr8-backup /var/backups/integr8
 sudo rm -f /var/log/integr8-backup.log
 ls /opt                       # integr8 is no longer listed
 ```
@@ -1646,7 +1646,7 @@ comm -23 <(grep -oE '^#? ?[A-Z][A-Z0-9_]+=' deploy/.env.example | tr -d '# ' | s
 
 _about 3 hours, mostly Stages 1 to 4_
 
-Stage 12 empties the machine and keeps it. This stage deletes the machine itself, its disk included, and makes a new one: a new operating system, a new shape, or simply a clean start on the current release (v1.3.4). Everything from Stage 0 lives outside the machine and carries over unchanged: the domain and Cloudflare, R2, Resend, Stripe, Mapbox, Sentry, Expo and every GitHub variable and secret. What dies with the machine is what was only on its disk: `deploy/.env`, the database, the backups in `/var/backups/integr8`, and the Caddy file. Part A saves the first two if you want them.
+Stage 12 empties the machine and keeps it. This stage deletes the machine itself, its disk included, and makes a new one: a new operating system, a new shape, or simply a clean start on the current release (v1.3.4). Everything from Stage 0 lives outside the machine and carries over unchanged: the domain and Cloudflare, R2, Resend, Stripe, Mapbox, Sentry, Expo and every GitHub variable and secret. What dies with the machine is what was only on its disk: `deploy/.env`, the database, the backups in `/home/integr8-backup`, and the Caddy file. Part A saves the first two if you want them.
 
 > [!NOTE]
 > **Two ways to start over.** Parts B to E delete the Oracle machine itself and make a new one. [Part F](#f-keep-the-machine-but-remove-everything-on-it-data-docker-and-the-repository) keeps the machine, its address, its firewall and your login, and removes only what Integr8 put on it: the data, Docker and the repository. Do part A first either way; then choose.
@@ -1672,12 +1672,12 @@ Get-Content $env:USERPROFILE\Documents\integr8.env | Select-String 'HR_DATA_KEY|
 cd /opt/integr8
 docker compose -f deploy/compose.yml --env-file deploy/.env stop auth api worker web   # nothing changes after the dump
 sudo /opt/integr8/deploy/vps/backup-postgres.sh
-ls -lt /var/backups/integr8 | head -3     # the newest file is the one just made
+ls -lt /home/integr8-backup | head -3     # the newest file is the one just made
 ```
 
 ```powershell
 # laptop (PowerShell): every dump into your Downloads folder
-scp "LOGIN-USER@SERVER-IP:/var/backups/integr8/*.sql.gz" $env:USERPROFILE\Downloads\
+scp "LOGIN-USER@SERVER-IP:/home/integr8-backup/*.sql.gz" $env:USERPROFILE\Downloads\
 ```
 
 - [ ] **The dump is on the laptop**, a few megabytes or more, with today's date in its name. It needs `HR_DATA_KEY` (in your password manager, not beside the dump): one is not readable in full without the other.
@@ -1793,10 +1793,10 @@ sudo rm -rf /opt/integr8
 rm -f ~/integr8.env.keep ~/integr8*.sql.gz ~/*.sql.gz
 crontab -l 2>/dev/null | grep -v backup-postgres.sh | crontab -
 sudo crontab -l 2>/dev/null | grep -v backup-postgres.sh | sudo crontab -
-sudo rm -rf /var/backups/integr8
+sudo rm -rf /home/integr8-backup /var/backups/integr8
 sudo rm -f /var/log/integr8-backup.log
 sudo rm -rf /root/.config/rclone
-ls /opt ; ls /var/backups
+ls /opt ; ls -d /home/integr8-backup
 ```
 
 #### F3. Remove Docker itself
@@ -1855,7 +1855,7 @@ df -h /
 # machine (SSH session)
 ls /opt                                   # integr8 is not listed
 crontab -l 2>&1 | head -3 ; sudo crontab -l 2>&1 | head -3   # no backup-postgres.sh line
-ls /var/backups                           # no integr8 folder
+ls -d /home/integr8-backup                # No such file or directory
 command -v docker || echo "docker: not installed"
 sudo ss -tlnp | grep -E ':(80|443|3000|3001|5432)\b' || echo "nothing listening on the app ports"
 df -h /                                   # most of the disk is free again
