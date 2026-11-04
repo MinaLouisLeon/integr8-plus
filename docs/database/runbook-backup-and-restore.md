@@ -49,6 +49,7 @@ nights off the machine). A restore of such a backup puts the old key back in
 | Setting       | Default                        | Meaning                                                 |
 | ------------- | ------------------------------ | ------------------------------------------------------- |
 | Files         | `/var/backups/integr8`         | `BACKUP_DIR`; the directory is `0700`                   |
+| Owner         | owner of `/opt/integr8`        | `BACKUP_OWNER`; the login can list and `scp` the files  |
 | Name          | `integr8-YYYYMMDD-HHMM.sql.gz` | UTC time of the dump                                    |
 | Kept          | 14                             | `KEEP`; older files are deleted                         |
 | Repo path     | `/opt/integr8`                 | `INTEGR8_DIR`; where compose.yml is                     |
@@ -93,7 +94,7 @@ Until Part 2 is done, every run ends with
 Weekly, or after any change to the server:
 
 ```bash
-sudo ls -lh /var/backups/integr8 | tail -n 3
+ls -lh /var/backups/integr8 | tail -n 3
 sudo tail -n 5 /var/log/integr8-backup.log
 ```
 
