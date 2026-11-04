@@ -166,7 +166,7 @@ apart:
 The compose Postgres is one volume on one disk, and it holds everything:
 company data and, in its `auth` schema, every sign-in account.
 `deploy/vps/backup-postgres.sh` dumps the whole database nightly from root's
-cron and keeps the last fourteen files under `/var/backups/integr8`;
+cron and keeps the last fourteen files under `/home/integr8-backup`;
 [the backup and restore runbook](../database/runbook-backup-and-restore.md)
 has the schedule, the checks and the restore. That covers a bad migration or a
 deleted company. Losing the machine needs a copy elsewhere, set up before a

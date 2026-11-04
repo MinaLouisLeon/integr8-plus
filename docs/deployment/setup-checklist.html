@@ -816,7 +816,7 @@ curl -s http://127.0.0.1:3000/health/ready; echo</code></pre>
         <h3 id="backups">B. The database and backups</h3>
         <ul class="check" data-stage="s8b">
           <li><input type="checkbox" id="s8-5"><label for="s8-5"><b>The database stays on the machine</b>, and the sign-in server's tables live in it too: one nightly dump holds both. The next steps are what make that safe; <code>docs/database/runbook-backup-and-restore.md</code> is the full version.</label></li>
-          <li><input type="checkbox" id="s8-6"><label for="s8-6"><b>Schedule the backup</b>: <code>sudo crontab -e</code> and add the line below. It writes a compressed dump to <code>/var/backups/integr8</code> nightly and keeps fourteen. Those files share a disk with the database, so until the next four steps are done each night's log ends with "backups are on this machine only".</label></li>
+          <li><input type="checkbox" id="s8-6"><label for="s8-6"><b>Schedule the backup</b>: <code>sudo crontab -e</code> and add the line below. It writes a compressed dump to <code>/home/integr8-backup</code> nightly and keeps fourteen. Those files share a disk with the database, so until the next four steps are done each night's log ends with "backups are on this machine only".</label></li>
         </ul>
         <pre><button class="copy" type="button">Copy</button><code># machine (SSH session), one line inside the crontab editor
 0 3 * * * /opt/integr8/deploy/vps/backup-postgres.sh &gt;&gt; /var/log/integr8-backup.log 2&gt;&amp;1</code></pre>
@@ -941,7 +941,7 @@ curl -s http://127.0.0.1:3000/health/ready; echo</code></pre>
         <p>A migration changes the database in place. A backup from a minute ago turns a bad update into a five-minute restore instead of lost work. Pick a quiet hour: the API is unavailable for about a minute during the restart, and phones simply queue their work and send it afterwards.</p>
         <pre><button class="copy" type="button">Copy</button><code># machine (SSH session)
 sudo /opt/integr8/deploy/vps/backup-postgres.sh
-ls -lh /var/backups/integr8 | tail -3      # the newest file has today's date and time
+ls -lh /home/integr8-backup | tail -3      # the newest file has today's date and time
 
 df -h /                                    # keep at least 5 GB free
 docker system df                           # how much old images are taking</code></pre>
@@ -1026,7 +1026,7 @@ sudo needs-restarting -r || echo "Reboot needed"</code></pre>
 docker image prune -f            # images no container uses any more
 docker builder prune -f          # the build cache
 df -h /
-ls -lh /var/backups/integr8      # the backup script keeps the newest ones and deletes older ones by itself</code></pre>
+ls -lh /home/integr8-backup      # the backup script keeps the newest ones and deletes older ones by itself</code></pre>
         <ul class="check" data-stage="s12h">
           <li><input type="checkbox" id="s12-22"><label for="s12-22"><b>Old images removed</b> once the new version has run cleanly for a day. Never use <code>docker volume prune</code> or <code>docker system prune --volumes</code>: the database lives in a volume.</label></li>
         </ul>
@@ -1272,9 +1272,9 @@ ls -l ~/integr8.env.keep        # one file, a few kilobytes</code></pre>
         </ul>
         <pre><button class="copy" type="button">Copy</button><code># machine (SSH session)
 sudo /opt/integr8/deploy/vps/backup-postgres.sh
-ls -lt /var/backups/integr8 | head -3   # the newest file is the one just made</code></pre>
+ls -lt /home/integr8-backup | head -3   # the newest file is the one just made</code></pre>
         <pre><button class="copy" type="button">Copy</button><code># laptop (PowerShell): copies every dump into your Downloads folder
-scp "LOGIN-USER@SERVER-IP:/var/backups/integr8/*.sql.gz" $env:USERPROFILE\Downloads\</code></pre>
+scp "LOGIN-USER@SERVER-IP:/home/integr8-backup/*.sql.gz" $env:USERPROFILE\Downloads\</code></pre>
 
         <h3>B. Remove the stack and everything Docker holds</h3>
         <ul class="check" data-stage="s13b">
@@ -1302,7 +1302,7 @@ docker system df</code></pre>
         <pre><button class="copy" type="button">Copy</button><code># machine (SSH session)
 sudo rm -rf /opt/integr8
 crontab -l 2&gt;/dev/null | grep -v backup-postgres.sh | crontab -
-sudo rm -rf /var/backups/integr8
+sudo rm -rf /home/integr8-backup /var/backups/integr8
 sudo rm -f /var/log/integr8-backup.log
 ls /opt                       # integr8 is no longer listed</code></pre>
 
@@ -1358,7 +1358,7 @@ comm -23 &lt;(grep -oE '^#? ?[A-Z][A-Z0-9_]+=' deploy/.env.example | tr -d '# ' 
       <!-- ================================================================ -->
       <section id="rebuild">
         <div class="head"><span class="num">13</span><h2>Destroy the Oracle machine, or empty it and keep it</h2><span class="time">about 3 hours, mostly Stages 1 to 4</span></div>
-        <p>Stage 12 empties the machine and keeps it. This stage deletes the machine itself, its disk included, and makes a new one: a new operating system, a new shape, or simply a clean start on the current release (v1.3.4). Everything from Stage 0 lives outside the machine and carries over unchanged: the domain and Cloudflare, R2, Resend, Stripe, Mapbox, Sentry, Expo and every GitHub variable and secret. What dies with the machine is what was only on its disk: <code>deploy/.env</code>, the database, the backups in <code>/var/backups/integr8</code>, and the Caddy file. Part A saves the first two if you want them.</p>
+        <p>Stage 12 empties the machine and keeps it. This stage deletes the machine itself, its disk included, and makes a new one: a new operating system, a new shape, or simply a clean start on the current release (v1.3.4). Everything from Stage 0 lives outside the machine and carries over unchanged: the domain and Cloudflare, R2, Resend, Stripe, Mapbox, Sentry, Expo and every GitHub variable and secret. What dies with the machine is what was only on its disk: <code>deploy/.env</code>, the database, the backups in <code>/home/integr8-backup</code>, and the Caddy file. Part A saves the first two if you want them.</p>
         <div class="note"><p><b>Two ways to start over.</b> Parts B to E delete the Oracle machine itself and make a new one. <a href="#rebuild-empty">Part F</a> keeps the machine, its address, its firewall and your login, and removes only what Integr8 put on it: the data, Docker and the repository. Do part A first either way; then choose.</p></div>
         <div class="note warn"><p><b>From the moment the old machine stops until part D finishes, the web app and the API are down.</b> Phones keep working offline and send their work when the API is back. Pick a quiet day and tell anybody using it.</p></div>
 
@@ -1377,9 +1377,9 @@ Get-Content $env:USERPROFILE\Documents\integr8.env | Select-String 'HR_DATA_KEY|
 cd /opt/integr8
 docker compose -f deploy/compose.yml --env-file deploy/.env stop auth api worker web   # nothing changes after the dump
 sudo /opt/integr8/deploy/vps/backup-postgres.sh
-ls -lt /var/backups/integr8 | head -3     # the newest file is the one just made</code></pre>
+ls -lt /home/integr8-backup | head -3     # the newest file is the one just made</code></pre>
         <pre><button class="copy" type="button">Copy</button><code># laptop (PowerShell): every dump into your Downloads folder
-scp "LOGIN-USER@SERVER-IP:/var/backups/integr8/*.sql.gz" $env:USERPROFILE\Downloads\</code></pre>
+scp "LOGIN-USER@SERVER-IP:/home/integr8-backup/*.sql.gz" $env:USERPROFILE\Downloads\</code></pre>
         <ul class="check" data-stage="s14a3">
           <li><input type="checkbox" id="s14-4"><label for="s14-4"><b>The dump is on the laptop</b>, a few megabytes or more, with today's date in its name. It needs <code>HR_DATA_KEY</code> (in your password manager, not beside the dump): one is not readable in full without the other.</label></li>
           <li><input type="checkbox" id="s14-5"><label for="s14-5"><b>Check the address is reserved.</b> Oracle → Networking → IP Management → <b>Reserved public IPs</b>: the machine's address should be listed (Stage 1 reserved it). A reserved address survives the machine, so the two DNS records stay right. If it is not listed, the new machine gets a new address and part D changes the two DNS records.</label></li>
@@ -1479,10 +1479,10 @@ sudo rm -rf /opt/integr8
 rm -f ~/integr8.env.keep ~/integr8*.sql.gz ~/*.sql.gz
 crontab -l 2&gt;/dev/null | grep -v backup-postgres.sh | crontab -
 sudo crontab -l 2&gt;/dev/null | grep -v backup-postgres.sh | sudo crontab -
-sudo rm -rf /var/backups/integr8
+sudo rm -rf /home/integr8-backup /var/backups/integr8
 sudo rm -f /var/log/integr8-backup.log
 sudo rm -rf /root/.config/rclone
-ls /opt ; ls /var/backups</code></pre>
+ls /opt ; ls -d /home/integr8-backup</code></pre>
 
         <h4>F3. Remove Docker itself</h4>
         <p>This takes out the engine, its Compose and Buildx plug-ins, its package source and key, and the folders where it kept images and volumes. Run the block for your operating system (<code>cat /etc/os-release</code> says which). Stage 1's setup script installs Docker again later.</p>
@@ -1528,7 +1528,7 @@ df -h /</code></pre>
         <pre><button class="copy" type="button">Copy</button><code># machine (SSH session)
 ls /opt                                   # integr8 is not listed
 crontab -l 2&gt;&amp;1 | head -3 ; sudo crontab -l 2&gt;&amp;1 | head -3   # no backup-postgres.sh line
-ls /var/backups                           # no integr8 folder
+ls -d /home/integr8-backup                # No such file or directory
 command -v docker || echo "docker: not installed"
 sudo ss -tlnp | grep -E ':(80|443|3000|3001|5432)\b' || echo "nothing listening on the app ports"
 df -h /                                   # most of the disk is free again</code></pre>
