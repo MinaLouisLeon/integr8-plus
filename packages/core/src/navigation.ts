@@ -1,4 +1,4 @@
-import { hasFeature, type ModuleFeature } from './crm.js';
+import { hasFeature, MODULE_REQUIRES, type ModuleFeature } from './crm.js';
 import type { Permission } from './permissions.js';
 
 /**
@@ -54,7 +54,8 @@ export type NavIcon =
   | 'calculator'
   | 'scale'
   | 'barcode'
-  | 'sparkles';
+  | 'sparkles'
+  | 'download';
 
 export type NavGroup =
   | 'overview'
@@ -636,7 +637,8 @@ export type PlatformNavPath =
   | 'templates'
   | 'releases'
   | 'health'
-  | 'staff';
+  | 'staff'
+  | 'downloads';
 
 export interface PlatformNavSection {
   key: PlatformNavPath;
@@ -655,6 +657,8 @@ export const PLATFORM_NAV_SECTIONS: readonly PlatformNavSection[] = [
   { key: 'releases', icon: 'package' },
   { key: 'health', icon: 'heart' },
   { key: 'staff', icon: 'users' },
+  // The staff desktop app and Integr8 Forms for AI: staff only, so not on /download.
+  { key: 'downloads', icon: 'download' },
 ];
 
 export type NavApp = 'web' | 'desktop';
@@ -672,12 +676,18 @@ export function visibleNavigation(
    * not been taught about modules shows nothing it should not.
    */
   features?: Readonly<Record<string, boolean>>,
-  /** Whether the assistant is on for this seat in this app; off when not asked. */
-  options: { assistant?: boolean } = {},
+  /**
+   * `assistant`: whether the assistant is on for this seat in this app; off
+   * when not asked. `hidden`: the tabs Integr8 staff switched off for the
+   * company (0075), as `/v1/me` returns them.
+   */
+  options: { assistant?: boolean | undefined; hidden?: readonly string[] | undefined } = {},
 ): { group: NavGroup; sections: NavSection[] }[] {
   const held = new Set(permissions);
+  const hidden = new Set(options.hidden ?? []);
   const shown = NAV_SECTIONS.filter(
     (section) =>
+      !(hidden.has(section.key) && isSwitchableSection(section.key)) &&
       (section.permission === undefined || held.has(section.permission)) &&
       (section.feature === undefined || hasFeature(features, section.feature)) &&
       (section.assistant !== true || options.assistant === true) &&
@@ -689,3 +699,123 @@ export function visibleNavigation(
     sections: shown.filter((section) => section.group === group),
   })).filter((entry) => entry.sections.length > 0);
 }
+
+// ---------------------------------------------------------------------------
+// The tabs Integr8 staff switch on and off per company (0075)
+// ---------------------------------------------------------------------------
+
+/**
+ * Tabs that are never switched off: the dashboard, where every app opens, and
+ * the screens only Integr8 staff use while acting as the company (the form
+ * builder, branding, the e-invoicing switch). Hiding those would hide them
+ * from the staff who would switch them back.
+ */
+const ALWAYS_SHOWN_SECTIONS: ReadonlySet<string> = new Set([
+  'dashboard',
+  'forms',
+  'branding',
+  'eInvoicingSwitch',
+]);
+
+/** Whether staff may switch this tab off for a company. */
+export function isSwitchableSection(key: string): boolean {
+  return !ALWAYS_SHOWN_SECTIONS.has(key) && NAV_SECTIONS.some((section) => section.key === key);
+}
+
+/** The tabs the staff dashboard lists with a switch each, in menu order. */
+export const SWITCHABLE_NAV_SECTIONS: readonly NavSection[] = NAV_SECTIONS.filter((section) =>
+  isSwitchableSection(section.key),
+);
+
+/** The modules that have tabs of their own, so whose state follows the tabs chosen. */
+export const TABBED_MODULES: readonly ModuleFeature[] = [
+  ...new Set(
+    SWITCHABLE_NAV_SECTIONS.flatMap((section) =>
+      section.feature === undefined ? [] : [section.feature],
+    ),
+  ),
+];
+
+/**
+ * What a company's tabs and modules become when staff choose exactly which
+ * tabs it sees.
+ *
+ * A module with tabs is on when at least one of its tabs is chosen and off
+ * when none is, and a module another one is built on (HR under payroll) is
+ * switched on with it. Modules without tabs of their own (the website
+ * switches) are left as they are. Every tab not chosen is hidden, except the
+ * tabs of a module that ends up off: the module already hides them, and
+ * leaving them off the list means switching the module back on later, from
+ * the Features panel, brings its tabs back with it.
+ */
+export function tabChoice(shown: readonly string[]): {
+  hidden: string[];
+  modules: Partial<Record<ModuleFeature, boolean>>;
+} {
+  const chosen = new Set(shown);
+  const modules: Partial<Record<ModuleFeature, boolean>> = {};
+  for (const module of TABBED_MODULES) {
+    modules[module] = SWITCHABLE_NAV_SECTIONS.some(
+      (section) => section.feature === module && chosen.has(section.key),
+    );
+  }
+  for (const module of TABBED_MODULES) {
+    if (modules[module] === true) {
+      for (const base of MODULE_REQUIRES[module] ?? []) {
+        modules[base] = true;
+      }
+    }
+  }
+  const hidden = SWITCHABLE_NAV_SECTIONS.filter(
+    (section) =>
+      !chosen.has(section.key) &&
+      (section.feature === undefined || modules[section.feature] === true),
+  ).map((section) => section.key);
+  return { hidden, modules };
+}
+
+/**
+ * The tabs a company sees today, the reverse of {@link tabChoice}: switchable,
+ * not hidden, and with its module on when it has one.
+ */
+export function shownTabs(
+  hidden: readonly string[],
+  features: Readonly<Record<string, boolean>>,
+): string[] {
+  const off = new Set(hidden);
+  return SWITCHABLE_NAV_SECTIONS.filter(
+    (section) =>
+      !off.has(section.key) &&
+      (section.feature === undefined || hasFeature(features, section.feature)),
+  ).map((section) => section.key);
+}
+
+/** The menu tab whose page lives at this app route key, if any. */
+export function sectionForPath(path: string): NavSection | undefined {
+  return NAV_SECTIONS.find((section) => section.path === path);
+}
+
+/** Whether a page belongs to a tab the company has switched off. */
+export function isSectionHidden(key: string, hidden: readonly string[] | undefined): boolean {
+  return isSwitchableSection(key) && (hidden ?? []).includes(key);
+}
+
+/**
+ * The phone's screens, by the tab that switches each off. The phone has no
+ * menu of its own; these are the buttons on its home screen, and a tab hidden
+ * for the company takes its phone screen with it.
+ */
+export const PHONE_SCREEN_SECTIONS = {
+  assets: 'assets',
+  expenses: 'myExpenses',
+  van: 'vanRequests',
+  receive: 'purchaseOrders',
+  documents: 'documents',
+  payslips: 'myPayslips',
+  qualifications: 'qualifications',
+  assistant: 'assistant',
+  forms: 'fill',
+  customers: 'customers',
+} as const satisfies Record<string, string>;
+
+export type PhoneScreen = keyof typeof PHONE_SCREEN_SECTIONS;

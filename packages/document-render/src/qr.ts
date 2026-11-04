@@ -6,6 +6,12 @@ import { encode } from 'uqr';
  * scratched or smudged, which a sheet that lives on a clipboard needs. The same
  * drawing the asset tags use.
  */
+/** The same code as a grid of dark modules, quiet zone included, for drawing it elsewhere (0075). */
+export function qrMatrix(text: string): { size: number; dark: (x: number, y: number) => boolean } {
+  const qr = encode(text, { ecc: 'Q', border: 4 });
+  return { size: qr.size, dark: (x, y) => qr.data[y]?.[x] === true };
+}
+
 export function qrSvg(text: string): string {
   const qr = encode(text, { ecc: 'Q', border: 4 });
   let path = '';

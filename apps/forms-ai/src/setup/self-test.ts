@@ -10,6 +10,8 @@ import { VERSION } from '../version.js';
 
 export const EXPECTED_TOOLS = [
   'get_format_guide',
+  'get_interview_guide',
+  'summarize_form',
   'list_examples',
   'get_example',
   'new_picture_ids',

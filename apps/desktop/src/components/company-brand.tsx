@@ -126,14 +126,17 @@ export function useMediaUrl(mediaId: string | null) {
 /**
  * The company's logo, if it has one, and its name. For the top of the menu and
  * of the dashboard. `compact` shows the logo alone — or the first letter of the
- * name when there is no logo — for a menu folded to its icons.
+ * name when there is no logo — for a menu folded to its icons. A logo that
+ * already spells the name can stand alone (`showCompanyName` off, set by
+ * Integr8 on the branding screen; 0075); without a logo the name always shows.
  */
 export function CompanyMark({
   company,
   compact = false,
   onShell = false,
 }: {
-  company: Pick<Me['company'], 'name' | 'logoMediaId'>;
+  company: Pick<Me['company'], 'name' | 'logoMediaId'> &
+    Partial<Pick<Me['company'], 'showCompanyName'>>;
   compact?: boolean;
   onShell?: boolean;
 }) {
@@ -151,6 +154,14 @@ export function CompanyMark({
       </span>
     ) : (
       <img src={logo.data} alt={company.name} className="size-9 object-contain" />
+    );
+  }
+
+  if (logo.data != null && company.showCompanyName === false) {
+    return (
+      <div className="flex min-w-0 items-center">
+        <img src={logo.data} alt={company.name} className="h-9 w-auto max-w-48 object-contain" />
+      </div>
     );
   }
 

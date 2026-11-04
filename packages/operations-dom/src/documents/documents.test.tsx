@@ -34,6 +34,7 @@ const document = (overrides: Partial<DocumentDetail> = {}): DocumentDetail => ({
   record: null,
   customer: null,
   shareable: true,
+  qr: { spot: false, printed: false, placement: null },
   templateId: TEMPLATE,
   templateRevision: 2,
   submissionId: SUBMISSION,
@@ -87,6 +88,49 @@ describe('the documents register', () => {
       expect(last.query.get('fieldKey')).toBe('certificate');
       expect(last.query.get('state')).toBe('active');
     });
+  });
+
+  it('shares, stops sharing and deletes from a row, for those who may', async () => {
+    const user = userEvent.setup();
+    const { client, calls } = fakeApi({
+      'GET /v1/me': me(['document.read', 'document.upload', 'document.manage']),
+      'GET /v1/documents': () => ({ body: { items: [document()], nextCursor: null } }),
+      'POST /v1/documents/:id/share': (call) => ({
+        body: document({ shareable: (call.body as { shareable: boolean }).shareable }),
+      }),
+      'DELETE /v1/documents/:id': () => ({ status: 204 }),
+    });
+    renderScreen(<DocumentListScreen />, client);
+    const item = await screen.findByRole('listitem');
+    await user.click(within(item).getByRole('button', { name: 'Share' }));
+    // Already shared: the menu opens without asking the server.
+    expect(await screen.findByRole('dialog', { name: 'Share document' })).toBeInTheDocument();
+    expect(calls.some((call) => call.path.endsWith('/share'))).toBe(false);
+    await user.click(screen.getByRole('button', { name: 'Done' }));
+
+    await user.click(within(item).getByRole('button', { name: 'Stop sharing' }));
+    await waitFor(() =>
+      expect(calls.find((call) => call.path.endsWith('/share'))?.body).toEqual({
+        shareable: false,
+      }),
+    );
+
+    await user.click(within(item).getByRole('button', { name: 'Delete' }));
+    const confirm = await screen.findByRole('dialog', { name: 'Delete this document?' });
+    await user.click(within(confirm).getByRole('button', { name: 'Delete' }));
+    await waitFor(() => expect(calls.some((call) => call.method === 'DELETE')).toBe(true));
+  });
+
+  it('shows no row buttons to a reader', async () => {
+    const { client } = fakeApi({
+      'GET /v1/me': me(['document.read']),
+      'GET /v1/documents': () => ({ body: { items: [document()], nextCursor: null } }),
+    });
+    renderScreen(<DocumentListScreen />, client);
+    const item = await screen.findByRole('listitem');
+    await screen.findByRole('link', { name: 'Gas certificate · GS-2026-0042' });
+    expect(within(item).queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
+    expect(within(item).queryByRole('button', { name: 'Share' })).not.toBeInTheDocument();
   });
 
   it('says so when there are none yet', async () => {
@@ -189,13 +233,69 @@ describe('one document', () => {
     ).toBeInTheDocument();
     expect(screen.queryByText('Open the submission')).not.toBeInTheDocument();
     expect(await accessibilityViolations(container)).toEqual([]);
-    await user.click(screen.getByRole('button', { name: 'Share it' }));
+    // Share switches sharing on and opens the share menu.
+    await user.click(screen.getByRole('button', { name: 'Share' }));
     await waitFor(() =>
       expect(calls.find((call) => call.path.endsWith('/share'))?.body).toEqual({
         shareable: true,
       }),
     );
+    const menu = await screen.findByRole('dialog', { name: 'Share document' });
+    expect(within(menu).getByRole('button', { name: 'Copy link' })).toBeInTheDocument();
+    expect(within(menu).getByRole('button', { name: 'Email' })).toBeInTheDocument();
+    expect(within(menu).getByRole('button', { name: 'WhatsApp' })).toBeInTheDocument();
+    await user.click(within(menu).getByRole('button', { name: 'Done' }));
     expect(await screen.findByRole('button', { name: 'Stop sharing' })).toBeInTheDocument();
+  });
+
+  it('keeps extra fields typed on an uploaded document (0075)', async () => {
+    const user = userEvent.setup();
+    const uploaded = document({
+      source: 'uploaded',
+      reference: 'LIFT-17',
+      templateId: null,
+      templateRevision: null,
+      submissionId: null,
+      formId: null,
+      fields: [
+        { key: 'reference', label: { en: 'Reference' }, value: 'LIFT-17', lookupRole: 'key' },
+      ],
+    });
+    const { client, calls } = fakeApi({
+      'GET /v1/me': me(['document.read', 'document.upload']),
+      'GET /v1/documents/:id': () => ({ body: uploaded }),
+      'PUT /v1/documents/:id/fields': (call) => ({
+        body: {
+          ...uploaded,
+          fields: [
+            ...uploaded.fields,
+            ...(call.body as { fields: { label: string; value: string }[] }).fields.map(
+              (field, index) => ({
+                key: `custom_${String(index + 1)}`,
+                label: { en: field.label, ar: field.label },
+                value: field.value,
+                lookupRole: 'search' as const,
+              }),
+            ),
+          ],
+        },
+      }),
+    });
+    renderScreen(<DocumentScreen documentId={DOCUMENT} />, client);
+    await user.click(await screen.findByRole('button', { name: 'Add field' }));
+    await user.type(screen.getByLabelText('Field 1 name'), 'Serial number');
+    await user.click(screen.getByRole('button', { name: 'Save fields' }));
+    // Half a field is not sent.
+    expect(screen.getByRole('alert')).toHaveTextContent('Fill in both the name and the value');
+    await user.type(screen.getByLabelText('Field 1 value'), 'SN-7781');
+    await user.click(screen.getByRole('button', { name: 'Save fields' }));
+    await waitFor(() =>
+      expect(calls.find((call) => call.path.endsWith('/fields'))?.body).toEqual({
+        fields: [{ label: 'Serial number', value: 'SN-7781' }],
+      }),
+    );
+    expect(await screen.findByText('SN-7781')).toBeInTheDocument();
+    expect(screen.getByText('Searchable')).toBeInTheDocument();
   });
 
   it('shows whether it is shared, without the switch, to a reader', async () => {

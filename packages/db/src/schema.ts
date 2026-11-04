@@ -977,6 +977,12 @@ export interface TenantSettingsTable {
   website_invoices_enabled: Generated<boolean>;
   /** Days before a certificate expires that its holder and the managers are warned (0052). */
   qualification_warning_days: Generated<number>;
+  /** Whether the apps print the name beside the logo; ignored without a logo (0075). */
+  show_company_name: Generated<boolean>;
+  /** Navigation keys of the tabs Integr8 staff switched off (0075). */
+  hidden_nav_sections: Generated<string[]>;
+  /** Where document links point, an https address with `{code}`; null for Integr8's `/d/` page (0075). */
+  document_link_pattern: string | null;
   created_at: CreatedAt;
   updated_at: UpdatedAt;
 }
@@ -3340,7 +3346,20 @@ export type DocumentStatus = 'pending' | 'ready' | 'failed';
  */
 export type DocumentSource =
   'generated' | 'uploaded' | 'quote' | 'invoice' | 'purchase_order' | 'job_report';
-export type DocumentLookupRole = 'key' | 'confirm';
+/** `search`: a field typed on an uploaded document, found by the website's one-box search (0075). */
+export type DocumentLookupRole = 'key' | 'confirm' | 'search';
+
+/**
+ * Where an uploaded PDF's share QR code is stamped (0075): on the first, the
+ * last or every page; `x` and `y` place its top-left corner and `size` its
+ * width, each as a fraction of the page's width (x, size) or height (y).
+ */
+export interface QrPlacement {
+  page: 'first' | 'last' | 'all';
+  x: number;
+  y: number;
+  size: number;
+}
 
 export interface DocumentTemplatesTable {
   id: string;
@@ -3378,6 +3397,16 @@ export interface DocumentsTable {
   work_order_id: Generated<string | null>;
   /** Whether its QR link and the company website may show it (0067). */
   shareable: Generated<boolean>;
+  /** It has a place for its share QR code, printed only once shared (0075). */
+  qr_spot: Generated<boolean>;
+  /** The file served now carries the share QR code (0075). */
+  qr_printed: Generated<boolean>;
+  /** The design it was printed from, for an identical re-print (0075). */
+  printed_design: Jsonb<unknown> | null;
+  /** Uploaded PDF: where its share QR code is stamped (0075). */
+  qr_placement: Jsonb<QrPlacement> | null;
+  /** Uploaded PDF: the file as uploaded, when `file_id` is a stamped copy (0075). */
+  original_file_id: string | null;
   title: string;
   /** The QR link's key (D7). */
   public_code: string;

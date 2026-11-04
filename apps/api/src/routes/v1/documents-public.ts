@@ -29,8 +29,11 @@ import { iso } from './schemas.js';
  * **The website lookup** (D10): a company's own server, holding a website key
  * issued from the dashboard, asks for one document by its reference (the
  * template's lookup field, or an uploaded document's reference number) and,
- * where the document has one, a second value. One match or none, never a
- * list; an expired or unshared document is not found.
+ * where the document has one, a second value; or, since 0075, with the one
+ * search box's text, matched against every searchable field and answered with
+ * up to ten documents. An expired or unshared document is never found. Its
+ * page on the company's site (`/documents/<code>`, 0075) asks for one document
+ * by its code.
  */
 
 const TAGS = ['documents'];
@@ -191,57 +194,160 @@ const lookupFieldSchema = z.object({
 
 const lookupBodySchema = z
   .object({
-    /** The template's lookup field and the value a visitor typed. */
+    /**
+     * The one search box (0075): what a visitor typed, matched exactly against
+     * every searchable field of a document, its reference and the fields
+     * typed on an uploaded one; never against the customer's name. Send this,
+     * or one of the older forms below.
+     */
+    q: z.string().trim().min(1).max(500).optional(),
+    /** Older form: the template's lookup field and the value a visitor typed. */
     key: lookupFieldSchema.optional(),
     /** The second field, when the template asks for one. */
     confirm: lookupFieldSchema.optional(),
     /**
-     * Instead of `key`: the reference a visitor typed (a certificate number),
-     * matched against whichever field is a document's lookup key, an uploaded
-     * document's reference number included (0067).
+     * Older form, instead of `key`: the reference a visitor typed (a certificate
+     * number), matched against whichever field is a document's lookup key, an
+     * uploaded document's reference number included (0067).
      */
     reference: z.string().trim().min(1).max(500).optional(),
     /** With `reference`: the second value, such as the customer's name, when the document has one. */
     customer: z.string().trim().min(1).max(500).optional(),
   })
-  .refine((body) => (body.key === undefined) !== (body.reference === undefined), {
-    message: 'Give either `key` or `reference`.',
-    path: ['reference'],
-  })
+  .refine(
+    (body) =>
+      [body.q, body.key, body.reference].filter((value) => value !== undefined).length === 1,
+    { message: 'Give one of `q`, `reference` or `key`.', path: ['q'] },
+  )
   .refine((body) => body.customer === undefined || body.reference !== undefined, {
     message: '`customer` goes with `reference`; with `key`, use `confirm`.',
     path: ['customer'],
+  })
+  .refine((body) => body.confirm === undefined || body.key !== undefined, {
+    message: '`confirm` goes with `key`.',
+    path: ['confirm'],
   });
+
+/** At most this many documents answer one search (0075). */
+export const WEBSITE_SEARCH_LIMIT = 10;
+
+const websiteDocumentSchema = z.object({
+  title: z.string(),
+  formTitle: z.string(),
+  createdAt: z.iso.datetime(),
+  pageCount: z.number().int().nullable(),
+  /** The document's own link (its QR code's): stable, safe to show and link to. */
+  link: z.string().nullable(),
+  /** Its link's code, for the website's own document page (`/documents/<code>`, 0075). */
+  code: z.string(),
+  /** Five-minute links to the PDF itself, to open or to save. */
+  viewUrl: z.string(),
+  downloadUrl: z.string(),
+  expiresAt: z.iso.datetime(),
+  /** The document's fields, in each language the template wrote their labels in. */
+  fields: z.array(
+    z.object({ key: z.string(), label: z.record(z.string(), z.string()), value: z.string() }),
+  ),
+});
 
 const lookupResultSchema = z.object({
   found: z.boolean(),
-  document: z
-    .object({
-      title: z.string(),
-      formTitle: z.string(),
-      createdAt: z.iso.datetime(),
-      pageCount: z.number().int().nullable(),
-      /** The QR code's page: stable, safe to show and link to. */
-      link: z.string().nullable(),
-      /** Five-minute links to the PDF itself, to open or to save. */
-      viewUrl: z.string(),
-      downloadUrl: z.string(),
-      expiresAt: z.iso.datetime(),
-      /** The document's fields, in each language the template wrote their labels in. */
-      fields: z.array(
-        z.object({ key: z.string(), label: z.record(z.string(), z.string()), value: z.string() }),
-      ),
-    })
-    .nullable(),
+  /** The newest match, or null; kept for websites built before 0075. */
+  document: websiteDocumentSchema.nullable(),
+  /** Every match, newest first, at most ten; one or none for the older forms. */
+  documents: z.array(websiteDocumentSchema),
 });
+
+const codeResultSchema = z.object({
+  found: z.boolean(),
+  document: websiteDocumentSchema.nullable(),
+});
+
+/**
+ * The company behind a website key, with every switch checked: the key is
+ * live, the rate allows it, the company is served, and documents and the
+ * website's document access are on on both sides.
+ */
+async function websiteTenant(
+  context: PublicRequestContext,
+): Promise<{ id: string; tenantId: string }> {
+  const key = context.bearerToken;
+  const live =
+    key === null || !WEBSITE_KEY_PATTERN.test(key)
+      ? undefined
+      : await getPlatformDataSource().websiteKeys.findLiveByHash(hashWebsiteKey(key));
+  if (live === undefined) {
+    throw new ApiError(401, 'website_key_invalid', 'This website key is not valid.');
+  }
+  await lookupLimiter.consume({
+    bucketKey: `website-key:${live.id}`,
+    limit: context.config.WEBSITE_LOOKUP_RATE_LIMIT,
+    windowMs: context.config.WEBSITE_LOOKUP_RATE_WINDOW_SECONDS * 1000,
+    logger: context.logger,
+  });
+  await assertTenantServable(live.tenantId);
+  if (!(await isFeatureEnabled(live.tenantId, 'documents'))) {
+    throw new ApiError(403, 'feature_disabled', 'Documents are not switched on for this company.');
+  }
+  if ((await getPlatformDataSource().settings.flagsFor(live.tenantId)).website_files !== true) {
+    throw new ApiError(
+      403,
+      'feature_disabled',
+      'Website file access is not switched on by Integr8.',
+    );
+  }
+  const websiteAccess = await withTenant(live.tenantId, (tx) => tx.settings.get());
+  if (!websiteAccess.websiteFilesEnabled) {
+    throw new ApiError(
+      403,
+      'feature_disabled',
+      'Website file access is not switched on by this company.',
+    );
+  }
+  return { id: live.id, tenantId: live.tenantId };
+}
+
+interface WebsiteMatch {
+  document: DocumentRecord;
+  formTitle: string;
+}
+
+/** One found document as the website gets it, with fresh links to its PDF. */
+async function websiteDocument(
+  context: PublicRequestContext,
+  tenantId: string,
+  found: WebsiteMatch,
+  linkPattern: string | null,
+): Promise<z.infer<typeof websiteDocumentSchema>> {
+  const [view, download] = await Promise.all([
+    documentFileLink(context, tenantId, found.document, 'inline'),
+    documentFileLink(context, tenantId, found.document, 'attachment'),
+  ]);
+  return {
+    title: found.document.title,
+    formTitle: found.formTitle,
+    createdAt: iso(found.document.createdAt),
+    pageCount: found.document.pageCount,
+    link: documentLink(context.config, found.document.publicCode, linkPattern),
+    code: found.document.publicCode,
+    viewUrl: view.url,
+    downloadUrl: download.url,
+    expiresAt: view.expiresAt,
+    fields: found.document.fields.map((field) => ({
+      key: field.key,
+      label: { ...field.label },
+      value: field.value,
+    })),
+  };
+}
 
 export const websiteDocumentLookupRoute = defineRoute({
   method: 'post',
   path: '/v1/website/documents/lookup',
   operationId: 'lookupWebsiteDocument',
-  summary: 'Find one document from the company’s own website',
+  summary: 'Find documents from the company’s own website',
   description:
-    'For a company’s website server, never a browser: `Authorization: Bearer <website key>`. Either `reference` (what a visitor typed, matched against any document’s lookup key, an uploaded document’s reference number included) with `customer` as the second value, or `key` (a named template field) with `confirm`. The second value is required when the document has one. Exact after trimming and ignoring case. Only documents the company has made shareable, and whose link has not expired, are found. Answers `found: false` rather than 404, and never more than one document. Needs the company’s documents switch on both sides (Integr8’s `website_files` and the company’s own). Rate-limited per key (429).',
+    'For a company’s website server, never a browser: `Authorization: Bearer <website key>`. Send `q`, what a visitor typed in the one search box (0075): it is matched exactly, after trimming and ignoring case, against every searchable field of a document (its reference, or a made document’s lookup field, and the fields typed on an uploaded one), never against the customer’s name, and every match is returned in `documents`, newest first, at most ten. The older forms still work and find one document or none: `reference` with `customer` as the second value, or `key` (a named template field) with `confirm`; the second value is required when the document has one. Only documents the company has made shareable, and whose link has not expired, are found. Answers `found: false` rather than 404. Needs the company’s documents switch on both sides (Integr8’s `website_files` and the company’s own). Rate-limited per key (429).',
   tags: TAGS,
   security: 'public',
   websiteKeyAuth: true,
@@ -250,7 +356,7 @@ export const websiteDocumentLookupRoute = defineRoute({
   query: noSchema,
   body: lookupBodySchema,
   responses: {
-    200: { description: 'One document, or none.', schema: lookupResultSchema },
+    200: { description: 'The documents found, or none.', schema: lookupResultSchema },
     401: { description: 'No website key, or not a live one (`website_key_invalid`).' },
     403: { description: 'The company does not have documents switched on (`feature_disabled`).' },
     429: { description: 'Too many lookups with this key; slow down.' },
@@ -259,84 +365,92 @@ export const websiteDocumentLookupRoute = defineRoute({
     { body },
     context: PublicRequestContext,
   ): Promise<HandlerResult<z.infer<typeof lookupResultSchema>>> => {
-    const key = context.bearerToken;
-    const live =
-      key === null || !WEBSITE_KEY_PATTERN.test(key)
-        ? undefined
-        : await getPlatformDataSource().websiteKeys.findLiveByHash(hashWebsiteKey(key));
-    if (live === undefined) {
-      throw new ApiError(401, 'website_key_invalid', 'This website key is not valid.');
-    }
-    await lookupLimiter.consume({
-      bucketKey: `website-key:${live.id}`,
-      limit: context.config.WEBSITE_LOOKUP_RATE_LIMIT,
-      windowMs: context.config.WEBSITE_LOOKUP_RATE_WINDOW_SECONDS * 1000,
-      logger: context.logger,
+    const live = await websiteTenant(context);
+    const { matches, linkPattern } = await withTenant(live.tenantId, async (tx) => {
+      let documents: DocumentRecord[];
+      if (body.q !== undefined) {
+        documents = await tx.documents.search(body.q, WEBSITE_SEARCH_LIMIT);
+      } else {
+        const one = await tx.documents.lookup(
+          body.reference === undefined
+            ? { key: body.key!, confirm: body.confirm }
+            : {
+                key: { value: body.reference },
+                confirm: body.customer === undefined ? undefined : { value: body.customer },
+              },
+        );
+        documents = one === undefined ? [] : [one];
+      }
+      const found: WebsiteMatch[] = [];
+      for (const document of documents) {
+        const form = document.formId == null ? undefined : await tx.forms.findForm(document.formId);
+        found.push({ document, formTitle: form?.title ?? '' });
+      }
+      return { matches: found, linkPattern: (await tx.settings.get()).documentLinkPattern };
     });
-    await assertTenantServable(live.tenantId);
-    if (!(await isFeatureEnabled(live.tenantId, 'documents'))) {
-      throw new ApiError(
-        403,
-        'feature_disabled',
-        'Documents are not switched on for this company.',
-      );
-    }
-    if ((await getPlatformDataSource().settings.flagsFor(live.tenantId)).website_files !== true) {
-      throw new ApiError(
-        403,
-        'feature_disabled',
-        'Website file access is not switched on by Integr8.',
-      );
-    }
-    const websiteAccess = await withTenant(live.tenantId, (tx) => tx.settings.get());
-    if (!websiteAccess.websiteFilesEnabled) {
-      throw new ApiError(
-        403,
-        'feature_disabled',
-        'Website file access is not switched on by this company.',
-      );
-    }
-
-    const match = await withTenant(live.tenantId, async (tx) => {
-      const document = await tx.documents.lookup(
-        body.reference === undefined
-          ? { key: body.key!, confirm: body.confirm }
-          : {
-              key: { value: body.reference },
-              confirm: body.customer === undefined ? undefined : { value: body.customer },
-            },
-      );
-      const form = document?.formId == null ? undefined : await tx.forms.findForm(document.formId);
-      return document === undefined ? undefined : { document, formTitle: form?.title ?? '' };
-    });
-    await getPlatformDataSource().websiteKeys.recordUse(live.id, match !== undefined);
-    if (match === undefined) {
-      return { status: 200, body: { found: false, document: null } };
-    }
-    const [view, download] = await Promise.all([
-      documentFileLink(context, live.tenantId, match.document, 'inline'),
-      documentFileLink(context, live.tenantId, match.document, 'attachment'),
-    ]);
+    await getPlatformDataSource().websiteKeys.recordUse(live.id, matches.length > 0);
+    const documents = await Promise.all(
+      matches.map((match) => websiteDocument(context, live.tenantId, match, linkPattern)),
+    );
     return {
       status: 200,
-      body: {
-        found: true,
-        document: {
-          title: match.document.title,
-          formTitle: match.formTitle,
-          createdAt: iso(match.document.createdAt),
-          pageCount: match.document.pageCount,
-          link: documentLink(context.config, match.document.publicCode),
-          viewUrl: view.url,
-          downloadUrl: download.url,
-          expiresAt: view.expiresAt,
-          fields: match.document.fields.map((field) => ({
-            key: field.key,
-            label: { ...field.label },
-            value: field.value,
-          })),
-        },
-      },
+      body: { found: documents.length > 0, document: documents[0] ?? null, documents },
+      headers: { 'cache-control': 'no-store' },
+    };
+  },
+});
+
+export const websiteDocumentByCodeRoute = defineRoute({
+  method: 'get',
+  path: '/v1/website/documents/by-code/:code',
+  operationId: 'getWebsiteDocumentByCode',
+  summary: 'One document by its link’s code, for the company’s own website',
+  description:
+    'For a company’s website server, never a browser: `Authorization: Bearer <website key>`. The page a document’s QR code and shared link open when the company’s links point at its own website (0075), such as `https://example.com/documents/<code>`, asks this with the code from its address. Found only when the code is one of this company’s documents, shared, and its link has not expired or been stopped; every other case answers `found: false` alike, so the page learns nothing it should not. Same switches and rate limit as the lookup.',
+  tags: TAGS,
+  security: 'public',
+  websiteKeyAuth: true,
+  allowedWhenReadOnly: true,
+  params: codeParams,
+  query: noSchema,
+  body: noSchema,
+  responses: {
+    200: { description: 'The document, or none.', schema: codeResultSchema },
+    401: { description: 'No website key, or not a live one (`website_key_invalid`).' },
+    403: { description: 'The company does not have documents switched on (`feature_disabled`).' },
+    429: { description: 'Too many lookups with this key; slow down.' },
+  },
+  handler: async (
+    { params },
+    context: PublicRequestContext,
+  ): Promise<HandlerResult<z.infer<typeof codeResultSchema>>> => {
+    const live = await websiteTenant(context);
+    const match = await withTenant(live.tenantId, async (tx) => {
+      const document = await tx.documents.findByCode(params.code);
+      if (document === undefined || !document.shareable || !linkOpens(document)) {
+        return undefined;
+      }
+      const form = document.formId == null ? undefined : await tx.forms.findForm(document.formId);
+      return {
+        found: { document, formTitle: form?.title ?? '' },
+        linkPattern: (await tx.settings.get()).documentLinkPattern,
+      };
+    });
+    await getPlatformDataSource().websiteKeys.recordUse(live.id, match !== undefined);
+    return {
+      status: 200,
+      body:
+        match === undefined
+          ? { found: false, document: null }
+          : {
+              found: true,
+              document: await websiteDocument(
+                context,
+                live.tenantId,
+                match.found,
+                match.linkPattern,
+              ),
+            },
       headers: { 'cache-control': 'no-store' },
     };
   },
@@ -346,4 +460,5 @@ export const documentPublicRoutes = [
   getPublicDocumentRoute,
   getPublicDocumentFileRoute,
   websiteDocumentLookupRoute,
+  websiteDocumentByCodeRoute,
 ];

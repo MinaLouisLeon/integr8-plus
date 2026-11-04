@@ -118,6 +118,17 @@ export const meSchema = z.object({
     defaultTheme: companyThemeSchema,
     /** The company's own website, https only, or null. */
     websiteUrl: z.string().nullable(),
+    /**
+     * Whether to print the name beside the logo (0075). Set by Integr8 on the
+     * branding screen; apps show the name anyway while there is no logo.
+     */
+    showCompanyName: z.boolean(),
+    /**
+     * The menu tabs Integr8 switched off for this company, by navigation key
+     * (`@integr8/core` NAV_SECTIONS; 0075). The apps leave them out of the menu
+     * and the phone's home screen, and show "not available" on their pages.
+     */
+    hiddenSections: z.array(z.string()),
   }),
 
   /**

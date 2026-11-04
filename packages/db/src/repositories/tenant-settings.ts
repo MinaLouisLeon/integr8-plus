@@ -47,6 +47,15 @@ export interface TenantSettings {
   websiteInvoicesEnabled: boolean;
   /** Days before a certificate expires that its holder and the managers are warned (0052). */
   qualificationWarningDays: number;
+  /** Whether the apps print the company name beside its logo; ignored without a logo (0075). */
+  showCompanyName: boolean;
+  /** Navigation keys of the tabs Integr8 staff switched off for this company (0075). */
+  hiddenNavSections: string[];
+  /**
+   * Where a document's QR code and shared link point: an https address with
+   * `{code}` in it on the company's own website. Null for Integr8's `/d/` page (0075).
+   */
+  documentLinkPattern: string | null;
 }
 
 export const DEFAULT_SETTINGS: Omit<TenantSettings, 'tenantId'> = {
@@ -76,6 +85,9 @@ export const DEFAULT_SETTINGS: Omit<TenantSettings, 'tenantId'> = {
   websiteQuotesEnabled: false,
   websiteInvoicesEnabled: false,
   qualificationWarningDays: 30,
+  showCompanyName: true,
+  hiddenNavSections: [],
+  documentLinkPattern: null,
 };
 
 export class TenantSettingsRepository {
@@ -122,6 +134,9 @@ export class TenantSettingsRepository {
     websiteQuotesEnabled?: boolean | undefined;
     websiteInvoicesEnabled?: boolean | undefined;
     qualificationWarningDays?: number | undefined;
+    showCompanyName?: boolean | undefined;
+    hiddenNavSections?: readonly string[] | undefined;
+    documentLinkPattern?: string | null | undefined;
   }): Promise<TenantSettings> {
     const values = {
       ...(input.logoMediaId === undefined ? {} : { logo_media_id: input.logoMediaId }),
@@ -157,6 +172,13 @@ export class TenantSettingsRepository {
       ...(input.websiteInvoicesEnabled === undefined
         ? {}
         : { website_invoices_enabled: input.websiteInvoicesEnabled }),
+      ...(input.showCompanyName === undefined ? {} : { show_company_name: input.showCompanyName }),
+      ...(input.hiddenNavSections === undefined
+        ? {}
+        : { hidden_nav_sections: [...new Set(input.hiddenNavSections)].sort() }),
+      ...(input.documentLinkPattern === undefined
+        ? {}
+        : { document_link_pattern: input.documentLinkPattern }),
     };
 
     const row = await this.db
@@ -259,6 +281,8 @@ export class TenantSettingsWriter {
       websiteUrl?: string | null;
       /** Which of its apps show the assistant, chosen at onboarding (ADR-0001). */
       aiChannels?: { web: boolean; desktop: boolean; mobile: boolean };
+      /** The tabs staff switched off at onboarding (0075). */
+      hiddenNavSections?: readonly string[];
     } = {},
   ): Promise<void> {
     await this.db
@@ -273,6 +297,9 @@ export class TenantSettingsWriter {
               ai_desktop_enabled: input.aiChannels.desktop,
               ai_mobile_enabled: input.aiChannels.mobile,
             }),
+        ...(input.hiddenNavSections === undefined
+          ? {}
+          : { hidden_nav_sections: [...new Set(input.hiddenNavSections)].sort() }),
       })
       .onConflict((conflict) => conflict.column('tenant_id').doNothing())
       .execute();
@@ -366,5 +393,8 @@ function toSettings(row: Selectable<TenantSettingsTable>): TenantSettings {
     websiteQuotesEnabled: row.website_quotes_enabled,
     websiteInvoicesEnabled: row.website_invoices_enabled,
     qualificationWarningDays: row.qualification_warning_days,
+    showCompanyName: row.show_company_name,
+    hiddenNavSections: row.hidden_nav_sections,
+    documentLinkPattern: row.document_link_pattern,
   };
 }

@@ -1,4 +1,4 @@
-import type { NavPath } from '@integr8/core';
+import { isSectionHidden, type NavPath, sectionForPath } from '@integr8/core';
 import { LOCALE_DESCRIPTORS, useTranslation, type Locale } from '@integr8/i18n';
 import { AnnouncementBanners } from '@integr8/operations-dom';
 import { useQueryClient } from '@tanstack/react-query';
@@ -89,8 +89,16 @@ export function AppFrame({
   const groups =
     me.data === undefined
       ? []
-      : desktopNavigation(me.data.permissions, me.data.features, assistantShown(capabilities.data));
+      : desktopNavigation(me.data.permissions, me.data.features, {
+          ...assistantShown(capabilities.data),
+          hidden: me.data.company.hiddenSections,
+        });
   const chrome = routeChrome(location.pathname);
+  // A tab Integr8 switched off for the company takes its pages with it (0075):
+  // a bookmark or an old link lands on "not available", not on the screen.
+  const section = chrome.section === undefined ? undefined : sectionForPath(chrome.section);
+  const hiddenHere =
+    section !== undefined && isSectionHidden(section.key, me.data?.company.hiddenSections);
 
   return (
     <div className="flex h-dvh bg-background">
@@ -133,7 +141,7 @@ export function AppFrame({
         <AnnouncementBanners announcements={me.data?.announcements} className="px-6 pt-4" />
         {/* The builder fills the window, so the page itself never scrolls; each screen scrolls its own content. */}
         <main id="main" className="min-h-0 flex-1 overflow-y-auto">
-          {children}
+          {hiddenHere ? <SectionUnavailable /> : children}
         </main>
       </div>
     </div>
@@ -433,5 +441,22 @@ function TopBar({
         </p>
       )}
     </header>
+  );
+}
+
+/** In place of a page whose tab Integr8 switched off for the company (0075). */
+function SectionUnavailable() {
+  const { t } = useTranslation();
+  return (
+    <div role="status" className="mx-auto flex max-w-md flex-col gap-3 px-6 py-16 text-center">
+      <h1 className="text-xl font-semibold text-content">{t('nav.unavailable.title')}</h1>
+      <p className="text-sm text-content-muted">{t('nav.unavailable.body')}</p>
+      <Link
+        to="/dashboard"
+        className="text-sm font-medium text-accent underline-offset-4 hover:underline"
+      >
+        {t('nav.unavailable.back')}
+      </Link>
+    </div>
   );
 }

@@ -92,6 +92,7 @@ export const PLATFORM_NAV_PATHS: Readonly<Record<PlatformNavPath, string>> = {
   releases: '/platform/releases',
   health: '/platform/health',
   staff: '/platform/staff',
+  downloads: '/platform/downloads',
 };
 
 export const PLATFORM_NAV_ALIASES: Readonly<Partial<Record<PlatformNavPath, readonly string[]>>> = {
@@ -149,6 +150,18 @@ export function routeForPathname<R extends ShellRoute>(
     return null;
   }
   return { route: best.route, nested: pathname !== best.route.href };
+}
+
+/**
+ * The menu tab a page of the company workspace belongs to, by its address:
+ * what decides whether a tab Integr8 switched off (0075) takes the page with it.
+ */
+export function navPathForPathname(pathname: string): NavPath | undefined {
+  const routes = (Object.entries(NAV_PATHS) as [NavPath, string][]).map(([key, href]) => {
+    const aliases = NAV_ALIASES[key];
+    return { key, href, ...(aliases === undefined ? {} : { aliases }) };
+  });
+  return routeForPathname(routes, normalisePathname(pathname))?.route.key;
 }
 
 /** `/work-orders/abc/` and `/work-orders/abc` are the same page. */

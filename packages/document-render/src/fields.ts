@@ -14,6 +14,8 @@ import { type DocumentLocale, wordsFor } from './words.js';
 /** What the document knows about where it came from. */
 export interface SubmissionFacts {
   companyName: string;
+  /** The company's own website, for `{{company.website}}` (0075); empty when it has none. */
+  companyWebsite?: string | null;
   formTitle: string;
   /** ISO instant, or null for a draft. */
   submittedAt: string | null;
@@ -30,7 +32,8 @@ export interface ResolvedField {
   key: string;
   label: Readonly<Record<string, string>>;
   value: string;
-  lookupRole: 'key' | 'confirm' | null;
+  /** `search` only on uploaded documents (0075), which are never printed from a template. */
+  lookupRole: 'key' | 'confirm' | 'search' | null;
 }
 
 export interface FieldProblem {

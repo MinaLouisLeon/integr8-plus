@@ -107,7 +107,7 @@ export function newBlock(type: BlockType, id: string, form: CompiledForm | null)
     case 'image':
       return { type, id, source: { kind: 'logo' }, width: 40, align: 'start' };
     case 'qr':
-      return { type, id, size: 30, align: 'end' };
+      return { type, id, content: { kind: 'share' }, size: 30, align: 'end' };
     case 'information':
       return { type, id, informationId: informationBlocks(form)[0]?.id ?? '' };
     case 'divider':

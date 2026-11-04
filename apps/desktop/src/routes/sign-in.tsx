@@ -154,17 +154,19 @@ function useRememberedBrand(): RememberedBrand | undefined {
 
 /** The company's name and logo above the form. The logo is the public route; the browser follows its redirect. */
 function RememberedBrandMark({ brand }: { brand: RememberedBrand }) {
+  // The logo stands alone when Integr8 switched the name off (0075).
+  const logoOnly = brand.logoPath !== undefined && brand.showName === false;
   return (
     <div className="flex items-center gap-3 text-start">
       {brand.logoPath === undefined ? null : (
-        // Decorative beside the name, which carries the meaning.
+        // Decorative beside the name, which carries the meaning, unless it stands alone.
         <img
           src={`${API_BASE_URL}${brand.logoPath}`}
-          alt=""
+          alt={logoOnly ? brand.name : ''}
           className="h-12 w-auto max-w-40 object-contain"
         />
       )}
-      <span className="text-xl font-semibold text-content">{brand.name}</span>
+      {logoOnly ? null : <span className="text-xl font-semibold text-content">{brand.name}</span>}
     </div>
   );
 }

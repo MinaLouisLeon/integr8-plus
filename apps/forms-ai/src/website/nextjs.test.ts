@@ -19,9 +19,9 @@ afterAll(() => {
 
 const VARIANTS: NextExampleOptions[] = [
   {},
-  { secondValue: 'optional', language: 'ar' },
-  { secondValue: 'none', language: 'en', srcDir: true },
-  { route: '[locale]/documents/find', srcDir: true },
+  { language: 'ar' },
+  { language: 'en', srcDir: true },
+  { route: '[locale]/documents/find', documentRoute: '[locale]/d', srcDir: true },
 ];
 
 describe('the Next.js example', () => {
@@ -59,22 +59,28 @@ describe('the Next.js example', () => {
       'src/app/certificates/actions.ts',
       'src/app/certificates/document-search.tsx',
       'src/app/certificates/page.tsx',
+      'src/app/documents/[code]/page.tsx',
       '.env.example',
     ]);
   });
 
-  it('asks for the customer name only when told to', () => {
-    const form = (secondValue: 'required' | 'optional' | 'none') =>
-      nextExample({ secondValue }).find((file) => file.path.endsWith('document-search.tsx'))!
-        .content;
-    expect(form('required')).toMatch(/name="customer"[^>]*required/u);
-    expect(form('optional')).toMatch(/name="customer"/u);
-    expect(form('optional')).not.toMatch(/name="customer"[^>]*required/u);
-    expect(form('none')).not.toMatch(/name="customer"/u);
+  it('searches with one box and opens a document by its code', () => {
+    const files = nextExample();
+    const form = files.find((file) => file.path.endsWith('document-search.tsx'))!.content;
+    expect(form).toMatch(/name="q"/u);
+    expect(form).not.toMatch(/name="customer"/u);
+    const client = files.find((file) => file.path.endsWith('lib/integr8.ts'))!.content;
+    expect(client).toMatch(/JSON\.stringify\(\{ q \}\)/u);
+    expect(client).toMatch(/\/v1\/website\/documents\/by-code\//u);
+    const page = files.find((file) => file.path.endsWith('[code]/page.tsx'))!.content;
+    expect(page).toMatch(/documentByCode\(code\)/u);
+    expect(page).toMatch(/index: false/u);
   });
 
-  it('refuses a route that is not a folder name', () => {
+  it('refuses a route that is not a folder name, or one page in two places', () => {
     expect(() => nextExample({ route: '../secrets' })).toThrow(/not a route folder/u);
+    expect(() => nextExample({ documentRoute: '../x' })).toThrow(/not a route folder/u);
+    expect(() => nextExample({ route: 'docs', documentRoute: 'docs' })).toThrow(/different/u);
   });
 
   it('reads as one text with every file', () => {
@@ -82,5 +88,6 @@ describe('the Next.js example', () => {
     expect(text).toMatch(/## lib\/integr8\.ts/u);
     expect(text).toMatch(/npm install server-only/u);
     expect(text).toMatch(/check_website_integration/u);
+    expect(text).toMatch(/document link address/u);
   });
 });

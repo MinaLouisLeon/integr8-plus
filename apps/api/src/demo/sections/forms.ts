@@ -141,7 +141,7 @@ const CERTIFICATE_DESIGN = {
     { type: 'field', id: 'temp', fieldId: 'supply_temp', layout: 'inline' },
     { type: 'field', id: 'result', fieldId: 'result', layout: 'inline' },
     { type: 'field', id: 'notes', fieldId: 'notes', layout: 'stacked', shaded: true },
-    { type: 'qr', id: 'qr', size: 30, align: 'end' },
+    { type: 'qr', id: 'qr', content: { kind: 'share' }, size: 30, align: 'end' },
   ],
 };
 

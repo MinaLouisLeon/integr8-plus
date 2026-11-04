@@ -6,6 +6,7 @@ import { LocalGate } from '~/components/local-gate';
 import { Body, Button, Heading, ScrollScreen } from '~/components/ui';
 import { BarcodeScanner } from '~/forms/widgets/barcode';
 import { localData } from '~/local/local-data';
+import { ScreenGate } from '~/components/screen-gate';
 
 /**
  * Scanning an asset tag (CRM/ERP plan, phase E3; ADR-0008). The QR code holds
@@ -13,7 +14,7 @@ import { localData } from '~/local/local-data';
  * up in the phone's own copy, so this works with no signal. From a job, the
  * asset opens ready to be linked to it.
  */
-export default function ScanScreen() {
+function ScanScreenBody() {
   return (
     <LocalGate>
       <Scan />
@@ -80,5 +81,14 @@ function Scan() {
       )}
       {scanning ? <BarcodeScanner onScanned={found} onCancel={() => setScanning(false)} /> : null}
     </ScrollScreen>
+  );
+}
+
+/** Shown only while the company keeps its tab (0075). */
+export default function ScanScreen() {
+  return (
+    <ScreenGate screen="assets">
+      <ScanScreenBody />
+    </ScreenGate>
   );
 }

@@ -26,6 +26,7 @@ import { addReceipt, fetchMyClaims } from '~/local/expense-actions';
 import { localData } from '~/local/local-data';
 import { useLocalQuery, useSyncActivity } from '~/local/react';
 import { refusalMessage, syncRefusalMessage } from '~/lib/refusals';
+import { ScreenGate } from '~/components/screen-gate';
 
 type ServerClaim = Awaited<ReturnType<typeof fetchMyClaims>>[number];
 
@@ -34,7 +35,7 @@ type ServerClaim = Awaited<ReturnType<typeof fetchMyClaims>>[number];
  * yet all on the server first — read from the phone, so they show without
  * signal — then the recent ones as the server has them, when it can be asked.
  */
-export default function ExpensesScreen() {
+function ExpensesScreenBody() {
   return (
     <LocalGate>
       <Expenses />
@@ -211,5 +212,14 @@ function Expenses() {
         )}
       </Section>
     </ScrollScreen>
+  );
+}
+
+/** Shown only while the company keeps its tab (0075). */
+export default function ExpensesScreen() {
+  return (
+    <ScreenGate screen="expenses">
+      <ExpensesScreenBody />
+    </ScreenGate>
   );
 }

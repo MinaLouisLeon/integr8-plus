@@ -13,6 +13,7 @@ export {
   type DesignIssue,
   type DesignResult,
   designFileIds,
+  designHasShareQr,
   designMediaFields,
   designSchema,
   designUsesLogo,
@@ -24,6 +25,8 @@ export {
   type Margins,
   type PageSettings,
   parseDesign,
+  type QrContent,
+  qrContentSchema,
   styleSchema,
   type TemplateDesign,
   type TemplateStyle,
@@ -75,7 +78,7 @@ export {
   type PrintParts,
   tintOf,
 } from './look.js';
-export { qrSvg } from './qr.js';
+export { qrMatrix, qrSvg } from './qr.js';
 export { sampleAnswers } from './sample.js';
 export { type DocumentLocale, fill, type RenderWords, wordsFor } from './words.js';
 export {

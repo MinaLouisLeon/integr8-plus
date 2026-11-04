@@ -102,9 +102,10 @@ export function desktopNavigation(
   /**
    * Whether the assistant is on for this seat in this app, as
    * `/v1/ai/capabilities` reports; its section is hidden until that answer
-   * says yes (docs/ai; ADR-0001).
+   * says yes (docs/ai; ADR-0001). `hidden`: the tabs Integr8 switched off
+   * for the company (`/v1/me` company.hiddenSections; 0075).
    */
-  options?: { assistant?: boolean },
+  options?: { assistant?: boolean | undefined; hidden?: readonly string[] | undefined },
 ): DesktopNavGroup[] {
   return visibleNavigation('desktop', permissions, features, options)
     .map(({ group, sections }) => ({

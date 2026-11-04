@@ -31,6 +31,7 @@ const pdf = (overrides: Partial<DocumentDetail> = {}): DocumentDetail => ({
   record: { kind: 'quote', id: QUOTE },
   customer: { id: '00000000-0000-4000-8000-00000000c001', name: 'Horizon' },
   shareable: false,
+  qr: { spot: false, printed: false, placement: null },
   templateId: null,
   templateRevision: null,
   submissionId: null,

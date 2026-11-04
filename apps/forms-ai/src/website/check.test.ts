@@ -26,22 +26,53 @@ function site(files: Record<string, string>) {
 const codes = (findings: { code: string }[]) => findings.map((finding) => finding.code).sort();
 
 const GOOD_ACTION = `'use server';
-export async function find(reference: string) {
+export async function find(q: string) {
   const response = await fetch(process.env.INTEGR8_API_URL + '/v1/website/documents/lookup', {
     method: 'POST',
     headers: { authorization: 'Bearer ' + process.env.INTEGR8_WEBSITE_KEY },
-    body: JSON.stringify({ reference }),
+    body: JSON.stringify({ q }),
     cache: 'no-store',
   });
   return response.json();
 }
 `;
 
+/** The document page shared links open (0075), done right. */
+const GOOD_DOCUMENT = `import 'server-only';
+export const metadata = { robots: { index: false } };
+export default async function Page({ params }: { params: Promise<{ code: string }> }) {
+  const { code } = await params;
+  const answer = await fetch(process.env.INTEGR8_API_URL + '/v1/website/documents/by-code/' + code, {
+    headers: { authorization: 'Bearer ' + process.env.INTEGR8_WEBSITE_KEY },
+    cache: 'no-store',
+  });
+  return answer.ok ? 'found' : 'not found';
+}
+`;
+
 describe('check_website_integration', () => {
   it('passes a correct Server Action', () => {
-    const check = site({ 'app/find/actions.ts': GOOD_ACTION, '.gitignore': '.env*.local\n' });
+    const check = site({
+      'app/find/actions.ts': GOOD_ACTION,
+      'app/documents/[code]/page.tsx': GOOD_DOCUMENT,
+      '.gitignore': '.env*.local\n',
+    });
     expect(check.ok).toBe(true);
     expect(check.warnings).toEqual([]);
+  });
+
+  it('warns about the older two-box search body, a missing document page, and an indexed one', () => {
+    const older = site({
+      'app/find/actions.ts': GOOD_ACTION.replace('{ q }', '{ reference, customer }'),
+    });
+    expect(older.ok).toBe(true);
+    expect(codes(older.warnings)).toEqual(['no_document_page', 'old_lookup_body']);
+
+    const indexed = site({
+      'app/find/actions.ts': GOOD_ACTION,
+      'app/documents/[code]/page.tsx': GOOD_DOCUMENT.replace('index: false', 'index: true'),
+    });
+    expect(codes(indexed.warnings)).toEqual(['page_indexed']);
   });
 
   it('finds the key written in code, in a NEXT_PUBLIC_ name and in browser code', () => {
@@ -70,7 +101,7 @@ export default function Page() {
 `,
     });
     expect(codes(check.problems)).toEqual(['unknown_endpoint']);
-    expect(codes(check.warnings)).toEqual(['no_lookup']);
+    expect(codes(check.warnings)).toEqual(['no_document_page', 'no_lookup']);
   });
 
   it('accepts the files endpoint with an id from a template literal', () => {
@@ -85,8 +116,8 @@ export const links = (id: string) =>
 
   it('warns about a module not marked server-only, caching and kept links', () => {
     const check = site({
-      'lib/integr8.ts': `export async function find(reference: string) {
-  const answer = await fetch(process.env.INTEGR8_API_URL + '/v1/website/documents/lookup', { method: 'POST', headers: { authorization: 'Bearer ' + process.env.INTEGR8_WEBSITE_KEY }, body: JSON.stringify({ reference }) });
+      'lib/integr8.ts': `export async function find(q: string) {
+  const answer = await fetch(process.env.INTEGR8_API_URL + '/v1/website/documents/lookup', { method: 'POST', headers: { authorization: 'Bearer ' + process.env.INTEGR8_WEBSITE_KEY }, body: JSON.stringify({ q }) });
   const body = await answer.json();
   localStorage.setItem('pdf', body.document.viewUrl);
 }
@@ -96,6 +127,7 @@ export const links = (id: string) =>
     expect(codes(check.warnings)).toEqual([
       'links_kept',
       'may_be_cached',
+      'no_document_page',
       'not_marked_server_only',
     ]);
   });
@@ -113,7 +145,7 @@ export const Result = ({ code }: { code: string }) => (code === 'website_key_inv
 `,
     });
     expect(codes(check.problems)).toEqual(['key_in_response', 'key_logged']);
-    expect(codes(check.warnings)).toEqual(['no_lookup', 'refusal_shown']);
+    expect(codes(check.warnings)).toEqual(['no_document_page', 'no_lookup', 'refusal_shown']);
   });
 
   it('reads env files: a key in .env.example is a problem, in .env a warning, in .env.local fine', () => {
@@ -123,6 +155,7 @@ export const Result = ({ code }: { code: string }) => (code === 'website_key_inv
       '.env.local': `INTEGR8_WEBSITE_KEY=${KEY}\n`,
       '.gitignore': 'node_modules\n',
       'app/actions.ts': GOOD_ACTION,
+      'app/documents/[code]/page.tsx': GOOD_DOCUMENT,
     });
     expect(codes(check.problems)).toEqual(['key_in_example_env']);
     expect(codes(check.warnings)).toEqual(['env_not_ignored', 'key_in_shared_env']);

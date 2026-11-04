@@ -19,6 +19,7 @@ import {
   useDocumentAccess,
   useOpenDocument,
 } from './document-parts.js';
+import { DocumentRowActions } from './document-actions.js';
 import { UploadDocumentDialog } from './document-upload.js';
 
 const STATES: readonly DocumentState[] = ['active', 'expired', 'pending', 'failed'];
@@ -233,18 +234,21 @@ export function DocumentListScreen() {
                       )}
                     </span>
                   </div>
-                  <dl className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-                    {document.fields.slice(0, 3).map((candidate) => (
-                      <div key={candidate.key} className="flex gap-1">
-                        <dt className="text-content-muted">
-                          {localized(candidate.label, locale)}:
-                        </dt>
-                        <dd className="text-content" dir="auto">
-                          {candidate.value}
-                        </dd>
-                      </div>
-                    ))}
-                  </dl>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <dl className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                      {document.fields.slice(0, 3).map((candidate) => (
+                        <div key={candidate.key} className="flex gap-1">
+                          <dt className="text-content-muted">
+                            {localized(candidate.label, locale)}:
+                          </dt>
+                          <dd className="text-content" dir="auto">
+                            {candidate.value}
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
+                    <DocumentRowActions document={document} />
+                  </div>
                 </li>
               );
             })}

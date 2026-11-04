@@ -1,8 +1,10 @@
-import { toPlatformUserId, toTenantId } from '@integr8/core';
+import { shownTabs, toPlatformUserId, toTenantId } from '@integr8/core';
 import { getPlatformDataSource, TENANT_PLANS, type TenantSummary, withTenant } from '@integr8/db';
 import { z } from 'zod';
 import { effectiveBillingMode } from '../../../billing/provider.js';
-import { conflict, notFound } from '../../../http/errors.js';
+import { conflict, notFound, unprocessable } from '../../../http/errors.js';
+import { documentLinkPatternProblem } from '../../../documents/render.js';
+import { applyTabChoice, assertKnownTabs } from '../../../platform/company-tabs.js';
 import { defineRoute, noSchema, type PlatformRequestContext } from '../../../http/routes.js';
 import { forgetTenantStatus } from '../../../http/suspension.js';
 import { onboardCompany } from '../../../platform/onboarding.js';
@@ -129,7 +131,7 @@ export const getCompanyRoute = defineRoute({
       status: 200,
       body: {
         ...toSummary(summary, scheduled),
-        settings: toCompanySettings(settings),
+        settings: toCompanySettings(settings, flags),
         invitations: invitations.map((invitation) => ({
           id: invitation.id,
           email: invitation.email,
@@ -238,6 +240,12 @@ export const onboardCompanyRoute = defineRoute({
       )
       .max(50)
       .optional(),
+    /**
+     * The menu tabs the company sees (0075), by navigation key; absent shows
+     * every tab its modules allow. Each module with tabs is switched on when
+     * one of its tabs is listed and off when none is.
+     */
+    tabs: z.array(z.string().max(64)).max(200).optional(),
   }),
   responses: {
     201: { description: 'Onboarded.', schema: onboardResponseSchema },
@@ -247,6 +255,10 @@ export const onboardCompanyRoute = defineRoute({
     const platform = getPlatformDataSource();
     if ((await platform.tenants.findBySlug(body.slug)) !== undefined) {
       throw conflict('slug_taken', `A company already uses the slug "${body.slug}"`);
+    }
+    if (body.tabs !== undefined) {
+      // Before anything is made, so a wrong key leaves no half-made company.
+      assertKnownTabs(body.tabs);
     }
 
     const onboarded = await onboardCompany({
@@ -271,6 +283,11 @@ export const onboardCompanyRoute = defineRoute({
       },
     });
 
+    const tabs =
+      body.tabs === undefined
+        ? null
+        : await applyTabChoice(onboarded.tenant.id, body.tabs, context.platform.platformUserId);
+
     await recordPlatformAction(context, {
       action: 'tenant.onboarded',
       tenantId: onboarded.tenant.id,
@@ -286,6 +303,7 @@ export const onboardCompanyRoute = defineRoute({
         jobTypes: onboarded.jobTypes,
         bucket: onboarded.storage.bucket,
         storageError: onboarded.storage.error,
+        ...(tabs === null ? {} : { hiddenSections: tabs.hidden, modules: tabs.modules }),
       },
     });
 
@@ -509,9 +527,9 @@ export const updateCompanySettingsRoute = defineRoute({
   method: 'patch',
   path: '/v1/platform/companies/:tenantId/settings',
   operationId: 'updateCompanySettings',
-  summary: 'Change a company’s website, or whether its own apps are built',
+  summary: 'Change a company’s website, its document links, or whether its own apps are built',
   description:
-    'The two branding facts the dashboard owns. The rest of the look — logo, icon, colours, theme — is set from the desktop app while acting as the company, where it can be previewed. Switching `appsEnabled` on puts the company in the list the release pipeline builds for and, when the deployment can start builds (`APP_BUILDS=github`), starts its first build at once; `appBuild` says how that went, and is null when this change did not switch apps on.',
+    'The branding facts the dashboard owns. `documentLinkPattern` (0075) points the company’s document links at its own website: an https address with `{code}` in it, on the registered website’s host or one under it (422 `document_link_invalid`, `document_link_needs_website`, `document_link_other_site`); null goes back to Integr8’s page, and codes already printed keep working there either way. The rest of the look — logo, icon, colours, theme — is set from the desktop app while acting as the company, where it can be previewed. Switching `appsEnabled` on puts the company in the list the release pipeline builds for and, when the deployment can start builds (`APP_BUILDS=github`), starts its first build at once; `appBuild` says how that went, and is null when this change did not switch apps on.',
   tags: ['platform'],
   security: 'platform',
   params: z.object({ tenantId: z.uuid() }),
@@ -522,10 +540,12 @@ export const updateCompanySettingsRoute = defineRoute({
     aiWebEnabled: z.boolean().optional(),
     aiDesktopEnabled: z.boolean().optional(),
     aiMobileEnabled: z.boolean().optional(),
+    documentLinkPattern: z.string().trim().max(500).nullable().optional(),
   }),
   responses: {
     200: { description: 'Changed.', schema: companySettingsChangeSchema },
     404: { description: 'No such company.' },
+    422: { description: 'A document link address that cannot be used.' },
   },
   handler: async ({ params, body }, context) => {
     const platform = getPlatformDataSource();
@@ -534,10 +554,26 @@ export const updateCompanySettingsRoute = defineRoute({
       throw notFound(`No company with id ${params.tenantId}`);
     }
 
-    const { before, settings } = await withTenant(toTenantId(tenant.id), async (tx) => ({
-      before: (await tx.settings.get()).appsEnabled,
-      settings: await tx.settings.update(body),
-    }));
+    const { before, settings } = await withTenant(toTenantId(tenant.id), async (tx) => {
+      const current = await tx.settings.get();
+      const pattern = body.documentLinkPattern === '' ? null : body.documentLinkPattern;
+      // Checked against the website as it will be after this change, so both
+      // can be set together, and a website change that strands the address is refused.
+      const website = body.websiteUrl === undefined ? current.websiteUrl : body.websiteUrl;
+      const checked = pattern === undefined ? current.documentLinkPattern : pattern;
+      if (checked !== null) {
+        const problem = documentLinkPatternProblem(checked, website);
+        if (problem !== null) {
+          throw unprocessable(problem, DOCUMENT_LINK_PROBLEMS[problem], [
+            { field: 'body.documentLinkPattern', code: problem, message: checked },
+          ]);
+        }
+      }
+      return {
+        before: current.appsEnabled,
+        settings: await tx.settings.update({ ...body, documentLinkPattern: pattern }),
+      };
+    });
 
     await recordPlatformAction(context, {
       action: 'tenant.settings_changed',
@@ -554,7 +590,66 @@ export const updateCompanySettingsRoute = defineRoute({
     const appBuild =
       !before && settings.appsEnabled ? await startAppBuild(context, tenant, 'apps_enabled') : null;
 
-    return { status: 200, body: { ...toCompanySettings(settings), appBuild } };
+    const flags = await platform.settings.flagsFor(tenant.id);
+    return { status: 200, body: { ...toCompanySettings(settings, flags), appBuild } };
+  },
+});
+
+const DOCUMENT_LINK_PROBLEMS = {
+  document_link_invalid:
+    'The address must start with https://, have {code} in its path or query, and be at most 500 characters.',
+  document_link_needs_website:
+    'Register the company’s website first: document links may only point to it.',
+  document_link_other_site: 'The address must be on the company’s registered website.',
+} as const;
+
+export const setCompanyTabsRoute = defineRoute({
+  method: 'put',
+  path: '/v1/platform/companies/:tenantId/tabs',
+  operationId: 'setCompanyTabs',
+  summary: 'Choose exactly which menu tabs a company sees',
+  description:
+    'Staff only (0075). `tabs` lists the tabs to show, by navigation key; every other switchable tab is hidden from the company’s web, desktop and phone apps, and its page says it is not available. A module with tabs follows them: on when any of its tabs is listed (with the module it is built on), off when none is, which is what stops its data on the server. The dashboard, the form builder, branding and the e-invoicing switch cannot be hidden. Recorded in the platform audit log.',
+  tags: ['platform'],
+  security: 'platform',
+  params: z.object({ tenantId: z.uuid() }),
+  query: noSchema,
+  body: z.object({ tabs: z.array(z.string().max(64)).max(200) }),
+  responses: {
+    200: {
+      description: 'The company’s tabs and flags, as they now are.',
+      schema: z.object({
+        tabs: z.array(z.string()),
+        hiddenSections: z.array(z.string()),
+        flags: z.record(z.string(), z.boolean()),
+      }),
+    },
+    404: { description: 'No such company.' },
+    422: { description: 'A key that is not a switchable tab (`unknown_tab`).' },
+  },
+  handler: async ({ params, body }, context) => {
+    const platform = getPlatformDataSource();
+    const tenant = await platform.tenants.findById(params.tenantId);
+    if (tenant?.deletedAt !== null) {
+      throw notFound(`No company with id ${params.tenantId}`);
+    }
+    const applied = await applyTabChoice(tenant.id, body.tabs, context.platform.platformUserId);
+    await recordPlatformAction(context, {
+      action: 'tenant.tabs_changed',
+      tenantId: tenant.id,
+      tenantSlug: tenant.slug,
+      targetKind: 'tenant',
+      targetId: tenant.id,
+      metadata: { hiddenSections: applied.hidden, modules: applied.modules },
+    });
+    return {
+      status: 200,
+      body: {
+        tabs: applied.tabs,
+        hiddenSections: applied.hidden,
+        flags: await platform.settings.flagsFor(tenant.id),
+      },
+    };
   },
 });
 
@@ -628,18 +723,24 @@ async function startAppBuild(
   return appBuild;
 }
 
-function toCompanySettings(settings: {
-  logoMediaId: string | null;
-  appIconMediaId: string | null;
-  brandColour: string | null;
-  shellColour: string | null;
-  defaultTheme: 'light' | 'dark' | 'system';
-  websiteUrl: string | null;
-  appsEnabled: boolean;
-  aiWebEnabled: boolean;
-  aiDesktopEnabled: boolean;
-  aiMobileEnabled: boolean;
-}): z.infer<typeof companySettingsSchema> {
+function toCompanySettings(
+  settings: {
+    logoMediaId: string | null;
+    appIconMediaId: string | null;
+    brandColour: string | null;
+    shellColour: string | null;
+    defaultTheme: 'light' | 'dark' | 'system';
+    websiteUrl: string | null;
+    appsEnabled: boolean;
+    aiWebEnabled: boolean;
+    aiDesktopEnabled: boolean;
+    aiMobileEnabled: boolean;
+    showCompanyName: boolean;
+    documentLinkPattern: string | null;
+    hiddenNavSections: string[];
+  },
+  flags: Readonly<Record<string, boolean>>,
+): z.infer<typeof companySettingsSchema> {
   return {
     logoMediaId: settings.logoMediaId,
     appIconMediaId: settings.appIconMediaId,
@@ -651,6 +752,10 @@ function toCompanySettings(settings: {
     aiWebEnabled: settings.aiWebEnabled,
     aiDesktopEnabled: settings.aiDesktopEnabled,
     aiMobileEnabled: settings.aiMobileEnabled,
+    showCompanyName: settings.showCompanyName,
+    documentLinkPattern: settings.documentLinkPattern,
+    hiddenSections: [...settings.hiddenNavSections],
+    tabs: shownTabs(settings.hiddenNavSections, flags),
   };
 }
 
@@ -732,5 +837,6 @@ export const platformCompanyRoutes = [
   reactivateCompanyRoute,
   setCompanyPlanRoute,
   updateCompanySettingsRoute,
+  setCompanyTabsRoute,
   startCompanyAppBuildRoute,
 ];

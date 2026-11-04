@@ -133,6 +133,25 @@ describe('the MCP tools', () => {
     expect(bad.text).toMatch(/\[file_unused\]/u);
   });
 
+  it('asks the person about every QR code it was not told about (0075)', async () => {
+    const unsure = structuredClone(report.design) as { blocks: Record<string, unknown>[] };
+    unsure.blocks.push({ type: 'qr', id: 'mystery', size: 30, align: 'end' });
+    const asked = await call('check_package', {
+      definition: boiler,
+      templates: [{ name: report.name, design: unsure }],
+    });
+    expect(asked.text).toMatch(/To confirm with the person/u);
+    expect(asked.text).toMatch(/QR block "mystery"/u);
+    const summary = await call('summarize_form', {
+      definition: boiler,
+      templates: [{ name: report.name, design: unsure }],
+    });
+    expect(summary.text).toMatch(/NOT CONFIRMED: share or fixed/u);
+    expect(summary.text).toMatch(/Save only after they confirm/u);
+    const guide = await call('get_interview_guide');
+    expect(guide.text).toMatch(/Every QR code — always ask/u);
+  });
+
   it('previews without a browser by saying so', async () => {
     const result = await call('preview_pdf', {
       definition: boiler,
@@ -233,23 +252,27 @@ describe('the MCP tools', () => {
 describe('the company website tools', () => {
   it('gives the website guide and the API', async () => {
     const overview = await call('get_website_guide');
-    expect(overview.text).toMatch(/Shared PDF search on a company website/u);
+    expect(overview.text).toMatch(/Shared PDF pages on a company website/u);
     expect(overview.text).toMatch(/`security`/u);
     const security = await call('get_website_guide', { section: 'security' });
     expect(security.text).toMatch(/The key stays on the server/u);
     const api = await call('get_website_api');
     expect(api.text).toMatch(/## POST \/v1\/website\/documents\/lookup/u);
+    expect(api.text).toMatch(/## GET \/v1\/website\/documents\/by-code\/\{code\}/u);
+    const page = await call('get_website_guide', { section: 'document-page' });
+    expect(page.text).toMatch(/document link address/u);
     expect(api.text).toMatch(/website_key_invalid/u);
   });
 
   it('gives the Next.js example with the options asked for', async () => {
     const example = await call('get_website_example', {
       route: 'certificates',
+      documentRoute: 'docs',
       srcDir: true,
-      secondValue: 'none',
     });
     expect(example.error).toBe(false);
     expect(example.text).toMatch(/## src\/app\/certificates\/page\.tsx/u);
+    expect(example.text).toMatch(/## src\/app\/docs\/\[code\]\/page\.tsx/u);
     expect(example.text).not.toMatch(/name="customer"/u);
     const refused = await call('get_website_example', { route: '../etc' });
     expect(refused.error).toBe(true);

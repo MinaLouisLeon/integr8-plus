@@ -7,17 +7,19 @@ import {
   isAnswered,
   isCalculated,
   isQuestion,
+  type MediaReference,
   mediaReferenceSchema,
   ownAnswer,
   type Section,
   storedEntries,
 } from '@integr8/form-engine';
 import { formatDate, formatDateTime, formatList, useTranslation } from '@integr8/i18n';
-import type { ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 import { entryName, sectionName } from './entries.js';
 import type { MediaAdapter } from './media.js';
 import { formatBytes, say } from './text.js';
 import { MediaImage, useMediaUrl } from './widgets/media-image.js';
+import { PhotoViewer } from './widgets/photo-viewer.js';
 import { buttonClass } from './widgets/types.js';
 
 /**
@@ -276,18 +278,13 @@ function AnswerValue({
         const parsed = mediaReferenceSchema.safeParse(item);
         return parsed.success ? [parsed.data] : [];
       });
-      return (
+      return media !== undefined && field.type === 'photo' ? (
+        <PhotoList media={media} photos={references} label={label} />
+      ) : (
         <ul className="flex flex-wrap gap-2">
           {references.map((reference, index) => (
             <li key={`${reference.mediaId}-${String(index)}`}>
-              {media === undefined ? null : field.type === 'photo' ? (
-                <MediaImage
-                  media={media}
-                  reference={reference}
-                  alt={`${label}: ${t('fill.files.photo', { number: index + 1 })}`}
-                  className="size-20 rounded-md border border-border-subtle object-cover"
-                />
-              ) : (
+              {media === undefined ? null : (
                 <FileLink
                   media={media}
                   reference={reference}
@@ -318,6 +315,55 @@ function AnswerValue({
       );
     }
   }
+}
+
+/** A question's photos as thumbnails; pressing one opens it large, beside the others. */
+function PhotoList({
+  media,
+  photos,
+  label,
+}: {
+  media: MediaAdapter;
+  photos: readonly MediaReference[];
+  label: string;
+}) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState<number | null>(null);
+  return (
+    <>
+      <ul className="flex flex-wrap gap-2">
+        {photos.map((reference, index) => (
+          <li key={`${reference.mediaId}-${String(index)}`}>
+            <button
+              type="button"
+              className="block rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              aria-label={t('fill.photoViewer.openPhoto', {
+                question: label,
+                number: index + 1,
+              })}
+              onClick={() => setOpen(index)}
+            >
+              <MediaImage
+                media={media}
+                reference={reference}
+                alt=""
+                className="size-20 cursor-zoom-in rounded-md border border-border-subtle object-cover"
+              />
+            </button>
+          </li>
+        ))}
+      </ul>
+      {open === null ? null : (
+        <PhotoViewer
+          media={media}
+          photos={photos}
+          start={open}
+          label={label}
+          onClose={() => setOpen(null)}
+        />
+      )}
+    </>
+  );
 }
 
 function FileLink({

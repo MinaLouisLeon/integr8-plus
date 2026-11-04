@@ -4,6 +4,7 @@ import type {
   Database,
   DocumentFieldValuesTable,
   DocumentLookupRole,
+  QrPlacement,
   DocumentSource,
   DocumentStatus,
   DocumentsTable,
@@ -190,6 +191,14 @@ export interface DocumentRecord {
   record: BusinessDocumentRecord | null;
   /** Whether the QR code's link and the company website may show it (0067). */
   shareable: boolean;
+  /** It has a place for its share QR code, printed only once shared (0075). */
+  qrSpot: boolean;
+  /** The file served now carries the share QR code (0075). */
+  qrPrinted: boolean;
+  /** Uploaded PDF: where its share QR code is stamped (0075). */
+  qrPlacement: QrPlacement | null;
+  /** Uploaded PDF: the file as uploaded, when `fileId` is a stamped copy (0075). */
+  originalFileId: string | null;
   title: string;
   publicCode: string;
   status: DocumentStatus;
@@ -297,12 +306,20 @@ export class DocumentsRepository extends TenantScopedRepository {
     expiresAt: Date | null;
     by: UserId | string;
     fields: readonly DocumentFieldValue[];
+    /** The design it is printed from, kept for an identical re-print (0075). */
+    design?: unknown;
+    /** Its design has a share QR code (0075). */
+    qrSpot?: boolean;
   }): Promise<DocumentRecord> {
     const row = await this.db
       .insertInto('documents')
       .values({
         id: input.id,
         tenant_id: this.tenantId,
+        ...(input.design === undefined
+          ? {}
+          : { printed_design: JSON.stringify(input.design) as unknown as Record<string, unknown> }),
+        qr_spot: input.qrSpot ?? false,
         template_id: input.templateId,
         template_revision: input.templateRevision,
         submission_id: input.submissionId,
@@ -334,6 +351,8 @@ export class DocumentsRepository extends TenantScopedRepository {
     by: UserId | string;
     file: { fileId: string; byteSize: number; sha256: string; pageCount: number | null };
     fields: readonly DocumentFieldValue[];
+    /** Where its share QR code is stamped once shared; none for none (0075). */
+    qrPlacement?: QrPlacement | null;
   }): Promise<DocumentRecord> {
     const row = await this.db
       .insertInto('documents')
@@ -348,6 +367,11 @@ export class DocumentsRepository extends TenantScopedRepository {
         reference: input.reference,
         customer_id: input.customerId,
         shareable: input.shareable,
+        qr_spot: input.qrPlacement != null,
+        qr_placement:
+          input.qrPlacement == null
+            ? null
+            : (JSON.stringify(input.qrPlacement) as unknown as QrPlacement),
         title: input.title,
         public_code: input.publicCode,
         status: 'ready',
@@ -569,13 +593,21 @@ export class DocumentsRepository extends TenantScopedRepository {
 
   async markReady(
     documentId: string,
-    file: { fileId: string; byteSize: number; pageCount: number; sha256: string },
+    file: {
+      fileId: string;
+      byteSize: number;
+      pageCount: number;
+      sha256: string;
+      /** The file carries the share QR code (0075). */
+      qrPrinted?: boolean;
+    },
   ): Promise<boolean> {
     const result = await this.db
       .updateTable('documents')
       .set({
         status: 'ready',
         failure_code: null,
+        qr_printed: file.qrPrinted ?? false,
         file_id: file.fileId,
         byte_size: file.byteSize,
         page_count: file.pageCount,
@@ -587,6 +619,82 @@ export class DocumentsRepository extends TenantScopedRepository {
       .where('status', '=', 'pending')
       .executeTakeFirst();
     return Number(result.numUpdatedRows) > 0;
+  }
+
+  /**
+   * Serves a new file for a ready document (0075): a re-print with its share QR
+   * code, or an uploaded PDF stamped (or un-stamped) from its original. Returns
+   * the file it replaced, for the caller to retire, or undefined when the
+   * document is gone or no longer ready.
+   */
+  async replaceFile(
+    documentId: string,
+    file: {
+      fileId: string;
+      byteSize: number;
+      pageCount: number | null;
+      sha256: string;
+      qrPrinted: boolean;
+      /** Uploaded PDF: the file as uploaded, or null when the served file is it. */
+      originalFileId?: string | null;
+    },
+  ): Promise<{ previousFileId: string | null } | undefined> {
+    const current = await this.db
+      .selectFrom('documents')
+      .select(['file_id', 'status'])
+      .where('tenant_id', '=', this.tenantId)
+      .where('id', '=', documentId)
+      .forUpdate()
+      .executeTakeFirst();
+    if (current?.status !== 'ready') {
+      return undefined;
+    }
+    await this.db
+      .updateTable('documents')
+      .set({
+        file_id: file.fileId,
+        byte_size: file.byteSize,
+        page_count: file.pageCount,
+        sha256: file.sha256,
+        qr_printed: file.qrPrinted,
+        rendered_at: sql<Date>`now()`,
+        ...(file.originalFileId === undefined ? {} : { original_file_id: file.originalFileId }),
+      })
+      .where('tenant_id', '=', this.tenantId)
+      .where('id', '=', documentId)
+      .execute();
+    return { previousFileId: current.file_id };
+  }
+
+  /** Where an uploaded PDF's share QR code goes, or none (0075). */
+  async setQrPlacement(
+    documentId: string,
+    placement: QrPlacement | null,
+  ): Promise<DocumentRecord | undefined> {
+    const row = await this.db
+      .updateTable('documents')
+      .set({
+        qr_spot: placement !== null,
+        qr_placement:
+          placement === null ? null : (JSON.stringify(placement) as unknown as QrPlacement),
+      })
+      .where('tenant_id', '=', this.tenantId)
+      .where('id', '=', documentId)
+      .where('source', '=', 'uploaded')
+      .returning('id')
+      .executeTakeFirst();
+    return row === undefined ? undefined : this.find(row.id);
+  }
+
+  /** The design a document was printed from, kept for a re-print (0075). */
+  async printedDesign(documentId: string): Promise<unknown> {
+    const row = await this.db
+      .selectFrom('documents')
+      .select('printed_design')
+      .where('tenant_id', '=', this.tenantId)
+      .where('id', '=', documentId)
+      .executeTakeFirst();
+    return row?.printed_design ?? null;
   }
 
   async markFailed(documentId: string, failureCode: string): Promise<boolean> {
@@ -638,15 +746,19 @@ export class DocumentsRepository extends TenantScopedRepository {
     return row === undefined ? undefined : this.find(row.id);
   }
 
-  /** Removes the record and its fields; returns the file to delete, if it had one. */
-  async delete(documentId: string): Promise<{ fileId: string | null } | undefined> {
+  /** Removes the record and its fields; returns the files to delete, if it had any. */
+  async delete(
+    documentId: string,
+  ): Promise<{ fileId: string | null; originalFileId: string | null } | undefined> {
     const row = await this.db
       .deleteFrom('documents')
       .where('tenant_id', '=', this.tenantId)
       .where('id', '=', documentId)
-      .returning(['file_id'])
+      .returning(['file_id', 'original_file_id'])
       .executeTakeFirst();
-    return row === undefined ? undefined : { fileId: row.file_id };
+    return row === undefined
+      ? undefined
+      : { fileId: row.file_id, originalFileId: row.original_file_id };
   }
 
   /**
@@ -718,6 +830,75 @@ export class DocumentsRepository extends TenantScopedRepository {
     return undefined;
   }
 
+  /**
+   * The website's one search box (0075): every shareable document whose link
+   * opens and that has a searchable field — its lookup key, or a field typed
+   * on an uploaded document — equal to `value` after normalising. Never the
+   * confirming field (the customer's name), so a name lists nothing. Newest
+   * first, at most `limit`.
+   */
+  async search(value: string, limit: number): Promise<DocumentRecord[]> {
+    const normalized = normalizeFieldValue(value);
+    if (normalized === '') {
+      return [];
+    }
+    const rows = await this.#documents()
+      .selectAll('documents')
+      .where((eb) =>
+        eb.exists(
+          eb
+            .selectFrom('document_field_values as f')
+            .select(sql`1`.as('one'))
+            .whereRef('f.tenant_id', '=', 'documents.tenant_id')
+            .whereRef('f.document_id', '=', 'documents.id')
+            .where('f.lookup_role', 'in', ['key', 'search'])
+            .where('f.value_normalized', '=', normalized),
+        ),
+      )
+      .where('documents.shareable', '=', true)
+      .where('documents.status', '=', 'ready')
+      .where('documents.expired_at', 'is', null)
+      .where((eb) =>
+        eb.or([
+          eb('documents.expires_at', 'is', null),
+          eb('documents.expires_at', '>', sql<Date>`now()`),
+        ]),
+      )
+      .orderBy('documents.created_at', 'desc')
+      .orderBy('documents.id', 'desc')
+      .limit(limit)
+      .execute();
+    const fields = await this.#fieldsFor(rows.map((row) => row.id));
+    return rows.map((row) => toDocument(row, fields.get(row.id) ?? []));
+  }
+
+  /**
+   * Replaces the fields a person typed on a document (`search` role, 0075),
+   * leaving its reference, customer and template fields as they are.
+   */
+  async replaceTypedFields(
+    documentId: string,
+    fields: readonly DocumentFieldValue[],
+  ): Promise<DocumentRecord | undefined> {
+    if (fields.some((field) => field.lookupRole !== 'search')) {
+      throw new Error('Only typed fields (the search role) are replaced here.');
+    }
+    await this.db
+      .deleteFrom('document_field_values')
+      .where('tenant_id', '=', this.tenantId)
+      .where('document_id', '=', documentId)
+      .where('lookup_role', '=', 'search')
+      .execute();
+    await this.#insertFields(documentId, fields);
+    await this.db
+      .updateTable('documents')
+      .set({ updated_at: sql<Date>`now()` })
+      .where('tenant_id', '=', this.tenantId)
+      .where('id', '=', documentId)
+      .execute();
+    return this.find(documentId);
+  }
+
   async #fieldsFor(documentIds: readonly string[]): Promise<Map<string, DocumentFieldValue[]>> {
     const byDocument = new Map<string, DocumentFieldValue[]>();
     if (documentIds.length === 0) {
@@ -767,6 +948,10 @@ function toDocument(row: Selectable<DocumentsTable>, fields: DocumentFieldValue[
     customerId: row.customer_id,
     record: recordOf(row),
     shareable: row.shareable,
+    qrSpot: row.qr_spot,
+    qrPrinted: row.qr_printed,
+    qrPlacement: row.qr_placement,
+    originalFileId: row.original_file_id,
     title: row.title,
     publicCode: row.public_code,
     status: row.status,
