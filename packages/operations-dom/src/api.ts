@@ -176,7 +176,22 @@ export interface OperationsConfig {
    * dictation does it instead, because its web view has no recogniser.
    */
   voiceInput?: VoiceInput;
+  /**
+   * Draws one page of a PDF, for placing an uploaded PDF's QR code on it
+   * (0075). Each app brings its own, because pdf.js and its worker are loaded
+   * the way that app bundles files. Without it the page is drawn as a blank
+   * sheet of A4 proportions, and the code is still placed on it.
+   */
+  pdfPage?: PdfPageRenderer;
 }
+
+/** Draws page `page` (1-based, or `last`) of `bytes` on `canvas`, `width` CSS pixels wide. */
+export type PdfPageRenderer = (
+  bytes: Uint8Array,
+  page: number | 'last',
+  canvas: HTMLCanvasElement,
+  width: number,
+) => Promise<{ pages: number; aspect: number }>;
 
 /** What a row is about, for a row menu. */
 export interface RowTarget {

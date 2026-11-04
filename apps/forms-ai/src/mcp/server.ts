@@ -12,6 +12,7 @@ import { EXAMPLES, findExample } from './examples.js';
 import { GUIDE_SECTIONS, guideContents, guideSection } from './guide.js';
 import { FileExistsError, openPackage, savePackage } from './package-files.js';
 import { previewTemplate } from './preview.js';
+import { confirmSection, interviewGuide, summarizeForm } from './interview.js';
 import { formatCheck, formatError } from './report.js';
 import { checkWebsite, formatWebsiteCheck } from '../website/check.js';
 import { WEBSITE_GUIDE_SECTIONS, websiteApiText, websiteGuideSection } from '../website/guide.js';
@@ -34,7 +35,8 @@ export interface ServerOptions {
 }
 
 const INSTRUCTIONS = `Integr8 Forms builds .integr8form files: an Integr8 Plus form (questions, rules, calculations, English and Arabic) with its PDF templates, for Integr8 staff to import.
-Start with get_format_guide (section "overview"), look at list_examples/get_example, then write the form definition and check it with check_form until it is OK. Add PDF templates and check them with check_package; look at them with preview_pdf. Save with save_package. To edit an existing file, open_package it first.
+Build it WITH the person, not for them: before writing anything, call get_interview_guide and ask the person, step by step, about every question you will create (type, English and Arabic label, required, choices, checks, rules, where it prints) and wait for the answers. For every QR code in a PDF template, always ask whether it is the document's share QR code or a fixed link, and what a fixed one opens; never choose for them.
+Then: get_format_guide (section "overview"), list_examples/get_example, write the form definition and check it with check_form until it is OK. Add PDF templates and check them with check_package; answer every "To confirm with the person" item by asking. Look at them with preview_pdf. Call summarize_form and show the person the list; save with save_package only after they confirm it. To edit an existing file, open_package it first.
 Always write every text in both English ("en") and Arabic ("ar").
 
 It also helps add a shared PDF search and download page to a company's own Next.js website, using the company's Integr8 website key: start with get_website_guide, then get_website_api and get_website_example, and check the website with check_website_integration. These tools never call Integr8 and never need the key; never ask the user to paste the key into the chat.`;
@@ -223,9 +225,35 @@ export function createFormsServer(options: ServerOptions = {}): McpServer {
       guarded(() => {
         const files = (pictures ?? []).map((entry) => ({ id: entry.id }));
         return text(
-          formatCheck(checkFormPackage({ form, templates: templates ?? [], files }), 'package'),
+          formatCheck(checkFormPackage({ form, templates: templates ?? [], files }), 'package') +
+            confirmSection(templates ?? []),
         );
       }),
+  );
+
+  server.registerTool(
+    'get_interview_guide',
+    {
+      title: 'Read what to ask the person before building',
+      description:
+        "The questions to ask the person, step by step, before writing a form or a PDF template: the form as a whole, every question (type, English and Arabic label, required, choices, checks, rules, where it prints), every PDF template, and every QR code (the document's share code, blank until shared, or a fixed link). Call it first, and ask; do not build from a description alone.",
+      inputSchema: {},
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    () => guarded(() => text(interviewGuide())),
+  );
+
+  server.registerTool(
+    'summarize_form',
+    {
+      title: 'Summarise a form for the person to confirm',
+      description:
+        'Turns a form definition and its PDF templates into a plain list: every page, section and question with its type, whether it is required, its choices and rules, and every PDF block with what it shows (each QR code as share or fixed, or "not confirmed"). Show it to the person and save only after they confirm it.',
+      inputSchema: { definition, templates: z.array(template).max(50).optional() },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    ({ definition: form, templates }) =>
+      guarded(() => text(summarizeForm(form, templates ?? []) + confirmSection(templates ?? []))),
   );
 
   server.registerTool(
@@ -432,7 +460,7 @@ export function createFormsServer(options: ServerOptions = {}): McpServer {
     {
       title: 'Read the company website guide',
       description:
-        'How to add a shared PDF search and download page to an Integr8 Plus company\'s own Next.js website: what the company and Integr8 must switch on, the website key and environment, the security rules the code must keep, and why a search finds nothing. Read "overview" first.',
+        'How to add the shared PDF pages to an Integr8 Plus company\'s own Next.js website: the one-box search page and the document page that shared links and QR codes open (/documents/<code>); what the company and Integr8 must switch on, the website key and environment, the security rules the code must keep, and why a search finds nothing. Read "overview" first.',
       inputSchema: {
         section: z
           .enum(WEBSITE_GUIDE_SECTIONS)
@@ -449,7 +477,7 @@ export function createFormsServer(options: ServerOptions = {}): McpServer {
     {
       title: 'Read the website document API',
       description:
-        'The exact request and answers of the two Integr8 Plus endpoints a company website uses for shared PDFs: POST /v1/website/documents/lookup (one document by reference and customer name) and GET /v1/website/files/{documentId}, with every field, refusal code and what the website should show for it.',
+        'The exact requests and answers of the Integr8 Plus endpoints a company website uses for shared PDFs: POST /v1/website/documents/lookup (the one search box, `q`, up to ten matches), GET /v1/website/documents/by-code/{code} (the document page shared links open) and GET /v1/website/files/{documentId}, with every field, refusal code and what the website should show for it.',
       inputSchema: {},
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
@@ -459,24 +487,25 @@ export function createFormsServer(options: ServerOptions = {}): McpServer {
   server.registerTool(
     'get_website_example',
     {
-      title: 'Get the Next.js search page',
+      title: 'Get the Next.js document pages',
       description:
-        'Ready files for a Next.js (App Router) website: a server-only Integr8 client, a Server Action, the search form with View/Download in English and Arabic (right-to-left), the page, and the .env.example lines. Returns them as text with their paths; write them into the project and fit them to its styling and i18n.',
+        'Ready files for a Next.js (App Router) website: a server-only Integr8 client, the one-box search page (Server Action, form and list of matches with View/Download) and the document page shared links and QR codes open (/documents/[code]), in English and Arabic (right-to-left), and the .env.example lines. Returns them as text with their paths; write them into the project and fit them to its styling and i18n.',
       inputSchema: {
         route: z
           .string()
           .regex(ROUTE_PATTERN)
           .optional()
           .describe(
-            'The page folder under app/, e.g. "certificates" (default) or "[locale]/certificates".',
+            'The search page folder under app/, e.g. "certificates" (default) or "[locale]/certificates".',
           ),
-        srcDir: z.boolean().optional().describe('The project keeps app/ inside src/.'),
-        secondValue: z
-          .enum(['required', 'optional', 'none'])
+        documentRoute: z
+          .string()
+          .regex(ROUTE_PATTERN)
           .optional()
           .describe(
-            'Whether visitors must also type the customer name (default "required"; ask the company which of its documents have one).',
+            'The document page folder under app/ (its [code] folder goes inside): "documents" (default), to match the document link address Integr8 sets, https://<site>/documents/{code}.',
           ),
+        srcDir: z.boolean().optional().describe('The project keeps app/ inside src/.'),
         language: z
           .enum(['en', 'ar', 'both'])
           .optional()
@@ -489,8 +518,8 @@ export function createFormsServer(options: ServerOptions = {}): McpServer {
         text(
           nextExampleText({
             route: input.route,
+            documentRoute: input.documentRoute,
             srcDir: input.srcDir,
-            secondValue: input.secondValue,
             language: input.language,
           }),
         ),

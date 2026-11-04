@@ -66,6 +66,8 @@ export interface RememberedBrand {
   brandColour: string | null;
   shellColour: string | null;
   defaultTheme: CompanyTheme;
+  /** False when the logo stands alone (0075); absent from older entries, which show the name. */
+  showName?: boolean;
 }
 
 /** What `/v1/me` says about the company; the fields this module reads. */
@@ -76,6 +78,7 @@ export interface BrandSource {
   brandColour: string | null;
   shellColour: string | null;
   defaultTheme: CompanyTheme;
+  showCompanyName?: boolean;
 }
 
 export function toRememberedBrand(company: BrandSource): RememberedBrand {
@@ -88,6 +91,7 @@ export function toRememberedBrand(company: BrandSource): RememberedBrand {
     brandColour: company.brandColour,
     shellColour: company.shellColour,
     defaultTheme: company.defaultTheme,
+    ...(company.showCompanyName === false ? { showName: false } : {}),
   };
 }
 
@@ -134,6 +138,7 @@ export function parseRememberedBrand(raw: string | null | undefined): Remembered
     brandColour,
     shellColour,
     defaultTheme: value.defaultTheme,
+    ...(value.showName === false ? { showName: false } : {}),
   };
 }
 

@@ -5,13 +5,14 @@ import { BackButton, Body, EmptyState, Heading, Row, ScrollScreen, Section } fro
 import { formatMoney } from '~/lib/format';
 import { fetchReceivableOrders } from '~/local/online';
 import { useOnlineRequest } from '~/local/use-online';
+import { ScreenGate } from '~/components/screen-gate';
 
 /**
  * Receiving goods at the store (ADR-0012): the approved and partly received
  * purchase orders goods can still arrive against. Online only — with no
  * connection the screen says so. Opening one counts what arrived.
  */
-export default function ReceiveOrdersScreen() {
+function ReceiveOrdersScreenBody() {
   const { t, i18n } = useTranslation();
   const { state, reload } = useOnlineRequest('receivable-orders', fetchReceivableOrders);
   const date = (value: string) =>
@@ -49,5 +50,14 @@ export default function ReceiveOrdersScreen() {
         </Section>
       )}
     </ScrollScreen>
+  );
+}
+
+/** Shown only while the company keeps its tab (0075). */
+export default function ReceiveOrdersScreen() {
+  return (
+    <ScreenGate screen="receive">
+      <ReceiveOrdersScreenBody />
+    </ScreenGate>
   );
 }

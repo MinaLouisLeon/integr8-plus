@@ -6,7 +6,6 @@ import { CompanyMark } from '~/components/company-brand';
 import { NavIconGlyph } from '~/components/nav-icon';
 import { ErrorState, LoadingState, Shell } from '~/components/ui';
 import { assistantShown, useAiCapabilities, useMe } from '~/features/forms/api';
-import { WarrantyAlerts } from '~/features/operations/screens';
 import { desktopNavigation } from '~/lib/navigation';
 
 /**
@@ -47,11 +46,10 @@ export function DashboardRoute() {
   const maySetUpAssistant =
     me.data.permissions.includes('tenant.update') || me.data.permissions.includes('member.read');
 
-  const groups = desktopNavigation(
-    me.data.permissions,
-    me.data.features,
-    assistantShown(capabilities.data),
-  )
+  const groups = desktopNavigation(me.data.permissions, me.data.features, {
+    ...assistantShown(capabilities.data),
+    hidden: me.data.company.hiddenSections,
+  })
     .map((entry) => ({
       ...entry,
       // The dashboard is where we are; a card leading here would lead nowhere.
@@ -68,9 +66,6 @@ export function DashboardRoute() {
           </h1>
           <CompanyMark company={me.data.company} />
         </header>
-
-        {/* Assets whose warranty ends soon (E3); shown only with the assets module. */}
-        <WarrantyAlerts />
 
         {groups.map(({ group, sections }) => (
           <nav key={group} aria-label={t(`nav.group.${group}`)} className="flex flex-col gap-3">

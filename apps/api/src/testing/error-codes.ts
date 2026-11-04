@@ -88,6 +88,12 @@ const DYNAMIC_SITES: Record<string, (source: string) => readonly string[]> = {
     [...source.matchAll(/refuse\(\s*'([a-z][a-z0-9_]*)'/gu)].map(([, code]) => code ?? ''),
   // A `.integr8form` file refused: the package's own codes, passed through.
   'documents/form-packages.ts|error.code': () => FORM_PACKAGE_ERROR_CODES,
+  // A document link address refused (0075): the keys of `DOCUMENT_LINK_PROBLEMS`.
+  'routes/v1/platform/companies.ts|problem': () => [
+    'document_link_invalid',
+    'document_link_needs_website',
+    'document_link_other_site',
+  ],
 };
 
 const CODE = /^[a-z][a-z0-9_.]*$/u;

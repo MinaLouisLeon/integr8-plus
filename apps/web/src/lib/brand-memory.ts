@@ -23,6 +23,8 @@ export interface RememberedBrand {
   brandColour: string | null;
   shellColour: string | null;
   defaultTheme: ThemeChoice;
+  /** Whether the name shows beside the logo (0075); true when not remembered. */
+  showName: boolean;
 }
 
 function apiBase(): string {
@@ -95,6 +97,7 @@ export function parseBrand(raw: string | null): RememberedBrand | null {
       brandColour: optionalString(record.brandColour),
       shellColour: optionalString(record.shellColour),
       defaultTheme: isTheme(record.defaultTheme) ? record.defaultTheme : 'system',
+      showName: record.showName !== false,
     };
   } catch {
     return null;

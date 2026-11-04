@@ -41,6 +41,8 @@ export function me(overrides: Partial<Me> = {}): Me {
       shellColour: null,
       defaultTheme: 'system',
       websiteUrl: null,
+      showCompanyName: true,
+      hiddenSections: [],
     },
     // Both arrive from the platform (P15) and both are empty for a company
     // nobody has flagged or announced anything to, which is most of them.

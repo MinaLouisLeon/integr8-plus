@@ -40,6 +40,8 @@ export const publicBrandSchema = z.object({
   defaultTheme: companyThemeSchema,
   /** The company's own website, https only, or null. */
   websiteUrl: z.string().nullable(),
+  /** Whether to print the name beside the logo (0075); shown anyway without a logo. */
+  showCompanyName: z.boolean(),
   /**
    * Paths on this API that answer with the image, or null when the company has
    * none. Paths rather than links because the signed link to the file lasts
@@ -80,6 +82,7 @@ export const publicBrandRoute = defineRoute({
         shellColour: brand.shellColour,
         defaultTheme: brand.defaultTheme,
         websiteUrl: brand.websiteUrl,
+        showCompanyName: brand.showCompanyName,
         logoPath: brand.logoMediaId === null ? null : `/v1/public/companies/${params.slug}/logo`,
         appIconPath:
           brand.appIconMediaId === null ? null : `/v1/public/companies/${params.slug}/app-icon`,

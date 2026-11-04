@@ -14,6 +14,7 @@ import {
   checkDesignAgainstForm,
   type DesignIssue,
   designFileIds,
+  designHasShareQr,
   emptyDesign,
   parseDesign,
   resolveDocumentFields,
@@ -33,8 +34,10 @@ import {
   DOCUMENT_RENDER_QUEUE,
   documentLink,
   printDesign,
+  queueReprintIfNeeded,
   RenderFailed,
 } from '../../documents/render.js';
+import { qrPlacementSchema } from '../../documents/stamp.js';
 import { dayIn, documentSources } from '../../documents/sources.js';
 import {
   ApiError,
@@ -81,6 +84,39 @@ const PDF_SIGNATURE = Buffer.from('%PDF-', 'latin1');
 const REFERENCE_LABEL = { en: 'Reference', ar: 'المرجع' };
 const CUSTOMER_LABEL = { en: 'Customer', ar: 'العميل' };
 
+/** At most this many fields can be typed on one uploaded document (0075). */
+export const TYPED_FIELDS_MAX = 10;
+
+/** A field a person types on an uploaded document: a name and its value (0075). */
+const typedFieldSchema = z.object({
+  label: z.string().trim().min(1).max(60),
+  value: z.string().trim().min(1).max(500),
+});
+
+const typedFieldsSchema = z
+  .array(typedFieldSchema)
+  .max(TYPED_FIELDS_MAX)
+  .refine(
+    (fields) =>
+      new Set(fields.map((field) => field.label.toLocaleLowerCase('en'))).size === fields.length,
+    { message: 'Each field needs its own name.' },
+  );
+
+/**
+ * Typed fields as the register keeps them: numbered keys, the name the person
+ * typed as the label in every language (they typed it once, in theirs), and
+ * the `search` role, so the website's one search box finds the document by
+ * any of them and the app's search already does.
+ */
+function typedFields(fields: readonly z.infer<typeof typedFieldSchema>[]): DocumentFieldValue[] {
+  return fields.map((field, index) => ({
+    key: `custom_${String(index + 1)}`,
+    label: { en: field.label, ar: field.label },
+    value: field.value,
+    lookupRole: 'search' as const,
+  }));
+}
+
 /** Image types a template may use as a background or a picture. */
 const TEMPLATE_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 
@@ -119,7 +155,8 @@ const documentFieldSchema = z.object({
   key: z.string(),
   label: localized,
   value: z.string(),
-  lookupRole: z.enum(['key', 'confirm']).nullable(),
+  /** `search`: typed on an uploaded document, found by the website's one search box (0075). */
+  lookupRole: z.enum(['key', 'confirm', 'search']).nullable(),
 });
 
 /** Where a document came from (0067, 0074). */
@@ -162,6 +199,24 @@ export const documentSchema = z.object({
    * documents start off; someone with `document.upload` switches it on.
    */
   shareable: z.boolean(),
+  /**
+   * The share QR code (0075). `spot`: the document has a place for it (its
+   * template has a share QR block, or an uploaded PDF was given a position);
+   * `printed`: the PDF carries it now, which happens once it is shared;
+   * `placement`: where an uploaded PDF's code goes, as page fractions.
+   */
+  qr: z.object({
+    spot: z.boolean(),
+    printed: z.boolean(),
+    placement: z
+      .object({
+        page: z.enum(['first', 'last', 'all']),
+        x: z.number(),
+        y: z.number(),
+        size: z.number(),
+      })
+      .nullable(),
+  }),
   /** `pending` while the worker prints it; `failed` with `failureCode` if it could not. */
   status: z.enum(['pending', 'ready', 'failed']),
   failureCode: z.string().nullable(),
@@ -237,6 +292,7 @@ export async function documentBodies(
   const customers = new Map(
     (await tx.customers.findMany(customerIds)).map((customer) => [customer.id, customer.name]),
   );
+  const { documentLinkPattern } = await tx.settings.get();
   const now = new Date();
   return documents.map((document) => ({
     id: document.id,
@@ -253,10 +309,15 @@ export async function documentBodies(
         ? null
         : { id: document.customerId, name: customers.get(document.customerId) ?? '' },
     shareable: document.shareable,
+    qr: {
+      spot: document.qrSpot,
+      printed: document.qrPrinted,
+      placement: document.qrPlacement === null ? null : { ...document.qrPlacement },
+    },
     status: document.status,
     failureCode: document.failureCode,
     linkOpens: linkOpens(document, now),
-    link: documentLink(context.config, document.publicCode),
+    link: documentLink(context.config, document.publicCode, documentLinkPattern),
     publicCode: document.publicCode,
     pageCount: document.pageCount,
     byteSize: document.byteSize,
@@ -934,6 +995,8 @@ export const createDocumentRoute = defineRoute({
         expiresAt,
         by: principal.userId,
         fields: resolved.fields.map((field) => ({ ...field, label: { ...field.label } })),
+        design,
+        qrSpot: designHasShareQr(design),
       });
       // The design travels with the job, so a template saved while this one
       // waits does not change what was asked for.
@@ -1248,12 +1311,14 @@ export const deleteDocumentRoute = defineRoute({
       if (removed === undefined) {
         throw notFound('This document does not exist.');
       }
-      if (removed.fileId !== null) {
-        await tx.files.softDelete(
-          removed.fileId,
-          context.principal.userId,
-          new Date(Date.now() + context.config.MEDIA_RESTORE_DAYS * DAY_MS),
-        );
+      for (const fileId of [removed.fileId, removed.originalFileId]) {
+        if (fileId !== null) {
+          await tx.files.softDelete(
+            fileId,
+            context.principal.userId,
+            new Date(Date.now() + context.config.MEDIA_RESTORE_DAYS * DAY_MS),
+          );
+        }
       }
       await audit(tx, context, 'document.deleted', 'document', document.id, {
         title: document.title,
@@ -1296,6 +1361,17 @@ export const uploadDocumentRoute = defineRoute({
     /** When the link stops opening by itself; null or absent for never. */
     expiresAt: z.iso.datetime().nullable().optional(),
     shareable: z.boolean().default(false),
+    /**
+     * Fields typed for this document (0075), such as a serial number: shown
+     * with it, found by the app's search and the website's one search box.
+     */
+    fields: typedFieldsSchema.default([]),
+    /**
+     * Where the document's share QR code is stamped into the PDF once it is
+     * shared (0075): the first, the last or every page, the code's top-left
+     * corner and width as fractions of the page. Absent or null for no code.
+     */
+    qrPlacement: qrPlacementSchema.nullable().optional(),
   }),
   responses: {
     201: { description: 'The document, ready.', schema: documentSchema },
@@ -1376,6 +1452,7 @@ export const uploadDocumentRoute = defineRoute({
                 lookupRole: 'confirm' as const,
               },
             ]),
+        ...typedFields(body.fields),
       ];
       if (await tx.files.isReferenced(file.id)) {
         throw conflict('media_in_use', 'This file is already used elsewhere; upload it again.');
@@ -1391,6 +1468,7 @@ export const uploadDocumentRoute = defineRoute({
         by: principal.userId,
         file: { fileId: file.id, byteSize: file.byteSize, sha256, pageCount: null },
         fields,
+        qrPlacement: body.qrPlacement ?? null,
       });
       if (!(await tx.files.link(file.id, { type: DOCUMENT_FILE_ENTITY, id }))) {
         throw conflict('media_in_use', 'This file is already used elsewhere; upload it again.');
@@ -1401,7 +1479,11 @@ export const uploadDocumentRoute = defineRoute({
         customerId: customer?.id ?? null,
         fileId: file.id,
         shareable: body.shareable,
+        fields: body.fields.map((field) => field.label),
+        qrPlacement: body.qrPlacement ?? null,
       });
+      // Shared at once with a QR place: the code is stamped in now.
+      await queueReprintIfNeeded(tx, id);
       return documentBody(tx, context, created);
     });
     return { status: 201, body: document };
@@ -1414,7 +1496,7 @@ export const setDocumentShareableRoute = defineRoute({
   operationId: 'setDocumentShareable',
   summary: 'Let a document be shown outside the company, or stop it',
   description:
-    'Needs `document.upload`. `shareable: false` stops the QR code’s link (it answers as if the code did not exist) and the website lookup at once; `true` lets them show it again, while it is not expired. Each change is recorded in the audit log. Works the same for generated and uploaded documents.',
+    'Needs `document.upload`. `shareable: false` stops the QR code’s link (it answers as if the code did not exist) and the website lookup at once; `true` lets them show it again, while it is not expired. A document with a place for its share QR code that does not carry it yet gets it now (0075): the worker re-prints it, or stamps an uploaded PDF, within seconds, and the PDF served meanwhile is the one it had; stopping sharing keeps the code. Each change is recorded in the audit log. Works the same for generated and uploaded documents.',
   tags: TAGS,
   security: 'authenticated',
   permission: 'document.upload',
@@ -1442,9 +1524,159 @@ export const setDocumentShareableRoute = defineRoute({
           { title: result.document.title },
         );
       }
+      if (result.changed && body.shareable) {
+        await queueReprintIfNeeded(tx, params.documentId);
+      }
       return documentBody(tx, context, result.document);
     });
     return { status: 200, body: document };
+  },
+});
+
+export const setDocumentFieldsRoute = defineRoute({
+  method: 'put',
+  path: '/v1/documents/:documentId/fields',
+  operationId: 'setDocumentFields',
+  summary: 'Replace the fields typed on an uploaded document',
+  description:
+    'Needs `document.upload`. The whole list, at most ten, each a name and a value (0075): what is sent replaces what was typed before, and an empty list removes them all. The reference and the customer are not touched. Only an uploaded document has typed fields (422 `document_not_uploaded`). Each change is recorded in the audit log.',
+  tags: TAGS,
+  security: 'authenticated',
+  permission: 'document.upload',
+  feature: 'documents',
+  params: documentParams,
+  query: noSchema,
+  body: z.object({ fields: typedFieldsSchema }),
+  responses: {
+    200: { description: 'The document.', schema: documentSchema },
+    404: { description: 'No such document.' },
+    422: {
+      description:
+        'Not an uploaded document (`document_not_uploaded`), or two fields share a name.',
+    },
+  },
+  handler: async ({ params, body }, context) => {
+    const document = await withTenant(context.principal.tenantId, async (tx) => {
+      const current = await existing(tx, params.documentId);
+      if (current.source !== 'uploaded') {
+        throw unprocessable(
+          'document_not_uploaded',
+          'Only an uploaded document has fields typed for it.',
+          [{ field: 'params.documentId', code: 'document_not_uploaded', message: current.source }],
+        );
+      }
+      const saved = await tx.documents.replaceTypedFields(current.id, typedFields(body.fields));
+      if (saved === undefined) {
+        throw notFound('This document does not exist.');
+      }
+      await audit(tx, context, 'document.fields_changed', 'document', current.id, {
+        fields: body.fields.map((field) => field.label),
+      });
+      return documentBody(tx, context, saved);
+    });
+    return { status: 200, body: document };
+  },
+});
+
+export const setDocumentQrPlacementRoute = defineRoute({
+  method: 'put',
+  path: '/v1/documents/:documentId/qr-placement',
+  operationId: 'setDocumentQrPlacement',
+  summary: 'Place, move or remove an uploaded PDF’s share QR code',
+  description:
+    'Needs `document.upload` (0075). `placement`: the first, the last or every page, and the code’s top-left corner and width as fractions of the page; null for no code. A document that is shared, or was, is stamped again from the PDF as uploaded within seconds (or goes back to it, for null); one never shared gets its code when it is. Only an uploaded document (422 `document_not_uploaded`). Recorded in the audit log.',
+  tags: TAGS,
+  security: 'authenticated',
+  permission: 'document.upload',
+  feature: 'documents',
+  params: documentParams,
+  query: noSchema,
+  body: z.object({ placement: qrPlacementSchema.nullable() }),
+  responses: {
+    200: { description: 'The document.', schema: documentSchema },
+    404: { description: 'No such document.' },
+    422: {
+      description: 'Not an uploaded document (`document_not_uploaded`), or a place off the page.',
+    },
+  },
+  handler: async ({ params, body }, context) => {
+    const document = await withTenant(context.principal.tenantId, async (tx) => {
+      const current = await existing(tx, params.documentId);
+      if (current.source !== 'uploaded') {
+        throw unprocessable(
+          'document_not_uploaded',
+          'Only an uploaded PDF has a QR code placed by hand.',
+          [{ field: 'params.documentId', code: 'document_not_uploaded', message: current.source }],
+        );
+      }
+      const saved = await tx.documents.setQrPlacement(current.id, body.placement);
+      if (saved === undefined) {
+        throw notFound('This document does not exist.');
+      }
+      await audit(tx, context, 'document.qr_placed', 'document', current.id, {
+        placement: body.placement,
+      });
+      await queueReprintIfNeeded(tx, current.id);
+      return documentBody(tx, context, saved);
+    });
+    return { status: 200, body: document };
+  },
+});
+
+export const getDocumentOriginalRoute = defineRoute({
+  method: 'get',
+  path: '/v1/documents/:documentId/original',
+  operationId: 'getDocumentOriginal',
+  summary: 'An uploaded PDF as uploaded, to place its QR code on',
+  description:
+    'Needs `document.upload` (0075). The PDF as it was uploaded, before any QR code was stamped in, base64 in JSON like the template preview, for the screen where the code is dragged into place. Only an uploaded document (422 `document_not_uploaded`).',
+  tags: TAGS,
+  security: 'authenticated',
+  permission: 'document.upload',
+  feature: 'documents',
+  params: documentParams,
+  query: noSchema,
+  body: noSchema,
+  responses: {
+    200: {
+      description: 'The PDF.',
+      schema: z.object({
+        contentType: z.literal('application/pdf'),
+        base64: z.string(),
+        byteSize: z.number().int(),
+      }),
+    },
+    404: { description: 'No such document, or its file is gone.' },
+    422: { description: 'Not an uploaded document (`document_not_uploaded`).' },
+  },
+  handler: async ({ params }, context) => {
+    const { tenantId } = context.principal;
+    const file = await withTenant(tenantId, async (tx) => {
+      const current = await existing(tx, params.documentId);
+      if (current.source !== 'uploaded') {
+        throw unprocessable('document_not_uploaded', 'Only an uploaded PDF has an original.', [
+          { field: 'params.documentId', code: 'document_not_uploaded', message: current.source },
+        ]);
+      }
+      const id = current.originalFileId ?? current.fileId;
+      return id === null ? undefined : tx.files.find(id);
+    });
+    if (file?.deletedAt !== null) {
+      throw notFound('This document’s file is gone.');
+    }
+    const bytes = await (await getStorage(context.services.media, tenantId)).get(file.storageKey);
+    if (bytes === undefined) {
+      throw notFound('This document’s file is gone.');
+    }
+    return {
+      status: 200,
+      body: {
+        contentType: 'application/pdf' as const,
+        base64: Buffer.from(bytes).toString('base64'),
+        byteSize: bytes.byteLength,
+      },
+      headers: { 'cache-control': 'no-store' },
+    };
   },
 });
 
@@ -1464,4 +1696,7 @@ export const documentRoutes = [
   deleteDocumentRoute,
   uploadDocumentRoute,
   setDocumentShareableRoute,
+  setDocumentFieldsRoute,
+  setDocumentQrPlacementRoute,
+  getDocumentOriginalRoute,
 ];

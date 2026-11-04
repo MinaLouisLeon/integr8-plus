@@ -24,6 +24,8 @@ export interface CompanyBrand {
   name: string;
   logoMediaId: string | null;
   brandColour: string | null;
+  /** Off: a logo that spells the name stands alone (0075). Ignored without a logo. */
+  showCompanyName?: boolean;
 }
 
 function useCompany() {
@@ -141,6 +143,7 @@ export function BrandTheme() {
   const brandColour = brand?.brandColour ?? null;
   const shellColour = brand?.shellColour ?? null;
   const defaultTheme = brand?.defaultTheme ?? 'system';
+  const showName = brand?.showCompanyName ?? true;
 
   useEffect(() => {
     if (name === undefined || slug === undefined) {
@@ -152,8 +155,9 @@ export function BrandTheme() {
       brandColour,
       shellColour,
       defaultTheme,
+      showName,
     });
-  }, [name, slug, hasLogo, brandColour, shellColour, defaultTheme]);
+  }, [name, slug, hasLogo, brandColour, shellColour, defaultTheme, showName]);
 
   return null;
 }
@@ -196,7 +200,10 @@ export interface CompanyMarkProps {
   onShell?: boolean;
 }
 
-/** The company's logo, if it has one, and its name. */
+/**
+ * The company's logo, if it has one, and its name: the logo alone when
+ * Integr8 switched the name off for a logo that already spells it (0075).
+ */
 export function CompanyMark({ company, compact = false, onShell = false }: CompanyMarkProps) {
   const logo = useLogoUrl(company.logoMediaId);
   const mark =
@@ -216,6 +223,14 @@ export function CompanyMark({ company, compact = false, onShell = false }: Compa
         {mark}
         <span className="sr-only">{company.name}</span>
       </span>
+    );
+  }
+
+  if (logo.data != null && company.showCompanyName === false) {
+    return (
+      <div className="flex min-w-0 items-center">
+        <img src={logo.data} alt={company.name} className="h-9 w-auto max-w-48 object-contain" />
+      </div>
     );
   }
 

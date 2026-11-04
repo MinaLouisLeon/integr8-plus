@@ -296,10 +296,27 @@ const imageBlock = z.object({
   caption: optionalText,
 });
 
+/**
+ * What a QR code holds (0075). `share`: the document's own link, printed only
+ * once the document is shared (blank until then, so a PDF never carries a
+ * code that does not open). `fixed`: a link or text staff typed, printed from
+ * the start; it may hold placeholders, `{{answer.serial}}` or
+ * `{{company.website}}`, filled for each document. Older templates' QR codes
+ * are share codes.
+ */
+export const qrContentSchema = z
+  .discriminatedUnion('kind', [
+    z.object({ kind: z.literal('share') }),
+    z.object({ kind: z.literal('fixed'), text: z.string().trim().min(1).max(1000) }),
+  ])
+  .default({ kind: 'share' });
+export type QrContent = z.infer<typeof qrContentSchema>;
+
 const qrBlock = z.object({
   type: z.literal('qr'),
   id: blockId,
   ...appearance,
+  content: qrContentSchema,
   size: millimetres(15, 80).default(30),
   align,
   caption: optionalText,
@@ -746,6 +763,11 @@ export function checkDesignAgainstForm(design: TemplateDesign, form: CompiledFor
     }
   }
   return issues;
+}
+
+/** Whether the design has a place for the document's share QR code (0075). */
+export function designHasShareQr(design: Pick<TemplateDesign, 'blocks'>): boolean {
+  return allBlocks(design).some((block) => block.type === 'qr' && block.content.kind === 'share');
 }
 
 /** Whether the design shows the company's logo anywhere: a block, the header or the footer. */

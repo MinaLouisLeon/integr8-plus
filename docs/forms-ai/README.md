@@ -18,8 +18,8 @@ version, so a tool and a server of the same version always agree on the file for
 
 ## For staff
 
-1. Open the download page (`/download` on the web app) and, under **Integr8 Plus Staff**, take
-   **Integr8 Forms for AI** for your computer: Windows, macOS (Apple silicon or Intel) or Linux.
+1. Sign in to the staff dashboard on the web app and open **Downloads** (`/platform/downloads`),
+   then take **Integr8 Forms for AI** for your computer: Windows, macOS (Apple silicon or Intel) or Linux.
 2. Double-click it. It is not signed, so the computer warns the first time:
    - **Windows**: "Windows protected your PC" → **More info** → **Run anyway**.
    - **macOS**: a browser does not keep a downloaded program runnable, so once, in Terminal:
@@ -96,24 +96,46 @@ The guide's lists come from the same schemas and registries Integr8 Plus validat
 by those registries' types, so a new question type, rule kind or block fails the type check and
 `guide.test.ts` until it is described.
 
+## Building a form with the person (0075)
+
+The AI asks before it builds. The server's instructions tell it to call `get_interview_guide` first
+and ask the person, step by step, about every question it will create: its type, English and
+Arabic label, whether it is required, its choices, checks, rules and where it prints in the PDF.
+For every QR code in a PDF template it must ask whether it is the document's **share** code
+(blank until the document is shared, then printed in) or a **fixed** link, and what a fixed one
+opens. `check_package` lists any QR code written without that choice under "To confirm with the
+person", and `summarize_form` gives the plain list of questions and PDF blocks to show the person
+before `save_package`.
+
 ## For a company website
 
 A company can let its customers find their shared PDFs (certificates, reports) on the company's
 own website. The website's server asks Integr8 with a **website key** that an Integr8 staff
 manager creates on the dashboard (company → Website keys); the request and rules are in
 [`docs/documents/WEBSITE-LOOKUP.md`](../documents/WEBSITE-LOOKUP.md). The four `website` tools
-let an AI coding tool working in the website's code add the page correctly:
+let an AI coding tool working in the website's code add the two pages correctly:
+
+- **The search page**: one search box. What the visitor types is matched exactly against every
+  searchable field of the company's shared documents (the reference, and the extra fields typed on
+  an uploaded PDF), never the customer's name; up to ten matches come back.
+- **The document page**, `/documents/<code>`: what every shared link and new QR code opens once
+  Integr8 sets the company's **document link address** to it (0075). Until then links open
+  Integr8's own page.
 
 1. Connect the AI tool as above, open the website's project, and ask, for example: _"Use
-   integr8-forms to add a page where our customers find their certificate by number and customer
-   name and download it."_
-2. The AI reads the guide and the API, takes the example (Next.js App Router only; options: the
-   page's folder, `src/`, whether the customer name is required, English/Arabic/both), fits it to
-   the site and runs `check_website_integration` on the project folder until it is OK.
+   integr8-forms to add our shared PDF pages: the search and the document page."_
+2. The AI reads the guide (including its `document-page` section) and the API, takes the example
+   (Next.js App Router only; options: the search page's folder, the document page's folder,
+   `src/`, English/Arabic/both), fits it to the site and runs `check_website_integration` on the
+   project folder until it is OK. The check warns when the document page is missing or indexed,
+   or when the site still sends the older two-value search body.
 3. The developer puts `INTEGR8_API_URL` and `INTEGR8_WEBSITE_KEY` in `.env.local` and in Vercel
-   (never in the chat), runs the site and tries a shared document and a wrong number.
+   (never in the chat), runs the site and tries a shared document, its link, a wrong number and a
+   made-up code.
+4. Integr8 staff set the company's document link address (dashboard → the company → Website and
+   apps) to the live page, such as `https://www.example.com/documents/{code}`.
 
-Search finds **one document or none**, never a list: the API has no list endpoint, by design.
+There is still no way to list a company's documents: the search answers only an exact value.
 Before anything is found, Integr8 turns on the company's `website_files` grant, the company turns
 on Settings → Website access, and each document's Sharing switch is on (new ones start off).
 
@@ -183,7 +205,7 @@ The version release (`release-main.yml` → `build-release-artifacts.yml`, job *
 builds the executable on GitHub's runners for Windows x64, macOS arm64, macOS x64 (Intel), Linux
 x64 and Linux arm64, and the release attaches each as
 `integr8-forms-ai-<version>-<windows|macos|linux>-<x64|arm64>[.exe]` with its `.sha256`. Set the repository variable `FORMS_AI_BUILDS=disabled` to skip the job.
-The `/download` page lists them in the staff section from the newest staff release that has them
+The dashboard's **Downloads** page (`/platform/downloads`, staff only) lists them from the newest staff release that has them
 (`apps/web/src/lib/desktop-updates.ts`, `formsAi`).
 
 Locally:

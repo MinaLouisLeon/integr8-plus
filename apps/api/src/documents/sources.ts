@@ -50,6 +50,7 @@ export async function documentSources(
     answers: submission.answers,
     facts: {
       companyName: input.companyName,
+      companyWebsite: settings.websiteUrl,
       formTitle: form?.title ?? '',
       submittedAt: submission.submittedAt?.toISOString() ?? null,
       submittedBy: person?.displayName ?? null,

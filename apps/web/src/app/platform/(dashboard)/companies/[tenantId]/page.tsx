@@ -26,6 +26,7 @@ import {
 } from '~/components/ai-policy-editor';
 import { type AppBuild, AppBuildResult } from '~/components/app-build-result';
 import { Badge, Panel, StatusBadge } from '~/components/platform-bits';
+import { TabPicker } from '~/components/tab-picker';
 import { Button, ErrorState, Field, LoadingState } from '~/components/ui';
 import {
   formatMicrousdPrecise,
@@ -128,6 +129,11 @@ export default function CompanyPage() {
       />
       <InvitationsPanel tenantId={tenantId} invitations={detail.invitations} />
       <AppsPanel tenantId={tenantId} slug={detail.slug} settings={detail.settings} />
+      <TabsPanel
+        key={detail.settings.tabs.join(',')}
+        tenantId={tenantId}
+        tabs={detail.settings.tabs}
+      />
       <AiPanel tenantId={tenantId} />
       <WebsiteKeysPanel tenantId={tenantId} />
       <AiMembersPanel tenantId={tenantId} />
@@ -479,11 +485,15 @@ function AppsPanel({
     aiWebEnabled: boolean;
     aiDesktopEnabled: boolean;
     aiMobileEnabled: boolean;
+    documentLinkPattern: string | null;
   };
 }) {
   const { t } = useTranslation();
   const queries = useQueryClient();
   const [website, setWebsite] = useState(settings.websiteUrl ?? '');
+  // Where the company's document links point (0075): its own website's page,
+  // or Integr8's when empty. The API checks it is on the registered website.
+  const [documentLink, setDocumentLink] = useState(settings.documentLinkPattern ?? '');
   const [appsEnabled, setAppsEnabled] = useState(settings.appsEnabled);
   // Where the assistant appears for this company (ADR-0001 D6). Each app is
   // its own switch: a company can have it on the desktop and off the phones.
@@ -499,7 +509,13 @@ function AppsPanel({
     appsEnabled === settings.appsEnabled &&
     aiWeb === settings.aiWebEnabled &&
     aiDesktop === settings.aiDesktopEnabled &&
-    aiMobile === settings.aiMobileEnabled;
+    aiMobile === settings.aiMobileEnabled &&
+    (documentLink.trim() === '' ? null : documentLink.trim()) === settings.documentLinkPattern;
+  const documentLinkOk =
+    documentLink.trim() === '' ||
+    (/^https:\/\/\S+$/u.test(documentLink.trim()) && documentLink.includes('{code}'));
+  const suggestedDocumentLink =
+    website.trim() === '' ? '' : `${website.trim().replace(/\/+$/u, '')}/documents/{code}`;
 
   const save = useMutation({
     mutationFn: async () => {
@@ -511,6 +527,7 @@ function AppsPanel({
           aiWebEnabled: aiWeb,
           aiDesktopEnabled: aiDesktop,
           aiMobileEnabled: aiMobile,
+          documentLinkPattern: documentLink.trim() === '' ? null : documentLink.trim(),
         },
       });
       return data;
@@ -573,6 +590,28 @@ function AppsPanel({
           </label>
         </div>
         <p className="text-xs text-content-muted">{t('platform.apps.buildAppsHint')}</p>
+        <div className="flex flex-col gap-2">
+          <Field
+            label={t('platform.apps.documentLink')}
+            hint={t('platform.apps.documentLinkHint')}
+            type="url"
+            value={documentLink}
+            placeholder={suggestedDocumentLink}
+            onChange={(event) => setDocumentLink(event.target.value)}
+            {...(documentLinkOk ? {} : { error: t('platform.apps.documentLinkInvalid') })}
+          />
+          {documentLink.trim() === '' && suggestedDocumentLink !== '' ? (
+            <div>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setDocumentLink(suggestedDocumentLink)}
+              >
+                {t('platform.apps.documentLinkSuggest')}
+              </Button>
+            </div>
+          ) : null}
+        </div>
         <div className="flex flex-wrap items-center gap-4 text-sm text-content">
           <label className="flex items-center gap-2">
             <input
@@ -611,7 +650,11 @@ function AppsPanel({
           />
         </dl>
         <div className="flex items-center gap-3">
-          <Button type="submit" busy={save.isPending} disabled={unchanged || !websiteOk}>
+          <Button
+            type="submit"
+            busy={save.isPending}
+            disabled={unchanged || !websiteOk || !documentLinkOk}
+          >
             {save.isPending ? t('platform.apps.saving') : t('platform.apps.save')}
           </Button>
           {save.isSuccess && unchanged ? (
@@ -637,6 +680,65 @@ function AppsPanel({
           </div>
         ) : null}
         {build === undefined ? null : <AppBuildResult build={build} slug={slug} />}
+      </form>
+    </Panel>
+  );
+}
+
+/**
+ * Which menu tabs the company sees (0075), one switch each. Staff only: the
+ * company never sees these. Saving switches modules on and off to match (a
+ * module with none of its tabs on goes off), which the Features panel below
+ * then shows.
+ */
+function TabsPanel({ tenantId, tabs }: { tenantId: string; tabs: readonly string[] }) {
+  const { t } = useTranslation();
+  const queries = useQueryClient();
+  const [draft, setDraft] = useState<string[]>([...tabs]);
+  const [problem, setProblem] = useState<string | undefined>(undefined);
+  const unchanged = draft.join(',') === tabs.join(',');
+
+  const save = useMutation({
+    mutationFn: async () => {
+      await platformClient().PUT('/v1/platform/companies/{tenantId}/tabs', {
+        params: { path: { tenantId } },
+        body: { tabs: draft },
+      });
+    },
+    onSuccess: () => {
+      setProblem(undefined);
+      void queries.invalidateQueries({ queryKey: ['platform', 'company', tenantId] });
+    },
+    onError: (error) => {
+      setProblem(messageForError(error, t));
+    },
+  });
+
+  return (
+    <Panel title={t('platform.tabs.title')} description={t('platform.tabs.hint')}>
+      <form
+        className="flex flex-col gap-4"
+        onSubmit={(event) => {
+          event.preventDefault();
+          save.mutate();
+        }}
+      >
+        <TabPicker value={draft} onChange={setDraft} disabled={save.isPending} />
+        <div className="flex items-center gap-3">
+          <Button type="submit" busy={save.isPending} disabled={unchanged}>
+            {save.isPending ? t('platform.apps.saving') : t('platform.tabs.save')}
+          </Button>
+          {unchanged ? null : (
+            <Button type="button" variant="secondary" onClick={() => setDraft([...tabs])}>
+              {t('common.cancel')}
+            </Button>
+          )}
+          {problem === undefined ? null : (
+            <span role="alert" className="text-sm text-danger">
+              {problem}
+            </span>
+          )}
+        </div>
       </form>
     </Panel>
   );

@@ -65,7 +65,6 @@ import {
   DocumentListScreen,
   DocumentScreen,
   AssistantScreen,
-  WarrantyAlertsPanel,
   AssetScreen,
   InvoiceListScreen,
   InvoiceScreen,
@@ -97,6 +96,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { useContextMenu } from '~/components/context-menu';
 import { EtaSigningQueue } from '~/features/e-invoicing/signing-queue';
 import { useCustomerChrome, useSiteChrome, useWorkOrderChrome } from '~/components/record-chrome';
+import { renderPdfPage } from '~/lib/pdf-page';
 import { session } from '~/lib/session';
 import { desktopVoiceInput } from '~/lib/voice';
 
@@ -217,6 +217,8 @@ function OperationsScreens({ children }: { children: ReactNode }) {
         myPayslips: '/hr/payslips',
       },
       download: saveFile,
+      // Drawing an uploaded PDF's page to place its QR code on (0075).
+      pdfPage: renderPdfPage,
       // In the Tauri window a spoken question comes from the operating
       // system's dictation; a browser tab keeps the browser's recogniser.
       ...(VOICE_INPUT === undefined ? {} : { voiceInput: VOICE_INPUT }),
@@ -763,17 +765,8 @@ export function FinanceSettingsRoute() {
   );
 }
 
-/** The dashboard's list of assets whose warranty ends soon (E3). */
-export function WarrantyAlerts() {
-  return (
-    <OperationsScreens>
-      <WarrantyAlertsPanel />
-    </OperationsScreens>
-  );
-}
-
 export function AssetsRoute() {
-  // `?warranty=expiring` opens the register filtered, as the dashboard's list does.
+  // `?warranty=expiring` opens the register filtered.
   const [search] = useSearchParams();
   const filter = search.get('warranty');
   const warranty = filter === 'expiring' || filter === 'expired' ? filter : '';

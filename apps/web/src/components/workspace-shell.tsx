@@ -1,18 +1,18 @@
 'use client';
 
-import { visibleNavigation } from '@integr8/core';
+import { isSectionHidden, sectionForPath, visibleNavigation } from '@integr8/core';
 import { useTranslation } from '@integr8/i18n';
 import { AnnouncementBanners } from '@integr8/operations-dom';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { BrandAccent, BrandTheme, CompanyMark } from '~/components/company-brand';
 import { DashboardShell, type ShellNavGroup } from '~/components/dashboard-shell';
 import { ImpersonationBanner } from '~/components/impersonation-banner';
 import { LocaleSelect } from '~/components/locale-select';
 import { KeyIcon, SignOutIcon } from '~/components/nav-icon';
-import { NAV_ALIASES, NAV_PATHS } from '~/lib/navigation';
+import { NAV_ALIASES, NAV_PATHS, navPathForPathname } from '~/lib/navigation';
 import { apiClient, signOut } from '~/lib/session';
 
 /**
@@ -33,6 +33,7 @@ export function WorkspaceShell({
 }) {
   const { t } = useTranslation();
   const router = useRouter();
+  const pathname = usePathname();
 
   const me = useQuery({
     queryKey: ['me'],
@@ -57,7 +58,10 @@ export function WorkspaceShell({
     'web',
     me.data?.permissions ?? [],
     me.data?.features,
-    { assistant: capabilities.data !== undefined && capabilities.data.level !== 'off' },
+    {
+      assistant: capabilities.data !== undefined && capabilities.data.level !== 'off',
+      hidden: me.data?.company.hiddenSections,
+    },
   ).map((group) => ({
     key: group.group,
     label: t(`nav.group.${group.group}`),
@@ -87,6 +91,11 @@ export function WorkspaceShell({
   }));
 
   const company = me.data?.company;
+  // A tab Integr8 switched off for the company takes its pages with it (0075):
+  // a bookmark or an old link lands on "not available", not on the screen.
+  const navPath = navPathForPathname(pathname);
+  const section = navPath === undefined ? undefined : sectionForPath(navPath);
+  const hiddenHere = section !== undefined && isSectionHidden(section.key, company?.hiddenSections);
 
   return (
     <>
@@ -161,8 +170,25 @@ export function WorkspaceShell({
           </>
         }
       >
-        {children}
+        {hiddenHere ? <SectionUnavailable /> : children}
       </DashboardShell>
     </>
+  );
+}
+
+/** In place of a page whose tab Integr8 switched off for the company (0075). */
+function SectionUnavailable() {
+  const { t } = useTranslation();
+  return (
+    <div role="status" className="mx-auto flex max-w-md flex-col gap-3 px-6 py-16 text-center">
+      <h1 className="text-xl font-semibold text-content">{t('nav.unavailable.title')}</h1>
+      <p className="text-sm text-content-muted">{t('nav.unavailable.body')}</p>
+      <Link
+        href="/dashboard"
+        className="text-sm font-medium text-accent underline-offset-4 hover:underline"
+      >
+        {t('nav.unavailable.back')}
+      </Link>
+    </div>
   );
 }

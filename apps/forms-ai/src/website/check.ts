@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { basename, extname, isAbsolute, join, relative, sep } from 'node:path';
 import {
+  DEFAULT_DOCUMENT_ROUTE,
   ENV_API_URL,
   ENV_WEBSITE_KEY,
   KNOWN_WEBSITE_PATHS,
@@ -139,6 +140,7 @@ export function checkWebsite(paths: readonly string[]): WebsiteCheck {
     warnings.push({ code, file: shown(file), line, message });
 
   let callsLookup = false;
+  let callsByCode = false;
   let readsApiUrl = false;
 
   for (const file of files) {
@@ -226,6 +228,19 @@ export function checkWebsite(paths: readonly string[]): WebsiteCheck {
       );
     }
 
+    // The document page every shared link opens (0075): a page in a `[code]`
+    // folder. Not for search engines, like the search page.
+    if (/\/\[code\]\/page\.[cm]?[jt]sx?$/u.test(file.split(sep).join('/'))) {
+      if (!/index\s*:\s*false/u.test(source)) {
+        warning(
+          'page_indexed',
+          file,
+          1,
+          'The document page is not marked noindex. Add `robots: { index: false }` to its metadata so search engines never list a shared document.',
+        );
+      }
+    }
+
     for (const hit of websiteCalls) {
       const path = hit.text.endsWith('/') ? `${hit.text}x` : hit.text;
       const normal = path.replace(/\$\{[^}]*\}/gu, 'x').replace(/\{[^}]*\}/gu, 'x');
@@ -234,8 +249,11 @@ export function checkWebsite(paths: readonly string[]): WebsiteCheck {
           'unknown_endpoint',
           file,
           hit.line,
-          `${hit.text} is not an Integr8 endpoint. There is no list or search of documents: find one by POST /v1/website/documents/lookup (see get_website_api).`,
+          `${hit.text} is not an Integr8 endpoint. There is no list of documents: search with POST /v1/website/documents/lookup and { q }, or open one with GET /v1/website/documents/by-code/{code} (see get_website_api).`,
         );
+      }
+      if (hit.text.startsWith('/v1/website/documents/by-code')) {
+        callsByCode = true;
       }
       if (hit.text.startsWith('/v1/website/documents/lookup')) {
         callsLookup = true;
@@ -244,7 +262,15 @@ export function checkWebsite(paths: readonly string[]): WebsiteCheck {
             'lookup_not_post',
             file,
             hit.line,
-            "The lookup is POST with a JSON body ({ reference, customer }); this file does not say method: 'POST'.",
+            "The lookup is POST with a JSON body ({ q }); this file does not say method: 'POST'.",
+          );
+        }
+        if (/\{\s*reference\b/u.test(source) && !/\{\s*q\b/u.test(source)) {
+          warning(
+            'old_lookup_body',
+            file,
+            hit.line,
+            'This sends the older { reference, customer } body, which searches the reference only and asks for the customer name. Send { q } (one search box): it searches every field the company made searchable, and returns every match in `documents`.',
           );
         }
       }
@@ -322,6 +348,15 @@ export function checkWebsite(paths: readonly string[]): WebsiteCheck {
       file: '',
       line: 0,
       message: `The API address is not read from ${ENV_API_URL}. Keep it in the environment so a test server can be used.`,
+    });
+  }
+
+  if (files.length > 0 && !callsByCode) {
+    warnings.push({
+      code: 'no_document_page',
+      file: '',
+      line: 0,
+      message: `None of these files calls GET /v1/website/documents/by-code/{code}. When Integr8 points the company's document links at its website, shared links and new QR codes open /${DEFAULT_DOCUMENT_ROUTE}/<code> (or the address Integr8 set): add that page (get_website_example), or they will land on a 404.`,
     });
   }
 

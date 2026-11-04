@@ -505,12 +505,43 @@ describe('dragging a visit nobody would be qualified for', { timeout: 20_000 }, 
     const patch = calls.find((call) => call.method === 'PATCH')!;
     expect(patch.body).toMatchObject({ endsAt: new Date(today('12:00')).toISOString() });
 
-    await user.click(within(prompt).getByRole('button', { name: 'Put it back' }));
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('dialog', { name: 'Go ahead without the qualification?' }),
-      ).not.toBeInTheDocument(),
-    );
+    // TEMPORARY diagnostics: this test fails only on GitHub's Linux runners.
+    const trace = (label: string) => {
+      const dialogs = screen.queryAllByRole('dialog');
+      console.log(
+        `[cancel-trace] ${label}`,
+        JSON.stringify({
+          promptConnected: prompt.isConnected,
+          dialogs: dialogs.length,
+          samePrompt: dialogs.map((dialog) => dialog === prompt),
+          open: dialogs.map((dialog) => (dialog as HTMLDialogElement).open),
+          calls: calls.map((call) => `${call.method} ${call.path}`),
+          active: document.activeElement?.textContent?.slice(0, 40) ?? null,
+        }),
+      );
+    };
+    const clicks: string[] = [];
+    const onClick = (event: Event) => {
+      const target = event.target as Element;
+      clicks.push(
+        `${target.tagName}:${target.textContent?.slice(0, 20) ?? ''}:${String(target.isConnected)}`,
+      );
+    };
+    document.addEventListener('click', onClick, true);
+    const undo = within(prompt).getByRole('button', { name: 'Put it back' });
+    trace(`before click (button connected ${String(undo.isConnected)})`);
+    await user.click(undo);
+    trace(`after click (clicks ${JSON.stringify(clicks)})`);
+    try {
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('dialog', { name: 'Go ahead without the qualification?' }),
+        ).not.toBeInTheDocument(),
+      );
+    } finally {
+      trace('after wait');
+      document.removeEventListener('click', onClick, true);
+    }
     expect(calls.filter((call) => call.method === 'PATCH')).toHaveLength(1);
   });
 

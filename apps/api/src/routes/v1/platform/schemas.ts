@@ -136,6 +136,17 @@ export const companySettingsSchema = z.object({
   aiWebEnabled: z.boolean(),
   aiDesktopEnabled: z.boolean(),
   aiMobileEnabled: z.boolean(),
+  /** Whether the apps print the name beside the logo; set on the branding screen (0075). */
+  showCompanyName: z.boolean(),
+  /**
+   * Where document links point: an https address with `{code}` on the
+   * company's website, or null for Integr8's `/d/` page (0075).
+   */
+  documentLinkPattern: z.string().nullable(),
+  /** The tabs switched off for this company, by navigation key (0075). */
+  hiddenSections: z.array(z.string()),
+  /** The switchable tabs the company sees now: not hidden, and with their module on (0075). */
+  tabs: z.array(z.string()),
 });
 
 /**

@@ -22,9 +22,18 @@ export interface CompanyBuild {
   appIconPath: string | null;
 }
 
+/**
+ * The EAS project's slug. EAS refuses a build whose slug is not the one of the
+ * project named by `extra.eas.projectId`, and every company's app is built in
+ * that one project, so the slug never changes per company. Nobody sees it:
+ * the name, icon and store identifiers are what make the app the company's.
+ */
+export const EAS_PROJECT_SLUG = 'integr8-plus';
+
 export interface CompanyIdentifiers {
-  /** The Expo project slug and the deep-link scheme. */
+  /** The Expo project slug: always {@link EAS_PROJECT_SLUG}. */
   slug: string;
+  /** The deep-link scheme, `integr8-<slug>`, so two companies' apps never claim each other's links. */
   scheme: string;
   /** `com.integr8.plus.<slug>`: hyphens are legal in a bundle identifier. */
   iosBundleIdentifier: string;
@@ -49,7 +58,7 @@ export function companyIdentifiers(slug: string): CompanyIdentifiers {
   }
   const androidSegment = slug.replaceAll('-', '_');
   return {
-    slug: `integr8-${slug}`,
+    slug: EAS_PROJECT_SLUG,
     scheme: `integr8-${slug}`,
     iosBundleIdentifier: `com.integr8.plus.${slug}`,
     androidPackage: `com.integr8.plus.${/^\d/u.test(androidSegment) ? `c${androidSegment}` : androidSegment}`,

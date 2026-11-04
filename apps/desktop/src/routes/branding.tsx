@@ -38,6 +38,7 @@ interface Settings {
   defaultTheme: CompanyTheme;
   websiteUrl: string | null;
   appsEnabled: boolean;
+  showCompanyName: boolean;
 }
 
 interface Draft {
@@ -49,6 +50,8 @@ interface Draft {
   defaultTheme: CompanyTheme;
   websiteUrl: string;
   appsEnabled: boolean;
+  /** Off: the logo stands alone in the menu, the dashboard and sign-in (0075). */
+  showCompanyName: boolean;
 }
 
 type DraftField = keyof Draft;
@@ -116,6 +119,7 @@ function toDraft(settings: Settings): Draft {
     defaultTheme: settings.defaultTheme,
     websiteUrl: settings.websiteUrl ?? '',
     appsEnabled: settings.appsEnabled,
+    showCompanyName: settings.showCompanyName,
   };
 }
 
@@ -155,6 +159,7 @@ const DRAFT_FIELDS: readonly DraftField[] = [
   'defaultTheme',
   'websiteUrl',
   'appsEnabled',
+  'showCompanyName',
 ];
 
 /** The API names a field as `websiteUrl` or `body.websiteUrl`; either way, the last part is ours. */
@@ -201,6 +206,7 @@ function BrandingForm({ initial }: { initial: Settings }) {
           defaultTheme: next.defaultTheme,
           websiteUrl: website === '' ? null : website,
           appsEnabled: next.appsEnabled,
+          showCompanyName: next.showCompanyName,
         },
       });
       return data!;
@@ -275,6 +281,25 @@ function BrandingForm({ initial }: { initial: Settings }) {
               error={errors.appIconMediaId}
             />
           </section>
+
+          <div className="flex items-start gap-3">
+            <input
+              id="branding-show-name"
+              type="checkbox"
+              checked={draft.showCompanyName}
+              onChange={(event) => change('showCompanyName', event.target.checked)}
+              aria-describedby="branding-show-name-hint"
+              className="mt-1"
+            />
+            <div className="flex flex-col gap-1">
+              <label htmlFor="branding-show-name" className="text-sm font-medium text-content">
+                {t('workspace.branding.showName')}
+              </label>
+              <p id="branding-show-name-hint" className="text-xs text-content-muted">
+                {t('workspace.branding.showNameHint')}
+              </p>
+            </div>
+          </div>
 
           <section className="grid gap-6 sm:grid-cols-2">
             <ColourField

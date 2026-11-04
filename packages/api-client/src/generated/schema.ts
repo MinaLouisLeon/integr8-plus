@@ -1670,9 +1670,69 @@ export interface paths {
         put?: never;
         /**
          * Let a document be shown outside the company, or stop it
-         * @description Needs `document.upload`. `shareable: false` stops the QR code’s link (it answers as if the code did not exist) and the website lookup at once; `true` lets them show it again, while it is not expired. Each change is recorded in the audit log. Works the same for generated and uploaded documents.
+         * @description Needs `document.upload`. `shareable: false` stops the QR code’s link (it answers as if the code did not exist) and the website lookup at once; `true` lets them show it again, while it is not expired. A document with a place for its share QR code that does not carry it yet gets it now (0075): the worker re-prints it, or stamps an uploaded PDF, within seconds, and the PDF served meanwhile is the one it had; stopping sharing keeps the code. Each change is recorded in the audit log. Works the same for generated and uploaded documents.
          */
         post: operations["setDocumentShareable"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/documents/{documentId}/fields": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Replace the fields typed on an uploaded document
+         * @description Needs `document.upload`. The whole list, at most ten, each a name and a value (0075): what is sent replaces what was typed before, and an empty list removes them all. The reference and the customer are not touched. Only an uploaded document has typed fields (422 `document_not_uploaded`). Each change is recorded in the audit log.
+         */
+        put: operations["setDocumentFields"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/documents/{documentId}/qr-placement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Place, move or remove an uploaded PDF’s share QR code
+         * @description Needs `document.upload` (0075). `placement`: the first, the last or every page, and the code’s top-left corner and width as fractions of the page; null for no code. A document that is shared, or was, is stamped again from the PDF as uploaded within seconds (or goes back to it, for null); one never shared gets its code when it is. Only an uploaded document (422 `document_not_uploaded`). Recorded in the audit log.
+         */
+        put: operations["setDocumentQrPlacement"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/documents/{documentId}/original": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * An uploaded PDF as uploaded, to place its QR code on
+         * @description Needs `document.upload` (0075). The PDF as it was uploaded, before any QR code was stamped in, base64 in JSON like the template preview, for the screen where the code is dragged into place. Only an uploaded document (422 `document_not_uploaded`).
+         */
+        get: operations["getDocumentOriginal"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1813,10 +1873,30 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Find one document from the company’s own website
-         * @description For a company’s website server, never a browser: `Authorization: Bearer <website key>`. Either `reference` (what a visitor typed, matched against any document’s lookup key, an uploaded document’s reference number included) with `customer` as the second value, or `key` (a named template field) with `confirm`. The second value is required when the document has one. Exact after trimming and ignoring case. Only documents the company has made shareable, and whose link has not expired, are found. Answers `found: false` rather than 404, and never more than one document. Needs the company’s documents switch on both sides (Integr8’s `website_files` and the company’s own). Rate-limited per key (429).
+         * Find documents from the company’s own website
+         * @description For a company’s website server, never a browser: `Authorization: Bearer <website key>`. Send `q`, what a visitor typed in the one search box (0075): it is matched exactly, after trimming and ignoring case, against every searchable field of a document (its reference, or a made document’s lookup field, and the fields typed on an uploaded one), never against the customer’s name, and every match is returned in `documents`, newest first, at most ten. The older forms still work and find one document or none: `reference` with `customer` as the second value, or `key` (a named template field) with `confirm`; the second value is required when the document has one. Only documents the company has made shareable, and whose link has not expired, are found. Answers `found: false` rather than 404. Needs the company’s documents switch on both sides (Integr8’s `website_files` and the company’s own). Rate-limited per key (429).
          */
         post: operations["lookupWebsiteDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/website/documents/by-code/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One document by its link’s code, for the company’s own website
+         * @description For a company’s website server, never a browser: `Authorization: Bearer <website key>`. The page a document’s QR code and shared link open when the company’s links point at its own website (0075), such as `https://example.com/documents/<code>`, asks this with the code from its address. Found only when the code is one of this company’s documents, shared, and its link has not expired or been stopped; every other case answers `found: false` alike, so the page learns nothing it should not. Same switches and rate limit as the lookup.
+         */
+        get: operations["getWebsiteDocumentByCode"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -7897,10 +7977,30 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * Change a company’s website, or whether its own apps are built
-         * @description The two branding facts the dashboard owns. The rest of the look — logo, icon, colours, theme — is set from the desktop app while acting as the company, where it can be previewed. Switching `appsEnabled` on puts the company in the list the release pipeline builds for and, when the deployment can start builds (`APP_BUILDS=github`), starts its first build at once; `appBuild` says how that went, and is null when this change did not switch apps on.
+         * Change a company’s website, its document links, or whether its own apps are built
+         * @description The branding facts the dashboard owns. `documentLinkPattern` (0075) points the company’s document links at its own website: an https address with `{code}` in it, on the registered website’s host or one under it (422 `document_link_invalid`, `document_link_needs_website`, `document_link_other_site`); null goes back to Integr8’s page, and codes already printed keep working there either way. The rest of the look — logo, icon, colours, theme — is set from the desktop app while acting as the company, where it can be previewed. Switching `appsEnabled` on puts the company in the list the release pipeline builds for and, when the deployment can start builds (`APP_BUILDS=github`), starts its first build at once; `appBuild` says how that went, and is null when this change did not switch apps on.
          */
         patch: operations["updateCompanySettings"];
+        trace?: never;
+    };
+    "/v1/platform/companies/{tenantId}/tabs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Choose exactly which menu tabs a company sees
+         * @description Staff only (0075). `tabs` lists the tabs to show, by navigation key; every other switchable tab is hidden from the company’s web, desktop and phone apps, and its page says it is not available. A module with tabs follows them: on when any of its tabs is listed (with the module it is built on), off when none is, which is what stops its data on the server. The dashboard, the form builder, branding and the e-invoicing switch cannot be hidden. Recorded in the platform audit log.
+         */
+        put: operations["setCompanyTabs"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/v1/platform/companies/{tenantId}/app-builds": {
@@ -12363,6 +12463,7 @@ export interface operations {
                         aiWebEnabled: boolean;
                         aiDesktopEnabled: boolean;
                         aiMobileEnabled: boolean;
+                        showCompanyName: boolean;
                     };
                 };
             };
@@ -12451,6 +12552,7 @@ export interface operations {
                     aiWebEnabled?: boolean;
                     aiDesktopEnabled?: boolean;
                     aiMobileEnabled?: boolean;
+                    showCompanyName?: boolean;
                 };
             };
         };
@@ -12481,6 +12583,7 @@ export interface operations {
                         aiWebEnabled: boolean;
                         aiDesktopEnabled: boolean;
                         aiMobileEnabled: boolean;
+                        showCompanyName: boolean;
                     };
                 };
             };
@@ -12801,6 +12904,7 @@ export interface operations {
                         /** @enum {string} */
                         defaultTheme: "light" | "dark" | "system";
                         websiteUrl: string | null;
+                        showCompanyName: boolean;
                         logoPath: string | null;
                         appIconPath: string | null;
                     };
@@ -13358,6 +13462,8 @@ export interface operations {
                             /** @enum {string} */
                             defaultTheme: "light" | "dark" | "system";
                             websiteUrl: string | null;
+                            showCompanyName: boolean;
+                            hiddenSections: string[];
                         };
                         features: {
                             [key: string]: boolean;
@@ -18247,6 +18353,17 @@ export interface operations {
                             name: string;
                         } | null;
                         shareable: boolean;
+                        qr: {
+                            spot: boolean;
+                            printed: boolean;
+                            placement: {
+                                /** @enum {string} */
+                                page: "first" | "last" | "all";
+                                x: number;
+                                y: number;
+                                size: number;
+                            } | null;
+                        };
                         /** @enum {string} */
                         status: "pending" | "ready" | "failed";
                         failureCode: string | null;
@@ -18274,7 +18391,7 @@ export interface operations {
                             };
                             value: string;
                             /** @enum {string|null} */
-                            lookupRole: "key" | "confirm" | null;
+                            lookupRole: "key" | "confirm" | "search" | null;
                         }[];
                     };
                 };
@@ -18408,6 +18525,17 @@ export interface operations {
                                 name: string;
                             } | null;
                             shareable: boolean;
+                            qr: {
+                                spot: boolean;
+                                printed: boolean;
+                                placement: {
+                                    /** @enum {string} */
+                                    page: "first" | "last" | "all";
+                                    x: number;
+                                    y: number;
+                                    size: number;
+                                } | null;
+                            };
                             /** @enum {string} */
                             status: "pending" | "ready" | "failed";
                             failureCode: string | null;
@@ -18435,7 +18563,7 @@ export interface operations {
                                 };
                                 value: string;
                                 /** @enum {string|null} */
-                                lookupRole: "key" | "confirm" | null;
+                                lookupRole: "key" | "confirm" | "search" | null;
                             }[];
                         }[];
                         nextCursor: string | null;
@@ -18521,6 +18649,18 @@ export interface operations {
                     expiresAt?: string | null;
                     /** @default false */
                     shareable?: boolean;
+                    /** @default [] */
+                    fields?: {
+                        label: string;
+                        value: string;
+                    }[];
+                    qrPlacement?: {
+                        /** @enum {string} */
+                        page: "first" | "last" | "all";
+                        x: number;
+                        y: number;
+                        size: number;
+                    } | null;
                 };
             };
         };
@@ -18557,6 +18697,17 @@ export interface operations {
                             name: string;
                         } | null;
                         shareable: boolean;
+                        qr: {
+                            spot: boolean;
+                            printed: boolean;
+                            placement: {
+                                /** @enum {string} */
+                                page: "first" | "last" | "all";
+                                x: number;
+                                y: number;
+                                size: number;
+                            } | null;
+                        };
                         /** @enum {string} */
                         status: "pending" | "ready" | "failed";
                         failureCode: string | null;
@@ -18584,7 +18735,7 @@ export interface operations {
                             };
                             value: string;
                             /** @enum {string|null} */
-                            lookupRole: "key" | "confirm" | null;
+                            lookupRole: "key" | "confirm" | "search" | null;
                         }[];
                     };
                 };
@@ -18698,6 +18849,17 @@ export interface operations {
                             name: string;
                         } | null;
                         shareable: boolean;
+                        qr: {
+                            spot: boolean;
+                            printed: boolean;
+                            placement: {
+                                /** @enum {string} */
+                                page: "first" | "last" | "all";
+                                x: number;
+                                y: number;
+                                size: number;
+                            } | null;
+                        };
                         /** @enum {string} */
                         status: "pending" | "ready" | "failed";
                         failureCode: string | null;
@@ -18725,7 +18887,7 @@ export interface operations {
                             };
                             value: string;
                             /** @enum {string|null} */
-                            lookupRole: "key" | "confirm" | null;
+                            lookupRole: "key" | "confirm" | "search" | null;
                         }[];
                     };
                 };
@@ -18924,6 +19086,17 @@ export interface operations {
                             name: string;
                         } | null;
                         shareable: boolean;
+                        qr: {
+                            spot: boolean;
+                            printed: boolean;
+                            placement: {
+                                /** @enum {string} */
+                                page: "first" | "last" | "all";
+                                x: number;
+                                y: number;
+                                size: number;
+                            } | null;
+                        };
                         /** @enum {string} */
                         status: "pending" | "ready" | "failed";
                         failureCode: string | null;
@@ -18951,7 +19124,7 @@ export interface operations {
                             };
                             value: string;
                             /** @enum {string|null} */
-                            lookupRole: "key" | "confirm" | null;
+                            lookupRole: "key" | "confirm" | "search" | null;
                         }[];
                     };
                 };
@@ -19157,6 +19330,17 @@ export interface operations {
                             name: string;
                         } | null;
                         shareable: boolean;
+                        qr: {
+                            spot: boolean;
+                            printed: boolean;
+                            placement: {
+                                /** @enum {string} */
+                                page: "first" | "last" | "all";
+                                x: number;
+                                y: number;
+                                size: number;
+                            } | null;
+                        };
                         /** @enum {string} */
                         status: "pending" | "ready" | "failed";
                         failureCode: string | null;
@@ -19184,7 +19368,7 @@ export interface operations {
                             };
                             value: string;
                             /** @enum {string|null} */
-                            lookupRole: "key" | "confirm" | null;
+                            lookupRole: "key" | "confirm" | "search" | null;
                         }[];
                     };
                 };
@@ -19301,6 +19485,17 @@ export interface operations {
                             name: string;
                         } | null;
                         shareable: boolean;
+                        qr: {
+                            spot: boolean;
+                            printed: boolean;
+                            placement: {
+                                /** @enum {string} */
+                                page: "first" | "last" | "all";
+                                x: number;
+                                y: number;
+                                size: number;
+                            } | null;
+                        };
                         /** @enum {string} */
                         status: "pending" | "ready" | "failed";
                         failureCode: string | null;
@@ -19328,7 +19523,7 @@ export interface operations {
                             };
                             value: string;
                             /** @enum {string|null} */
-                            lookupRole: "key" | "confirm" | null;
+                            lookupRole: "key" | "confirm" | "search" | null;
                         }[];
                     };
                 };
@@ -19366,6 +19561,407 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Error"];
                 };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    setDocumentFields: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    fields: {
+                        label: string;
+                        value: string;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description The document. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        title: string;
+                        /** @enum {string} */
+                        source: "generated" | "uploaded" | "quote" | "invoice" | "purchase_order" | "job_report";
+                        /** Format: uuid */
+                        templateId: string | null;
+                        templateRevision: number | null;
+                        /** Format: uuid */
+                        submissionId: string | null;
+                        /** Format: uuid */
+                        formId: string | null;
+                        reference: string | null;
+                        record: {
+                            /** @enum {string} */
+                            kind: "quote" | "invoice" | "purchase_order" | "job_report";
+                            /** Format: uuid */
+                            id: string;
+                        } | null;
+                        customer: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        shareable: boolean;
+                        qr: {
+                            spot: boolean;
+                            printed: boolean;
+                            placement: {
+                                /** @enum {string} */
+                                page: "first" | "last" | "all";
+                                x: number;
+                                y: number;
+                                size: number;
+                            } | null;
+                        };
+                        /** @enum {string} */
+                        status: "pending" | "ready" | "failed";
+                        failureCode: string | null;
+                        linkOpens: boolean;
+                        link: string | null;
+                        publicCode: string;
+                        pageCount: number | null;
+                        byteSize: number | null;
+                        /** Format: date-time */
+                        renderedAt: string | null;
+                        /** Format: date-time */
+                        expiredAt: string | null;
+                        /** Format: date-time */
+                        expiresAt: string | null;
+                        createdBy: {
+                            id: string;
+                            name: string;
+                        };
+                        /** Format: date-time */
+                        createdAt: string;
+                        fields: {
+                            key: string;
+                            label: {
+                                [key: string]: string;
+                            };
+                            value: string;
+                            /** @enum {string|null} */
+                            lookupRole: "key" | "confirm" | "search" | null;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `documents` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such document. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not an uploaded document (`document_not_uploaded`), or two fields share a name. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    setDocumentQrPlacement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    placement: {
+                        /** @enum {string} */
+                        page: "first" | "last" | "all";
+                        x: number;
+                        y: number;
+                        size: number;
+                    } | null;
+                };
+            };
+        };
+        responses: {
+            /** @description The document. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        title: string;
+                        /** @enum {string} */
+                        source: "generated" | "uploaded" | "quote" | "invoice" | "purchase_order" | "job_report";
+                        /** Format: uuid */
+                        templateId: string | null;
+                        templateRevision: number | null;
+                        /** Format: uuid */
+                        submissionId: string | null;
+                        /** Format: uuid */
+                        formId: string | null;
+                        reference: string | null;
+                        record: {
+                            /** @enum {string} */
+                            kind: "quote" | "invoice" | "purchase_order" | "job_report";
+                            /** Format: uuid */
+                            id: string;
+                        } | null;
+                        customer: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        shareable: boolean;
+                        qr: {
+                            spot: boolean;
+                            printed: boolean;
+                            placement: {
+                                /** @enum {string} */
+                                page: "first" | "last" | "all";
+                                x: number;
+                                y: number;
+                                size: number;
+                            } | null;
+                        };
+                        /** @enum {string} */
+                        status: "pending" | "ready" | "failed";
+                        failureCode: string | null;
+                        linkOpens: boolean;
+                        link: string | null;
+                        publicCode: string;
+                        pageCount: number | null;
+                        byteSize: number | null;
+                        /** Format: date-time */
+                        renderedAt: string | null;
+                        /** Format: date-time */
+                        expiredAt: string | null;
+                        /** Format: date-time */
+                        expiresAt: string | null;
+                        createdBy: {
+                            id: string;
+                            name: string;
+                        };
+                        /** Format: date-time */
+                        createdAt: string;
+                        fields: {
+                            key: string;
+                            label: {
+                                [key: string]: string;
+                            };
+                            value: string;
+                            /** @enum {string|null} */
+                            lookupRole: "key" | "confirm" | "search" | null;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `documents` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such document. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not an uploaded document (`document_not_uploaded`), or a place off the page. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getDocumentOriginal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The PDF. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        contentType: "application/pdf";
+                        base64: string;
+                        byteSize: number;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `documents` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such document, or its file is gone. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not an uploaded document (`document_not_uploaded`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Rate limit exceeded. */
             429: {
@@ -19566,6 +20162,17 @@ export interface operations {
                                 name: string;
                             } | null;
                             shareable: boolean;
+                            qr: {
+                                spot: boolean;
+                                printed: boolean;
+                                placement: {
+                                    /** @enum {string} */
+                                    page: "first" | "last" | "all";
+                                    x: number;
+                                    y: number;
+                                    size: number;
+                                } | null;
+                            };
                             /** @enum {string} */
                             status: "pending" | "ready" | "failed";
                             failureCode: string | null;
@@ -19593,7 +20200,7 @@ export interface operations {
                                 };
                                 value: string;
                                 /** @enum {string|null} */
-                                lookupRole: "key" | "confirm" | null;
+                                lookupRole: "key" | "confirm" | "search" | null;
                             }[];
                         }[];
                         can: {
@@ -19726,6 +20333,17 @@ export interface operations {
                             name: string;
                         } | null;
                         shareable: boolean;
+                        qr: {
+                            spot: boolean;
+                            printed: boolean;
+                            placement: {
+                                /** @enum {string} */
+                                page: "first" | "last" | "all";
+                                x: number;
+                                y: number;
+                                size: number;
+                            } | null;
+                        };
                         /** @enum {string} */
                         status: "pending" | "ready" | "failed";
                         failureCode: string | null;
@@ -19753,7 +20371,7 @@ export interface operations {
                             };
                             value: string;
                             /** @enum {string|null} */
-                            lookupRole: "key" | "confirm" | null;
+                            lookupRole: "key" | "confirm" | "search" | null;
                         }[];
                     };
                 };
@@ -20182,6 +20800,7 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
+                    q?: string;
                     key?: {
                         field: string;
                         value: string;
@@ -20196,7 +20815,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description One document, or none. */
+            /** @description The documents found, or none. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -20211,6 +20830,119 @@ export interface operations {
                             createdAt: string;
                             pageCount: number | null;
                             link: string | null;
+                            code: string;
+                            viewUrl: string;
+                            downloadUrl: string;
+                            /** Format: date-time */
+                            expiresAt: string;
+                            fields: {
+                                key: string;
+                                label: {
+                                    [key: string]: string;
+                                };
+                                value: string;
+                            }[];
+                        } | null;
+                        documents: {
+                            title: string;
+                            formTitle: string;
+                            /** Format: date-time */
+                            createdAt: string;
+                            pageCount: number | null;
+                            link: string | null;
+                            code: string;
+                            viewUrl: string;
+                            downloadUrl: string;
+                            /** Format: date-time */
+                            expiresAt: string;
+                            fields: {
+                                key: string;
+                                label: {
+                                    [key: string]: string;
+                                };
+                                value: string;
+                            }[];
+                        }[];
+                    };
+                };
+            };
+            /** @description No website key, or not a live one (`website_key_invalid`). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The company does not have documents switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Too many lookups with this key; slow down. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getWebsiteDocumentByCode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The document, or none. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        found: boolean;
+                        document: {
+                            title: string;
+                            formTitle: string;
+                            /** Format: date-time */
+                            createdAt: string;
+                            pageCount: number | null;
+                            link: string | null;
+                            code: string;
                             viewUrl: string;
                             downloadUrl: string;
                             /** Format: date-time */
@@ -81519,6 +82251,7 @@ export interface operations {
                         name: string;
                         code: string;
                     }[];
+                    tabs?: string[];
                 };
             };
         };
@@ -81681,6 +82414,10 @@ export interface operations {
                             aiWebEnabled: boolean;
                             aiDesktopEnabled: boolean;
                             aiMobileEnabled: boolean;
+                            showCompanyName: boolean;
+                            documentLinkPattern: string | null;
+                            hiddenSections: string[];
+                            tabs: string[];
                         };
                         invitations: {
                             /** Format: uuid */
@@ -82119,6 +82856,7 @@ export interface operations {
                     aiWebEnabled?: boolean;
                     aiDesktopEnabled?: boolean;
                     aiMobileEnabled?: boolean;
+                    documentLinkPattern?: string | null;
                 };
             };
         };
@@ -82143,6 +82881,10 @@ export interface operations {
                         aiWebEnabled: boolean;
                         aiDesktopEnabled: boolean;
                         aiMobileEnabled: boolean;
+                        showCompanyName: boolean;
+                        documentLinkPattern: string | null;
+                        hiddenSections: string[];
+                        tabs: string[];
                         appBuild: {
                             /** @enum {string} */
                             status: "started" | "not_configured" | "failed";
@@ -82169,14 +82911,96 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description The request failed validation. */
+            /** @description A document link address that cannot be used. */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["Error"];
                 };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    setCompanyTabs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    tabs: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description The company’s tabs and flags, as they now are. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        tabs: string[];
+                        hiddenSections: string[];
+                        flags: {
+                            [key: string]: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description A platform session is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such company. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A key that is not a switchable tab (`unknown_tab`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Rate limit exceeded. */
             429: {

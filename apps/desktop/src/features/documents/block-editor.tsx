@@ -37,6 +37,7 @@ import {
   NumberInput,
   QuestionInput,
   SelectInput,
+  TextInput,
 } from './designer-inputs';
 import {
   BLOCK_TYPES,
@@ -1023,6 +1024,44 @@ function BlockSettings({
     case 'qr':
       return (
         <div className="flex flex-col gap-3">
+          {/* Share: the document's own link, printed once it is shared. Fixed: typed here (0075). */}
+          <SelectInput
+            label={t('documents.designer.block.qrContent')}
+            value={block.content.kind}
+            options={[
+              { value: 'share', label: t('documents.designer.block.qrShare') },
+              { value: 'fixed', label: t('documents.designer.block.qrFixed') },
+            ]}
+            onChange={(kind) =>
+              onChange({
+                ...block,
+                content:
+                  kind === 'share'
+                    ? { kind: 'share' }
+                    : {
+                        kind: 'fixed',
+                        text: block.content.kind === 'fixed' ? block.content.text : '',
+                      },
+              })
+            }
+          />
+          {block.content.kind === 'share' ? (
+            <p className="text-xs text-content-muted">
+              {t('documents.designer.block.qrShareHint')}
+            </p>
+          ) : (
+            <TextInput
+              label={t('documents.designer.block.qrText')}
+              hint={t('documents.designer.block.qrTextHint', {
+                website: '{{company.website}}',
+                serial: '{{answer.serial}}',
+              })}
+              value={block.content.text}
+              maxLength={1000}
+              dir="ltr"
+              onChange={(text) => onChange({ ...block, content: { kind: 'fixed', text } })}
+            />
+          )}
           <div className={grid}>
             <NumberInput
               label={t('documents.designer.block.qrSize')}
