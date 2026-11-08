@@ -96,6 +96,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { useContextMenu } from '~/components/context-menu';
 import { EtaSigningQueue } from '~/features/e-invoicing/signing-queue';
 import { useCustomerChrome, useSiteChrome, useWorkOrderChrome } from '~/components/record-chrome';
+import { DESKTOP_LINK_OPENER } from '~/lib/open-link';
 import { renderPdfPage } from '~/lib/pdf-page';
 import { session } from '~/lib/session';
 import { desktopVoiceInput } from '~/lib/voice';
@@ -217,6 +218,9 @@ function OperationsScreens({ children }: { children: ReactNode }) {
         myPayslips: '/hr/payslips',
       },
       download: saveFile,
+      // The Tauri window opens no tabs: files and mail/WhatsApp links open
+      // through the operating system.
+      ...(DESKTOP_LINK_OPENER === undefined ? {} : { openLink: DESKTOP_LINK_OPENER }),
       // Drawing an uploaded PDF's page to place its QR code on (0075).
       pdfPage: renderPdfPage,
       // In the Tauri window a spoken question comes from the operating

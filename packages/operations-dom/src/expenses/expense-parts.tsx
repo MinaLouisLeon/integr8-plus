@@ -1,6 +1,6 @@
 import { ApiRequestError, type Integr8Client } from '@integr8/api-client';
 import { hasFeature } from '@integr8/core';
-import { apiMediaAdapter } from '@integr8/form-renderer-dom/screens';
+import { apiMediaAdapter, openPendingLink } from '@integr8/form-renderer-dom/screens';
 import { useTranslation } from '@integr8/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, type ReactNode } from 'react';
@@ -152,18 +152,19 @@ export function receiptTitle(file: File): string {
  * fetch a short-lived link to read one back.
  */
 export function useReceipts() {
-  const { client } = useOperations();
+  const { client, openLink } = useOperations();
   const media = useMemo(() => apiMediaAdapter(client), [client]);
   return {
     attach: (claimId: string, file: File) => attachReceipt(client, media, claimId, file),
-    open: async (receipt: ExpenseReceipt) => {
-      const url = await media.url({
-        mediaId: receipt.fileId,
-        contentType: receipt.contentType,
-        byteSize: receipt.byteSize,
-      });
-      window.open(url, '_blank', 'noopener');
-    },
+    open: (receipt: ExpenseReceipt) =>
+      openPendingLink(
+        media.url({
+          mediaId: receipt.fileId,
+          contentType: receipt.contentType,
+          byteSize: receipt.byteSize,
+        }),
+        openLink,
+      ),
   };
 }
 

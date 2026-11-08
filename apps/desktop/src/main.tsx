@@ -1,9 +1,11 @@
+import { openPickersOnClick } from '@integr8/form-renderer-dom';
 import * as Sentry from '@sentry/react';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { APP_ENV, APP_VERSION, SENTRY_DSN } from './lib/env';
 import { applyRememberedTheme } from './lib/company-theme';
+import { routeOutsideLinks } from './lib/open-link';
 import { applyPreferences, readPreferences } from './lib/preferences';
 // The Integr8 Media look's faces, bundled with the app (the staff build wears them).
 import '@integr8/tokens/fonts.css';
@@ -41,6 +43,10 @@ if (SENTRY_DSN !== undefined && SENTRY_DSN !== '') {
 
 applyPreferences(readPreferences());
 applyRememberedTheme();
+// In the Tauri window, links meant for a new tab open in the system browser.
+routeOutsideLinks();
+// A click anywhere on a date or time box opens its picker, on every screen.
+openPickersOnClick();
 
 const container = document.getElementById('root');
 if (container === null) {

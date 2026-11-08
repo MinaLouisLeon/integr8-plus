@@ -25,9 +25,10 @@ the end of any piece of work that changes one of them, and date each section.
   source: the phone (`app.config.ts`) and the web build (`next.config.ts`) read it, and
   `apps/api/src/app-info.ts` has a copy a test keeps equal. A version bump must also change
   every place listed under "Places that state the version".
-- **Migrations:** `packages/db/migrations` reaches **0075** (merged into `dev`, released with
-  1.3.4). **0059 was never used** (workers had reserved ranges) and the migrator
-  does not need contiguous numbers; the next one is **0076**. 1.2.2 carries 0054–0057;
+- **Migrations:** `packages/db/migrations` reaches **0076** (0075 merged into `dev`, released
+  with 1.3.4; **0076** `submissions.title` is unreleased, on branch
+  `fix/submission-names-pdf-links-pickers`). **0059 was never used** (workers had reserved ranges) and the migrator
+  does not need contiguous numbers; the next one is **0077**. 1.2.2 carries 0054–0057;
   1.2.3 adds 0058 and 0060–0066; 1.2.4 adds 0067–0068; 1.3.0 adds 0069 and 0074 (0070–0073 were reserved by workers and never used).
 - **Pre-production audit (2026-10-31):** plans, docs and code compared area by area; the
   report is the claude.ai artifact https://claude.ai/artifact/FB7vANrUc691VfMXkR5h2U. Its
@@ -227,6 +228,19 @@ the end of any piece of work that changes one of them, and date each section.
   The file links themselves stay plain links (the staff app's updater needs them without a
   sign-in). Forms for AI's own update check reads GitHub's public API and finds nothing in a
   private repository (not fixed yet).
+- **Submission names, desktop file links and date pickers (2026-11-08, unreleased, branch
+  `fix/submission-names-pdf-links-pickers` from `dev`; migration 0076), as the owner asked:** the submit step asks for a **Name**
+  (prefilled with the form's title) stored in `submissions.title` and shown in lists and on the
+  submission page; phones send it in `submission.submit` only when changed (they do not know a
+  name given elsewhere); the phone keeps listing its own submissions by form title. The
+  desktop app's **View/Download** did nothing because a Tauri window ignores `window.open`:
+  it now uses `tauri-plugin-opener` (`~2.5`, as 2.7 needs Tauri 2.12; `opener:default`), passed
+  to the shared screens as `openLink`, and `routeOutsideLinks` sends `target="_blank"` links
+  there too. In browsers, `openPendingLink` opens the tab at the click, before the link
+  arrives. Date/time boxes open their picker on click (`openPickersOnClick`), a chosen
+  `data-theme` sets `color-scheme`, and the phone's expense date uses `DateField`.
+  `cargo check` could not run on this Windows machine (MinGW `windres` fails in the build
+  script), so the desktop shell is untested in a real build.
 - **The demo seeder goes through the API**, in-process with Fastify's `inject`, as the
   company's own people (plus a staff impersonation for staff-only setup). Direct inserts
   were rejected: they skip numbering, stock, ledger postings and audit, and produce data

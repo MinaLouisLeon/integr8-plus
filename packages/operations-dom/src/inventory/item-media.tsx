@@ -1,4 +1,4 @@
-import { apiMediaAdapter } from '@integr8/form-renderer-dom/screens';
+import { apiMediaAdapter, openPendingLink } from '@integr8/form-renderer-dom/screens';
 import { useTranslation } from '@integr8/i18n';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
@@ -21,7 +21,7 @@ const ACCEPT = 'image/*,application/pdf';
 
 export function ItemGallery({ itemId, canManage }: { itemId: string; canManage: boolean }) {
   const { t } = useTranslation();
-  const { client } = useOperations();
+  const { client, openLink } = useOperations();
   const queries = useQueryClient();
   const adapter = useMemo(() => apiMediaAdapter(client), [client]);
 
@@ -52,14 +52,15 @@ export function ItemGallery({ itemId, canManage }: { itemId: string; canManage: 
       ).data!.items,
     onSuccess: settle,
   });
-  const open = async (file: ItemMedia) => {
-    const url = await adapter.url({
-      mediaId: file.fileId,
-      contentType: file.contentType,
-      byteSize: file.byteSize,
-    });
-    window.open(url, '_blank', 'noopener');
-  };
+  const open = (file: ItemMedia) =>
+    openPendingLink(
+      adapter.url({
+        mediaId: file.fileId,
+        contentType: file.contentType,
+        byteSize: file.byteSize,
+      }),
+      openLink,
+    );
 
   const files = media.data ?? [];
   const images = files.filter(isImage);

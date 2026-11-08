@@ -383,6 +383,19 @@ ${site}
 ${dark}
 }
 
+/*
+ * A chosen theme also sets the browser's own controls (date and time pickers,
+ * scroll bars) to match, so a dark company on a light computer, or the other
+ * way round, does not get pickers it cannot see.
+ */
+[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+[data-theme='light'] {
+  color-scheme: light;
+}
+
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
 ${indent(dark)}

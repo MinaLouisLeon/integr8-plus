@@ -1,4 +1,5 @@
 import type { Integr8Client, paths } from '@integr8/api-client';
+import type { LinkOpener } from '@integr8/form-renderer-dom/screens';
 import { createContext, useContext } from 'react';
 import type { VoiceInput } from './ai/voice.js';
 
@@ -156,6 +157,12 @@ export interface OperationsConfig {
   };
   /** Saves a file the person asked for, such as an import template. */
   download: (blob: Blob, filename: string) => void;
+  /**
+   * Opens a link outside the app: a file to view or save, a mail or WhatsApp
+   * address. When not set, a browser tab. The desktop window sets it: it opens
+   * no tabs itself.
+   */
+  openLink?: LinkOpener;
   /** The browser's IANA time zone, for reading dates in imports. Defaults to the runtime's. */
   timeZone?: string;
   /**

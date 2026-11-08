@@ -488,6 +488,7 @@ each with a down file, applied by `pnpm --filter @integr8/db db up` (or
 | 0069      | Staff-made library templates (retire, source form) and the PDF templates and pictures they carry      |
 | 0074      | Business PDFs in the Documents register: quotes, invoices, purchase orders and job reports            |
 | 0075      | Tabs staff switch per company, the name beside the logo, document links on the company's website      |
+| 0076      | A submission's own name, chosen at the submit step                                                    |
 
 See [`docs/database/migrations.md`](./docs/database/migrations.md) and the
 [backup and restore runbook](./docs/database/runbook-backup-and-restore.md).

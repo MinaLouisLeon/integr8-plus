@@ -662,6 +662,8 @@ export interface SubmissionsTable {
   >;
   /** Submitted from a phone after its job closed (0061). Written only by that submit. */
   submitted_after_close: Generated<boolean>;
+  /** The name given at the submit step (0076). Null shows the form's title. */
+  title: Generated<string | null>;
   created_at: CreatedAt;
   updated_at: UpdatedAt;
 }

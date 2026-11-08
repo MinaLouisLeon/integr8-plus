@@ -4,6 +4,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { useId, useMemo, useState } from 'react';
 import { buttonClass, inputClass } from '../widgets/types.js';
 import { keys, useScreens } from './api.js';
+import { openPendingLink } from './open-link.js';
 import { Dialog, Failure, Loading } from './parts.js';
 
 /**
@@ -96,7 +97,7 @@ function MakeDocumentDialog({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
-  const { client, locale, navigate, paths } = useScreens();
+  const { client, locale, navigate, paths, openLink } = useScreens();
   const ids = useId();
   const [templateId, setTemplateId] = useState('');
   const [values, setValues] = useState<Record<string, string>>({});
@@ -153,16 +154,16 @@ function MakeDocumentDialog({
       query.state.data === undefined || query.state.data.status === 'pending' ? 1500 : false,
   });
 
-  const openFile = async (disposition: 'inline' | 'attachment') => {
+  const openFile = (disposition: 'inline' | 'attachment') => {
     if (documentId === null) {
       return;
     }
-    const { data } = await client.GET('/v1/documents/{documentId}/file', {
-      params: { path: { documentId }, query: { disposition } },
-    });
-    if (data !== undefined) {
-      window.open(data.url, '_blank', 'noopener');
-    }
+    const link = client
+      .GET('/v1/documents/{documentId}/file', {
+        params: { path: { documentId }, query: { disposition } },
+      })
+      .then(({ data }) => data?.url);
+    void openPendingLink(link, openLink);
   };
 
   const fieldProblem = (key: string): string | undefined => {
@@ -224,14 +225,14 @@ function MakeDocumentDialog({
                 <button
                   type="button"
                   className={buttonClass.primary}
-                  onClick={() => void openFile('inline')}
+                  onClick={() => openFile('inline')}
                 >
                   {t('documents.view')}
                 </button>
                 <button
                   type="button"
                   className={buttonClass.secondary}
-                  onClick={() => void openFile('attachment')}
+                  onClick={() => openFile('attachment')}
                 >
                   {t('documents.download')}
                 </button>

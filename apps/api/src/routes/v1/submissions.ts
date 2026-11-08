@@ -114,6 +114,8 @@ const submissionSummarySchema = z.object({
     .nullable(),
   formId: z.uuid(),
   formTitle: z.string(),
+  /** The name given at the submit step (0076). Null: show `formTitle`. */
+  title: z.string().nullable(),
   formVersionId: z.uuid(),
   versionNumber: z.number().int().nullable(),
   status: statusSchema,
@@ -165,6 +167,9 @@ const detailSchema = z.object({
 const submissionParams = z.object({ submissionId: z.uuid() });
 
 export const dateSchema = z.iso.date();
+
+/** A submission's own name (0076): what the list shows instead of the form's title. */
+export const submissionTitleSchema = z.string().trim().min(1).max(200);
 
 const listQuery = z.object({
   formId: z.uuid().optional(),
@@ -287,6 +292,7 @@ function summaryBody(submission: Submission, known: Lookups) {
           },
     formId: submission.formId,
     formTitle: known.forms.get(submission.formId) ?? '',
+    title: submission.title,
     formVersionId: submission.formVersionId,
     versionNumber: known.versions.get(submission.formVersionId) ?? null,
     status: submission.status,
@@ -1150,6 +1156,8 @@ export const submitRoute = defineRoute({
     reason: z.string().trim().min(1).max(2000).optional(),
     /** The day the form was filled, `YYYY-MM-DD`, in the filler's calendar. Within a day of the server's. */
     today: dateSchema.optional(),
+    /** The submission's own name, shown instead of the form's title (0076). Left out, its name stays. */
+    title: submissionTitleSchema.optional(),
   }),
   responses: {
     200: { description: 'The submitted submission.', schema: detailSchema },
@@ -1221,6 +1229,8 @@ export const submitRoute = defineRoute({
         body.expectedRevision,
         principal.userId,
         amending ? body.reason : undefined,
+        null,
+        body.title === undefined ? {} : { title: body.title },
       );
       if (result.outcome !== 'written') {
         refusal(result.outcome);

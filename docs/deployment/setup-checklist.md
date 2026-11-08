@@ -1498,6 +1498,14 @@ Migration 0075 runs by itself at part D. On the dashboard, a company's page gets
 - [ ] **Document links point where they should**: for a company whose website has the document page, set **Document link address** and save; a shared document's **Copy link** in the register now starts with the company's website. Leave it empty for every other company.
 - [ ] **The share QR code goes in when shared**: make a PDF from a submission whose template has a QR code; it opens with a blank space there. Press **Share** in Documents and open it again a few seconds later: the code is in its place. `docker compose -f deploy/compose.yml --env-file deploy/.env logs worker | grep "re-printed"` shows it.
 
+### AF. Submission names, PDF links in the desktop app, and date pickers (included in the release after v1.3.5)
+
+Migration 0076 runs by itself at part D. Submitting a form now asks for a **Name**, filled in with the form's title, so the submissions list can tell apart many submissions of the same form; older submissions keep showing the form's title. Phones send the name once they have this release's app, over the air within a day (part G); until then their submissions are listed under the form's title, as before. In the desktop app, **View** and **Download** on a PDF (and every other file or mail link) now open in the computer's own browser or mail app; this needs the new desktop app, which updates itself. Every date and time box opens its picker when clicked. No new settings, no new image.
+
+- [ ] **Migration ran**: after part D, `docker compose -f deploy/compose.yml --env-file deploy/.env logs migrate | grep 0076` shows `applied 0076_submission_title`.
+- [ ] **A submission keeps its name**: fill a form on the web, change **Name** on the check-your-answers step, and submit; the submissions list shows that name, with the form's title under it.
+- [ ] **PDFs open from the desktop app**: in the updated desktop app, make a PDF from a submission and press **View**, then **Download**; the PDF opens in the computer's browser, then saves.
+
 > [!NOTE]
 > **The test box (Stage 10)** updates the same way, from `staging` instead of `main`: `git pull` on its `staging` checkout, then `up -d --build`. Updating it first, the day before, is the cheapest rehearsal there is.
 

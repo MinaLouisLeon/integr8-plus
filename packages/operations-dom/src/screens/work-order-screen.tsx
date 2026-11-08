@@ -1,5 +1,5 @@
 import { ApiRequestError } from '@integr8/api-client';
-import { apiMediaAdapter } from '@integr8/form-renderer-dom/screens';
+import { apiMediaAdapter, openPendingLink } from '@integr8/form-renderer-dom/screens';
 import { jobTimes } from '@integr8/core';
 import {
   apiErrorCodeMessage,
@@ -1075,7 +1075,7 @@ const CLOSED: readonly WorkOrderState[] = ['complete', 'reviewed', 'cancelled'];
  */
 function Completion({ job }: { job: WorkOrderDetail }) {
   const { t } = useTranslation();
-  const { client, locale } = useOperations();
+  const { client, locale, openLink } = useOperations();
   const media = useMemo(() => apiMediaAdapter(client), [client]);
   const duration = useDuration();
   const { execution } = job;
@@ -1088,10 +1088,8 @@ function Completion({ job }: { job: WorkOrderDetail }) {
       : [],
   );
   const times = jobTimes(changes, new Date());
-  const open = async (fileId: string, contentType: string, byteSize: number) => {
-    const url = await media.url({ mediaId: fileId, contentType, byteSize });
-    window.open(url, '_blank', 'noopener');
-  };
+  const open = (fileId: string, contentType: string, byteSize: number) =>
+    openPendingLink(media.url({ mediaId: fileId, contentType, byteSize }), openLink);
 
   return (
     <section aria-labelledby="completion-heading" className={cardClass}>
@@ -1235,7 +1233,7 @@ function Completion({ job }: { job: WorkOrderDetail }) {
 
 function Attachments({ job, onChanged }: { job: WorkOrderDetail; onChanged: () => void }) {
   const { t } = useTranslation();
-  const { client } = useOperations();
+  const { client, openLink } = useOperations();
   const media = useMemo(() => apiMediaAdapter(client), [client]);
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState('');
@@ -1275,10 +1273,8 @@ function Attachments({ job, onChanged }: { job: WorkOrderDetail; onChanged: () =
       client.DELETE('/v1/attachments/{attachmentId}', { params: { path: { attachmentId } } }),
     onSuccess: onChanged,
   });
-  const open = async (attachmentFileId: string, contentType: string, byteSize: number) => {
-    const url = await media.url({ mediaId: attachmentFileId, contentType, byteSize });
-    window.open(url, '_blank', 'noopener');
-  };
+  const open = (attachmentFileId: string, contentType: string, byteSize: number) =>
+    openPendingLink(media.url({ mediaId: attachmentFileId, contentType, byteSize }), openLink);
 
   return (
     <section aria-labelledby="files-heading" className={cardClass}>
