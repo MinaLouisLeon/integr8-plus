@@ -7,7 +7,7 @@ the end of any piece of work that changes one of them, and date each section.
 
 ## Snapshot (2026-11-01, after the form builder and PDF builder round)
 
-- **Version:** root `package.json` is **1.3.1**. 1.3.0 reached `main` (PR #148) but its
+- **Version:** root `package.json` is **1.3.6** (history below starts at 1.3.1). 1.3.0 reached `main` (PR #148) but its
   release never published: the publish job attached the secret scan's report folder
   (`dist/work`) and failed, so there is no v1.3.0 tag. The owner bumped `main` to 1.3.1 on
   GitHub (PR #151, `package.json` only, which failed `app-info.test.ts`); branch
@@ -21,7 +21,7 @@ the end of any piece of work that changes one of them, and date each section.
   arrival time in `onRequest` (`context.receivedAt`) and bumps every copy to **1.3.3**; no
   v1.3.1 or v1.3.2 tag exists. **2026-11-04:** branch `bugfix/fix-build` bumps every copy to
   **1.3.4** (it carries migration 0075 and this round's fixes). Branch `chore/bump-1.3.5` (from
-  `dev`) bumps every copy to **1.3.5**. The root `package.json` is the only
+  `dev`) bumps every copy to **1.3.5**. Branch `fix/submission-names-pdf-links-pickers` bumps every copy to **1.3.6** (it carries migration 0076). The root `package.json` is the only
   source: the phone (`app.config.ts`) and the web build (`next.config.ts`) read it, and
   `apps/api/src/app-info.ts` has a copy a test keeps equal. A version bump must also change
   every place listed under "Places that state the version".
