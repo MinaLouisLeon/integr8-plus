@@ -99,8 +99,11 @@ export function SubmissionScreen({ submissionId }: { submissionId: string }) {
 
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold text-content">{submission.formTitle}</h1>
+          <h1 className="text-2xl font-semibold text-content">
+            {submission.title ?? submission.formTitle}
+          </h1>
           <p className="text-sm text-content-muted">
+            {submission.title === null ? null : `${submission.formTitle} · `}
             {t('submissions.detail.version', { number: version.versionNumber ?? 0 })}
             {' · '}
             {t(`submissions.status.${submission.status}`)}
@@ -292,7 +295,7 @@ function Editor({
 
   const onSubmit = async (
     answers: Record<string, unknown>,
-    extra: { reason?: string },
+    extra: { reason?: string; title?: string },
   ): Promise<SubmitOutcome> => {
     await save();
     try {
@@ -304,6 +307,7 @@ function Editor({
             expectedRevision: sync.current.revision,
             today: localToday(),
             ...(extra.reason === undefined ? {} : { reason: extra.reason }),
+            ...(extra.title === undefined ? {} : { title: extra.title }),
           },
         })
       ).data!;
@@ -362,6 +366,7 @@ function Editor({
         media={media}
         today={localToday()}
         correction={detail.submission.status === 'reopened'}
+        submissionTitle={detail.submission.title ?? detail.submission.formTitle}
         onAnswersChange={onAnswersChange}
         onSubmit={onSubmit}
       />

@@ -9,6 +9,7 @@ import {
 import { useMemo, type ReactNode } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { useContextMenu } from '~/components/context-menu';
+import { DESKTOP_LINK_OPENER } from '~/lib/open-link';
 import { session } from '~/lib/session';
 
 /**
@@ -34,6 +35,8 @@ function FormScreens({ children }: { children: ReactNode }) {
         document: (id) => `/documents/${id}`,
       },
       download: saveFile,
+      // The Tauri window opens no tabs: a made PDF opens in the system browser.
+      ...(DESKTOP_LINK_OPENER === undefined ? {} : { openLink: DESKTOP_LINK_OPENER }),
       ...(menu.enabled
         ? {
             rowActions: (target, actions, event) => menu.open(event, actions, target.label),

@@ -20,6 +20,7 @@ export {
   type SubmissionRowActionsHandler,
   type SubmissionRowTarget,
 } from './api.js';
+export { type LinkOpener, openLink, openPendingLink } from './open-link.js';
 export { BackArrow, BackLink, InlineError } from './parts.js';
 export { FillStartScreen } from './fill-start.js';
 export { SubmissionListScreen } from './submission-list.js';

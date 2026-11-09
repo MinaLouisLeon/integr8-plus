@@ -268,6 +268,44 @@ describe('review and submit', () => {
     expect(onSubmit).toHaveBeenCalledWith({ visits: 1 }, { reason: 'Miscounted' });
   });
 
+  it('offers the submission’s name for editing and sends it', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn(() => Promise.resolve({ ok: true as const }));
+    renderWithI18n(
+      <FormFiller
+        form={formOf([[visits]])}
+        initialAnswers={{ visits: 1 }}
+        locale="en"
+        submissionTitle="Boiler service"
+        onSubmit={onSubmit}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: 'Review answers' }));
+    const name = screen.getByRole('textbox', { name: 'Name' });
+    expect(name).toHaveValue('Boiler service');
+    await user.clear(name);
+    await user.type(name, '  Villa 12 boiler ');
+    await user.click(screen.getByRole('button', { name: 'Submit' }));
+    expect(onSubmit).toHaveBeenCalledWith({ visits: 1 }, { title: 'Villa 12 boiler' });
+  });
+
+  it('asks for no name when the host offers none, as in the builder’s preview', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn(() => Promise.resolve({ ok: true as const }));
+    renderWithI18n(
+      <FormFiller
+        form={formOf([[visits]])}
+        initialAnswers={{ visits: 1 }}
+        locale="en"
+        onSubmit={onSubmit}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: 'Review answers' }));
+    expect(screen.queryByRole('textbox', { name: 'Name' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Submit' }));
+    expect(onSubmit).toHaveBeenCalledWith({ visits: 1 }, {});
+  });
+
   it('can be filled start to finish with the keyboard alone', async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn(() => Promise.resolve({ ok: true as const }));

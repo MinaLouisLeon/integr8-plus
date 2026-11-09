@@ -49,8 +49,8 @@ export interface FormFillerProps {
   correction: boolean;
   /** Shown once at the top, e.g. how many answers were filled from an earlier form. */
   notice: string | undefined;
-  /** Records the submission. Location and reason are gathered here first. */
-  onSubmit: (extra: { reason: string | undefined }) => Promise<void>;
+  /** Records the submission. Location, reason and name are gathered here first. */
+  onSubmit: (extra: { reason: string | undefined; title: string | undefined }) => Promise<void>;
   /** Leaves the form. Everything is already saved. */
   onClose: () => void;
 }
@@ -79,6 +79,8 @@ export function FormFiller(props: FormFillerProps) {
   const [contents, setContents] = useState(false);
   const [reason, setReason] = useState('');
   const [reasonMissing, setReasonMissing] = useState(false);
+  // The submission's name (0076), offered for editing; it starts as the form's title.
+  const [name, setName] = useState(title);
   const [submitting, setSubmitting] = useState(false);
   const [failure, setFailure] = useState<string | undefined>(undefined);
   const page = pages[pageIndex];
@@ -123,7 +125,12 @@ export function FormFiller(props: FormFillerProps) {
     setSubmitting(true);
     setFailure(undefined);
     try {
-      await onSubmit({ reason: correction ? reason.trim() : undefined });
+      await onSubmit({
+        reason: correction ? reason.trim() : undefined,
+        // Unchanged, nothing is sent: the phone does not know a name given
+        // before, and a correction must not put the form's title back over it.
+        title: name.trim() === '' || name.trim() === title ? undefined : name.trim(),
+      });
     } catch (error) {
       setFailure(
         t('mobile.fill.failed', {
@@ -288,6 +295,17 @@ export function FormFiller(props: FormFillerProps) {
                     top();
                   }}
                 />
+                <View style={styles.reason}>
+                  <Text style={[styles.label, { color: theme.text }]}>{t('fill.review.name')}</Text>
+                  <Muted>{t('fill.review.nameHint')}</Muted>
+                  <TextBox
+                    accessibilityLabel={t('fill.review.name')}
+                    value={name}
+                    invalid={false}
+                    maxLength={200}
+                    onChangeText={setName}
+                  />
+                </View>
                 {correction ? (
                   <View style={styles.reason}>
                     <Text style={[styles.label, { color: theme.text }]}>

@@ -1795,6 +1795,9 @@ export const en = {
       reason: 'Why is this being corrected?',
       reasonHint: 'Kept in the submission’s history, with your name.',
       reasonRequired: 'Say why this is being corrected.',
+      name: 'Name',
+      nameHint:
+        'What this submission is listed as. Change it to tell it apart from others of the same form.',
     },
     signature: {
       pad: 'Signature pad. Draw with a mouse, trackpad or finger, or type your name instead.',
@@ -6832,7 +6835,7 @@ export const en = {
         'Works without signal: the claim and its receipt photos are sent when the phone next can.',
       today: 'Today',
       yesterday: 'Yesterday',
-      otherDate: 'Date (year-month-day)',
+      otherDate: 'Another day',
       dateFormat: 'Write the date as year-month-day, such as 2026-10-12.',
       forJob: 'For a job',
       receiptsHint: 'A photo of each receipt.',
