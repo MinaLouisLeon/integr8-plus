@@ -1,3 +1,4 @@
+import { openLink } from '@integr8/form-renderer-dom/screens';
 import { useTranslation } from '@integr8/i18n';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -180,11 +181,6 @@ export function TypedFieldsForm({
   );
 }
 
-/** Opens an address outside the app: the mail app, WhatsApp. */
-function openOutside(url: string): void {
-  window.open(url, '_blank', 'noopener');
-}
-
 /**
  * Where to send a shared document's link: copy it, email it, send it on
  * WhatsApp, or show its QR code to scan. The link is the company's own
@@ -198,6 +194,9 @@ export function ShareDialog({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
+  const { openLink: opener } = useOperations();
+  // Opens an address outside the app: the mail app, WhatsApp.
+  const openOutside = (url: string) => openLink(url, opener);
   const [copied, setCopied] = useState(false);
   const link = document.link ?? '';
   const message = t('documents.shareMenu.message', { title: document.title, link });

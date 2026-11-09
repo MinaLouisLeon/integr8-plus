@@ -20,6 +20,13 @@ are about to diverge over window chrome, keyboard shortcuts and menu
 integration. Each app has its own `components/ui`, and they are allowed to look
 similar.
 
+Dates and times use the platform's own controls everywhere: `<input type="date">`,
+`time` and `datetime-local` on web and desktop, opened by a click anywhere on the box
+(`openPickersOnClick` in `@integr8/form-renderer-dom`, installed once by each app), and
+`@react-native-community/datetimepicker` on the phone (`TemporalWidget` in forms,
+`DateField` elsewhere). A theme the company chose also sets `color-scheme`, so the
+pickers match it. Never ask for a date as typed text.
+
 ```
 packages/tokens      colour, spacing, type scale — plain TypeScript
 packages/i18n        i18next, the message catalogue, locale-aware formatting

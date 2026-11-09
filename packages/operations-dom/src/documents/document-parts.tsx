@@ -1,4 +1,5 @@
 import { hasFeature } from '@integr8/core';
+import { openPendingLink } from '@integr8/form-renderer-dom/screens';
 import { useTranslation } from '@integr8/i18n';
 import { useQuery } from '@tanstack/react-query';
 import type { DocumentDetail, DocumentRow, DocumentState } from '../api.js';
@@ -121,13 +122,14 @@ export function fileSize(bytes: number, locale: string): string {
 
 /** Opens a document's PDF in a new window, to read or to save. */
 export function useOpenDocument() {
-  const { client } = useOperations();
-  return async (documentId: string, disposition: 'inline' | 'attachment') => {
-    const { data } = await client.GET('/v1/documents/{documentId}/file', {
-      params: { path: { documentId }, query: { disposition } },
-    });
-    if (data !== undefined) {
-      window.open(data.url, '_blank', 'noopener');
-    }
-  };
+  const { client, openLink } = useOperations();
+  return (documentId: string, disposition: 'inline' | 'attachment') =>
+    openPendingLink(
+      client
+        .GET('/v1/documents/{documentId}/file', {
+          params: { path: { documentId }, query: { disposition } },
+        })
+        .then(({ data }) => data?.url),
+      openLink,
+    );
 }

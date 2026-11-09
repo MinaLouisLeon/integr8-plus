@@ -36,6 +36,17 @@ that is behind is refused with 409 `submission_changed`, so two devices cannot o
 each other. Drafts live on the server, so a form started on a laptop is finished on any
 other device the person signs in on.
 
+### A submission's name (0076)
+
+The check-your-answers step asks for a **Name**, filled in with the form's title (or the
+name it was given before, when correcting). It goes with the submit (`title` on
+`POST /v1/submissions/{id}/submit`, and on a phone's `submission.submit` change) and is
+stored in `submissions.title`; lists, the submission's page and the right-click menu show
+it, with the form's title beneath. Left out, the name it has stays; never set, it is null
+and the screens show the form's title. Search finds a submission by part of its name as
+well as by its answers. The phone does not know a name given on another device, so it
+sends one only when the engineer changed it. The builder's preview asks for no name.
+
 ## The server validates for truth
 
 `POST /v1/submissions/:id/submit` runs `validateSubmission` from `@integr8/form-engine`

@@ -7,7 +7,7 @@ the end of any piece of work that changes one of them, and date each section.
 
 ## Snapshot (2026-11-01, after the form builder and PDF builder round)
 
-- **Version:** root `package.json` is **1.3.1**. 1.3.0 reached `main` (PR #148) but its
+- **Version:** root `package.json` is **1.3.6** (history below starts at 1.3.1). 1.3.0 reached `main` (PR #148) but its
   release never published: the publish job attached the secret scan's report folder
   (`dist/work`) and failed, so there is no v1.3.0 tag. The owner bumped `main` to 1.3.1 on
   GitHub (PR #151, `package.json` only, which failed `app-info.test.ts`); branch
@@ -21,13 +21,14 @@ the end of any piece of work that changes one of them, and date each section.
   arrival time in `onRequest` (`context.receivedAt`) and bumps every copy to **1.3.3**; no
   v1.3.1 or v1.3.2 tag exists. **2026-11-04:** branch `bugfix/fix-build` bumps every copy to
   **1.3.4** (it carries migration 0075 and this round's fixes). Branch `chore/bump-1.3.5` (from
-  `dev`) bumps every copy to **1.3.5**. The root `package.json` is the only
+  `dev`) bumps every copy to **1.3.5**. Branch `fix/submission-names-pdf-links-pickers` bumps every copy to **1.3.6** (it carries migration 0076). The root `package.json` is the only
   source: the phone (`app.config.ts`) and the web build (`next.config.ts`) read it, and
   `apps/api/src/app-info.ts` has a copy a test keeps equal. A version bump must also change
   every place listed under "Places that state the version".
-- **Migrations:** `packages/db/migrations` reaches **0075** (merged into `dev`, released with
-  1.3.4). **0059 was never used** (workers had reserved ranges) and the migrator
-  does not need contiguous numbers; the next one is **0076**. 1.2.2 carries 0054–0057;
+- **Migrations:** `packages/db/migrations` reaches **0076** (0075 merged into `dev`, released
+  with 1.3.4; **0076** `submissions.title` is unreleased, on branch
+  `fix/submission-names-pdf-links-pickers`). **0059 was never used** (workers had reserved ranges) and the migrator
+  does not need contiguous numbers; the next one is **0077**. 1.2.2 carries 0054–0057;
   1.2.3 adds 0058 and 0060–0066; 1.2.4 adds 0067–0068; 1.3.0 adds 0069 and 0074 (0070–0073 were reserved by workers and never used).
 - **Pre-production audit (2026-10-31):** plans, docs and code compared area by area; the
   report is the claude.ai artifact https://claude.ai/artifact/FB7vANrUc691VfMXkR5h2U. Its
@@ -227,6 +228,19 @@ the end of any piece of work that changes one of them, and date each section.
   The file links themselves stay plain links (the staff app's updater needs them without a
   sign-in). Forms for AI's own update check reads GitHub's public API and finds nothing in a
   private repository (not fixed yet).
+- **Submission names, desktop file links and date pickers (2026-11-08, unreleased, branch
+  `fix/submission-names-pdf-links-pickers` from `dev`; migration 0076), as the owner asked:** the submit step asks for a **Name**
+  (prefilled with the form's title) stored in `submissions.title` and shown in lists and on the
+  submission page; phones send it in `submission.submit` only when changed (they do not know a
+  name given elsewhere); the phone keeps listing its own submissions by form title. The
+  desktop app's **View/Download** did nothing because a Tauri window ignores `window.open`:
+  it now uses `tauri-plugin-opener` (`~2.5`, as 2.7 needs Tauri 2.12; `opener:default`), passed
+  to the shared screens as `openLink`, and `routeOutsideLinks` sends `target="_blank"` links
+  there too. In browsers, `openPendingLink` opens the tab at the click, before the link
+  arrives. Date/time boxes open their picker on click (`openPickersOnClick`), a chosen
+  `data-theme` sets `color-scheme`, and the phone's expense date uses `DateField`.
+  `cargo check` could not run on this Windows machine (MinGW `windres` fails in the build
+  script), so the desktop shell is untested in a real build.
 - **The demo seeder goes through the API**, in-process with Fastify's `inject`, as the
   company's own people (plus a staff impersonation for staff-only setup). Direct inserts
   were rejected: they skip numbering, stock, ledger postings and audit, and produce data

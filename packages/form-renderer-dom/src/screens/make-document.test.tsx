@@ -118,7 +118,11 @@ function server(options: { features?: Record<string, boolean>; permissions?: str
   return { client, sent };
 }
 
-function show(client: ScreensConfig['client'], isDraft = false) {
+function show(
+  client: ScreensConfig['client'],
+  isDraft = false,
+  openLink?: ScreensConfig['openLink'],
+) {
   const navigate = vi.fn();
   render(
     <I18nextProvider i18n={createI18n({ locale: 'en' })}>
@@ -131,6 +135,7 @@ function show(client: ScreensConfig['client'], isDraft = false) {
             locale: 'en',
             navigate,
             download: vi.fn(),
+            ...(openLink === undefined ? {} : { openLink }),
             paths: {
               fill: '/fill',
               submissions: '/submissions',
@@ -174,6 +179,25 @@ describe('making a PDF from a submission', () => {
     );
     await user.click(within(dialog).getByRole('button', { name: 'Open the document' }));
     expect(navigate).toHaveBeenCalledWith(`/documents/${DOCUMENT}`);
+    open.mockRestore();
+  });
+
+  it('hands the file to the app’s own opener, as the desktop window needs', async () => {
+    const user = userEvent.setup();
+    const open = vi.spyOn(window, 'open').mockReturnValue(null);
+    const openLink = vi.fn();
+    const { client, sent } = server();
+    show(client, false, openLink);
+    await user.click(await screen.findByRole('button', { name: 'Make PDF' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Make a PDF from this submission' });
+    await user.type(within(dialog).getByLabelText(/Certificate number/u), 'GS-1');
+    await user.click(within(dialog).getByRole('button', { name: 'Make PDF' }));
+    await within(dialog).findByText('The PDF is ready.', {}, { timeout: 5000 });
+
+    await user.click(within(dialog).getByRole('button', { name: 'View' }));
+    await waitFor(() => expect(openLink).toHaveBeenCalledWith('https://files.example/pdf'));
+    expect(open).not.toHaveBeenCalled();
+    expect(sent.some((request) => request.path.endsWith('/file'))).toBe(true);
     open.mockRestore();
   });
 

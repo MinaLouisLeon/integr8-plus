@@ -73,10 +73,17 @@ export interface FormFillerProps {
   /** Sends what the engine says to submit: visible answers, no calculated values. */
   onSubmit: (
     answers: Record<string, unknown>,
-    extra: { reason?: string },
+    extra: { reason?: string; title?: string },
   ) => Promise<SubmitOutcome>;
   /** Correcting a submitted form: a reason is asked for before it goes. */
   correction?: boolean;
+  /**
+   * The submission's name, offered for editing at the submit step (0076), such
+   * as the form's title or the name it was given before. Left out (the
+   * builder's preview), no name is asked for. Cleared, none is sent and the
+   * name it had stays.
+   */
+  submissionTitle?: string;
   /** Makes the id of a new entry of a repeatable section. A UUID unless a test says otherwise. */
   newEntryId?: () => string;
 }
@@ -93,6 +100,7 @@ export function FormFiller({
   onAnswersChange,
   onSubmit,
   correction = false,
+  submissionTitle,
   newEntryId = randomEntryId,
 }: FormFillerProps) {
   const { t } = useTranslation();
@@ -117,6 +125,7 @@ export function FormFiller({
   const [refused, setRefused] = useState<SubmitOutcome & { ok: false }>();
   const [reason, setReason] = useState('');
   const [reasonMissing, setReasonMissing] = useState(false);
+  const [title, setTitle] = useState(submissionTitle ?? '');
   const summary = useRef<HTMLDivElement>(null);
   const top = useRef<HTMLDivElement>(null);
 
@@ -207,10 +216,10 @@ export function FormFiller({
     setSubmitting(true);
     setRefused(undefined);
     try {
-      const outcome = await onSubmit(
-        toSubmission(form, state, context),
-        correction ? { reason: reason.trim() } : {},
-      );
+      const outcome = await onSubmit(toSubmission(form, state, context), {
+        ...(correction ? { reason: reason.trim() } : {}),
+        ...(submissionTitle === undefined || title.trim() === '' ? {} : { title: title.trim() }),
+      });
       if (!outcome.ok) {
         setRefused(outcome);
         setTimeout(() => summary.current?.focus(), 0);
@@ -411,6 +420,26 @@ export function FormFiller({
                 setPageIndex(visibleIndex === -1 ? 0 : visibleIndex);
               }}
             />
+
+            {submissionTitle === undefined ? null : (
+              <div className="flex flex-col gap-1">
+                <label htmlFor={`${prefix}-title`} className="text-sm font-medium text-content">
+                  {t('fill.review.name')}
+                </label>
+                <p id={`${prefix}-title-hint`} className="text-xs text-content-muted">
+                  {t('fill.review.nameHint')}
+                </p>
+                <input
+                  id={`${prefix}-title`}
+                  type="text"
+                  maxLength={200}
+                  value={title}
+                  aria-describedby={`${prefix}-title-hint`}
+                  onChange={(event) => setTitle(event.target.value)}
+                  className={inputClass}
+                />
+              </div>
+            )}
 
             {correction ? (
               <div className="flex flex-col gap-1">

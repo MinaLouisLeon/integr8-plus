@@ -490,6 +490,60 @@ describe('drafts', () => {
   });
 });
 
+describe('a submission’s own name (0076)', () => {
+  it('is given at the submit step, listed and found, and kept through a correction', async () => {
+    const draft = await start();
+    const first = await submit(tokens.engineer, draft, {
+      answers: { site: 'Nasr City', result: 'pass', pressure: '2.00' },
+      title: '  Villa 12 boiler  ',
+    });
+    expect(first.statusCode, first.body).toBe(200);
+    const detail = json<Detail & { submission: { title: string | null; formTitle: string } }>(
+      first,
+    );
+    expect(detail.submission.title).toBe('Villa 12 boiler');
+    expect(detail.submission.formTitle).toBe('Gas safety check');
+
+    const found = json<{ items: { id: string; title: string | null }[] }>(
+      await api.call(tokens.owner, { method: 'GET', url: `/v1/submissions?q=villa` }),
+    );
+    expect(found.items.map((item) => [item.id, item.title])).toContainEqual([
+      draft.submission.id,
+      'Villa 12 boiler',
+    ]);
+
+    const reopened = await api.call(tokens.owner, {
+      method: 'POST',
+      url: `/v1/submissions/${draft.submission.id}/reopen`,
+      payload: { reason: 'Wrong pressure', expectedRevision: detail.submission.revision },
+    });
+    expect(reopened.statusCode, reopened.body).toBe(200);
+    // A correction that says nothing about the name keeps it.
+    const corrected = await submit(tokens.engineer, json<Detail>(reopened), {
+      answers: { site: 'Nasr City', result: 'pass', pressure: '2.50' },
+      reason: 'Pressure re-read',
+    });
+    expect(corrected.statusCode, corrected.body).toBe(200);
+    expect(json<{ submission: { title: string | null } }>(corrected).submission.title).toBe(
+      'Villa 12 boiler',
+    );
+  });
+
+  it('is null when none is given, and refused when blank or too long', async () => {
+    const plain = await submitted({ site: 'Depot', result: 'pass', pressure: '1.00' });
+    expect((plain.submission as { title?: string | null }).title).toBeNull();
+
+    const draft = await start();
+    for (const title of ['   ', 'x'.repeat(201)]) {
+      const refused = await submit(tokens.engineer, draft, {
+        answers: { site: 'Depot', result: 'pass', pressure: '1.00' },
+        title,
+      });
+      expect(refused.statusCode, refused.body).toBe(422);
+    }
+  });
+});
+
 describe('who may fill and who may see', () => {
   it('lets a viewer read every submission but fill none', async () => {
     const done = await submitted({ result: 'pass' });

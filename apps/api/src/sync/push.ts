@@ -40,6 +40,7 @@ import {
   mayFill,
   resolveToday,
   revalidate,
+  submissionTitleSchema,
   submitLocationSchema,
 } from '../routes/v1/submissions.js';
 import { audit as auditWorkOrder, completionBlockedMessage } from '../routes/v1/work-orders.js';
@@ -152,6 +153,8 @@ export const mutationSchema = z.discriminatedUnion('kind', [
       reason: z.string().trim().min(1).max(2000).optional(),
       /** Where the phone was when the engineer submitted (P13). */
       location: submitLocationSchema.optional(),
+      /** The name the engineer gave it (0076). Older phones send none: the name stays. */
+      title: submissionTitleSchema.optional(),
     }),
     base: z.object({ revision: z.number().int().min(1), answers: answersSchema }),
   }),
@@ -1688,7 +1691,10 @@ async function submit(
       : location.status === 'captured'
         ? { ...location, capturedAt: phoneTime(location.capturedAt).toISOString() }
         : location,
-    { afterClose },
+    {
+      afterClose,
+      ...(mutation.payload.title === undefined ? {} : { title: mutation.payload.title }),
+    },
   );
   if (result.outcome === 'written') {
     return applied(result.submission.revision, false, result.submission.answers);

@@ -16575,6 +16575,7 @@ export interface operations {
                             /** Format: uuid */
                             formId: string;
                             formTitle: string;
+                            title: string | null;
                             /** Format: uuid */
                             formVersionId: string;
                             versionNumber: number | null;
@@ -16693,6 +16694,7 @@ export interface operations {
                             /** Format: uuid */
                             formId: string;
                             formTitle: string;
+                            title: string | null;
                             /** Format: uuid */
                             formVersionId: string;
                             versionNumber: number | null;
@@ -16969,6 +16971,7 @@ export interface operations {
                             /** Format: uuid */
                             formId: string;
                             formTitle: string;
+                            title: string | null;
                             /** Format: uuid */
                             formVersionId: string;
                             versionNumber: number | null;
@@ -17155,6 +17158,7 @@ export interface operations {
                         /** Format: uuid */
                         formId: string;
                         formTitle: string;
+                        title: string | null;
                         /** Format: uuid */
                         formVersionId: string;
                         versionNumber: number | null;
@@ -17262,6 +17266,7 @@ export interface operations {
                     reason?: string;
                     /** Format: date */
                     today?: string;
+                    title?: string;
                 };
             };
         };
@@ -17285,6 +17290,7 @@ export interface operations {
                             /** Format: uuid */
                             formId: string;
                             formTitle: string;
+                            title: string | null;
                             /** Format: uuid */
                             formVersionId: string;
                             versionNumber: number | null;
@@ -17475,6 +17481,7 @@ export interface operations {
                             /** Format: uuid */
                             formId: string;
                             formTitle: string;
+                            title: string | null;
                             /** Format: uuid */
                             formVersionId: string;
                             versionNumber: number | null;
@@ -80936,6 +80943,7 @@ export interface operations {
                                 /** @enum {string} */
                                 status: "denied" | "unavailable";
                             };
+                            title?: string;
                         };
                         base: {
                             revision: number;
