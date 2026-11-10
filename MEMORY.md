@@ -50,6 +50,7 @@ the end of any piece of work that changes one of them, and date each section.
   (Arabic, mostly built) are `IN PROGRESS`; v1.3 (P28–P31) and P33–P35 are `NOT STARTED`,
   though parts exist (see the notes in `plan/README.md`). Modules planned outside the phase
   list are indexed in `plan/README.md` ("Module plans outside the phase list").
+  P37–P39 (v1.4 AI tooling, planned 2026-11-10) are `NOT STARTED`.
 - **P36 self-hosted sign-in** (`plan/v1.0-launch/P36-self-hosted-sign-in.md`): merged into
   `main` in PRs #130 and #135; CI's database job, real Auth included, is green. Auth container in
   `deploy/compose.yml` (`supabase/auth:v2.197.0`, private ports, memory caps), bootstrap's
@@ -241,6 +242,20 @@ the end of any piece of work that changes one of them, and date each section.
   `data-theme` sets `color-scheme`, and the phone's expense date uses `DateField`.
   `cargo check` could not run on this Windows machine (MinGW `windres` fails in the build
   script), so the desktop shell is untested in a real build.
+- **AI tooling stage planned (2026-11-10, plan only, nothing built), as the owner chose it:**
+  `plan/v1.4-ai-tooling/` holds P37 (a live preview window in Forms for AI: the web filler and
+  the printed PDFs on a loopback page that refreshes as the AI edits; still offline), P38 (a
+  developer MCP server run from the repository, `apps/dev-mcp`, signed in from a terminal with a
+  staff account; migration 0077 adds `tenants.is_test`, unchangeable after creation, and a
+  staff-session scope `test_companies` lasting 8 hours that the API confines to test companies,
+  production included; test companies are made by the seeder on the machine, are left out of
+  billing and totals and send no real mail or push) and P39 (change requests captured in Forms
+  for AI as folders, copied into `plan/requests/`, planned in the repository and stopped for the
+  owner's approval). The owner asked for the tooling first; the platform feature that started
+  it, **form actions** (a form creates expense claims and opens a follow-up form; the
+  accountant corrects amounts), waits as `plan/requests/CR-0001-form-actions.md`. Company
+  plugins, hooks and splitting the product into installable modules were discussed and not
+  chosen.
 - **The demo seeder goes through the API**, in-process with Fastify's `inject`, as the
   company's own people (plus a staff impersonation for staff-only setup). Direct inserts
   were rejected: they skip numbering, stock, ledger postings and audit, and produce data
