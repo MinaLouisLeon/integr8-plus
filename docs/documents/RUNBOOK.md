@@ -199,6 +199,18 @@ kind, and stopping, expiry, sharing and deletion work as for any document.
 - **Drafts** are refused (`business_document_draft`): print them from the
   browser.
 
+## View and Download in the desktop app
+
+A Tauri window opens no new windows, so `window.open` and links with
+`target="_blank"` do nothing in it. The desktop app hands every such link (a
+PDF to view or save, a receipt, a mail or WhatsApp address) to the operating
+system through Tauri's opener plugin (`opener:default`: `http(s)`, `mailto:`,
+`tel:`), and the computer's browser shows or saves the file. The shared screens
+take it as `openLink` on their context; a browser tab supplies none and opens
+its own tab, at the click and before the server's link arrives, so pop-up
+blockers let it through (`openPendingLink` in
+`@integr8/form-renderer-dom/screens`).
+
 ## Links, expiry and deletion
 
 - **Stop the link** stops the QR code's page and the website lookup at once.

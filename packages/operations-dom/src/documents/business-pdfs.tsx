@@ -1,3 +1,4 @@
+import { openPendingLink } from '@integr8/form-renderer-dom/screens';
 import { formatDateTime, useTranslation } from '@integr8/i18n';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -51,20 +52,21 @@ export function BusinessPdfPanel({
   className?: string;
 }) {
   const { t } = useTranslation();
-  const { client, locale } = useOperations();
+  const { client, locale, openLink } = useOperations();
   const access = useDocumentAccess();
   const [making, setMaking] = useState(false);
   const [emailing, setEmailing] = useState<string | null>(null);
 
   const list = useBusinessPdfs(kind, recordId, access.enabled);
-  const open = async (documentId: string, disposition: 'inline' | 'attachment') => {
-    const { data } = await client.GET('/v1/business-documents/{documentId}/file', {
-      params: { path: { documentId }, query: { disposition } },
-    });
-    if (data !== undefined) {
-      window.open(data.url, '_blank', 'noopener');
-    }
-  };
+  const open = (documentId: string, disposition: 'inline' | 'attachment') =>
+    openPendingLink(
+      client
+        .GET('/v1/business-documents/{documentId}/file', {
+          params: { path: { documentId }, query: { disposition } },
+        })
+        .then(({ data }) => data?.url),
+      openLink,
+    );
 
   if (!access.enabled || list.data === undefined) {
     // Loading, refused (no permission, module off) or not yet known: nothing to offer.

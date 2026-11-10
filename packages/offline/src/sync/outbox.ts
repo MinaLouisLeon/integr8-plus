@@ -1451,6 +1451,8 @@ export async function recordSubmit(
     reason?: string;
     /** Where the phone was, taken as the engineer submitted (P13). */
     location?: SubmitLocation;
+    /** The submission's own name (0076), shown instead of the form's title. */
+    title?: string;
   },
 ): Promise<string> {
   const { db, clock, random } = context;
@@ -1481,6 +1483,7 @@ export async function recordSubmit(
         filledOn: input.filledOn,
         ...(input.reason === undefined ? {} : { reason: input.reason }),
         ...(input.location === undefined ? {} : { location: input.location }),
+        ...(input.title === undefined ? {} : { title: input.title }),
       },
       base: null,
       waitsFor: { media: [...new Set(mediaIdsIn(input.answers))], mutations: [] },

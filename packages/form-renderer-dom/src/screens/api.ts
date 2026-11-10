@@ -2,6 +2,7 @@ import { ApiRequestError, type Integr8Client, type paths } from '@integr8/api-cl
 import type { MediaReference } from '@integr8/form-engine';
 import { createContext, useContext } from 'react';
 import type { MediaAdapter } from '../media.js';
+import type { LinkOpener } from './open-link.js';
 
 /**
  * What the submission screens need from the app that hosts them.
@@ -30,6 +31,11 @@ export interface ScreensConfig {
   };
   /** Saves a file the person asked for, such as a CSV export. */
   download: (blob: Blob, filename: string) => void;
+  /**
+   * Opens a link outside the app, such as a made PDF to view or save. When not
+   * set, a browser tab. The desktop window sets it: it opens no tabs itself.
+   */
+  openLink?: LinkOpener;
   /**
    * A row's own menu, such as the desktop app's right-click menu. When set,
    * right-clicking a submission row calls it with the same actions the row

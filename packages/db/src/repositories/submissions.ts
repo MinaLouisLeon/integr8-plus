@@ -35,6 +35,8 @@ export interface Submission {
   submitLocation: SubmitLocation | null;
   /** Submitted from a phone after its job had closed, from a draft started before (0061). */
   submittedAfterClose: boolean;
+  /** The name given when it was submitted (0076); null means the form's title. */
+  title: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -101,7 +103,7 @@ export interface SubmissionQuery {
   submittedFrom?: Date;
   /** Exclusive upper bound on `submitted_at`. */
   submittedBefore?: Date;
-  /** Full-text search over every written answer. */
+  /** Full-text search over every written answer, and a part of the submission's name. */
   text?: string;
   /** Filled for this job. */
   workOrderId?: string;
@@ -223,8 +225,12 @@ export class SubmissionsRepository extends TenantScopedRepository {
     reason?: string,
     /** Where the device was. A submit that says nothing clears an earlier one's. */
     location: SubmitLocation | null = null,
-    /** A phone's draft arriving after its job closed (0061); only a draft takes it. */
-    options: { afterClose?: boolean } = {},
+    /**
+     * `afterClose`: a phone's draft arriving after its job closed (0061); only a
+     * draft takes it. `title`: the name given at the submit step (0076); left
+     * out, the name it already has stays.
+     */
+    options: { afterClose?: boolean; title?: string } = {},
   ): Promise<WriteResult> {
     return this.#write(
       submissionId,
@@ -237,6 +243,7 @@ export class SubmissionsRepository extends TenantScopedRepository {
         last_reason: reason ?? null,
         submit_location: location,
         ...(options.afterClose === true ? { submitted_after_close: true } : {}),
+        ...(options.title === undefined ? {} : { title: options.title }),
       },
     );
   }
@@ -265,6 +272,7 @@ export class SubmissionsRepository extends TenantScopedRepository {
       last_reason?: string | null;
       submit_location?: SubmitLocation | null;
       submitted_after_close?: boolean;
+      title?: string;
     },
   ): Promise<WriteResult> {
     const row = await this.db
@@ -365,7 +373,8 @@ export class SubmissionsRepository extends TenantScopedRepository {
     }
     if (query.text !== undefined && query.text.trim() !== '') {
       select = select.where(
-        sql<boolean>`submissions.search @@ websearch_to_tsquery('simple', ${query.text.trim()})`,
+        sql<boolean>`(submissions.search @@ websearch_to_tsquery('simple', ${query.text.trim()})
+          or strpos(lower(coalesce(submissions.title, '')), lower(${query.text.trim()})) > 0)`,
       );
     }
     if (query.workOrderId !== undefined) {
@@ -497,6 +506,7 @@ function toDomain(row: Selectable<SubmissionsTable>): Submission {
     carriedOver: row.carried_over,
     submitLocation: row.submit_location,
     submittedAfterClose: row.submitted_after_close,
+    title: row.title,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

@@ -1,4 +1,4 @@
-import { apiMediaAdapter } from '@integr8/form-renderer-dom/screens';
+import { apiMediaAdapter, openPendingLink } from '@integr8/form-renderer-dom/screens';
 import { useTranslation } from '@integr8/i18n';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
@@ -43,7 +43,7 @@ export function BoughtForJob({
   onRetry: () => void;
 }) {
   const { t } = useTranslation();
-  const { client, locale } = useOperations();
+  const { client, locale, openLink } = useOperations();
   const queries = useQueryClient();
   const unitName = useUnitName();
   const media = useMemo(() => apiMediaAdapter(client), [client]);
@@ -71,14 +71,15 @@ export function BoughtForJob({
       await queries.invalidateQueries({ queryKey: keys.jobCosts(workOrderId) });
     },
   });
-  const open = async (receipt: JobPurchase['receipts'][number]) => {
-    const url = await media.url({
-      mediaId: receipt.fileId,
-      contentType: receipt.contentType,
-      byteSize: receipt.byteSize,
-    });
-    window.open(url, '_blank', 'noopener');
-  };
+  const open = (receipt: JobPurchase['receipts'][number]) =>
+    openPendingLink(
+      media.url({
+        mediaId: receipt.fileId,
+        contentType: receipt.contentType,
+        byteSize: receipt.byteSize,
+      }),
+      openLink,
+    );
 
   if (failed) {
     return <InlineError onRetry={onRetry} />;

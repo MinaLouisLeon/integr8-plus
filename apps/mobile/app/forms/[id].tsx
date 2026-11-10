@@ -234,7 +234,7 @@ function Session({
           onClose={() => {
             void model.flush().finally(() => router.back());
           }}
-          onSubmit={async ({ reason }) => {
+          onSubmit={async ({ reason, title }) => {
             await model.flush();
             const location = await locateThen();
             const context = localData.changeContext();
@@ -246,6 +246,7 @@ function Session({
               answers: model.submission(),
               today,
               reason,
+              title,
               location,
             });
             void localData.sync('change');

@@ -506,7 +506,7 @@ export function SubmissionListScreen({
                             {
                               kind: 'submission',
                               id: item.id,
-                              label: `${item.formTitle} · ${item.submittedBy.name}`,
+                              label: `${item.title ?? item.formTitle} · ${item.submittedBy.name}`,
                             },
                             actionsFor(item),
                             event,
@@ -515,7 +515,10 @@ export function SubmissionListScreen({
                   }
                 >
                   <td className="px-4 py-3 text-content">
-                    {item.formTitle}
+                    {item.title ?? item.formTitle}
+                    {item.title === null ? null : (
+                      <span className="block text-xs text-content-muted">{item.formTitle}</span>
+                    )}
                     {item.versionNumber === null ? null : (
                       <span className="ms-2 text-xs text-content-muted">
                         {t('submissions.list.version', { number: item.versionNumber })}
@@ -546,7 +549,7 @@ export function SubmissionListScreen({
                       type="button"
                       className={buttonClass.secondary}
                       aria-label={t('submissions.list.openNamed', {
-                        form: item.formTitle,
+                        form: item.title ?? item.formTitle,
                         name: item.submittedBy.name,
                       })}
                       onClick={() => navigate(paths.submission(item.id))}

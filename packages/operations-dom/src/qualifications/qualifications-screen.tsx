@@ -1,5 +1,5 @@
 import { QUALIFICATION_WARNING_DAYS_MAX, QUALIFICATION_WARNING_DAYS_MIN } from '@integr8/core';
-import { apiMediaAdapter } from '@integr8/form-renderer-dom/screens';
+import { apiMediaAdapter, openPendingLink } from '@integr8/form-renderer-dom/screens';
 import { useTranslation } from '@integr8/i18n';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, useId, useMemo, useState } from 'react';
@@ -376,7 +376,7 @@ function RecordDialog({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
-  const { client, locale } = useOperations();
+  const { client, locale, openLink } = useOperations();
   const queryClient = useQueryClient();
   const media = useMemo(() => apiMediaAdapter(client), [client]);
   const fileId = useId();
@@ -474,14 +474,15 @@ function RecordDialog({
     },
   });
 
-  const openScan = async (scan: QualificationRecord['attachments'][number]) => {
-    const url = await media.url({
-      mediaId: scan.fileId,
-      contentType: scan.contentType,
-      byteSize: scan.byteSize,
-    });
-    window.open(url, '_blank', 'noopener');
-  };
+  const openScan = (scan: QualificationRecord['attachments'][number]) =>
+    openPendingLink(
+      media.url({
+        mediaId: scan.fileId,
+        contentType: scan.contentType,
+        byteSize: scan.byteSize,
+      }),
+      openLink,
+    );
 
   const submit = (event: FormEvent) => {
     event.preventDefault();

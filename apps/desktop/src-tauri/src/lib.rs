@@ -72,6 +72,9 @@ pub fn run() {
         // private half is never committed; CI reads it from
         // `TAURI_SIGNING_PRIVATE_KEY`.
         .plugin(tauri_plugin_updater::Builder::new().build())
+        // A PDF to view or save, a receipt, a mail or WhatsApp address: handed
+        // to the operating system, because the webview opens no windows itself.
+        .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             keychain_read,
             keychain_write,

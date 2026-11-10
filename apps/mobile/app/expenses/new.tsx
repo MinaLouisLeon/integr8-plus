@@ -4,6 +4,7 @@ import { radii, spacing } from '@integr8/tokens';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { DateField } from '~/components/date-field';
 import { LocalGate } from '~/components/local-gate';
 import {
   BackButton,
@@ -183,12 +184,11 @@ function NewExpense() {
             setSpentOn(yesterday),
           )}
         </View>
-        <Field
+        <DateField
           label={t('mobile.expenses.otherDate')}
           value={spentOn}
-          onChangeText={setSpentOn}
-          autoCorrect={false}
-          keyboardType="numbers-and-punctuation"
+          onChange={setSpentOn}
+          maximum={today}
           error={shown(problems.spentOn)}
         />
       </Section>

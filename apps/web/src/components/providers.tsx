@@ -1,8 +1,9 @@
 'use client';
 
+import { openPickersOnClick } from '@integr8/form-renderer-dom';
 import { createI18n, I18nextProvider, type Locale } from '@integr8/i18n';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 
 /**
  * Everything the tree needs, in one place.
@@ -20,6 +21,8 @@ export interface ProvidersProps {
 
 export function Providers({ locale, children }: ProvidersProps) {
   const [i18n] = useState(() => createI18n({ locale }));
+  // A click anywhere on a date or time box opens its picker, on every page.
+  useEffect(() => openPickersOnClick(), []);
 
   const [queryClient] = useState(
     () =>

@@ -227,6 +227,8 @@ export async function submitForm(
     answers: Record<string, unknown>;
     today: string;
     reason: string | undefined;
+    /** The submission's own name (0076); undefined keeps the one it has. */
+    title?: string | undefined;
     location: SubmitLocation;
   },
 ): Promise<void> {
@@ -235,6 +237,7 @@ export async function submitForm(
     answers: input.answers,
     filledOn: input.today,
     ...(input.reason === undefined ? {} : { reason: input.reason }),
+    ...(input.title === undefined ? {} : { title: input.title }),
     location: input.location,
   });
 }
