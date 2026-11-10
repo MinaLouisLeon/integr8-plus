@@ -174,19 +174,32 @@ export class BillingRepository {
     return row === undefined ? undefined : toSubscription(row);
   }
 
-  /** Every company, for the dashboard and for the platform's own totals. */
+  /**
+   * Every company, for the dashboard and for the platform's own totals. Test
+   * companies (0077) are left out: they are never billed or counted.
+   */
   async list(): Promise<Subscription[]> {
     return (
-      await this.db.selectFrom('subscriptions').selectAll().orderBy('created_at', 'asc').execute()
+      await this.db
+        .selectFrom('subscriptions')
+        .selectAll()
+        .where('tenant_id', 'not in', (qb) =>
+          qb.selectFrom('tenants').select('id').where('is_test', '=', true),
+        )
+        .orderBy('created_at', 'asc')
+        .execute()
     ).map(toSubscription);
   }
 
-  /** Trials that have run out, for the nightly job that ends them. */
+  /** Trials that have run out, for the nightly job that ends them. Never a test company's. */
   async lapsedTrials(now = new Date()): Promise<Subscription[]> {
     return (
       await this.db
         .selectFrom('subscriptions')
         .selectAll()
+        .where('tenant_id', 'not in', (qb) =>
+          qb.selectFrom('tenants').select('id').where('is_test', '=', true),
+        )
         .where('status', '=', 'trialing')
         .where('trial_ends_at', 'is not', null)
         .where('trial_ends_at', '<=', now)
@@ -194,12 +207,15 @@ export class BillingRepository {
     ).map(toSubscription);
   }
 
-  /** Companies in dunning, whether or not their grace has run out yet. */
+  /** Companies in dunning, whether or not their grace has run out yet. Never a test company. */
   async inDunning(): Promise<Subscription[]> {
     return (
       await this.db
         .selectFrom('subscriptions')
         .selectAll()
+        .where('tenant_id', 'not in', (qb) =>
+          qb.selectFrom('tenants').select('id').where('is_test', '=', true),
+        )
         .where('past_due_since', 'is not', null)
         .where('status', '=', 'past_due')
         .orderBy('grace_ends_at', 'asc')

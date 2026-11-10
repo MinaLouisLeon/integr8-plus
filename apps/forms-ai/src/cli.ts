@@ -1,5 +1,5 @@
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { ASSETS } from './assets.js';
+import { ASSETS, assetKey, readAsset } from './assets.js';
 import { createFormsServer } from './mcp/server.js';
 import { runSetup } from './setup/setup.js';
 import { PROGRAM_NAME, VERSION } from './version.js';
@@ -50,6 +50,23 @@ export async function main(argv: readonly string[]): Promise<number> {
       // For the build (scripts/build-sea.mjs): the files the executable must carry.
       process.stdout.write(`${JSON.stringify(ASSETS)}\n`);
       return 0;
+    case '--check-assets': {
+      // For the build: proves the executable carries every asset (the preview
+      // window's page included) by reading each one back out of itself.
+      const missing = ASSETS.filter((source) => {
+        try {
+          return readAsset(source).length === 0;
+        } catch {
+          return true;
+        }
+      });
+      if (missing.length > 0) {
+        process.stderr.write(`Missing: ${missing.map(assetKey).join(', ')}\n`);
+        return 1;
+      }
+      process.stdout.write(`${String(ASSETS.length)} assets\n`);
+      return 0;
+    }
     default:
       process.stderr.write(`Unknown command "${command}".\n\n${HELP}`);
       return 2;

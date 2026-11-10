@@ -319,3 +319,52 @@ describe('enrolling a second factor', () => {
     expect(await services.platform.confirmTotpEnrolment(account.id, code)).toBe(false);
   });
 });
+
+describe('a session limited to test companies (P38)', () => {
+  it('says so, lasts 8 hours from sign-in, and keeps its scope and end when refreshed', async () => {
+    const start = new Date();
+    services.setNow(start);
+    const signedIn = await services.platform.signIn({
+      email: account.email,
+      password: PASSWORD,
+      code: totpCode(secret, start),
+      scope: 'test_companies',
+    });
+    expect(signedIn.scope).toBe('test_companies');
+    expect(signedIn.sessionExpiresAt.getTime()).toBe(start.getTime() + 8 * 60 * 60 * 1000);
+    expect((await services.platform.authenticate(signedIn.accessToken)).scope).toBe(
+      'test_companies',
+    );
+
+    try {
+      // A client refreshes as it goes (a refresh token lasts an hour): every 50
+      // minutes for seven and a half hours. Each keeps the scope and the end.
+      let current = signedIn;
+      for (let step = 1; step <= 9; step += 1) {
+        services.setNow(new Date(start.getTime() + step * 50 * 60 * 1000));
+        current = await services.platform.refresh(current.refreshToken);
+        expect(current.scope).toBe('test_companies');
+        expect(current.sessionExpiresAt.getTime()).toBe(signedIn.sessionExpiresAt.getTime());
+      }
+
+      // Past 8 hours nothing works, however often it was refreshed.
+      services.setNow(new Date(start.getTime() + 8 * 60 * 60 * 1000 + 1000));
+      await expect(services.platform.authenticate(current.accessToken)).rejects.toThrow();
+      await expect(services.platform.refresh(current.refreshToken)).rejects.toThrow(
+        SessionRevokedError,
+      );
+    } finally {
+      services.setNow(new Date());
+    }
+  });
+
+  it('is full when no scope is asked for', async () => {
+    const signedIn = await services.platform.signIn({
+      email: account.email,
+      password: PASSWORD,
+      code: totpCode(secret),
+    });
+    expect(signedIn.scope).toBe('full');
+    expect((await services.platform.authenticate(signedIn.accessToken)).scope).toBe('full');
+  });
+});

@@ -13,6 +13,7 @@ import { platformHealthRoutes } from './health.js';
 import { platformSupportRoutes } from './support.js';
 import { platformTemplatePackageRoutes } from './template-packages.js';
 import { platformTemplateRoutes } from './templates.js';
+import { platformTestCompanyRoutes } from './test-companies.js';
 import { platformWebsiteKeyRoutes } from './website-keys.js';
 
 /**
@@ -28,6 +29,7 @@ export const platformRoutes: AnyRoute[] = [
   ...platformAuthRoutes,
   ...platformCompanyRoutes,
   ...platformImpersonationRoutes,
+  ...platformTestCompanyRoutes,
   ...platformLifecycleRoutes,
   ...platformAuditRoutes,
   ...platformSettingsRoutes,

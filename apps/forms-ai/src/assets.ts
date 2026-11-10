@@ -5,8 +5,8 @@ import { DOCUMENT_FONTS } from '@integr8/document-render';
 
 /**
  * Files the program needs besides its code: pdf.js, which turns a printed
- * PDF into pictures for the AI to look at, and the website's fonts, which a
- * PDF template may print with. In the single executable they are Node SEA
+ * PDF into pictures for the AI to look at, the website's fonts, which a PDF
+ * template may print with, and the preview window's page. In the single executable they are Node SEA
  * assets (`scripts/build-sea.mjs` puts every one of {@link ASSETS} in); run
  * from source they are read from the exact-pinned packages in node_modules.
  */
@@ -26,10 +26,22 @@ export const PDFJS: { library: AssetSource; worker: AssetSource } = {
   worker: { packageName: 'pdfjs-dist', file: 'build/pdf.worker.min.mjs' },
 };
 
+/** This program's own package: files it builds itself, read from its folder. */
+export const OWN_PACKAGE = '@integr8/forms-ai';
+
+/**
+ * The preview window's page (P37): one script and one stylesheet, built by
+ * `scripts/bundle.mjs` into dist/window.
+ */
+export const WINDOW_PAGE: { script: AssetSource; style: AssetSource } = {
+  script: { packageName: OWN_PACKAGE, file: 'dist/window/page.js' },
+  style: { packageName: OWN_PACKAGE, file: 'dist/window/page.css' },
+};
+
 /** Every file the executable must carry, each once. */
 export const ASSETS: readonly AssetSource[] = (() => {
   const all = new Map<string, AssetSource>();
-  for (const source of [PDFJS.library, PDFJS.worker]) {
+  for (const source of [PDFJS.library, PDFJS.worker, WINDOW_PAGE.script, WINDOW_PAGE.style]) {
     all.set(assetKey(source), source);
   }
   for (const font of Object.values(DOCUMENT_FONTS)) {
@@ -43,6 +55,12 @@ export const ASSETS: readonly AssetSource[] = (() => {
 const cache = new Map<string, Uint8Array>();
 
 function fromPackages(key: string): Uint8Array {
+  if (key.startsWith(`${OWN_PACKAGE}/`)) {
+    // src/assets.ts and dist/integr8-forms-ai.cjs are both one folder below the app.
+    return new Uint8Array(
+      readFileSync(new URL(`../${key.slice(OWN_PACKAGE.length + 1)}`, import.meta.url)),
+    );
+  }
   // `import.meta.url` is this file run from source, or the bundle in dist;
   // either way node_modules is found from there.
   const require = createRequire(import.meta.url);

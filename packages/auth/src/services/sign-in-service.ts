@@ -68,6 +68,8 @@ export interface IssuedSignInCode {
   email: string;
   userId: UserId;
   code: string;
+  /** The companies the person may sign in to, so a test company's code is kept, not sent (P38). */
+  tenantIds: string[];
 }
 
 /** A code request, in the shape the attempt log and the per-IP limit read. */
@@ -213,7 +215,12 @@ export class SignInService {
     }
 
     const code = await this.#identity.createSignInCode(email);
-    return { email, userId: identity.userId, code };
+    return {
+      email,
+      userId: identity.userId,
+      code,
+      tenantIds: memberships.map((membership) => membership.tenantId),
+    };
   }
 
   /**

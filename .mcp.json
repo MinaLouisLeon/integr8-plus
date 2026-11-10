@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "integr8-dev": {
+      "type": "stdio",
+      "command": "pnpm",
+      "args": ["--silent", "dev-mcp", "serve"]
+    }
+  }
+}

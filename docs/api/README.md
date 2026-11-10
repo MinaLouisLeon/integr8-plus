@@ -71,6 +71,17 @@ export const inviteMemberRoute = defineRoute({
 Add it to `routes/index.ts` and it is registered, documented, validated,
 authorised and rate-limited. There is no second place to remember.
 
+A `platform` route may also say which staff sessions may call it, with
+`platformScopes` (P38). Left out, only the dashboard's full session may; a
+session limited to test companies (the developer MCP server, signed in with
+`scope: "test_companies"`) is refused with 403 `session_scope`. See
+[`docs/platform/README.md`](../platform/README.md#a-session-limited-to-test-companies-0077-p38).
+
+The OpenAPI document carries who may call each route as `x-integr8-permission`,
+`x-integr8-any-permission`, `x-integr8-feature`, `x-integr8-idempotency`
+(`required` or `honoured`) and `x-integr8-platform-scopes`. Generated clients
+ignore them; the developer MCP server's `get_route` reads them.
+
 ## The error model
 
 Every failure, without exception:

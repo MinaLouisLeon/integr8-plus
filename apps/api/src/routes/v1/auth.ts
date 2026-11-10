@@ -176,6 +176,7 @@ export const requestMagicLinkRoute = defineRoute({
             code: issued.code,
             minutes: SIGN_IN_CODE_MINUTES,
             locale: body.locale ?? 'en',
+            tenantIds: issued.tenantIds,
           });
         }
       })

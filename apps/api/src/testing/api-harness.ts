@@ -54,7 +54,10 @@ export interface ApiHarness {
    * A signed-in super admin, for the platform routes (P15). `manager` makes it
    * one the terminal command would have made, able to add and remove staff.
    */
-  platformAdmin(label?: string, options?: { manager?: boolean }): Promise<PlatformAdmin>;
+  platformAdmin(
+    label?: string,
+    options?: { manager?: boolean; scope?: 'full' | 'test_companies' },
+  ): Promise<PlatformAdmin>;
   /**
    * A token for Integr8 staff acting as `who`, through an audited impersonation
    * grant. This is the only way to hold a staff-only permission such as
@@ -178,7 +181,7 @@ export async function startApi(
    */
   const platformAdmin = async (
     label = 'admin',
-    options: { manager?: boolean } = {},
+    options: { manager?: boolean; scope?: 'full' | 'test_companies' } = {},
   ): Promise<PlatformAdmin> => {
     const email = `${label}.${randomUUID().slice(0, 8)}@platform.integr8.example`;
     const account = await getPlatformDataSource().platformUsers.create({
@@ -200,6 +203,7 @@ export async function startApi(
         email,
         password: PLATFORM_PASSWORD,
         code: totpCode(enrolment.secret),
+        ...(options.scope === undefined ? {} : { scope: options.scope }),
       },
     });
     if (response.statusCode !== 200) {

@@ -111,7 +111,7 @@ describe('the bundled program', () => {
     expect(status.stderr).toBe('');
     expect(status.stdout).toMatch(/Integr8 Forms for AI/u);
     expect(status.stdout).toMatch(/Running from source/u);
-    expect(status.stdout).toMatch(/Server .* answered with 15 tools/u);
+    expect(status.stdout).toMatch(/Server .* answered with 23 tools/u);
     expect(status.stdout).toMatch(/Windsurf\s+not found on this computer/u);
     expect(status.status).toBe(0);
 

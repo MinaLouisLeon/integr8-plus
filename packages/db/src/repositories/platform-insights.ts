@@ -152,6 +152,7 @@ export class PlatformInsightsRepository {
         extract(epoch from (f.submitted_at - s.started_at)) as seconds
       from started s
       join first_form f on f.tenant_id = s.tenant_id
+      join tenants t on t.id = s.tenant_id and not t.is_test
       where s.started_at >= ${input.since}
         and f.submitted_at >= s.started_at
       order by s.started_at desc

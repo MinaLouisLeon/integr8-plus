@@ -10,6 +10,7 @@ import {
   signInCodeEmail,
 } from './messages.js';
 import type { EmailSender } from './sender.js';
+import { isTestCompany, keepTestEmail, onlyTestCompanies } from '../test-companies/outbox.js';
 
 /**
  * Putting a message in the post, without letting the post decide the outcome
@@ -40,6 +41,18 @@ async function post(
   message: Parameters<EmailSender['send']>[0],
   context: Record<string, unknown>,
 ): Promise<Delivery> {
+  // A test company emails nobody (P38): the message is kept in its outbox.
+  const tenantId = typeof context.tenantId === 'string' ? context.tenantId : undefined;
+  if (tenantId !== undefined && (await isTestCompany(tenantId))) {
+    await keepTestEmail(
+      tenantId,
+      message,
+      typeof context.kind === 'string' ? context.kind : undefined,
+    );
+    logger.info('Email kept in the test outbox', { ...context });
+    return { sent: true, problem: null };
+  }
+
   const result = await sender.send(message);
 
   if (result.status === 'sent') {
@@ -124,14 +137,32 @@ export async function deliverInvitation(input: {
  * Like the invitation token, the code reaches exactly one place: this message.
  * It is logged only for the recording sender, where there is no mailbox.
  */
-export function deliverSignInCode(input: {
+export async function deliverSignInCode(input: {
   sender: EmailSender;
   logger: Logger;
   email: string;
   code: string;
   minutes: number;
   locale: EmailLocale;
+  /**
+   * The companies the address belongs to. When every one is a test company
+   * (P38) the code is kept in their outboxes rather than emailed.
+   */
+  tenantIds?: readonly string[];
 }): Promise<Delivery> {
+  if (input.tenantIds !== undefined && (await onlyTestCompanies(input.tenantIds))) {
+    const message = signInCodeEmail({
+      to: input.email,
+      code: input.code,
+      minutes: input.minutes,
+      locale: input.locale,
+    });
+    for (const tenantId of input.tenantIds) {
+      await keepTestEmail(tenantId, message, 'sign_in_code');
+    }
+    input.logger.info('Email kept in the test outbox', { kind: 'sign_in_code' });
+    return { sent: true, problem: null };
+  }
   return post(
     input.sender,
     input.logger,

@@ -44,6 +44,7 @@ import {
   WebsiteKeysRepository,
 } from './repositories/documents.js';
 import { HousekeepingRepository } from './repositories/housekeeping.js';
+import { TestOutboxRepository } from './repositories/test-outbox.js';
 import { LedgerRepository } from './repositories/ledger.js';
 import { LedgerReportsRepository } from './repositories/ledger-reports.js';
 import { MemberGrantsRepository } from './repositories/member-grants.js';
@@ -318,6 +319,8 @@ export interface PlatformDataSource {
   readonly housekeeping: HousekeepingRepository;
   /** The assistant's plan policies, company overrides, help library, budget and usage report (docs/ai; ADR-0001). */
   readonly ai: AiPlatformRepository;
+  /** What test companies would have emailed or pushed (0077). */
+  readonly testOutbox: TestOutboxRepository;
 }
 
 /**
@@ -598,6 +601,7 @@ export function getPlatformDataSource(): PlatformDataSource {
     websiteKeys: new WebsiteKeysRepository(db),
     housekeeping: new HousekeepingRepository(db),
     ai: new AiPlatformRepository(db),
+    testOutbox: new TestOutboxRepository(db),
     jobs: {
       claim: (options) => claimJobs(db, options),
       complete: (jobId, options) => completeJob(db, jobId, options),

@@ -17,6 +17,7 @@
     "openapi": "tsx --env-file-if-exists=.env src/openapi/emit.ts",
     "error-codes": "tsx src/testing/error-codes-cli.ts",
     "demo-company": "tsx --env-file-if-exists=.env src/demo/cli.ts",
+    "dev-mcp-local": "tsx --env-file-if-exists=.env src/demo/local-api.ts",
     "storage": "tsx --env-file-if-exists=.env src/media/storage-cli.ts",
     "test:integration": "vitest run --project integration"
   },

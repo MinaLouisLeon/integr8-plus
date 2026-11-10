@@ -131,6 +131,12 @@ export interface TenantsTable {
    * from the platform dashboard.
    */
   billing_mode: Generated<BillingMode>;
+  /**
+   * A test company (0077): left out of billing and totals, sends no mail or
+   * push, and the only kind a staff session limited to test companies may
+   * reach. Written by the insert; a trigger refuses any later change.
+   */
+  is_test: Generated<boolean>;
 }
 
 export const TENANT_PLANS = ['trial', 'starter', 'standard', 'enterprise'] as const;
@@ -147,6 +153,17 @@ export const PLATFORM_SESSION_REVOCATION_REASONS = [
   'password_changed',
 ] as const;
 export type PlatformSessionRevocationReason = (typeof PLATFORM_SESSION_REVOCATION_REASONS)[number];
+
+/**
+ * What a staff session may reach (0077): `full` is the dashboard;
+ * `test_companies` is the developer MCP server, confined by the API to test
+ * companies and ended 8 hours after sign-in.
+ */
+export const PLATFORM_SESSION_SCOPES = ['full', 'test_companies'] as const;
+export type PlatformSessionScope = (typeof PLATFORM_SESSION_SCOPES)[number];
+
+export const TEST_OUTBOX_CHANNELS = ['email', 'push'] as const;
+export type TestOutboxChannel = (typeof TEST_OUTBOX_CHANNELS)[number];
 
 export const ANNOUNCEMENT_SEVERITIES = ['info', 'warning', 'critical'] as const;
 export type AnnouncementSeverity = (typeof ANNOUNCEMENT_SEVERITIES)[number];
@@ -403,6 +420,8 @@ export interface ImpersonationGrantsTable {
   expires_at: Date;
   ended_at: Date | null;
   ended_reason: ImpersonationEndReason | null;
+  /** Started from a staff session limited to test companies (0077). */
+  from_limited_session: Generated<boolean>;
 }
 
 export interface LoginAttemptsTable {
@@ -709,6 +728,21 @@ export interface SubmissionValuesTable {
 
 /** Where a submission names a file: its answers now, or its history (0068). */
 export type SubmissionFileUseSource = 'answers' | 'history';
+
+/**
+ * Mail and push a test company would have sent (0077), kept 7 days. Written
+ * and read by the API's platform role; the runtime role may read its own.
+ */
+export interface TestOutboxTable {
+  id: Generated<string>;
+  tenant_id: string;
+  channel: TestOutboxChannel;
+  recipient: string;
+  subject: string | null;
+  body: string;
+  details: ColumnType<Record<string, unknown>, Record<string, unknown> | undefined, never>;
+  created_at: CreatedAt;
+}
 
 /** Which files each submission names (0068). Written only by trigger; the runtime role may read it. */
 export interface SubmissionFileUsesTable {
@@ -2905,6 +2939,8 @@ export interface PlatformSessionsTable {
   expires_at: Date;
   revoked_at: Date | null;
   revoked_reason: PlatformSessionRevocationReason | null;
+  /** What the session may reach (0077). */
+  scope: Generated<PlatformSessionScope>;
 }
 
 export interface PlatformRefreshTokensTable {
@@ -3650,6 +3686,7 @@ export interface Database {
   submission_events: SubmissionEventsTable;
   submission_values: SubmissionValuesTable;
   submission_file_uses: SubmissionFileUsesTable;
+  test_outbox: TestOutboxTable;
   tenant_storage: TenantStorageTable;
   upload_intents: UploadIntentsTable;
   files: FilesTable;
@@ -4039,6 +4076,7 @@ const TENANT_SCOPED: Readonly<Record<TenantScopedTable, true>> = {
   submission_events: true,
   submission_values: true,
   submission_file_uses: true,
+  test_outbox: true,
   tenant_storage: true,
   upload_intents: true,
   files: true,

@@ -47,6 +47,7 @@ import {
   wordsFor,
 } from '../notifications/words.js';
 import { nextDueFor } from '../routes/v1/maintenance.js';
+import { sendPushOrKeep } from '../test-companies/outbox.js';
 
 /**
  * The worker's part in P27.
@@ -774,7 +775,7 @@ async function deadlineAlertsFor(
     });
     if (messages.length > 0) {
       try {
-        await options.push.send(messages);
+        await sendPushOrKeep(options.push, tenant.id, messages);
       } catch (error) {
         options.logger.warn('Deadline alert push failed', {
           tenantId: tenant.id,

@@ -77,6 +77,10 @@ export {
 export {
   ANNOUNCEMENT_SEVERITIES,
   PLATFORM_SESSION_REVOCATION_REASONS,
+  PLATFORM_SESSION_SCOPES,
+  type PlatformSessionScope,
+  TEST_OUTBOX_CHANNELS,
+  type TestOutboxChannel,
   BILLING_INTERVALS,
   OVERAGE_POLICIES,
   RECONCILIATION_STATUSES,
@@ -522,6 +526,12 @@ export {
   type HousekeepingReport,
   HousekeepingRepository,
 } from './repositories/housekeeping.js';
+export {
+  type RecordTestOutboxInput,
+  TEST_OUTBOX_RETENTION_DAYS,
+  type TestOutboxEntry,
+  TestOutboxRepository,
+} from './repositories/test-outbox.js';
 export {
   DEFAULT_ETA_SETTINGS,
   EMPTY_ETA_ADDRESS,
