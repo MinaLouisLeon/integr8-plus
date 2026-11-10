@@ -38,6 +38,8 @@ export interface ListAuditEntriesOptions {
   limit?: number;
   /** Returns entries strictly older than this, for keyset pagination. */
   before?: Date;
+  /** Entries at or after this moment (P38: a call's side effects, read back). */
+  since?: Date;
   resourceType?: string;
   resourceId?: string;
 }
@@ -86,6 +88,9 @@ export class AuditLogRepository extends TenantScopedRepository {
 
     if (options.before !== undefined) {
       query = query.where('occurred_at', '<', options.before);
+    }
+    if (options.since !== undefined) {
+      query = query.where('occurred_at', '>=', options.since);
     }
     if (options.resourceType !== undefined) {
       query = query.where('resource_type', '=', options.resourceType);

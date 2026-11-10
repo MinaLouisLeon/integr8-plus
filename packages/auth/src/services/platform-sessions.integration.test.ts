@@ -319,3 +319,45 @@ describe('enrolling a second factor', () => {
     expect(await services.platform.confirmTotpEnrolment(account.id, code)).toBe(false);
   });
 });
+
+describe('a session limited to test companies (P38)', () => {
+  it('says so, lasts 8 hours from sign-in, and keeps its scope and end when refreshed', async () => {
+    const start = new Date();
+    services.setNow(start);
+    const signedIn = await services.platform.signIn({
+      email: account.email,
+      password: PASSWORD,
+      code: totpCode(secret, start),
+      scope: 'test_companies',
+    });
+    expect(signedIn.scope).toBe('test_companies');
+    expect(signedIn.sessionExpiresAt.getTime()).toBe(start.getTime() + 8 * 60 * 60 * 1000);
+    expect((await services.platform.authenticate(signedIn.accessToken)).scope).toBe(
+      'test_companies',
+    );
+
+    // Seven hours in, a refresh keeps the scope and does not move the end.
+    services.setNow(new Date(start.getTime() + 7 * 60 * 60 * 1000));
+    const refreshed = await services.platform.refresh(signedIn.refreshToken);
+    expect(refreshed.scope).toBe('test_companies');
+    expect(refreshed.sessionExpiresAt.getTime()).toBe(signedIn.sessionExpiresAt.getTime());
+
+    // Past 8 hours nothing works, whatever was refreshed.
+    services.setNow(new Date(start.getTime() + 8 * 60 * 60 * 1000 + 1000));
+    await expect(services.platform.authenticate(refreshed.accessToken)).rejects.toThrow();
+    await expect(services.platform.refresh(refreshed.refreshToken)).rejects.toThrow(
+      SessionRevokedError,
+    );
+    services.setNow(new Date());
+  });
+
+  it('is full when no scope is asked for', async () => {
+    const signedIn = await services.platform.signIn({
+      email: account.email,
+      password: PASSWORD,
+      code: totpCode(secret),
+    });
+    expect(signedIn.scope).toBe('full');
+    expect((await services.platform.authenticate(signedIn.accessToken)).scope).toBe('full');
+  });
+});

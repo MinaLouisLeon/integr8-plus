@@ -354,7 +354,7 @@ export class TenantSettingsWriter {
     return { ...settings, tenantId: row.tenant_id, name, slug };
   }
 
-  /** Every live company whose apps the pipeline builds (0022). */
+  /** Every live company whose apps the pipeline builds (0022). Never a test company (0077). */
   async companiesWithApps(): Promise<{ tenantId: string; slug: string; name: string }[]> {
     const rows = await this.db
       .selectFrom('tenant_settings')
@@ -363,6 +363,7 @@ export class TenantSettingsWriter {
       .where('tenant_settings.apps_enabled', '=', true)
       .where('tenants.deleted_at', 'is', null)
       .where('tenants.status', '=', 'active')
+      .where('tenants.is_test', '=', false)
       .orderBy('tenants.slug', 'asc')
       .execute();
     return rows.map((row) => ({ tenantId: row.id, slug: row.slug, name: row.name }));

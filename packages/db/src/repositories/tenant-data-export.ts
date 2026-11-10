@@ -255,6 +255,8 @@ export const NOT_EXPORTED_TABLES: Readonly<
   // Derived from rows that are exported.
   erp_stock_balances: 'Derived from erp_stock_movements, which is exported.',
   erp_stock_lot_balances: 'Derived from erp_stock_movements, which is exported.',
+  test_outbox:
+    "Mail and push a test company would have sent, kept 7 days for the developer tool: never a real company's record.",
   submission_file_uses:
     'Which files each submission names: derived from submissions and submission_events, which are exported.',
   // Integr8's records about the company rather than the company's own.

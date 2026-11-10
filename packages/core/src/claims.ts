@@ -173,14 +173,28 @@ export function toPrincipal(claims: AccessTokenClaims): Principal {
  * `Principal` can be handed one of these by mistake, so a tenant handler cannot
  * be reached by a platform token however the routing is wired.
  */
-export interface PlatformPrincipal {
+export interface PlatformPrincipal extends PlatformTokenPrincipal {
+  /**
+   * What the session may reach (0077, P38): `full` is the dashboard;
+   * `test_companies` is the developer MCP server, which the API lets reach
+   * only the routes opened to it, and only for test companies. Read from the
+   * session row on every request, never from the token.
+   */
+  scope: PlatformSessionScope;
+}
+
+/** What a platform token alone says, before its session is looked up. */
+export interface PlatformTokenPrincipal {
   platformUserId: z.infer<typeof platformUserIdSchema>;
   sessionId: string;
   tokenId: string;
   expiresAt: Date;
 }
 
-export function toPlatformPrincipal(claims: PlatformTokenClaims): PlatformPrincipal {
+export const PLATFORM_SESSION_SCOPES = ['full', 'test_companies'] as const;
+export type PlatformSessionScope = (typeof PLATFORM_SESSION_SCOPES)[number];
+
+export function toPlatformPrincipal(claims: PlatformTokenClaims): PlatformTokenPrincipal {
   return {
     platformUserId: claims.sub,
     sessionId: claims.sid,

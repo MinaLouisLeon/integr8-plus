@@ -3,6 +3,7 @@ import type { Kysely, Selectable } from 'kysely';
 import type {
   Database,
   PlatformSessionRevocationReason,
+  PlatformSessionScope,
   PlatformSessionsTable,
 } from '../schema.js';
 
@@ -27,11 +28,15 @@ export interface PlatformSession {
   expiresAt: Date;
   revokedAt: Date | null;
   revokedReason: PlatformSessionRevocationReason | null;
+  /** What it may reach (0077): the dashboard, or test companies only. */
+  scope: PlatformSessionScope;
 }
 
 export interface CreatePlatformSessionInput {
   platformUserId: PlatformUserId | string;
   expiresAt: Date;
+  /** `full` when absent. */
+  scope?: PlatformSessionScope;
   refreshTokenHash: string;
   refreshExpiresAt: Date;
   userAgent?: string | null;
@@ -62,6 +67,7 @@ export class PlatformSessionsRepository {
         .values({
           platform_user_id: toPlatformUserId(input.platformUserId),
           expires_at: input.expiresAt,
+          scope: input.scope ?? 'full',
           user_agent: input.userAgent ?? null,
           ip_address: input.ipAddress ?? null,
         })
@@ -272,5 +278,6 @@ function toSession(row: Selectable<PlatformSessionsTable>): PlatformSession {
     expiresAt: row.expires_at,
     revokedAt: row.revoked_at,
     revokedReason: row.revoked_reason,
+    scope: row.scope,
   };
 }
