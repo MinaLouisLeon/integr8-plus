@@ -131,9 +131,9 @@ describe('a session limited to test companies', () => {
         url,
         ...(route.method === 'get' || route.method === 'delete' ? {} : { payload: {} }),
       });
-      // A body that does not parse is refused before the session is read;
-      // anything that reaches the session check is refused there.
-      if (response.statusCode === 400) {
+      // A body that fails validation (400 or 422) is refused before the session is
+      // read; anything that reaches the session check is refused there.
+      if (response.statusCode === 400 || response.statusCode === 422) {
         continue;
       }
       expect(response.statusCode, `${route.method} ${route.path}`).toBe(403);
