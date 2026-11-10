@@ -17,6 +17,7 @@ import { deliver } from '../email/deliver.js';
 import { qualificationsUrl } from '../email/links.js';
 import { type ExpiryItem, qualificationExpiryEmail } from '../email/messages.js';
 import type { EmailSender } from '../email/sender.js';
+import { sendPushOrKeep } from '../test-companies/outbox.js';
 import type { Logger } from '../http/logger.js';
 import type { PushMessage, PushSender } from '../push/sender.js';
 import {
@@ -358,7 +359,7 @@ async function send(
     );
     if (messages.length > 0) {
       try {
-        await options.push.send(messages);
+        await sendPushOrKeep(options.push, tenantId, messages);
       } catch (error) {
         options.logger.warn('Qualification expiry push failed', {
           tenantId,

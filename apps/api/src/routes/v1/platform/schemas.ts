@@ -8,6 +8,7 @@ import {
   TENANT_PLANS,
   TENANT_STATUSES,
 } from '@integr8/db';
+import { PLATFORM_SESSION_SCOPES } from '@integr8/core';
 import { z } from 'zod';
 
 /**
@@ -29,6 +30,10 @@ export const platformTokensSchema = z.object({
   refreshToken: z.string(),
   refreshTokenExpiresAt: timestamp,
   sessionId: z.uuid(),
+  /** When the session ends whatever happens (P38): refreshing never moves it. */
+  sessionExpiresAt: timestamp,
+  /** What the session may reach (P38): the dashboard, or test companies only. */
+  scope: z.enum(PLATFORM_SESSION_SCOPES),
 });
 
 export const platformUserSchema = z.object({
@@ -41,6 +46,12 @@ export const platformUserSchema = z.object({
 export const platformMeSchema = platformUserSchema.extend({
   /** Made by the terminal command, so may add and remove staff. */
   canManageStaff: z.boolean(),
+  /** What this session may reach (P38). */
+  scope: z.enum(PLATFORM_SESSION_SCOPES),
+  /** When this session ends whatever happens (P38). */
+  sessionExpiresAt: timestamp,
+  /** Which deployment this is, so the developer tool can ask for care on production. */
+  environment: z.enum(['development', 'test', 'staging', 'production']),
 });
 
 export const platformSignInResponseSchema = z.object({
@@ -77,6 +88,11 @@ export const companySummarySchema = z.object({
   suspendedReason: z.string().nullable(),
   /** Set when a deletion is scheduled; the company is purged after this. */
   deletionScheduledFor: timestamp.nullable(),
+  /**
+   * A test company (0077): made by the demo seeder or with the onboarding
+   * switch; not billed or counted, sends no mail or push. Fixed at creation.
+   */
+  isTest: z.boolean(),
 });
 
 export const companyActivitySchema = z.object({

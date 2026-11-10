@@ -158,6 +158,8 @@ export const apiErrorsEn = {
   deletion_scheduled: 'This company is already scheduled for deletion.',
   deliberate_probe: 'A deliberate error, raised to test reporting.',
   description_required: 'Describe the line: a line without an item needs a description.',
+  developer_reason_required:
+    'The developer tool must say what it is testing: start the reason with “Developer MCP:”.',
   document_expired: "This document's link has been stopped by the company that issued it.",
   document_expiry_past: 'The expiry date has already passed. Choose a later one.',
   document_fields_invalid:
@@ -172,6 +174,10 @@ export const apiErrorsEn = {
   document_link_needs_website:
     'Add the company’s website first: document links may only point to it.',
   document_link_other_site: 'The document link address must be on the company’s own website.',
+  not_a_test_company: 'This is not a test company.',
+  session_scope:
+    'This staff session can reach test companies only, and this is not something it may do.',
+  test_company_no_apps: 'A test company has no phone or desktop apps.',
   unknown_tab: 'One of these is not a tab that can be switched. Reload the page and try again.',
   document_not_ready: 'The PDF is not ready yet. Wait a moment and try again.',
   document_template_archived: 'This template is archived. Choose another one.',

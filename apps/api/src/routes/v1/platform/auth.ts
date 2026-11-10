@@ -1,3 +1,4 @@
+import { PLATFORM_SESSION_SCOPES } from '@integr8/core';
 import { getPlatformDataSource } from '@integr8/db';
 import { z } from 'zod';
 import { unauthorised } from '../../../http/errors.js';
@@ -34,6 +35,12 @@ export const platformSignInRoute = defineRoute({
     email: z.string().min(3).max(320),
     password: z.string().min(1).max(200),
     code: z.string().min(6).max(10),
+    /**
+     * `test_companies` for the developer MCP server's terminal login (P38): the
+     * session may reach only test companies, through the few routes opened to
+     * it, and ends 8 hours after sign-in. Absent: a full session, as before.
+     */
+    scope: z.enum(PLATFORM_SESSION_SCOPES).optional(),
   }),
   responses: {
     200: { description: 'Signed in.', schema: platformSignInResponseSchema },
@@ -47,6 +54,7 @@ export const platformSignInRoute = defineRoute({
       code: body.code,
       ipAddress: context.ipAddress,
       userAgent: context.userAgent,
+      ...(body.scope === undefined ? {} : { scope: body.scope }),
     });
 
     await recordPlatformAction(context, {
@@ -55,6 +63,7 @@ export const platformSignInRoute = defineRoute({
       action: 'platform.signed_in',
       targetKind: 'platform_session',
       targetId: signedIn.sessionId,
+      metadata: { scope: signedIn.scope },
     });
 
     return {
@@ -100,6 +109,7 @@ export const platformSignOutRoute = defineRoute({
   summary: 'End this platform session',
   tags: ['platform'],
   security: 'platform',
+  platformScopes: ['full', 'test_companies'],
   params: noSchema,
   query: noSchema,
   body: z.object({
@@ -125,6 +135,7 @@ export const platformMeRoute = defineRoute({
   summary: 'Who this platform session belongs to',
   tags: ['platform'],
   security: 'platform',
+  platformScopes: ['full', 'test_companies'],
   params: noSchema,
   query: noSchema,
   body: noSchema,
@@ -132,10 +143,10 @@ export const platformMeRoute = defineRoute({
     200: { description: 'The signed-in super admin.', schema: platformMeSchema },
   },
   handler: async (_input, context) => {
-    const account = await getPlatformDataSource().platformUsers.findById(
-      context.platform.platformUserId,
-    );
-    if (account === undefined) {
+    const platform = getPlatformDataSource();
+    const account = await platform.platformUsers.findById(context.platform.platformUserId);
+    const session = await platform.platformSessions.find(context.platform.sessionId);
+    if (account === undefined || session === undefined) {
       throw unauthorised();
     }
 
@@ -146,6 +157,9 @@ export const platformMeRoute = defineRoute({
         email: account.email,
         displayName: account.displayName,
         canManageStaff: account.canManageStaff,
+        scope: session.scope,
+        sessionExpiresAt: iso(session.expiresAt),
+        environment: context.config.APP_ENV,
       },
     };
   },
@@ -157,6 +171,8 @@ function toTokens(result: {
   refreshToken: string;
   refreshTokenExpiresAt: Date;
   sessionId: string;
+  sessionExpiresAt: Date;
+  scope: z.infer<typeof platformTokensSchema>['scope'];
 }): z.infer<typeof platformTokensSchema> {
   return {
     accessToken: result.accessToken,
@@ -164,6 +180,8 @@ function toTokens(result: {
     refreshToken: result.refreshToken,
     refreshTokenExpiresAt: iso(result.refreshTokenExpiresAt),
     sessionId: result.sessionId,
+    sessionExpiresAt: iso(result.sessionExpiresAt),
+    scope: result.scope,
   };
 }
 

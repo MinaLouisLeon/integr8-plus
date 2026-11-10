@@ -1217,7 +1217,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/ai/actions/{proposalId}": {
@@ -1658,7 +1659,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-idempotency": "required"
       }
     },
     "/v1/ai/actions/{proposalId}/reject": {
@@ -3443,7 +3445,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-idempotency": "required"
       }
     },
     "/v1/ai/shares": {
@@ -3652,7 +3655,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "member.update_role"
       }
     },
     "/v1/ai/shares/{userId}": {
@@ -3839,7 +3843,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "member.update_role"
       }
     },
     "/v1/billing/subscription": {
@@ -4055,7 +4060,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "billing.read"
       }
     },
     "/v1/billing/invoices": {
@@ -4225,7 +4231,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "billing.manage"
       }
     },
     "/v1/billing/checkout": {
@@ -4359,7 +4366,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "billing.manage"
       }
     },
     "/v1/billing/portal": {
@@ -4462,7 +4470,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "billing.manage"
       }
     },
     "/v1/billing/webhook": {
@@ -4692,7 +4701,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "member.invite"
       }
     },
     "/v1/members/{userId}/ai": {
@@ -4893,7 +4903,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "member.update_role"
       }
     },
     "/v1/members/{userId}/role": {
@@ -5101,7 +5112,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "member.update_role"
       }
     },
     "/v1/members/{userId}/status": {
@@ -5309,7 +5321,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "member.suspend"
       }
     },
     "/v1/members/{userId}": {
@@ -5423,7 +5436,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "member.remove"
       }
     },
     "/v1/members/{userId}/grants/{capability}": {
@@ -5614,7 +5628,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "member.update_role"
       },
       "delete": {
         "operationId": "removeMemberGrant",
@@ -5800,7 +5815,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "member.update_role"
       }
     },
     "/v1/signup": {
@@ -6645,7 +6661,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "tenant.update"
       }
     },
     "/v1/settings/website-access": {
@@ -6753,7 +6770,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "website.access.manage"
       },
       "patch": {
         "operationId": "updateWebsiteAccessSettings",
@@ -6876,7 +6894,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "website.access.manage"
       }
     },
     "/v1/plans": {
@@ -7665,7 +7684,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "customer.manage",
+        "x-integr8-idempotency": "honoured"
       },
       "delete": {
         "operationId": "removeDemoData",
@@ -7773,7 +7794,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "customer.manage"
       }
     },
     "/v1/me": {
@@ -8353,7 +8375,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "session.read"
       }
     },
     "/v1/sessions/{sessionId}": {
@@ -8461,7 +8484,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "session.revoke"
       }
     },
     "/v1/members": {
@@ -8653,7 +8677,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "member.read"
       }
     },
     "/v1/members/invitations": {
@@ -8827,7 +8852,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "member.invite",
+        "x-integr8-idempotency": "honoured"
       },
       "get": {
         "operationId": "listInvitations",
@@ -8969,7 +8996,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "invitation.read"
       }
     },
     "/v1/members/invitations/{invitationId}": {
@@ -9076,7 +9104,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "invitation.revoke"
       }
     },
     "/v1/invitations/inspect": {
@@ -9408,7 +9437,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "session.revoke",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/forms": {
@@ -9590,7 +9621,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "form.read"
       },
       "post": {
         "operationId": "createForm",
@@ -9953,7 +9985,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "form.manage",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/forms/{formId}": {
@@ -10286,7 +10320,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "form.read"
       },
       "patch": {
         "operationId": "updateForm",
@@ -10496,7 +10531,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "form.manage"
       }
     },
     "/v1/forms/{formId}/clone": {
@@ -10869,7 +10905,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "form.manage",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/forms/{formId}/draft": {
@@ -11074,7 +11112,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "form.manage"
       }
     },
     "/v1/forms/{formId}/draft/check": {
@@ -11410,7 +11449,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "form.manage"
       }
     },
     "/v1/forms/{formId}/draft/publish": {
@@ -11609,7 +11649,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "form.manage"
       }
     },
     "/v1/forms/{formId}/draft/test-submission": {
@@ -11796,7 +11837,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "form.manage"
       }
     },
     "/v1/forms/{formId}/versions": {
@@ -11979,7 +12021,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "form.read"
       }
     },
     "/v1/forms/{formId}/versions/{versionId}": {
@@ -12164,7 +12207,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "form.read"
       }
     },
     "/v1/form-templates": {
@@ -12314,7 +12358,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "form.read"
       }
     },
     "/v1/form-templates/{key}": {
@@ -12471,7 +12516,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "form.read"
       }
     },
     "/v1/form-templates/{key}/clone": {
@@ -12843,7 +12889,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "form.manage",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/forms/copy-targets": {
@@ -12965,7 +13013,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "form.manage"
       }
     },
     "/v1/forms/{formId}/copy-to-company": {
@@ -13151,7 +13200,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "form.manage",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/forms/{formId}/library-template": {
@@ -13406,7 +13457,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "form.manage",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/forms/{formId}/export": {
@@ -13517,7 +13570,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "form.manage"
       }
     },
     "/v1/forms/import": {
@@ -13775,7 +13829,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "form.manage",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/submissions": {
@@ -14304,7 +14360,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "submission.fill",
+        "x-integr8-idempotency": "honoured"
       },
       "get": {
         "operationId": "listSubmissions",
@@ -14670,7 +14728,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "form.read"
       }
     },
     "/v1/submissions/export": {
@@ -14887,7 +14946,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "form.read"
       }
     },
     "/v1/submissions/{submissionId}": {
@@ -15389,7 +15449,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "form.read"
       }
     },
     "/v1/submissions/{submissionId}/answers": {
@@ -15636,7 +15697,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "form.read"
       }
     },
     "/v1/submissions/{submissionId}/submit": {
@@ -16175,7 +16237,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "form.read"
       }
     },
     "/v1/submissions/{submissionId}/reopen": {
@@ -16707,7 +16770,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "submission.amend"
       }
     },
     "/v1/document-templates": {
@@ -16917,7 +16981,12 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-any-permission": [
+          "document.create",
+          "document.design"
+        ],
+        "x-integr8-feature": "documents"
       },
       "post": {
         "operationId": "createDocumentTemplate",
@@ -17129,7 +17198,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "document.design",
+        "x-integr8-feature": "documents",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/document-templates/{templateId}": {
@@ -17316,7 +17388,12 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-any-permission": [
+          "document.create",
+          "document.design"
+        ],
+        "x-integr8-feature": "documents"
       },
       "patch": {
         "operationId": "updateDocumentTemplate",
@@ -17528,7 +17605,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "document.design",
+        "x-integr8-feature": "documents"
       }
     },
     "/v1/document-templates/{templateId}/archive": {
@@ -17734,7 +17813,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "document.design",
+        "x-integr8-feature": "documents"
       }
     },
     "/v1/document-templates/{templateId}/preview": {
@@ -17871,7 +17952,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "document.design",
+        "x-integr8-feature": "documents"
       }
     },
     "/v1/submissions/{submissionId}/documents": {
@@ -18296,7 +18379,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "document.create",
+        "x-integr8-feature": "documents",
+        "x-integr8-idempotency": "required"
       }
     },
     "/v1/documents": {
@@ -18800,7 +18886,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "document.read",
+        "x-integr8-feature": "documents"
       },
       "post": {
         "operationId": "uploadDocument",
@@ -19276,7 +19364,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "document.upload",
+        "x-integr8-feature": "documents",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/documents/{documentId}": {
@@ -19658,7 +19749,12 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-any-permission": [
+          "document.read",
+          "document.create"
+        ],
+        "x-integr8-feature": "documents"
       },
       "patch": {
         "operationId": "setDocumentExpiry",
@@ -20058,7 +20154,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "document.manage",
+        "x-integr8-feature": "documents"
       },
       "delete": {
         "operationId": "deleteDocument",
@@ -20151,7 +20249,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "document.manage",
+        "x-integr8-feature": "documents"
       }
     },
     "/v1/documents/{documentId}/file": {
@@ -20281,7 +20381,12 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-any-permission": [
+          "document.read",
+          "document.create"
+        ],
+        "x-integr8-feature": "documents"
       }
     },
     "/v1/documents/{documentId}/expire": {
@@ -20681,7 +20786,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "document.manage",
+        "x-integr8-feature": "documents"
       }
     },
     "/v1/documents/{documentId}/share": {
@@ -21081,7 +21188,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "document.upload",
+        "x-integr8-feature": "documents"
       }
     },
     "/v1/documents/{documentId}/fields": {
@@ -21494,7 +21603,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "document.upload",
+        "x-integr8-feature": "documents"
       }
     },
     "/v1/documents/{documentId}/qr-placement": {
@@ -21919,7 +22030,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "document.upload",
+        "x-integr8-feature": "documents"
       }
     },
     "/v1/documents/{documentId}/original": {
@@ -22036,7 +22149,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "document.upload",
+        "x-integr8-feature": "documents"
       }
     },
     "/v1/document-templates/{templateId}/copy": {
@@ -22263,7 +22378,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "document.design",
+        "x-integr8-feature": "documents",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/business-documents": {
@@ -22698,7 +22816,14 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-any-permission": [
+          "sales.read",
+          "finance.read",
+          "purchasing.read",
+          "customer.read"
+        ],
+        "x-integr8-feature": "documents"
       },
       "post": {
         "operationId": "createBusinessDocument",
@@ -23106,7 +23231,16 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-any-permission": [
+          "sales.manage",
+          "finance.manage",
+          "purchasing.manage",
+          "work_order.manage",
+          "work_order.progress"
+        ],
+        "x-integr8-feature": "documents",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/business-documents/{documentId}/file": {
@@ -23236,7 +23370,14 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-any-permission": [
+          "sales.read",
+          "finance.read",
+          "purchasing.read",
+          "customer.read"
+        ],
+        "x-integr8-feature": "documents"
       }
     },
     "/v1/business-documents/{documentId}/email": {
@@ -23383,7 +23524,16 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-any-permission": [
+          "sales.manage",
+          "finance.manage",
+          "purchasing.manage",
+          "work_order.manage",
+          "work_order.progress"
+        ],
+        "x-integr8-feature": "documents",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/public/documents/{code}": {
@@ -24992,7 +25142,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "eta.read",
+        "x-integr8-feature": "e_invoicing"
       },
       "put": {
         "operationId": "saveEtaSettings",
@@ -25471,7 +25623,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "eta.configure",
+        "x-integr8-feature": "e_invoicing"
       }
     },
     "/v1/eta/settings/credentials": {
@@ -25784,7 +25938,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "eta.configure",
+        "x-integr8-feature": "e_invoicing"
       },
       "delete": {
         "operationId": "clearEtaCredentials",
@@ -26082,7 +26238,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "eta.configure",
+        "x-integr8-feature": "e_invoicing"
       }
     },
     "/v1/eta/settings/credentials/check": {
@@ -26177,7 +26335,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "eta.configure",
+        "x-integr8-feature": "e_invoicing"
       }
     },
     "/v1/eta/settings/certificates": {
@@ -26544,7 +26704,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "eta.configure",
+        "x-integr8-feature": "e_invoicing"
       }
     },
     "/v1/eta/codes": {
@@ -26816,7 +26978,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "eta.read",
+        "x-integr8-feature": "e_invoicing"
       }
     },
     "/v1/eta/receivers/{customerId}": {
@@ -27139,7 +27303,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "eta.configure",
+        "x-integr8-feature": "e_invoicing"
       },
       "delete": {
         "operationId": "deleteEtaReceiver",
@@ -27244,7 +27410,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "eta.configure",
+        "x-integr8-feature": "e_invoicing"
       }
     },
     "/v1/eta/item-codes/{itemId}": {
@@ -27398,7 +27566,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "eta.configure",
+        "x-integr8-feature": "e_invoicing"
       },
       "delete": {
         "operationId": "deleteEtaItemCode",
@@ -27503,7 +27673,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "eta.configure",
+        "x-integr8-feature": "e_invoicing"
       }
     },
     "/v1/eta/unit-types": {
@@ -27626,7 +27798,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "eta.configure",
+        "x-integr8-feature": "e_invoicing"
       }
     },
     "/v1/eta/tax-mappings": {
@@ -27783,7 +27957,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "eta.configure",
+        "x-integr8-feature": "e_invoicing"
       }
     },
     "/v1/eta/schemas": {
@@ -27921,7 +28097,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "eta.read",
+        "x-integr8-feature": "e_invoicing"
       }
     },
     "/v1/eta/schemas/available": {
@@ -28063,7 +28241,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "eta.configure",
+        "x-integr8-feature": "e_invoicing"
       }
     },
     "/v1/eta/schemas/fetch": {
@@ -28227,7 +28407,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "eta.configure",
+        "x-integr8-feature": "e_invoicing"
       }
     },
     "/v1/eta/invoices/{invoiceId}": {
@@ -28568,7 +28750,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "eta.read",
+        "x-integr8-feature": "e_invoicing"
       }
     },
     "/v1/eta/invoices/{invoiceId}/prepare": {
@@ -28864,7 +29048,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "eta.prepare",
+        "x-integr8-feature": "e_invoicing",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/eta/documents": {
@@ -29170,7 +29357,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "eta.read",
+        "x-integr8-feature": "e_invoicing"
       }
     },
     "/v1/eta/documents/{documentId}": {
@@ -29604,7 +29793,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "eta.read",
+        "x-integr8-feature": "e_invoicing"
       }
     },
     "/v1/eta/documents/{documentId}/signature-request": {
@@ -30035,7 +30226,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "eta.submit",
+        "x-integr8-feature": "e_invoicing"
       }
     },
     "/v1/eta/signing-requests/{requestId}/cancel": {
@@ -30472,7 +30665,12 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-any-permission": [
+          "eta.submit",
+          "eta.sign"
+        ],
+        "x-integr8-feature": "e_invoicing"
       }
     },
     "/v1/eta/signing-requests": {
@@ -30643,7 +30841,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "eta.sign",
+        "x-integr8-feature": "e_invoicing"
       }
     },
     "/v1/eta/signing-requests/{requestId}/claim": {
@@ -30833,7 +31033,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "eta.sign",
+        "x-integr8-feature": "e_invoicing"
       }
     },
     "/v1/eta/signing-requests/{requestId}/complete": {
@@ -31291,7 +31493,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "eta.sign",
+        "x-integr8-feature": "e_invoicing"
       }
     },
     "/v1/eta/documents/{documentId}/submit": {
@@ -31742,7 +31946,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "eta.submit",
+        "x-integr8-feature": "e_invoicing",
+        "x-integr8-idempotency": "required"
       }
     },
     "/v1/eta/documents/{documentId}/sync": {
@@ -32179,7 +32386,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "eta.submit",
+        "x-integr8-feature": "e_invoicing"
       }
     },
     "/v1/eta/documents/{documentId}/resolve": {
@@ -32661,7 +32870,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "eta.submit",
+        "x-integr8-feature": "e_invoicing"
       }
     },
     "/v1/eta/documents/{documentId}/cancel": {
@@ -33142,7 +33353,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "eta.submit",
+        "x-integr8-feature": "e_invoicing",
+        "x-integr8-idempotency": "required"
       }
     },
     "/v1/eta/documents/{documentId}/pdf": {
@@ -33269,7 +33483,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "eta.read",
+        "x-integr8-feature": "e_invoicing"
       }
     },
     "/v1/eta/availability": {
@@ -33390,7 +33606,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "eta.switch"
       },
       "put": {
         "operationId": "setEtaAvailability",
@@ -33520,7 +33737,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "eta.switch"
       }
     },
     "/v1/media": {
@@ -33713,7 +33931,14 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-any-permission": [
+          "submission.fill",
+          "expense.submit",
+          "inventory.manage",
+          "document.upload"
+        ],
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/media/{mediaId}": {
@@ -33942,6 +34167,12 @@
           {
             "bearerAuth": []
           }
+        ],
+        "x-integr8-any-permission": [
+          "submission.fill",
+          "expense.submit",
+          "inventory.manage",
+          "document.upload"
         ]
       },
       "get": {
@@ -34266,6 +34497,10 @@
           {
             "bearerAuth": []
           }
+        ],
+        "x-integr8-any-permission": [
+          "submission.fill",
+          "expense.submit"
         ]
       }
     },
@@ -34440,6 +34675,12 @@
           {
             "bearerAuth": []
           }
+        ],
+        "x-integr8-any-permission": [
+          "submission.fill",
+          "expense.submit",
+          "inventory.manage",
+          "document.upload"
         ]
       },
       "get": {
@@ -34584,6 +34825,12 @@
           {
             "bearerAuth": []
           }
+        ],
+        "x-integr8-any-permission": [
+          "submission.fill",
+          "expense.submit",
+          "inventory.manage",
+          "document.upload"
         ]
       }
     },
@@ -34736,6 +34983,12 @@
           {
             "bearerAuth": []
           }
+        ],
+        "x-integr8-any-permission": [
+          "submission.fill",
+          "expense.submit",
+          "inventory.manage",
+          "document.upload"
         ]
       }
     },
@@ -34895,6 +35148,10 @@
           {
             "bearerAuth": []
           }
+        ],
+        "x-integr8-any-permission": [
+          "submission.fill",
+          "expense.submit"
         ]
       }
     },
@@ -35149,7 +35406,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "storage.read"
       }
     },
     "/v1/customers": {
@@ -35432,7 +35690,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "customer.read"
       },
       "post": {
         "operationId": "createCustomer",
@@ -35733,7 +35992,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "customer.manage",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/customer-tags": {
@@ -35846,7 +36107,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "customer.read"
       }
     },
     "/v1/customers/{customerId}": {
@@ -36669,7 +36931,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "customer.read"
       },
       "patch": {
         "operationId": "updateCustomer",
@@ -36967,7 +37230,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "customer.manage"
       }
     },
     "/v1/customers/{customerId}/contacts": {
@@ -37187,7 +37451,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "customer.manage",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/customers/{customerId}/contacts/{contactId}": {
@@ -37400,7 +37666,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "customer.manage"
       }
     },
     "/v1/sites": {
@@ -37735,7 +38002,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "customer.read"
       }
     },
     "/v1/customers/{customerId}/sites": {
@@ -38140,7 +38408,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "customer.manage",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/sites/{siteId}": {
@@ -38945,7 +39215,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "customer.read"
       },
       "patch": {
         "operationId": "updateSite",
@@ -39331,7 +39602,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "customer.manage"
       }
     },
     "/v1/sites/{siteId}/access": {
@@ -39638,7 +39910,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "customer.read"
       }
     },
     "/v1/attachments": {
@@ -39949,7 +40222,13 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-any-permission": [
+          "customer.read",
+          "expense.submit",
+          "qualification.manage"
+        ],
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/attachments/{attachmentId}": {
@@ -40047,6 +40326,11 @@
           {
             "bearerAuth": []
           }
+        ],
+        "x-integr8-any-permission": [
+          "customer.read",
+          "expense.submit",
+          "qualification.manage"
         ]
       }
     },
@@ -40417,7 +40701,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "crm.read",
+        "x-integr8-feature": "crm"
       },
       "post": {
         "operationId": "createLead",
@@ -40730,7 +41016,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "crm.lead.manage",
+        "x-integr8-feature": "crm",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/crm/leads/{leadId}": {
@@ -40988,7 +41277,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "crm.read",
+        "x-integr8-feature": "crm"
       },
       "patch": {
         "operationId": "updateLead",
@@ -41307,7 +41598,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "crm.lead.manage",
+        "x-integr8-feature": "crm"
       }
     },
     "/v1/crm/leads/{leadId}/matches": {
@@ -41540,7 +41833,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "crm.lead.convert",
+        "x-integr8-feature": "crm"
       }
     },
     "/v1/crm/leads/{leadId}/convert": {
@@ -42036,7 +42331,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "crm.lead.convert",
+        "x-integr8-feature": "crm",
+        "x-integr8-idempotency": "required"
       }
     },
     "/v1/customers/{customerId}/crm": {
@@ -42669,7 +42967,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "crm.read",
+        "x-integr8-feature": "crm"
       }
     },
     "/v1/crm/pipelines": {
@@ -42838,7 +43138,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "crm.read",
+        "x-integr8-feature": "crm"
       },
       "post": {
         "operationId": "createPipeline",
@@ -43052,7 +43354,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "crm.pipeline.manage",
+        "x-integr8-feature": "crm",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/crm/opportunities": {
@@ -43477,7 +43782,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "crm.read",
+        "x-integr8-feature": "crm"
       },
       "post": {
         "operationId": "createOpportunity",
@@ -43841,7 +44148,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "crm.opportunity.manage",
+        "x-integr8-feature": "crm",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/crm/opportunities/{opportunityId}": {
@@ -44366,7 +44676,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "crm.read",
+        "x-integr8-feature": "crm"
       },
       "patch": {
         "operationId": "updateOpportunity",
@@ -44728,7 +45040,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "crm.opportunity.manage",
+        "x-integr8-feature": "crm"
       }
     },
     "/v1/crm/opportunities/{opportunityId}/transitions": {
@@ -45282,7 +45596,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "crm.opportunity.manage",
+        "x-integr8-feature": "crm"
       }
     },
     "/v1/crm/pipelines/{pipelineId}": {
@@ -45478,7 +45794,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "crm.read",
+        "x-integr8-feature": "crm"
       },
       "patch": {
         "operationId": "updatePipeline",
@@ -45698,7 +46016,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "crm.pipeline.manage",
+        "x-integr8-feature": "crm"
       },
       "delete": {
         "operationId": "archivePipeline",
@@ -45794,7 +46114,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "crm.pipeline.manage",
+        "x-integr8-feature": "crm"
       }
     },
     "/v1/crm/pipelines/{pipelineId}/stages": {
@@ -46045,7 +46367,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "crm.pipeline.manage",
+        "x-integr8-feature": "crm",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/crm/pipelines/{pipelineId}/stages/{stageId}": {
@@ -46285,7 +46610,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "crm.pipeline.manage",
+        "x-integr8-feature": "crm"
       }
     },
     "/v1/crm/pipelines/{pipelineId}/stages/order": {
@@ -46500,7 +46827,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "crm.pipeline.manage",
+        "x-integr8-feature": "crm"
       }
     },
     "/v1/crm/pipelines/{pipelineId}/stages/{stageId}/archive": {
@@ -46735,7 +47064,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "crm.pipeline.manage",
+        "x-integr8-feature": "crm"
       }
     },
     "/v1/customers/{customerId}/timeline": {
@@ -46976,7 +47307,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "customer.read"
       }
     },
     "/v1/analytics/quotes": {
@@ -47146,7 +47478,12 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-any-permission": [
+          "sales.read",
+          "crm.read"
+        ],
+        "x-integr8-feature": "sales"
       }
     },
     "/v1/analytics/pipeline": {
@@ -47319,7 +47656,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "crm.read",
+        "x-integr8-feature": "crm"
       }
     },
     "/v1/analytics/pipelines/{pipelineId}/stage-values": {
@@ -47501,7 +47840,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "crm.read",
+        "x-integr8-feature": "crm"
       }
     },
     "/v1/analytics/parts-usage": {
@@ -47669,7 +48010,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "inventory.read",
+        "x-integr8-feature": "inventory"
       }
     },
     "/v1/analytics/parts-usage.csv": {
@@ -47792,7 +48135,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "inventory.move",
+        "x-integr8-feature": "inventory"
       }
     },
     "/v1/crm/leads.csv": {
@@ -47979,7 +48324,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "crm.lead.manage",
+        "x-integr8-feature": "crm"
       }
     },
     "/v1/crm/opportunities.csv": {
@@ -48139,7 +48486,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "crm.opportunity.manage",
+        "x-integr8-feature": "crm"
       }
     },
     "/v1/inventory/movements.csv": {
@@ -48313,7 +48662,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "inventory.move",
+        "x-integr8-feature": "inventory"
       }
     },
     "/v1/roles/catalogue": {
@@ -48611,7 +48962,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "member.read"
       }
     },
     "/v1/roles": {
@@ -49067,7 +49419,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "member.read"
       },
       "post": {
         "operationId": "createCompanyRole",
@@ -49712,7 +50065,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "role.manage",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/roles/{roleId}": {
@@ -50356,7 +50711,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "role.manage"
       }
     },
     "/v1/roles/{roleId}/archive": {
@@ -50811,7 +51167,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "role.manage"
       }
     },
     "/v1/inventory/items/{itemId}/media": {
@@ -51003,7 +51360,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "inventory.read",
+        "x-integr8-feature": "inventory"
       },
       "post": {
         "operationId": "addItemMedia",
@@ -51235,7 +51594,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "inventory.manage",
+        "x-integr8-feature": "inventory",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/inventory/items/{itemId}/media/{attachmentId}/main": {
@@ -51429,7 +51791,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "inventory.manage",
+        "x-integr8-feature": "inventory"
       }
     },
     "/v1/inventory/items/{itemId}/media/{attachmentId}": {
@@ -51634,7 +51998,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "inventory.manage",
+        "x-integr8-feature": "inventory"
       }
     },
     "/v1/purchasing/prices": {
@@ -51856,7 +52222,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "purchasing.read",
+        "x-integr8-feature": "purchasing"
       }
     },
     "/v1/purchasing/suppliers/{supplierId}/prices": {
@@ -52127,7 +52495,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "purchasing.manage",
+        "x-integr8-feature": "purchasing",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/purchasing/prices/{priceId}": {
@@ -52382,7 +52753,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "purchasing.manage",
+        "x-integr8-feature": "purchasing"
       },
       "delete": {
         "operationId": "removeSupplierPrice",
@@ -52475,7 +52848,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "purchasing.manage",
+        "x-integr8-feature": "purchasing"
       }
     },
     "/v1/inventory/locations/{locationId}/reorder": {
@@ -52712,7 +53087,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "purchasing.manage",
+        "x-integr8-feature": "purchasing"
       },
       "post": {
         "operationId": "draftReorderOrders",
@@ -52902,7 +53279,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "purchasing.manage",
+        "x-integr8-feature": "purchasing",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/sales/orders/{orderId}/deliveries": {
@@ -54024,7 +54404,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "sales.manage",
+        "x-integr8-feature": "sales",
+        "x-integr8-idempotency": "honoured"
       },
       "get": {
         "operationId": "listSalesOrderDeliveries",
@@ -54274,7 +54657,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "sales.read",
+        "x-integr8-feature": "sales"
       }
     },
     "/v1/sales/deliveries/{deliveryId}": {
@@ -54684,7 +55069,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "sales.read",
+        "x-integr8-feature": "sales"
       }
     },
     "/v1/inventory/van-requests": {
@@ -55087,7 +55474,12 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-any-permission": [
+          "inventory.consume",
+          "inventory.move"
+        ],
+        "x-integr8-feature": "inventory"
       },
       "post": {
         "operationId": "createVanRequest",
@@ -55490,7 +55882,13 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-any-permission": [
+          "inventory.consume",
+          "inventory.move"
+        ],
+        "x-integr8-feature": "inventory",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/inventory/van-requests/proposal": {
@@ -55703,7 +56101,12 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-any-permission": [
+          "inventory.consume",
+          "inventory.move"
+        ],
+        "x-integr8-feature": "inventory"
       }
     },
     "/v1/inventory/van-requests/{requestId}": {
@@ -56056,7 +56459,12 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-any-permission": [
+          "inventory.consume",
+          "inventory.move"
+        ],
+        "x-integr8-feature": "inventory"
       }
     },
     "/v1/inventory/van-requests/{requestId}/pick": {
@@ -56484,7 +56892,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "inventory.move",
+        "x-integr8-feature": "inventory"
       }
     },
     "/v1/inventory/van-requests/{requestId}/cancel": {
@@ -56854,7 +57264,12 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-any-permission": [
+          "inventory.consume",
+          "inventory.move"
+        ],
+        "x-integr8-feature": "inventory"
       }
     },
     "/v1/work-orders/{workOrderId}/purchases": {
@@ -57187,7 +57602,12 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-any-permission": [
+          "inventory.consume",
+          "inventory.read"
+        ],
+        "x-integr8-feature": "inventory"
       },
       "post": {
         "operationId": "recordWorkOrderPurchase",
@@ -57564,7 +57984,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "inventory.consume",
+        "x-integr8-feature": "inventory"
       }
     },
     "/v1/work-orders/{workOrderId}/purchases/{purchaseId}/receipts": {
@@ -57941,7 +58363,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "inventory.consume",
+        "x-integr8-feature": "inventory"
       }
     },
     "/v1/work-orders/{workOrderId}/purchases/{purchaseId}/cancel": {
@@ -58280,7 +58704,12 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-any-permission": [
+          "inventory.consume",
+          "inventory.move"
+        ],
+        "x-integr8-feature": "inventory"
       }
     },
     "/v1/crm/activities": {
@@ -58682,7 +59111,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "crm.read",
+        "x-integr8-feature": "crm"
       },
       "post": {
         "operationId": "createActivity",
@@ -59033,7 +59464,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "crm.activity.manage",
+        "x-integr8-feature": "crm",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/crm/activities/{activityId}": {
@@ -59352,7 +59786,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "crm.activity.manage",
+        "x-integr8-feature": "crm"
       }
     },
     "/v1/crm/dashboard": {
@@ -59713,7 +60149,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "crm.read",
+        "x-integr8-feature": "crm"
       }
     },
     "/v1/inventory/categories": {
@@ -59844,7 +60282,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "inventory.read",
+        "x-integr8-feature": "inventory"
       },
       "post": {
         "operationId": "createItemCategory",
@@ -59970,7 +60410,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "inventory.manage",
+        "x-integr8-feature": "inventory"
       }
     },
     "/v1/inventory/categories/{categoryId}": {
@@ -60114,7 +60556,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "inventory.manage",
+        "x-integr8-feature": "inventory"
       }
     },
     "/v1/inventory/items": {
@@ -60436,7 +60880,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "inventory.read",
+        "x-integr8-feature": "inventory"
       },
       "post": {
         "operationId": "createItem",
@@ -60766,7 +61212,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "inventory.manage",
+        "x-integr8-feature": "inventory",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/inventory/items/{itemId}": {
@@ -61135,7 +61584,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "inventory.read",
+        "x-integr8-feature": "inventory"
       },
       "patch": {
         "operationId": "updateItem",
@@ -61474,7 +61925,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "inventory.manage",
+        "x-integr8-feature": "inventory"
       }
     },
     "/v1/inventory/items/{itemId}/reorder-levels": {
@@ -61874,7 +62327,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "inventory.manage",
+        "x-integr8-feature": "inventory"
       }
     },
     "/v1/inventory/lookup": {
@@ -62108,7 +62563,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "inventory.read",
+        "x-integr8-feature": "inventory"
       }
     },
     "/v1/inventory/locations": {
@@ -62327,7 +62784,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "inventory.read",
+        "x-integr8-feature": "inventory"
       },
       "post": {
         "operationId": "createStockLocation",
@@ -62541,7 +63000,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "inventory.manage",
+        "x-integr8-feature": "inventory"
       }
     },
     "/v1/inventory/locations/{locationId}": {
@@ -62834,7 +63295,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "inventory.read",
+        "x-integr8-feature": "inventory"
       },
       "patch": {
         "operationId": "updateStockLocation",
@@ -63054,7 +63517,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "inventory.manage",
+        "x-integr8-feature": "inventory"
       }
     },
     "/v1/inventory/movements": {
@@ -63393,7 +63858,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "inventory.read",
+        "x-integr8-feature": "inventory"
       },
       "post": {
         "operationId": "postStockMovement",
@@ -63966,7 +64433,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "inventory.move",
+        "x-integr8-feature": "inventory",
+        "x-integr8-idempotency": "required"
       }
     },
     "/v1/inventory/balances": {
@@ -64209,7 +64679,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "inventory.read",
+        "x-integr8-feature": "inventory"
       }
     },
     "/v1/inventory/reconcile": {
@@ -64339,7 +64811,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "inventory.manage",
+        "x-integr8-feature": "inventory"
       }
     },
     "/v1/inventory/counts": {
@@ -64564,7 +65038,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "inventory.read",
+        "x-integr8-feature": "inventory"
       },
       "post": {
         "operationId": "createStockCount",
@@ -64896,7 +65372,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "inventory.move",
+        "x-integr8-feature": "inventory"
       }
     },
     "/v1/inventory/counts/{countId}": {
@@ -65217,7 +65695,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "inventory.read",
+        "x-integr8-feature": "inventory"
       }
     },
     "/v1/inventory/counts/{countId}/lines": {
@@ -65601,7 +66081,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "inventory.move",
+        "x-integr8-feature": "inventory"
       }
     },
     "/v1/inventory/counts/{countId}/post": {
@@ -65947,7 +66429,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "inventory.move",
+        "x-integr8-feature": "inventory"
       }
     },
     "/v1/inventory/counts/{countId}/cancel": {
@@ -66292,7 +66776,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "inventory.move",
+        "x-integr8-feature": "inventory"
       }
     },
     "/v1/inventory/items/{itemId}/tracking": {
@@ -66741,7 +67227,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "inventory.manage",
+        "x-integr8-feature": "inventory",
+        "x-integr8-idempotency": "required"
       }
     },
     "/v1/inventory/items/{itemId}/lots": {
@@ -66927,7 +67416,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "inventory.read",
+        "x-integr8-feature": "inventory"
       }
     },
     "/v1/inventory/lots": {
@@ -67128,7 +67619,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "inventory.read",
+        "x-integr8-feature": "inventory"
       }
     },
     "/v1/inventory/lots/{lotId}": {
@@ -67516,7 +68009,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "inventory.read",
+        "x-integr8-feature": "inventory"
       }
     },
     "/v1/purchasing/suppliers": {
@@ -67795,7 +68290,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "purchasing.read",
+        "x-integr8-feature": "purchasing"
       },
       "post": {
         "operationId": "createSupplier",
@@ -68112,7 +68609,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "purchasing.manage",
+        "x-integr8-feature": "purchasing",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/purchasing/suppliers/{supplierId}": {
@@ -68450,7 +68950,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "purchasing.read",
+        "x-integr8-feature": "purchasing"
       },
       "patch": {
         "operationId": "updateSupplier",
@@ -68777,7 +69279,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "purchasing.manage",
+        "x-integr8-feature": "purchasing"
       }
     },
     "/v1/purchasing/orders": {
@@ -69045,7 +69549,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "purchasing.read",
+        "x-integr8-feature": "purchasing"
       },
       "post": {
         "operationId": "createPurchaseOrder",
@@ -69738,7 +70244,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "purchasing.manage",
+        "x-integr8-feature": "purchasing",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/purchasing/orders/{orderId}": {
@@ -70352,7 +70861,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "purchasing.read",
+        "x-integr8-feature": "purchasing"
       },
       "patch": {
         "operationId": "updatePurchaseOrder",
@@ -71047,7 +71558,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "purchasing.manage",
+        "x-integr8-feature": "purchasing"
       }
     },
     "/v1/purchasing/orders/{orderId}/approve": {
@@ -71678,7 +72191,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "purchasing.approve",
+        "x-integr8-feature": "purchasing"
       }
     },
     "/v1/purchasing/orders/{orderId}/cancel": {
@@ -72321,7 +72836,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "purchasing.manage",
+        "x-integr8-feature": "purchasing"
       }
     },
     "/v1/purchasing/orders/{orderId}/receipts": {
@@ -73044,7 +73561,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "purchasing.manage",
+        "x-integr8-feature": "purchasing",
+        "x-integr8-idempotency": "required"
       }
     },
     "/v1/purchasing/receipts/{receiptId}/returns": {
@@ -73747,7 +74267,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "purchasing.manage",
+        "x-integr8-feature": "purchasing",
+        "x-integr8-idempotency": "required"
       }
     },
     "/v1/work-orders/{workOrderId}/materials": {
@@ -76067,7 +76590,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "inventory.consume",
+        "x-integr8-feature": "inventory",
+        "x-integr8-idempotency": "required"
       }
     },
     "/v1/work-orders/{workOrderId}/materials/{materialId}/resolve": {
@@ -78401,7 +78927,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "inventory.consume",
+        "x-integr8-feature": "inventory"
       }
     },
     "/v1/work-orders/{workOrderId}/materials/{materialId}/return": {
@@ -80724,7 +81252,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "inventory.consume",
+        "x-integr8-feature": "inventory",
+        "x-integr8-idempotency": "required"
       }
     },
     "/v1/inventory/materials/conflicts": {
@@ -81090,7 +81621,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "inventory.move",
+        "x-integr8-feature": "inventory"
       }
     },
     "/v1/sales/quotes": {
@@ -81392,7 +81925,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "sales.read",
+        "x-integr8-feature": "sales"
       },
       "post": {
         "operationId": "createQuote",
@@ -82172,7 +82707,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "sales.manage",
+        "x-integr8-feature": "sales",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/sales/quotes/{quoteId}": {
@@ -82822,7 +83360,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "sales.read",
+        "x-integr8-feature": "sales"
       },
       "patch": {
         "operationId": "updateQuote",
@@ -83603,7 +84143,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "sales.manage",
+        "x-integr8-feature": "sales"
       }
     },
     "/v1/sales/quotes/{quoteId}/issue": {
@@ -84279,7 +84821,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "sales.issue",
+        "x-integr8-feature": "sales"
       }
     },
     "/v1/sales/quotes/{quoteId}/revise": {
@@ -84953,7 +85497,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "sales.manage",
+        "x-integr8-feature": "sales"
       }
     },
     "/v1/sales/quotes/{quoteId}/answer": {
@@ -85645,7 +86191,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "sales.manage",
+        "x-integr8-feature": "sales"
       }
     },
     "/v1/sales/quotes/{quoteId}/cancel": {
@@ -86324,7 +86872,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "sales.manage",
+        "x-integr8-feature": "sales"
       }
     },
     "/v1/sales/orders": {
@@ -86620,7 +87170,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "sales.read",
+        "x-integr8-feature": "sales"
       },
       "post": {
         "operationId": "createSalesOrder",
@@ -87611,7 +88163,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "sales.manage",
+        "x-integr8-feature": "sales",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/sales/quotes/{quoteId}/convert": {
@@ -88512,7 +89067,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "sales.manage",
+        "x-integr8-feature": "sales"
       }
     },
     "/v1/sales/orders/{orderId}": {
@@ -89389,7 +89946,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "sales.read",
+        "x-integr8-feature": "sales"
       },
       "patch": {
         "operationId": "updateSalesOrder",
@@ -90372,7 +90931,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "sales.manage",
+        "x-integr8-feature": "sales"
       }
     },
     "/v1/sales/orders/{orderId}/confirm": {
@@ -91272,7 +91833,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "sales.issue",
+        "x-integr8-feature": "sales"
       }
     },
     "/v1/sales/orders/{orderId}/reserve": {
@@ -92171,7 +92734,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "sales.manage",
+        "x-integr8-feature": "sales"
       }
     },
     "/v1/sales/orders/{orderId}/cancel": {
@@ -93069,7 +93634,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "sales.manage",
+        "x-integr8-feature": "sales"
       }
     },
     "/v1/sales/orders/{orderId}/work-orders": {
@@ -94056,7 +94623,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "sales.manage",
+        "x-integr8-feature": "sales",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/sales/orders/{orderId}/work-orders/{workOrderId}": {
@@ -94944,7 +95514,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "sales.manage",
+        "x-integr8-feature": "sales"
       }
     },
     "/v1/sales/to-order": {
@@ -95178,7 +95750,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "sales.read",
+        "x-integr8-feature": "sales"
       }
     },
     "/v1/public/quotes/{token}": {
@@ -96109,7 +96683,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "finance.read",
+        "x-integr8-feature": "finance"
       },
       "put": {
         "operationId": "saveFinanceSettings",
@@ -96326,7 +96902,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "finance.issue",
+        "x-integr8-feature": "finance"
       }
     },
     "/v1/finance/invoices": {
@@ -96688,7 +97266,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "finance.read",
+        "x-integr8-feature": "finance"
       },
       "post": {
         "operationId": "createCustomerInvoice",
@@ -97614,7 +98194,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "finance.manage",
+        "x-integr8-feature": "finance",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/finance/invoices/from-order": {
@@ -98451,7 +99034,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "finance.manage",
+        "x-integr8-feature": "finance",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/finance/invoices/from-job": {
@@ -99280,7 +99866,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "finance.manage",
+        "x-integr8-feature": "finance",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/finance/invoices/{invoiceId}": {
@@ -100092,7 +100681,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "finance.read",
+        "x-integr8-feature": "finance"
       },
       "patch": {
         "operationId": "updateCustomerInvoice",
@@ -101023,7 +101614,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "finance.manage",
+        "x-integr8-feature": "finance"
       }
     },
     "/v1/finance/invoices/{invoiceId}/discard": {
@@ -101141,7 +101734,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "finance.manage",
+        "x-integr8-feature": "finance"
       }
     },
     "/v1/finance/invoices/{invoiceId}/issue": {
@@ -101975,7 +102570,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "finance.issue",
+        "x-integr8-feature": "finance"
       }
     },
     "/v1/finance/invoices/{invoiceId}/void": {
@@ -102817,7 +103414,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "finance.issue",
+        "x-integr8-feature": "finance"
       }
     },
     "/v1/finance/invoices/{invoiceId}/credit-notes": {
@@ -103464,7 +104063,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "finance.manage",
+        "x-integr8-feature": "finance",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/finance/credit-notes": {
@@ -103729,7 +104331,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "finance.read",
+        "x-integr8-feature": "finance"
       }
     },
     "/v1/finance/credit-notes/{creditNoteId}": {
@@ -104272,7 +104876,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "finance.read",
+        "x-integr8-feature": "finance"
       },
       "patch": {
         "operationId": "updateCreditNote",
@@ -104906,7 +105512,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "finance.manage",
+        "x-integr8-feature": "finance"
       }
     },
     "/v1/finance/credit-notes/{creditNoteId}/discard": {
@@ -105023,7 +105631,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "finance.manage",
+        "x-integr8-feature": "finance"
       }
     },
     "/v1/finance/credit-notes/{creditNoteId}/issue": {
@@ -105583,7 +106193,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "finance.issue",
+        "x-integr8-feature": "finance"
       }
     },
     "/v1/finance/payments": {
@@ -105820,7 +106432,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "finance.read",
+        "x-integr8-feature": "finance"
       },
       "post": {
         "operationId": "recordCustomerPayment",
@@ -106455,7 +107069,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "finance.issue",
+        "x-integr8-feature": "finance",
+        "x-integr8-idempotency": "required"
       }
     },
     "/v1/finance/payments/{receiptId}": {
@@ -107008,7 +107625,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "finance.read",
+        "x-integr8-feature": "finance"
       }
     },
     "/v1/finance/payments/{receiptId}/allocations": {
@@ -107583,7 +108202,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "finance.issue",
+        "x-integr8-feature": "finance"
       }
     },
     "/v1/finance/payments/{receiptId}/allocations/{allocationId}/remove": {
@@ -108150,7 +108771,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "finance.issue",
+        "x-integr8-feature": "finance"
       }
     },
     "/v1/finance/payments/{receiptId}/reverse": {
@@ -108737,7 +109360,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "finance.issue",
+        "x-integr8-feature": "finance",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/finance/customers/{customerId}/account": {
@@ -109104,7 +109730,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "finance.read",
+        "x-integr8-feature": "finance"
       }
     },
     "/v1/finance/work-orders/{workOrderId}/costs": {
@@ -109308,7 +109936,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "finance.read",
+        "x-integr8-feature": "finance"
       }
     },
     "/v1/assets/settings": {
@@ -109424,7 +110054,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "asset.read",
+        "x-integr8-feature": "assets"
       },
       "put": {
         "operationId": "saveAssetSettings",
@@ -109568,7 +110200,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "asset.manage",
+        "x-integr8-feature": "assets"
       }
     },
     "/v1/assets/by-tag/{code}": {
@@ -109685,7 +110319,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "asset.read",
+        "x-integr8-feature": "assets"
       }
     },
     "/v1/assets": {
@@ -110011,7 +110647,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "asset.read",
+        "x-integr8-feature": "assets"
       },
       "post": {
         "operationId": "createAsset",
@@ -110791,7 +111429,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "asset.record",
+        "x-integr8-feature": "assets",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/assets/{assetId}": {
@@ -111487,7 +112128,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "asset.read",
+        "x-integr8-feature": "assets"
       },
       "patch": {
         "operationId": "updateAsset",
@@ -112246,7 +112889,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "asset.manage",
+        "x-integr8-feature": "assets"
       }
     },
     "/v1/assets/{assetId}/timeline": {
@@ -113241,7 +113886,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "asset.read",
+        "x-integr8-feature": "assets"
       }
     },
     "/v1/assets/{assetId}/relocate": {
@@ -113970,7 +114617,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "asset.manage",
+        "x-integr8-feature": "assets"
       }
     },
     "/v1/assets/{assetId}/status": {
@@ -114697,7 +115346,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "asset.manage",
+        "x-integr8-feature": "assets"
       }
     },
     "/v1/assets/{assetId}/condition": {
@@ -115431,7 +116082,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "asset.record",
+        "x-integr8-feature": "assets"
       }
     },
     "/v1/assets/{assetId}/tag": {
@@ -116151,7 +116804,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "asset.manage",
+        "x-integr8-feature": "assets"
       }
     },
     "/v1/work-orders/{workOrderId}/assets": {
@@ -116550,7 +117205,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "asset.read",
+        "x-integr8-feature": "assets"
       },
       "post": {
         "operationId": "linkWorkOrderAsset",
@@ -116659,7 +117316,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "asset.record",
+        "x-integr8-feature": "assets"
       }
     },
     "/v1/work-orders/{workOrderId}/assets/{assetId}": {
@@ -116763,7 +117422,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "asset.manage",
+        "x-integr8-feature": "assets"
       }
     },
     "/v1/ledger": {
@@ -117027,7 +117688,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "ledger.read",
+        "x-integr8-feature": "ledger"
       }
     },
     "/v1/ledger/setup": {
@@ -117341,7 +118004,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "ledger.manage",
+        "x-integr8-feature": "ledger",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/ledger/settings": {
@@ -117546,7 +118212,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "ledger.manage",
+        "x-integr8-feature": "ledger"
       }
     },
     "/v1/ledger/accounts": {
@@ -117727,7 +118395,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "ledger.read",
+        "x-integr8-feature": "ledger"
       },
       "post": {
         "operationId": "createLedgerAccount",
@@ -117920,7 +118590,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "ledger.manage",
+        "x-integr8-feature": "ledger"
       }
     },
     "/v1/ledger/accounts/{accountId}": {
@@ -118136,7 +118808,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "ledger.manage",
+        "x-integr8-feature": "ledger"
       }
     },
     "/v1/ledger/periods": {
@@ -118372,7 +119046,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "ledger.read",
+        "x-integr8-feature": "ledger"
       }
     },
     "/v1/ledger/periods/{month}/lock": {
@@ -118464,7 +119140,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "ledger.manage",
+        "x-integr8-feature": "ledger"
       }
     },
     "/v1/ledger/periods/{month}/unlock": {
@@ -118579,7 +119257,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "ledger.unlock",
+        "x-integr8-feature": "ledger"
       }
     },
     "/v1/ledger/journals": {
@@ -118935,7 +119615,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "ledger.read",
+        "x-integr8-feature": "ledger"
       },
       "post": {
         "operationId": "createJournal",
@@ -119416,7 +120098,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "ledger.post",
+        "x-integr8-feature": "ledger",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/ledger/journals/{journalId}": {
@@ -119834,7 +120519,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "ledger.read",
+        "x-integr8-feature": "ledger"
       },
       "put": {
         "operationId": "updateJournal",
@@ -120317,7 +121004,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "ledger.post",
+        "x-integr8-feature": "ledger"
       },
       "delete": {
         "operationId": "discardJournal",
@@ -120413,7 +121102,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "ledger.post",
+        "x-integr8-feature": "ledger"
       }
     },
     "/v1/ledger/journals/{journalId}/post": {
@@ -120844,7 +121535,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "ledger.post",
+        "x-integr8-feature": "ledger"
       }
     },
     "/v1/ledger/journals/{journalId}/reverse": {
@@ -121291,7 +121984,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "ledger.post",
+        "x-integr8-feature": "ledger",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/ledger/opening-receivables": {
@@ -121430,7 +122126,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "ledger.post",
+        "x-integr8-feature": "ledger"
       }
     },
     "/v1/ledger/postings": {
@@ -121825,7 +122523,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "ledger.read",
+        "x-integr8-feature": "ledger"
       }
     },
     "/v1/ledger/postings/post-all": {
@@ -122002,7 +122702,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "ledger.post",
+        "x-integr8-feature": "ledger"
       }
     },
     "/v1/ledger/postings/{postingId}": {
@@ -122398,7 +123100,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "ledger.read",
+        "x-integr8-feature": "ledger"
       }
     },
     "/v1/ledger/postings/{postingId}/post": {
@@ -122886,7 +123590,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "ledger.post",
+        "x-integr8-feature": "ledger",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/ledger/postings/{postingId}/skip": {
@@ -123306,7 +124013,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "ledger.post",
+        "x-integr8-feature": "ledger"
       }
     },
     "/v1/ledger/reports/trial-balance": {
@@ -123512,7 +124221,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "ledger.read",
+        "x-integr8-feature": "ledger"
       }
     },
     "/v1/ledger/reports/account-activity": {
@@ -123796,7 +124507,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "ledger.read",
+        "x-integr8-feature": "ledger"
       }
     },
     "/v1/ledger/reports/receivables": {
@@ -124174,7 +124887,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "ledger.read",
+        "x-integr8-feature": "ledger"
       }
     },
     "/v1/ledger/reports/profit-and-loss": {
@@ -124426,7 +125141,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "ledger.read",
+        "x-integr8-feature": "ledger"
       }
     },
     "/v1/ledger/reports/balance-sheet": {
@@ -124740,7 +125457,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "ledger.read",
+        "x-integr8-feature": "ledger"
       }
     },
     "/v1/ledger/years": {
@@ -124994,7 +125713,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "ledger.read",
+        "x-integr8-feature": "ledger"
       }
     },
     "/v1/ledger/years/{yearStart}/close": {
@@ -125426,7 +126147,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "ledger.manage",
+        "x-integr8-feature": "ledger",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/ledger/years/{yearStart}/reopen": {
@@ -125878,7 +126602,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "ledger.unlock",
+        "x-integr8-feature": "ledger",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/hr/employees": {
@@ -126248,7 +126975,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "hr.read",
+        "x-integr8-feature": "hr"
       },
       "post": {
         "operationId": "createEmployee",
@@ -126633,7 +127362,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "hr.manage",
+        "x-integr8-feature": "hr",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/hr/me": {
@@ -126928,7 +127660,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-feature": "hr"
       }
     },
     "/v1/hr/employees/{employeeId}": {
@@ -127235,7 +127968,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-feature": "hr"
       },
       "patch": {
         "operationId": "updateEmployee",
@@ -127640,7 +128374,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "hr.manage",
+        "x-integr8-feature": "hr"
       }
     },
     "/v1/hr/employees/{employeeId}/reveal": {
@@ -127777,7 +128513,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-feature": "hr"
       }
     },
     "/v1/expenses/categories": {
@@ -127921,7 +128658,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "expense.submit",
+        "x-integr8-feature": "hr"
       },
       "post": {
         "operationId": "createExpenseCategory",
@@ -128067,7 +128806,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "expense.approve",
+        "x-integr8-feature": "hr"
       }
     },
     "/v1/expenses/categories/{categoryId}": {
@@ -128237,7 +128978,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "expense.approve",
+        "x-integr8-feature": "hr"
       }
     },
     "/v1/expenses": {
@@ -128625,7 +129368,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "expense.submit",
+        "x-integr8-feature": "hr"
       },
       "post": {
         "operationId": "submitExpenseClaim",
@@ -129076,7 +129821,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "expense.submit",
+        "x-integr8-feature": "hr",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/expenses/{claimId}": {
@@ -129480,7 +130228,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "expense.submit",
+        "x-integr8-feature": "hr"
       }
     },
     "/v1/expenses/{claimId}/withdraw": {
@@ -129907,7 +130657,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "expense.submit",
+        "x-integr8-feature": "hr"
       }
     },
     "/v1/expenses/{claimId}/approve": {
@@ -130336,7 +131088,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "expense.approve",
+        "x-integr8-feature": "hr"
       }
     },
     "/v1/expenses/{claimId}/reject": {
@@ -130769,7 +131523,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "expense.approve",
+        "x-integr8-feature": "hr"
       }
     },
     "/v1/expenses/{claimId}/pay": {
@@ -131211,7 +131967,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "expense.approve",
+        "x-integr8-feature": "hr"
       }
     },
     "/v1/payroll/rule-sets": {
@@ -131639,7 +132397,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "payroll.run",
+        "x-integr8-feature": "payroll"
       },
       "post": {
         "operationId": "createPayrollRuleSet",
@@ -132067,7 +132827,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "payroll.run",
+        "x-integr8-feature": "payroll",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/payroll/rule-sets/{ruleSetId}": {
@@ -132504,7 +133267,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "payroll.run",
+        "x-integr8-feature": "payroll"
       },
       "delete": {
         "operationId": "removePayrollRuleSet",
@@ -132599,7 +133364,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "payroll.run",
+        "x-integr8-feature": "payroll"
       }
     },
     "/v1/payroll/rule-sets/{ruleSetId}/confirm": {
@@ -132924,7 +133691,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "payroll.approve",
+        "x-integr8-feature": "payroll"
       }
     },
     "/v1/hr/employees/{employeeId}/pay-terms": {
@@ -133100,7 +133869,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "payroll.run",
+        "x-integr8-feature": "payroll"
       },
       "post": {
         "operationId": "addPayTerms",
@@ -133335,7 +134106,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "payroll.run",
+        "x-integr8-feature": "payroll",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/payroll/pay-terms/{termsId}": {
@@ -133569,7 +134343,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "payroll.run",
+        "x-integr8-feature": "payroll"
       },
       "delete": {
         "operationId": "removePayTerms",
@@ -133661,7 +134437,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "payroll.run",
+        "x-integr8-feature": "payroll"
       }
     },
     "/v1/payroll/runs": {
@@ -133945,7 +134723,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "payroll.run",
+        "x-integr8-feature": "payroll"
       },
       "post": {
         "operationId": "createPayRun",
@@ -134445,7 +135225,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "payroll.run",
+        "x-integr8-feature": "payroll",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/payroll/runs/{runId}": {
@@ -134934,7 +135717,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "payroll.run",
+        "x-integr8-feature": "payroll"
       },
       "patch": {
         "operationId": "updatePayRun",
@@ -135456,7 +136241,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "payroll.run",
+        "x-integr8-feature": "payroll"
       },
       "delete": {
         "operationId": "discardPayRun",
@@ -135551,7 +136338,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "payroll.run",
+        "x-integr8-feature": "payroll"
       }
     },
     "/v1/payroll/runs/{runId}/recalculate": {
@@ -136058,7 +136847,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "payroll.run",
+        "x-integr8-feature": "payroll"
       }
     },
     "/v1/payroll/runs/{runId}/lines/{lineId}": {
@@ -136609,7 +137400,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "payroll.run",
+        "x-integr8-feature": "payroll"
       }
     },
     "/v1/payroll/runs/{runId}/approve": {
@@ -137123,7 +137916,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "payroll.approve",
+        "x-integr8-feature": "payroll"
       }
     },
     "/v1/payroll/runs/{runId}/payslips": {
@@ -137491,7 +138286,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "payroll.run",
+        "x-integr8-feature": "payroll"
       }
     },
     "/v1/hr/me/payslips": {
@@ -137855,7 +138652,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-feature": "payroll"
       }
     },
     "/v1/payroll/runs/{runId}/insurance.csv": {
@@ -137957,7 +138755,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "payroll.run",
+        "x-integr8-feature": "payroll"
       }
     },
     "/v1/payroll/runs/{runId}/bank.csv": {
@@ -138062,7 +138862,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "payroll.run",
+        "x-integr8-feature": "payroll"
       }
     },
     "/v1/manufacturing/boms": {
@@ -138251,7 +139053,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "manufacturing.read",
+        "x-integr8-feature": "manufacturing"
       }
     },
     "/v1/manufacturing/boms/items/{itemId}": {
@@ -138603,7 +139407,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "manufacturing.read",
+        "x-integr8-feature": "manufacturing"
       },
       "put": {
         "operationId": "saveItemBom",
@@ -138956,7 +139762,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "manufacturing.manage",
+        "x-integr8-feature": "manufacturing"
       },
       "delete": {
         "operationId": "retireItemBom",
@@ -139048,7 +139856,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "manufacturing.manage",
+        "x-integr8-feature": "manufacturing"
       }
     },
     "/v1/manufacturing/boms/{bomId}": {
@@ -139356,7 +140166,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "manufacturing.read",
+        "x-integr8-feature": "manufacturing"
       }
     },
     "/v1/manufacturing/orders": {
@@ -139809,7 +140621,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "manufacturing.read",
+        "x-integr8-feature": "manufacturing"
       },
       "post": {
         "operationId": "createAssemblyOrder",
@@ -140416,7 +141230,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "manufacturing.manage",
+        "x-integr8-feature": "manufacturing",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/manufacturing/orders/{orderId}": {
@@ -140974,7 +141791,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "manufacturing.read",
+        "x-integr8-feature": "manufacturing"
       },
       "patch": {
         "operationId": "updateAssemblyOrder",
@@ -141577,7 +142396,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "manufacturing.manage",
+        "x-integr8-feature": "manufacturing"
       }
     },
     "/v1/manufacturing/orders/{orderId}/complete": {
@@ -142200,7 +143021,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "manufacturing.manage",
+        "x-integr8-feature": "manufacturing"
       }
     },
     "/v1/manufacturing/orders/{orderId}/cancel": {
@@ -142782,7 +143605,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "manufacturing.manage",
+        "x-integr8-feature": "manufacturing"
       }
     },
     "/v1/manufacturing/plans": {
@@ -143186,7 +144011,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "manufacturing.manage",
+        "x-integr8-feature": "manufacturing",
+        "x-integr8-idempotency": "honoured"
       },
       "get": {
         "operationId": "listMaterialPlans",
@@ -143337,7 +144165,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "manufacturing.read",
+        "x-integr8-feature": "manufacturing"
       }
     },
     "/v1/manufacturing/plans/{planId}": {
@@ -143715,7 +144545,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "manufacturing.read",
+        "x-integr8-feature": "manufacturing"
       }
     },
     "/v1/manufacturing/plans/{planId}/draft": {
@@ -144198,7 +145030,10 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "manufacturing.manage",
+        "x-integr8-feature": "manufacturing",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/job-types": {
@@ -144469,7 +145304,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "tenant.read"
       },
       "post": {
         "operationId": "createJobType",
@@ -144834,7 +145670,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "job_type.manage",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/job-types/{jobTypeId}": {
@@ -145094,7 +145932,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "tenant.read"
       },
       "patch": {
         "operationId": "updateJobType",
@@ -145458,7 +146297,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "job_type.manage"
       }
     },
     "/v1/work-orders": {
@@ -146081,7 +146921,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "customer.read"
       },
       "post": {
         "operationId": "createWorkOrder",
@@ -148408,7 +149249,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "work_order.manage",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/work-orders/bulk": {
@@ -148693,7 +149536,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "work_order.manage",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/work-orders/{workOrderId}": {
@@ -150937,7 +151782,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "customer.read"
       },
       "patch": {
         "operationId": "updateWorkOrder",
@@ -153247,7 +154093,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "work_order.manage"
       }
     },
     "/v1/work-orders/{workOrderId}/transitions": {
@@ -155519,7 +156366,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "customer.read"
       }
     },
     "/v1/work-orders/{workOrderId}/signoff": {
@@ -157807,7 +158655,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "work_order.progress"
       }
     },
     "/v1/work-orders/{workOrderId}/crew": {
@@ -160090,7 +160939,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "work_order.manage"
       }
     },
     "/v1/work-orders/{workOrderId}/checklist": {
@@ -162353,7 +163203,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "work_order.manage"
       }
     },
     "/v1/work-orders/{workOrderId}/checklist/{itemId}": {
@@ -164618,7 +165469,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "work_order.progress"
       }
     },
     "/v1/work-orders/{workOrderId}/forms": {
@@ -166878,7 +167730,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "work_order.manage"
       }
     },
     "/v1/work-orders/{workOrderId}/forms/{formId}": {
@@ -169135,7 +169988,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "work_order.manage"
       }
     },
     "/v1/work-orders/{workOrderId}/comments": {
@@ -171420,7 +172274,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "work_order.progress",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/saved-views": {
@@ -171590,7 +172446,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "customer.read"
       },
       "post": {
         "operationId": "createSavedView",
@@ -171890,7 +172747,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "customer.read",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/saved-views/{viewId}": {
@@ -171984,7 +172843,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "customer.read"
       }
     },
     "/v1/schedule": {
@@ -172640,7 +173500,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "work_order.read_all"
       }
     },
     "/v1/schedule/unscheduled": {
@@ -173032,7 +173893,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "work_order.read_all"
       }
     },
     "/v1/work-orders/{workOrderId}/visits": {
@@ -173364,7 +174226,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "work_order.manage"
       }
     },
     "/v1/visits/{visitId}": {
@@ -173699,7 +174562,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "work_order.manage"
       }
     },
     "/v1/visits/{visitId}/cancel": {
@@ -174005,7 +174869,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "work_order.manage"
       }
     },
     "/v1/visits/{visitId}/done": {
@@ -174296,7 +175161,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "customer.read"
       }
     },
     "/v1/visits/bulk": {
@@ -174568,7 +175434,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "work_order.manage",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/qualification-types": {
@@ -174756,7 +175624,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "qualification.read"
       },
       "post": {
         "operationId": "createQualificationType",
@@ -174914,7 +175783,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "qualification.manage"
       }
     },
     "/v1/qualification-types/{qualificationTypeId}": {
@@ -175092,7 +175962,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "qualification.manage"
       }
     },
     "/v1/qualification-settings": {
@@ -175210,7 +176081,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "qualification.manage"
       }
     },
     "/v1/qualifications": {
@@ -175689,7 +176561,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "qualification.read"
       },
       "post": {
         "operationId": "addQualification",
@@ -176023,7 +176896,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "qualification.manage"
       }
     },
     "/v1/me/qualifications": {
@@ -176349,7 +177223,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "tenant.read"
       }
     },
     "/v1/qualifications/{qualificationId}": {
@@ -176697,7 +177572,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "qualification.manage"
       }
     },
     "/v1/qualifications/{qualificationId}/remove": {
@@ -177030,7 +177906,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "qualification.manage"
       }
     },
     "/v1/job-types/{jobTypeId}/qualifications": {
@@ -177188,6 +178065,10 @@
           {
             "bearerAuth": []
           }
+        ],
+        "x-integr8-any-permission": [
+          "job_type.manage",
+          "qualification.manage"
         ]
       }
     },
@@ -177349,7 +178230,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "work_order.manage"
       }
     },
     "/v1/work-orders/{workOrderId}/eligibility": {
@@ -177558,7 +178440,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "work_order.read_all"
       }
     },
     "/v1/contracts": {
@@ -177937,7 +178820,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "contract.read"
       },
       "post": {
         "operationId": "createContract",
@@ -178323,7 +179207,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "contract.manage"
       }
     },
     "/v1/contracts/{contractId}": {
@@ -179011,7 +179896,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "contract.read"
       },
       "patch": {
         "operationId": "updateContract",
@@ -179412,7 +180298,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "contract.manage"
       }
     },
     "/v1/contracts/{contractId}/cancel": {
@@ -179768,7 +180655,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "contract.manage"
       }
     },
     "/v1/contracts/{contractId}/renew": {
@@ -180132,7 +181020,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "contract.manage"
       }
     },
     "/v1/work-orders/{workOrderId}/coverage": {
@@ -180327,7 +181216,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "contract.manage"
       }
     },
     "/v1/maintenance-plans": {
@@ -180811,7 +181701,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "asset.read",
+        "x-integr8-feature": "assets"
       },
       "post": {
         "operationId": "createMaintenancePlan",
@@ -181274,7 +182166,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "asset.manage",
+        "x-integr8-feature": "assets"
       }
     },
     "/v1/maintenance-plans/{planId}": {
@@ -181748,7 +182642,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "asset.manage",
+        "x-integr8-feature": "assets"
       }
     },
     "/v1/maintenance-plans/{planId}/status": {
@@ -182167,7 +183063,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "asset.manage",
+        "x-integr8-feature": "assets"
       }
     },
     "/v1/maintenance": {
@@ -182491,7 +183389,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "asset.read",
+        "x-integr8-feature": "assets"
       }
     },
     "/v1/deadline-rules": {
@@ -182699,7 +183599,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "work_order.read_all"
       },
       "put": {
         "operationId": "replaceDeadlineRules",
@@ -182969,7 +183870,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "deadline.manage"
       }
     },
     "/v1/deadline-report": {
@@ -183318,7 +184220,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "work_order.read_all"
       }
     },
     "/v1/imports": {
@@ -183547,7 +184450,9 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "import.run",
+        "x-integr8-idempotency": "honoured"
       },
       "get": {
         "operationId": "listImports",
@@ -183729,7 +184634,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "import.run"
       }
     },
     "/v1/imports/templates/{kind}": {
@@ -183832,7 +184738,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "import.run"
       }
     },
     "/v1/imports/columns/{kind}": {
@@ -183967,7 +184874,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "import.run"
       }
     },
     "/v1/imports/{importId}": {
@@ -184185,7 +185093,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "import.run"
       }
     },
     "/v1/sync/pull": {
@@ -189616,7 +190525,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "customer.read"
       }
     },
     "/v1/sync/push": {
@@ -191892,7 +192802,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "customer.read"
       }
     },
     "/v1/sync/reports": {
@@ -192142,7 +193053,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "customer.read"
       }
     },
     "/v1/timesheets": {
@@ -192552,7 +193464,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "customer.read"
       }
     },
     "/v1/me/push-device": {
@@ -192670,7 +193583,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "customer.read"
       }
     },
     "/v1/me/push-device/unregister": {
@@ -192769,7 +193683,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "x-integr8-permission": "customer.read"
       }
     },
     "/v1/platform/auth/sign-in": {
@@ -192801,6 +193716,13 @@
                     "type": "string",
                     "minLength": 6,
                     "maxLength": 10
+                  },
+                  "scope": {
+                    "type": "string",
+                    "enum": [
+                      "full",
+                      "test_companies"
+                    ]
                   }
                 },
                 "required": [
@@ -192843,6 +193765,18 @@
                           "type": "string",
                           "format": "uuid",
                           "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "sessionExpiresAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "scope": {
+                          "type": "string",
+                          "enum": [
+                            "full",
+                            "test_companies"
+                          ]
                         }
                       },
                       "required": [
@@ -192850,7 +193784,9 @@
                         "accessTokenExpiresAt",
                         "refreshToken",
                         "refreshTokenExpiresAt",
-                        "sessionId"
+                        "sessionId",
+                        "sessionExpiresAt",
+                        "scope"
                       ],
                       "additionalProperties": false
                     },
@@ -192991,6 +193927,18 @@
                       "type": "string",
                       "format": "uuid",
                       "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "sessionExpiresAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "scope": {
+                      "type": "string",
+                      "enum": [
+                        "full",
+                        "test_companies"
+                      ]
                     }
                   },
                   "required": [
@@ -192998,7 +193946,9 @@
                     "accessTokenExpiresAt",
                     "refreshToken",
                     "refreshTokenExpiresAt",
-                    "sessionId"
+                    "sessionId",
+                    "sessionExpiresAt",
+                    "scope"
                   ],
                   "additionalProperties": false
                 }
@@ -193133,6 +194083,10 @@
           {
             "bearerAuth": []
           }
+        ],
+        "x-integr8-platform-scopes": [
+          "full",
+          "test_companies"
         ]
       }
     },
@@ -193164,13 +194118,37 @@
                     },
                     "canManageStaff": {
                       "type": "boolean"
+                    },
+                    "scope": {
+                      "type": "string",
+                      "enum": [
+                        "full",
+                        "test_companies"
+                      ]
+                    },
+                    "sessionExpiresAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "environment": {
+                      "type": "string",
+                      "enum": [
+                        "development",
+                        "test",
+                        "staging",
+                        "production"
+                      ]
                     }
                   },
                   "required": [
                     "id",
                     "email",
                     "displayName",
-                    "canManageStaff"
+                    "canManageStaff",
+                    "scope",
+                    "sessionExpiresAt",
+                    "environment"
                   ],
                   "additionalProperties": false
                 }
@@ -193232,6 +194210,10 @@
           {
             "bearerAuth": []
           }
+        ],
+        "x-integr8-platform-scopes": [
+          "full",
+          "test_companies"
         ]
       }
     },
@@ -193264,6 +194246,18 @@
             "schema": {
               "type": "string",
               "maxLength": 200
+            }
+          },
+          {
+            "name": "test",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
             }
           }
         ],
@@ -193362,6 +194356,9 @@
                             "type": "string",
                             "format": "date-time",
                             "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          },
+                          "isTest": {
+                            "type": "boolean"
                           }
                         },
                         "required": [
@@ -193379,7 +194376,8 @@
                           "lastActivityAt",
                           "suspendedAt",
                           "suspendedReason",
-                          "deletionScheduledFor"
+                          "deletionScheduledFor",
+                          "isTest"
                         ],
                         "additionalProperties": false
                       }
@@ -193448,6 +194446,10 @@
           {
             "bearerAuth": []
           }
+        ],
+        "x-integr8-platform-scopes": [
+          "full",
+          "test_companies"
         ]
       },
       "post": {
@@ -193571,6 +194573,10 @@
                       "type": "string",
                       "maxLength": 64
                     }
+                  },
+                  "isTest": {
+                    "default": false,
+                    "type": "boolean"
                   }
                 },
                 "required": [
@@ -193675,6 +194681,9 @@
                           "type": "string",
                           "format": "date-time",
                           "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "isTest": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -193692,7 +194701,8 @@
                         "lastActivityAt",
                         "suspendedAt",
                         "suspendedReason",
-                        "deletionScheduledFor"
+                        "deletionScheduledFor",
+                        "isTest"
                       ],
                       "additionalProperties": false
                     },
@@ -193931,6 +194941,9 @@
                       "type": "string",
                       "format": "date-time",
                       "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "isTest": {
+                      "type": "boolean"
                     },
                     "settings": {
                       "type": "object",
@@ -194252,6 +195265,7 @@
                     "suspendedAt",
                     "suspendedReason",
                     "deletionScheduledFor",
+                    "isTest",
                     "settings",
                     "invitations",
                     "activity",
@@ -194322,6 +195336,10 @@
           {
             "bearerAuth": []
           }
+        ],
+        "x-integr8-platform-scopes": [
+          "full",
+          "test_companies"
         ]
       }
     },
@@ -194455,6 +195473,9 @@
                       "type": "string",
                       "format": "date-time",
                       "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "isTest": {
+                      "type": "boolean"
                     }
                   },
                   "required": [
@@ -194472,7 +195493,8 @@
                     "lastActivityAt",
                     "suspendedAt",
                     "suspendedReason",
-                    "deletionScheduledFor"
+                    "deletionScheduledFor",
+                    "isTest"
                   ],
                   "additionalProperties": false
                 }
@@ -194649,6 +195671,9 @@
                       "type": "string",
                       "format": "date-time",
                       "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "isTest": {
+                      "type": "boolean"
                     }
                   },
                   "required": [
@@ -194666,7 +195691,8 @@
                     "lastActivityAt",
                     "suspendedAt",
                     "suspendedReason",
-                    "deletionScheduledFor"
+                    "deletionScheduledFor",
+                    "isTest"
                   ],
                   "additionalProperties": false
                 }
@@ -194883,6 +195909,9 @@
                       "type": "string",
                       "format": "date-time",
                       "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "isTest": {
+                      "type": "boolean"
                     }
                   },
                   "required": [
@@ -194900,7 +195929,8 @@
                     "lastActivityAt",
                     "suspendedAt",
                     "suspendedReason",
-                    "deletionScheduledFor"
+                    "deletionScheduledFor",
+                    "isTest"
                   ],
                   "additionalProperties": false
                 }
@@ -195163,6 +196193,9 @@
           "404": {
             "description": "No such company."
           },
+          "409": {
+            "description": "`test_company_no_apps`: a test company cannot switch its apps on."
+          },
           "422": {
             "description": "A document link address that cannot be used."
           },
@@ -195412,7 +196445,7 @@
             "description": "No such company."
           },
           "409": {
-            "description": "`apps_not_enabled`: switch \"Build apps\" on first."
+            "description": "`apps_not_enabled`: switch \"Build apps\" on first. `test_company_no_apps`: a test company has no apps."
           },
           "422": {
             "description": "The request failed validation.",
@@ -195656,6 +196689,10 @@
           {
             "bearerAuth": []
           }
+        ],
+        "x-integr8-platform-scopes": [
+          "full",
+          "test_companies"
         ]
       }
     },
@@ -195764,6 +196801,10 @@
           {
             "bearerAuth": []
           }
+        ],
+        "x-integr8-platform-scopes": [
+          "full",
+          "test_companies"
         ]
       }
     },
@@ -195842,6 +196883,9 @@
                             "nullable": true,
                             "type": "string"
                           },
+                          "fromLimitedSession": {
+                            "type": "boolean"
+                          },
                           "durationSeconds": {
                             "nullable": true,
                             "type": "integer",
@@ -195859,6 +196903,7 @@
                           "expiresAt",
                           "endedAt",
                           "endedReason",
+                          "fromLimitedSession",
                           "durationSeconds"
                         ],
                         "additionalProperties": false
@@ -195928,6 +196973,384 @@
           {
             "bearerAuth": []
           }
+        ],
+        "x-integr8-platform-scopes": [
+          "full",
+          "test_companies"
+        ]
+      }
+    },
+    "/v1/platform/companies/{tenantId}/test-outbox": {
+      "get": {
+        "operationId": "listTestOutbox",
+        "summary": "What a test company would have emailed or pushed",
+        "description": "A test company sends no mail and no push notifications; each message is kept here for 7 days instead, newest first. Attachments are listed, not kept.",
+        "tags": [
+          "platform"
+        ],
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "description": "Only entries at or after this moment, e.g. the time a call was sent.",
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+            }
+          },
+          {
+            "name": "channel",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "email",
+                "push"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Newest first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "channel": {
+                            "type": "string",
+                            "enum": [
+                              "email",
+                              "push"
+                            ]
+                          },
+                          "recipient": {
+                            "type": "string"
+                          },
+                          "subject": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "body": {
+                            "type": "string"
+                          },
+                          "details": {
+                            "type": "object",
+                            "additionalProperties": {}
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "channel",
+                          "recipient",
+                          "subject",
+                          "body",
+                          "details",
+                          "createdAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "items"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A platform session is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such company."
+          },
+          "409": {
+            "description": "`not_a_test_company`."
+          },
+          "422": {
+            "description": "The request failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-integr8-platform-scopes": [
+          "full",
+          "test_companies"
+        ]
+      }
+    },
+    "/v1/platform/companies/{tenantId}/test-audit": {
+      "get": {
+        "operationId": "listTestCompanyAudit",
+        "summary": "A test company's own audit lines",
+        "description": "The company's audit log, newest first: what a call changed, read back. Test companies only; every action the developer MCP server takes is here under the staff account behind it.",
+        "tags": [
+          "platform"
+        ],
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "description": "Only entries at or after this moment, e.g. the time a call was sent.",
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Newest first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "occurredAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          },
+                          "actorKind": {
+                            "type": "string"
+                          },
+                          "actorId": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "actorLabel": {
+                            "type": "string"
+                          },
+                          "action": {
+                            "type": "string"
+                          },
+                          "resourceType": {
+                            "type": "string"
+                          },
+                          "resourceId": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "requestId": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "metadata": {
+                            "type": "object",
+                            "additionalProperties": {}
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "occurredAt",
+                          "actorKind",
+                          "actorId",
+                          "actorLabel",
+                          "action",
+                          "resourceType",
+                          "resourceId",
+                          "requestId",
+                          "metadata"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "items"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A platform session is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such company."
+          },
+          "409": {
+            "description": "`not_a_test_company`."
+          },
+          "422": {
+            "description": "The request failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-integr8-platform-scopes": [
+          "full",
+          "test_companies"
         ]
       }
     },

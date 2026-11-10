@@ -55,6 +55,11 @@ export interface OnboardCompanyInput {
   /** Which of its apps show the assistant (ADR-0001). Off everywhere when absent. */
   aiChannels?: { web: boolean; desktop: boolean; mobile: boolean };
   /**
+   * A test company (0077, P38): the demo seeder and the dashboard's switch set
+   * it. Fixed when the company is created; a trigger refuses any later change.
+   */
+  isTest?: boolean;
+  /**
    * How the owner gets in.
    *
    * `invitation` mints a token for somebody to be emailed — the platform flow,
@@ -130,6 +135,7 @@ export async function onboardCompany(input: OnboardCompanyInput): Promise<Onboar
     billingMode:
       input.billing.provider === 'none' ? 'invoiced' : (input.billingMode ?? 'self_serve'),
     onboardedBy: input.onboardedBy,
+    isTest: input.isTest === true,
   });
 
   const tenantId = toTenantId(tenant.id);

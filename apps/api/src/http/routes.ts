@@ -1,5 +1,11 @@
 import type { LiveSession } from '@integr8/auth';
-import type { ModuleFeature, Permission, PlatformPrincipal, Principal } from '@integr8/core';
+import type {
+  ModuleFeature,
+  Permission,
+  PlatformPrincipal,
+  PlatformSessionScope,
+  Principal,
+} from '@integr8/core';
 import { z } from 'zod';
 import type { Services } from '../composition.js';
 import type { ApiConfig } from '../config.js';
@@ -138,6 +144,15 @@ interface RouteShape {
    * Never a boolean, for exactly the reason the third kind now demonstrates.
    */
   security: RouteSecurity;
+  /**
+   * Which staff sessions may call a `platform` route (0077, P38). Absent means
+   * `full` only, so a new platform route stays closed to the developer MCP
+   * server's limited session unless it is opened here on purpose. A route
+   * opened to `test_companies` whose path names a company (`:tenantId`) is
+   * refused for any company that is not a test company (`http/session-scope.ts`).
+   * `session-scope.test.ts` pins the routes that are open.
+   */
+  platformScopes?: readonly PlatformSessionScope[];
   /** A public customer website route that authenticates with a website key. */
   websiteKeyAuth?: boolean;
 

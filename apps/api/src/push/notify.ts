@@ -3,6 +3,7 @@ import { type TenantTransaction, type WorkOrder, withTenant } from '@integr8/db'
 import type { Logger } from '../http/logger.js';
 import { fill, messageLocale, type NotificationWords, wordsFor } from '../notifications/words.js';
 import type { PushMessage, PushSender } from './sender.js';
+import { isTestCompany, keepTestPush } from '../test-companies/outbox.js';
 
 /**
  * Telling a crew about their work (P14).
@@ -219,6 +220,12 @@ export async function notifyWorkOrderEvent(
   }
   if (prepared.length === 0) {
     return { outcome: 'nobody' };
+  }
+
+  // A test company pushes to nobody (P38): the messages are kept in its outbox.
+  if (await isTestCompany(tenantId)) {
+    await keepTestPush(tenantId, prepared);
+    return { outcome: 'sent', messages: prepared.length, failed: 0 };
   }
 
   const tickets = await sender.send(prepared);

@@ -1,7 +1,7 @@
 import { toPlatformUserId, toTenantId, toUserId } from '@integr8/core';
 import { getPlatformDataSource } from '@integr8/db';
 import { z } from 'zod';
-import { notFound } from '../../../http/errors.js';
+import { notFound, unprocessable } from '../../../http/errors.js';
 import { defineRoute, noSchema } from '../../../http/routes.js';
 import { iso, isoOrNull } from '../schemas.js';
 import { recordPlatformAction } from './audit.js';
@@ -23,6 +23,13 @@ import { impersonationSchema, platformListSchema } from './schemas.js';
  * ordering of those writes that produces a session with no entry.
  */
 
+/**
+ * How a session limited to test companies (the developer MCP server, P38)
+ * starts its reason, so the company's audit log shows plainly that the tool,
+ * not a person at the dashboard, acted.
+ */
+export const DEVELOPER_REASON_PREFIX = 'Developer MCP:';
+
 const grantSchema = z.object({
   id: z.uuid(),
   tenantId: z.uuid(),
@@ -33,6 +40,8 @@ const grantSchema = z.object({
   expiresAt: z.iso.datetime(),
   endedAt: z.iso.datetime().nullable(),
   endedReason: z.string().nullable(),
+  /** Started by the developer MCP server's limited session (P38). */
+  fromLimitedSession: z.boolean(),
   /** How long it actually lasted, in seconds. Null while it is still running. */
   durationSeconds: z.number().int().nullable(),
 });
@@ -46,6 +55,7 @@ export const startImpersonationRoute = defineRoute({
     'Needs a reason of at least ten characters, which a check constraint enforces rather than this schema alone. The grant lapses on its own after the configured window; ending it early is one call.',
   tags: ['platform'],
   security: 'platform',
+  platformScopes: ['full', 'test_companies'],
   params: z.object({ tenantId: z.uuid() }),
   query: noSchema,
   body: z.object({
@@ -68,8 +78,18 @@ export const startImpersonationRoute = defineRoute({
       throw notFound(`No company with id ${params.tenantId}`);
     }
 
+    // The developer MCP server says what it is testing, and says that it is the tool.
+    const limited = context.platform.scope === 'test_companies';
+    if (limited && !body.reason.startsWith(DEVELOPER_REASON_PREFIX)) {
+      throw unprocessable(
+        'developer_reason_required',
+        `A session limited to test companies gives a reason starting "${DEVELOPER_REASON_PREFIX}".`,
+      );
+    }
+
     const asCompany = body.targetUserId === undefined;
     const started = await context.services.impersonation.start({
+      fromLimitedSession: limited,
       platformUserId: toPlatformUserId(context.platform.platformUserId),
       tenantId: toTenantId(params.tenantId),
       ...(body.targetUserId === undefined ? {} : { targetUserId: toUserId(body.targetUserId) }),
@@ -90,6 +110,7 @@ export const startImpersonationRoute = defineRoute({
         grantId: started.grantId,
         expiresAt: iso(started.expiresAt),
         actsAs: asCompany ? 'company' : 'user',
+        ...(limited ? { fromLimitedSession: true } : {}),
       },
     });
 
@@ -123,6 +144,7 @@ export const endImpersonationRoute = defineRoute({
     'The one-click exit behind the banner. Ends the grant and the session minted under it, so the token stops working on the next request rather than when it expires.',
   tags: ['platform'],
   security: 'platform',
+  platformScopes: ['full', 'test_companies'],
   params: z.object({ tenantId: z.uuid(), grantId: z.uuid() }),
   query: noSchema,
   body: noSchema,
@@ -156,6 +178,7 @@ export const listImpersonationRoute = defineRoute({
   summary: 'Every time somebody acted as a user in this company',
   tags: ['platform'],
   security: 'platform',
+  platformScopes: ['full', 'test_companies'],
   params: z.object({ tenantId: z.uuid() }),
   query: noSchema,
   body: noSchema,
@@ -178,6 +201,7 @@ export const listImpersonationRoute = defineRoute({
           expiresAt: iso(grant.expiresAt),
           endedAt: isoOrNull(grant.endedAt),
           endedReason: grant.endedReason,
+          fromLimitedSession: grant.fromLimitedSession,
           durationSeconds:
             grant.endedAt === null
               ? null

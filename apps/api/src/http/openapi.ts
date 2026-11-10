@@ -154,6 +154,19 @@ function operation(route: AnyRoute): Record<string, unknown> {
       : route.security === 'public'
         ? {}
         : { security: [{ bearerAuth: [] }] }),
+    // Who may call it, for tools that read this document (the developer MCP
+    // server's `get_route`, P38). Generated clients ignore `x-` fields.
+    ...(route.permission === undefined ? {} : { 'x-integr8-permission': route.permission }),
+    ...(route.anyPermission === undefined
+      ? {}
+      : { 'x-integr8-any-permission': [...route.anyPermission] }),
+    ...(route.feature === undefined ? {} : { 'x-integr8-feature': route.feature }),
+    ...(route.idempotent === undefined || route.idempotent === false
+      ? {}
+      : { 'x-integr8-idempotency': route.idempotent === 'required' ? 'required' : 'honoured' }),
+    ...(route.platformScopes === undefined
+      ? {}
+      : { 'x-integr8-platform-scopes': [...route.platformScopes] }),
   };
 }
 
