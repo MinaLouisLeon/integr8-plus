@@ -32,6 +32,7 @@ is pinned to an exact version.
 | `apps/desktop`               | `@integr8/desktop`           | React + Vite SPA in Tauri v2; `staff` / `company` flavours. Port 3002           |
 | `apps/mobile`                | `@integr8/mobile`            | Expo Router, offline-first (SQLCipher); one build per company                   |
 | `apps/forms-ai`              | `@integr8/forms-ai`          | Offline MCP server + installer for AI tools writing `.integr8form`; Node SEA    |
+| `apps/dev-mcp`               | `@integr8/dev-mcp`           | Developer MCP server: act in test companies on a running API (run from source)  |
 | `packages/core`              | `@integr8/core`              | Domain types, zod schemas, permission matrix, navigation model                  |
 | `packages/db`                | `@integr8/db`                | Migrations, repositories, tenant isolation, seeds — the only place SQL runs     |
 | `packages/auth`              | `@integr8/auth`              | Sessions, EdDSA tokens, refresh rotation, impersonation, offline grants         |
@@ -110,6 +111,15 @@ refuses pushes to `main`/`staging`/`dev`, then runs `pnpm typecheck` and `pnpm t
 - Code comments explain _why_, in plain prose — match the existing style.
 - A cross-cutting feature usually lands as a sequence: `feat(db)` → `feat(api)` →
   `feat(desktop)`/`feat(web)` → `feat(mobile)` → `docs`, plus the plan phase update.
+
+## Change requests and planning
+
+Wishes for the platform found while building forms arrive as change requests in
+`plan/requests/` (P39). To plan one, follow `docs/contributing/planning-a-change-request.md`
+(Claude Code: `/plan-change-request <number>`): it ends with a phase file for the owner to
+approve, and writes no product code. The developer MCP server (`.mcp.json`,
+`docs/contributing/developer-mcp.md`) lists and reads them and gives the test company to try
+things on.
 
 ## Commits, branches, releases
 

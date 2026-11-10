@@ -131,6 +131,8 @@ export const apiErrorsAr: Catalogue<typeof apiErrorsEn> = {
   deletion_scheduled: 'حذف هذه الشركة مجدول بالفعل.',
   deliberate_probe: 'خطأ متعمَّد لاختبار الإبلاغ عن الأخطاء.',
   description_required: 'صِف السطر: السطر الذي لا يحمل صنفًا يحتاج إلى وصف.',
+  developer_reason_required:
+    'يجب أن تذكر أداة المطوّرين ما تختبره: ابدأ السبب بـ «Developer MCP:».',
   document_expired: 'أوقفت الشركة التي أصدرت هذا المستند رابطه.',
   document_expiry_past: 'تاريخ الانتهاء قد مضى. اختر تاريخًا لاحقًا.',
   document_fields_invalid: 'بعض حقول المستند ناقصة أو أطول من المسموح. راجع الحقول المحددة أدناه.',
@@ -143,6 +145,9 @@ export const apiErrorsAr: Catalogue<typeof apiErrorsEn> = {
     'يجب أن يبدأ عنوان رابط المستندات بـ https:// وأن يحتوي على {code} وألا يزيد على 500 حرف.',
   document_link_needs_website: 'أضف موقع الشركة أولًا: لا يمكن أن تشير روابط المستندات إلا إليه.',
   document_link_other_site: 'يجب أن يكون عنوان رابط المستندات على موقع الشركة نفسه.',
+  not_a_test_company: 'هذه ليست شركة تجريبية.',
+  session_scope: 'جلسة الموظف هذه لا تصل إلا إلى الشركات التجريبية، ولا يُسمح لها بهذا الإجراء.',
+  test_company_no_apps: 'لا توجد تطبيقات هاتف أو حاسوب للشركة التجريبية.',
   unknown_tab: 'أحد هذه ليس تبويبًا يمكن تشغيله أو إيقافه. أعد تحميل الصفحة وحاول مرة أخرى.',
   document_not_ready: 'ملف PDF ليس جاهزًا بعد. انتظر قليلًا ثم حاول مرة أخرى.',
   document_template_archived: 'هذا القالب مؤرشف. اختر قالبًا آخر.',

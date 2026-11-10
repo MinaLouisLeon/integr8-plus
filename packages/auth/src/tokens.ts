@@ -5,7 +5,7 @@ import {
   type ImpersonationClaim,
   offlineGrantClaimsSchema,
   type OfflineGrantClaims,
-  type PlatformPrincipal,
+  type PlatformTokenPrincipal,
   platformTokenClaimsSchema,
   type PlatformTokenClaims,
   type PlatformUserId,
@@ -189,7 +189,7 @@ export class TokenService {
    * behind it is still live is a database question, and
    * `PlatformSessionService.authenticate` is the one that asks it.
    */
-  async verifyPlatformToken(token: string): Promise<PlatformPrincipal> {
+  async verifyPlatformToken(token: string): Promise<PlatformTokenPrincipal> {
     return toPlatformPrincipal(await this.#verify(token, platformTokenClaimsSchema, 'platform'));
   }
 

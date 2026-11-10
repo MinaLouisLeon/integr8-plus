@@ -1,0 +1,30 @@
+{
+  "name": "@integr8/dev-mcp",
+  "version": "1.1.0",
+  "private": true,
+  "type": "module",
+  "license": "UNLICENSED",
+  "description": "Developer MCP server: lets an AI coding tool in this repository act as the people of a test company on a running API. Run from source; never built into a download.",
+  "scripts": {
+    "start": "tsx src/cli.ts",
+    "clean": "rm -rf .turbo *.tsbuildinfo",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@integr8/api-client": "workspace:*",
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "@napi-rs/keyring": "2.1.2",
+    "zod": "4.6.1"
+  },
+  "devDependencies": {
+    "@integr8/eslint-config": "workspace:*",
+    "@integr8/typescript-config": "workspace:*",
+    "@types/node": "26.6.5",
+    "eslint": "10.12.0",
+    "tsx": "4.23.13",
+    "typescript": "6.0.3",
+    "vitest": "5.0.3"
+  }
+}

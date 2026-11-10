@@ -57,6 +57,15 @@ export interface PreviewInput {
   companyColour?: string | undefined;
   /** How many pages to return as pictures (1–6). */
   pages?: number | undefined;
+  /**
+   * Photos and signatures already in the answers, by media id, as data URIs:
+   * what the person added in the preview window (P37).
+   */
+  answerMedia?: Readonly<Record<string, string>> | undefined;
+  /** False: only the given answers, no generated sample answers under them. */
+  withSamples?: boolean | undefined;
+  /** False: print only, no page pictures (the window shows the PDF itself). */
+  rasterize?: boolean | undefined;
 }
 
 export interface PreviewResult {
@@ -154,10 +163,10 @@ export async function previewTemplate(
   const today = now.toISOString().slice(0, 10);
   const locale: DocumentLocale = input.language ?? design.page.language ?? 'en';
   const answers: Record<string, unknown> = {
-    ...sampleAnswers(form, locale, today),
+    ...(input.withSamples === false ? {} : sampleAnswers(form, locale, today)),
     ...input.answers,
   };
-  const media: Record<string, string> = {};
+  const media: Record<string, string> = { ...input.answerMedia };
   withAnswerPictures(form, answers, input.answerPictures ?? {}, media, notes);
 
   const facts: SubmissionFacts = {
@@ -246,6 +255,9 @@ export async function previewTemplate(
     const pdf = await printToPdf(chrome, rendered, backgrounds, input.template.name);
     const pdfPath = join(folder, 'preview.pdf');
     writeFileSync(pdfPath, pdf.bytes);
+    if (input.rasterize === false) {
+      return { check, pdfPath, pageCount: pdf.pageCount, pageImages: [], notes };
+    }
     const pictured = await rasterizePdf(
       chrome,
       pdf.bytes,

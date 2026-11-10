@@ -44,6 +44,11 @@ export interface StartImpersonationInput {
   clientApp: ClientApp;
   ipAddress?: string | null;
   userAgent?: string | null;
+  /**
+   * Started from a staff session limited to test companies (P38): recorded on
+   * the grant and in the company's audit entry.
+   */
+  fromLimitedSession?: boolean;
 }
 
 export interface StartImpersonationResult {
@@ -132,6 +137,7 @@ export class ImpersonationService {
           targetRole: seat.role,
           actsAs: input.targetUserId === undefined ? 'company' : 'user',
           expiresAt: expiresAt.toISOString(),
+          ...(input.fromLimitedSession === true ? { fromLimitedSession: true } : {}),
         },
       });
 
@@ -141,6 +147,7 @@ export class ImpersonationService {
         reason,
         auditLogId: entry.id,
         expiresAt,
+        fromLimitedSession: input.fromLimitedSession === true,
       });
 
       const issued = await this.#sessions.issue(tx, {

@@ -7,7 +7,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
 import { Button, EmptyState, ErrorState, Field, LoadingState } from '~/components/ui';
-import { StatusBadge } from '~/components/platform-bits';
+import { StatusBadge, TestBadge } from '~/components/platform-bits';
 import { TabPicker } from '~/components/tab-picker';
 import { messageForError } from '~/lib/errors';
 import {
@@ -34,16 +34,19 @@ export default function CompaniesPage() {
   const { t } = useTranslation();
   const [search, setSearch] = useState('');
   const [includeCancelled, setIncludeCancelled] = useState(false);
+  // Test companies (P38) are listed with the rest unless filtered.
+  const [kind, setKind] = useState<'all' | 'real' | 'test'>('all');
   const [onboarding, setOnboarding] = useState(false);
 
   const companies = useQuery({
-    queryKey: ['platform', 'companies', search, includeCancelled],
+    queryKey: ['platform', 'companies', search, includeCancelled, kind],
     queryFn: async () => {
       const { data } = await platformClient().GET('/v1/platform/companies', {
         params: {
           query: {
             includeCancelled: includeCancelled ? 'true' : 'false',
             ...(search.trim() === '' ? {} : { search: search.trim() }),
+            ...(kind === 'all' ? {} : { test: kind === 'test' ? 'true' : 'false' }),
           },
         },
       });
@@ -78,6 +81,18 @@ export default function CompaniesPage() {
             onChange={(event) => setIncludeCancelled(event.target.checked)}
           />
           {t('platform.companies.includeCancelled')}
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="text-content-muted">{t('platform.companies.kind')}</span>
+          <select
+            className="rounded-md border border-border-subtle bg-surface px-3 py-2 text-content"
+            value={kind}
+            onChange={(event) => setKind(event.target.value as 'all' | 'real' | 'test')}
+          >
+            <option value="all">{t('platform.companies.kindAll')}</option>
+            <option value="real">{t('platform.companies.kindReal')}</option>
+            <option value="test">{t('platform.companies.kindTest')}</option>
+          </select>
         </label>
       </div>
 
@@ -134,6 +149,11 @@ export default function CompaniesPage() {
                     >
                       {company.name}
                     </Link>
+                    {company.isTest ? (
+                      <span className="ms-2">
+                        <TestBadge />
+                      </span>
+                    ) : null}
                     <div className="font-mono text-xs text-content-muted">{company.slug}</div>
                   </td>
                   <td className="py-2">
@@ -194,6 +214,8 @@ function OnboardForm({ onDone }: { onDone: () => void }) {
   // Off by default: a company is set up first and its owner invited when there
   // is something to log in to, from the company's page.
   const [sendInvitation, setSendInvitation] = useState(false);
+  // Off by default, and fixed once the company exists (P38).
+  const [isTest, setIsTest] = useState(false);
   // All off by default (ADR-0001 D6): the assistant appears in an app only
   // once somebody here says so, and the plan's policy still has to allow it.
   const [aiWeb, setAiWeb] = useState(false);
@@ -220,6 +242,7 @@ function OnboardForm({ onDone }: { onDone: () => void }) {
           ownerEmail: ownerEmail.trim(),
           websiteUrl: website.trim() === '' ? null : website.trim(),
           sendInvitation,
+          isTest,
           aiChannels: { web: aiWeb, desktop: aiDesktop, mobile: aiMobile },
           ...(tabsTouched ? { tabs } : {}),
         },
@@ -382,6 +405,24 @@ function OnboardForm({ onDone }: { onDone: () => void }) {
             </label>
             <p id="onboard-send-invitation-hint" className="text-content-muted">
               {t('platform.onboard.sendInvitationHint')}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-start gap-2 text-sm sm:col-span-2">
+          <input
+            id="onboard-is-test"
+            type="checkbox"
+            className="mt-1"
+            aria-describedby="onboard-is-test-hint"
+            checked={isTest}
+            onChange={(event) => setIsTest(event.target.checked)}
+          />
+          <div className="flex flex-col gap-0.5">
+            <label htmlFor="onboard-is-test" className="font-medium text-content">
+              {t('platform.onboard.isTest')}
+            </label>
+            <p id="onboard-is-test-hint" className="text-warning">
+              {t('platform.onboard.isTestHint')}
             </p>
           </div>
         </div>

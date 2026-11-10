@@ -156,6 +156,7 @@ export {
 } from './services/impersonation-service.js';
 
 export {
+  LIMITED_SESSION_HOURS,
   mintPlatformRefreshToken,
   PLATFORM_REFRESH_TOKEN_PREFIX,
   PlatformSessionService,

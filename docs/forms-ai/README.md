@@ -6,7 +6,8 @@ save them as `.integr8form` files, which staff then import into a company or the
 (form builder decisions 14 and 15, 1.3.0). It is an [MCP](https://modelcontextprotocol.io)
 server that works **offline**: it never talks to an Integr8 Plus server, holds no credentials,
 and reads files only where the AI passes a path. The one network request it ever makes is the
-installer's check for a newer release on GitHub.
+installer's check for a newer release on GitHub. Its live preview window is a page it serves to
+the person's own browser on `127.0.0.1` only (see [The preview window](#the-preview-window-p37)).
 
 It also helps the developer of a company's own Next.js website add a **shared PDF search and
 download page**, which uses the company's website key (see
@@ -32,7 +33,9 @@ version, so a tool and a server of the same version always agree on the file for
    to confirm. It then runs a self-test and prints **Ready ✓** for each connected tool.
 4. Restart the AI tool (or start a new chat) and ask, for example: _"Use integr8-forms to build a
    boiler service form with a PDF certificate, in English and Arabic."_ The AI reads the format
-   guide, checks its work, looks at PDF previews and saves the file.
+   guide, checks its work, looks at PDF previews and saves the file. Once the first version
+   checks, it opens the **preview window** in your browser: fill the form there as a company
+   would, look at each PDF, leave it notes, and save the file when it is right.
 5. Finished files are in **Documents/Integr8 forms** (change it from the installer's menu). Import
    one from the company's Forms page (as a new draft) or the dashboard's Templates page.
 
@@ -52,6 +55,7 @@ explicitly.
 | Its settings           | `settings.json` beside the program                     | same                                              | same                                   |
 | Saved packages         | `Documents\Integr8 forms`                              | `~/Documents/Integr8 forms`                       | your Documents folder `/Integr8 forms` |
 | Previews, opened files | `%TEMP%\integr8-forms-ai\`                             | `$TMPDIR/integr8-forms-ai/`                       | `/tmp/integr8-forms-ai/`               |
+| Window prints          | `previews\` in the same folder, one PDF per template   | same                                              | same                                   |
 
 ### What each AI tool gets
 
@@ -83,9 +87,17 @@ To connect a tool by hand, give it the same: command = the installed program, ar
 | `new_picture_ids`           | Fresh ids for the pictures a template uses                                                                                                                                                                                                      |
 | `check_form`                | The publish compile (`checkFormPackage`): every problem with its JSON path and code, and warnings such as missing Arabic                                                                                                                        |
 | `check_package`             | The form, its templates checked against it as the API checks them, and the pictures against the templates                                                                                                                                       |
-| `preview_pdf`               | Prints one template with sample answers as the server would, returns the PDF's path and pictures of its first pages                                                                                                                             |
+| `preview_pdf`               | Prints one template with sample answers as the server would, returns the PDF's path and pictures of its first pages; with the window open, its PDF tab shows the same print                                                                     |
 | `save_package`              | Writes `<output folder>/<title>.integr8form` and reports the check; refuses to replace a file unless asked                                                                                                                                      |
 | `open_package`              | Reads a `.integr8form` for editing: definition, settings, templates, and its pictures written out with their paths                                                                                                                              |
+| `open_preview`              | Opens the preview window in the person's browser with the form, templates and pictures; returns its address and the check                                                                                                                       |
+| `update_preview`            | Replaces the form, the templates (with pictures) or the settings in the window, which refreshes by itself; typed answers are kept where their question still exists with the same type                                                          |
+| `get_preview_state`         | What the person did in the window: answers typed, Submit and what it would send, unread notes (each returned once), the tab they are on, each print                                                                                             |
+| `record_change_request`     | Records something the platform cannot do yet as a change request folder, with the window's form and pictures ([change-requests.md](change-requests.md))                                                                                         |
+| `list_change_requests`      | The change requests on this computer, with status                                                                                                                                                                                               |
+| `get_change_request`        | One change request in full                                                                                                                                                                                                                      |
+| `update_change_request`     | Edits, merges, drops or marks a change request handed over                                                                                                                                                                                      |
+| `close_preview`             | Stops the window's page server (it also stops with the AI tool)                                                                                                                                                                                 |
 | `get_website_guide`         | Company website: what Integr8 and the company switch on, the key and environment, the security rules, why a search finds nothing                                                                                                                |
 | `get_website_api`           | Company website: the lookup and file endpoints, every field and refusal, and what the website shows for each                                                                                                                                    |
 | `get_website_example`       | Company website: the Next.js files for the search page (server-only client, Server Action, English/Arabic form, page, `.env.example` lines)                                                                                                     |
@@ -106,6 +118,38 @@ For every QR code in a PDF template it must ask whether it is the document's **s
 opens. `check_package` lists any QR code written without that choice under "To confirm with the
 person", and `summarize_form` gives the plain list of questions and PDF blocks to show the person
 before `save_package`.
+
+## The preview window (P37)
+
+While the AI builds a form, the person watches it take shape in a window in their own browser,
+which refreshes by itself after every change the AI makes. The AI opens it with `open_preview`
+once the first version checks, and calls `update_preview` after each change.
+
+| Part       | What it shows                                                                                                                                                                                                                                                            |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Form**   | The web app's own filler (`FormFiller` from `@integr8/form-renderer-dom`): conditions, calculations, checks, repeating sections, photos and signatures (kept in memory), Submit (sends nothing)                                                                          |
+| **PDF**    | Each template printed as the server prints it, in the browser's own PDF viewer, with the typed answers or sample answers, a print language and the company colour                                                                                                        |
+| **Checks** | The check report the AI gets, and the question list from `summarize_form` with its "To confirm" items                                                                                                                                                                    |
+| Header     | English or Arabic, phone or desktop width, light or dark; **Live** while the program runs, "Disconnected" once the AI tool is closed                                                                                                                                     |
+| Every tab  | **Leave a note for the AI**, about the view or one question or template; the AI reads it with `get_preview_state` when asked to look                                                                                                                                     |
+| Footer     | **Suggest a change to the platform** (P39): a few words for the AI, which offers to record a change request. **Save the form file…**: the same file `save_package` writes, in the output folder; it asks before replacing a file. The click is the person's confirmation |
+
+A print starts when the PDF tab opens, when the template changed, or on **Print again**, never on
+every keystroke; one prints at a time. Without Chrome, Edge or Chromium the PDF tab says so and the
+other tabs work. A form that does not compile shows the check's problems in the Form tab instead.
+The phone's own filler is not in the window; the phone width shows the web filler, which the
+behaviour check holds to the same screens. What is typed in the window is kept in memory only,
+and forgotten when the window closes.
+
+## Change requests (P39)
+
+When the person wants something the platform cannot do, the AI offers to record it as a change
+request: a folder under `Documents/Integr8 forms/change-requests/` with their words, the form
+being built and pictures. It offers when a check refuses an unknown key, question type or block,
+when the person presses **Suggest a change to the platform** in the window, or when they ask.
+Copy the folder into the repository's `plan/requests/` to hand it over; it is planned there and
+approved by the owner before anything is built. The format and the rules (sample data only) are
+in [change-requests.md](change-requests.md).
 
 ## For a company website
 
@@ -154,16 +198,33 @@ src/cli.ts            setup (default) | serve | --version
 src/mcp/              the MCP server: tools, guide, examples, check output, save/open, preview
 src/website/          the company website tools: contract, guide, Next.js example, integration check
 src/preview/          finding Chrome/Edge, a minimal DevTools-protocol client, printing, pdf.js pictures
+src/window/           the preview window: session, printer queue, loopback page server, browser opener
+src/window/page/      the window's React page (its own tsconfig; jsdom tests)
 src/setup/            the installer: menus, tool adapters, JSON/TOML edits, self-test, self-install, update
-scripts/bundle.mjs    esbuild → dist/integr8-forms-ai.cjs (the version written in)
+scripts/bundle.mjs    esbuild → dist/integr8-forms-ai.cjs (the version written in), and the window's
+                      page → dist/window/page.js + page.css (Tailwind, fonts inlined)
 scripts/build-sea.mjs the single executable for this computer, with its .sha256
 ```
 
 - **One file per OS.** The bundle is a Node [single executable application](https://nodejs.org/api/single-executable-applications.html):
   `node --experimental-sea-config`, the blob injected into a copy of Node with `postject`, and on
   macOS an ad hoc signature (`codesign --sign -`), without which Apple Silicon refuses to run it.
-  pdf.js and the website fonts travel as SEA assets (`src/assets.ts`; read from node_modules
-  when run from source).
+  pdf.js, the website fonts and the window's page travel as SEA assets (`src/assets.ts`; read
+  from node_modules, and the page from `dist/window`, when run from source).
+- **The preview window's safety rules** (`src/window/server.ts`, each tested in
+  `server.test.ts`): Node's `http` on `127.0.0.1` and a port the system picks, never another
+  address; a random token in the address (`?k=`) that every request must carry, or it gets 404;
+  the `Host` header must be exactly `127.0.0.1:<port>` (DNS rebinding) and a foreign `Origin` is
+  refused; no CORS headers; a Content-Security-Policy that allows scripts, styles, fonts and
+  pictures from the server itself only and connections nowhere else. The page sets zod's
+  `jitless` (`page/no-eval.ts`) so that policy reports nothing. The server is `unref`'d and
+  closes with the MCP server. `smoke.test.ts` loads the built page in the found browser through
+  the CDP client, types an answer, prints it, and checks every loaded resource is the server's
+  own and no policy violation was reported (skipped without a browser or a built page).
+- **The window's page** is React with `@integr8/form-renderer-dom`, `@integr8/i18n` (its words
+  are `formsAiWindow.*`) and `@integr8/tokens`; the header wears the Integr8 Media look and the
+  form follows the light or dark theme. `bundle.mjs` builds it with the program, so `sea` makes
+  it too, once the packages it uses are built (`pnpm --filter @integr8/forms-ai... build`).
 - **Printing like the server.** The API prints with Playwright; a bundled executable cannot carry
   Playwright (it reads its own files at run time), so `src/preview/cdp.ts` speaks the few
   DevTools-protocol calls Playwright makes for `page.pdf()` over `--remote-debugging-pipe`.

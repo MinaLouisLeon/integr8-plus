@@ -1,4 +1,9 @@
-import { type PlatformPrincipal, type PlatformUserId, toPlatformUserId } from '@integr8/core';
+import {
+  type PlatformPrincipal,
+  type PlatformSessionScope,
+  type PlatformUserId,
+  toPlatformUserId,
+} from '@integr8/core';
 import { getPlatformDataSource } from '@integr8/db';
 import { randomBytes } from 'node:crypto';
 import type { AuthConfig } from '../config.js';
@@ -44,7 +49,16 @@ export interface PlatformSignInInput {
   code: string;
   ipAddress?: string | null;
   userAgent?: string | null;
+  /**
+   * `test_companies` for the developer MCP server's terminal login (P38): the
+   * session reaches test companies only and ends {@link LIMITED_SESSION_HOURS}
+   * hours after sign-in, whatever happens. `full` when absent.
+   */
+  scope?: PlatformSessionScope;
 }
+
+/** How long a session limited to test companies lasts, from sign-in (P38). */
+export const LIMITED_SESSION_HOURS = 8;
 
 export interface PlatformSignInResult {
   accessToken: string;
@@ -52,6 +66,9 @@ export interface PlatformSignInResult {
   refreshToken: string;
   refreshTokenExpiresAt: Date;
   sessionId: string;
+  /** When the session ends whatever happens: its ceiling. */
+  sessionExpiresAt: Date;
+  scope: PlatformSessionScope;
   platformUser: { id: PlatformUserId; email: string; displayName: string };
 }
 
@@ -149,6 +166,7 @@ export class PlatformSessionService {
       now,
       ipAddress: input.ipAddress ?? null,
       userAgent: input.userAgent ?? null,
+      scope: input.scope ?? 'full',
     });
   }
 
@@ -223,6 +241,9 @@ export class PlatformSessionService {
       refreshToken: secret,
       refreshTokenExpiresAt,
       sessionId: lookup.session.id,
+      // Refreshing never extends a session or changes its scope.
+      sessionExpiresAt: lookup.session.expiresAt,
+      scope: lookup.session.scope,
       platformUser: { id: account.id, email: account.email, displayName: account.displayName },
     };
   }
@@ -257,7 +278,7 @@ export class PlatformSessionService {
     }
 
     await platform.platformSessions.touch(session.id, now);
-    return principal;
+    return { ...principal, scope: session.scope };
   }
 
   async signOut(sessionId: string, everywhere = false): Promise<void> {
@@ -379,19 +400,27 @@ export class PlatformSessionService {
     now: Date;
     ipAddress: string | null;
     userAgent: string | null;
+    scope: PlatformSessionScope;
   }): Promise<PlatformSignInResult> {
     const platform = getPlatformDataSource();
-    const expiresAt = new Date(
-      input.now.getTime() + this.#config.PLATFORM_SESSION_TTL_SECONDS * 1000,
-    );
+    const ttlMs =
+      input.scope === 'test_companies'
+        ? LIMITED_SESSION_HOURS * 60 * 60 * 1000
+        : this.#config.PLATFORM_SESSION_TTL_SECONDS * 1000;
+    const expiresAt = new Date(input.now.getTime() + ttlMs);
     const secret = mintPlatformRefreshToken();
+    // A refresh token never outlives its session's ceiling.
     const refreshTokenExpiresAt = new Date(
-      input.now.getTime() + this.#config.PLATFORM_REFRESH_TOKEN_TTL_SECONDS * 1000,
+      Math.min(
+        input.now.getTime() + this.#config.PLATFORM_REFRESH_TOKEN_TTL_SECONDS * 1000,
+        expiresAt.getTime(),
+      ),
     );
 
     const { session } = await platform.platformSessions.create({
       platformUserId: input.platformUserId,
       expiresAt,
+      scope: input.scope,
       refreshTokenHash: hashSecret(secret),
       refreshExpiresAt: refreshTokenExpiresAt,
       ipAddress: input.ipAddress,
@@ -409,6 +438,8 @@ export class PlatformSessionService {
       refreshToken: secret,
       refreshTokenExpiresAt,
       sessionId: session.id,
+      sessionExpiresAt: session.expiresAt,
+      scope: session.scope,
       platformUser: {
         id: input.platformUserId,
         email: input.email,

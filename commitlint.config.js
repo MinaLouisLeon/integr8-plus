@@ -15,6 +15,7 @@ export default {
         'form-renderer',
         'form-input',
         'forms-ai',
+        'dev-mcp',
         'operations',
         'crm',
         'erp',

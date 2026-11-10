@@ -32,6 +32,8 @@ export interface Tenant {
   readOnlySince: Date | null;
   readOnlyReason: string | null;
   onboardedBy: PlatformUserId | null;
+  /** A test company (0077); fixed when it is created. */
+  isTest: boolean;
   createdAt: Date;
   updatedAt: Date;
   deletedAt: Date | null;
@@ -65,6 +67,8 @@ export interface CreateTenantInput {
   seats?: number | null;
   billingMode?: BillingMode;
   onboardedBy?: PlatformUserId | string | null;
+  /** A test company (0077). Only now: the mark cannot be set or cleared later. */
+  isTest?: boolean;
 }
 
 /**
@@ -113,6 +117,7 @@ export class TenantsRepository {
         ...(input.seats === undefined ? {} : { seats: input.seats }),
         ...(input.billingMode === undefined ? {} : { billing_mode: input.billingMode }),
         ...(input.onboardedBy === undefined ? {} : { onboarded_by: input.onboardedBy }),
+        ...(input.isTest === undefined ? {} : { is_test: input.isTest }),
       })
       .returningAll()
       .executeTakeFirstOrThrow();
@@ -433,6 +438,7 @@ function toDomain(row: Selectable<TenantsTable>): Tenant {
     readOnlySince: row.read_only_since,
     readOnlyReason: row.read_only_reason,
     onboardedBy: row.onboarded_by as PlatformUserId | null,
+    isTest: row.is_test,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     deletedAt: row.deleted_at,

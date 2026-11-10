@@ -19,6 +19,7 @@
 
 import { apiErrorsEn } from './api-errors.en.js';
 import { legalEn } from './legal.en.js';
+import { formsAiWindowEn } from './forms-ai-window.en.js';
 import { siteEn } from './site.en.js';
 
 export const en = {
@@ -907,6 +908,10 @@ export const en = {
   // The public site in the Integr8 Media look (Low 3): home, features,
   // pricing, help, download, and the frame around them. In its own file.
   site: siteEn,
+
+  // Integr8 Forms for AI's preview window (P37), served on the staff member's
+  // own computer while an AI tool builds a form. In its own file.
+  formsAiWindow: formsAiWindowEn,
 
   states: {
     emptyTitle: 'Nothing here yet',
@@ -8752,6 +8757,13 @@ export const en = {
       title: 'Companies',
       search: 'Search companies',
       includeCancelled: 'Show closed companies',
+      // Test companies (P38): the badge, and the directory's filter.
+      test: 'Test',
+      testTitle: 'A test company: not billed or counted, sends no email or push notifications',
+      kind: 'Show',
+      kindAll: 'All companies',
+      kindReal: 'Real companies',
+      kindTest: 'Test companies',
       empty: 'No companies yet.',
       name: 'Company',
       status: 'Status',
@@ -8797,6 +8809,9 @@ export const en = {
         'The owner’s invitation for {{email}} is ready and has not been sent. Set the company up first, then send it from the company’s page.',
       invitationNotSent:
         'The invitation could not be emailed to {{email}} ({{problem}}). Copy the link below, or send it again from the company’s page.',
+      isTest: 'Test company',
+      isTestHint:
+        'For trying the product and for the developer tool. It is not billed or counted, sends no email or push notifications and gets no apps. This cannot be changed after the company is created.',
       sendInvitation: 'Email the owner’s invitation now',
       sendInvitationHint:
         'Leave this off to set the company up first — forms, job types and its look — and send the invitation from its page when it is ready.',

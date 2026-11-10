@@ -8080,6 +8080,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/platform/companies/{tenantId}/test-outbox": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What a test company would have emailed or pushed
+         * @description A test company sends no mail and no push notifications; each message is kept here for 7 days instead, newest first. Attachments are listed, not kept.
+         */
+        get: operations["listTestOutbox"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform/companies/{tenantId}/test-audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A test company's own audit lines
+         * @description The company's audit log, newest first: what a call changed, read back. Test companies only; every action the developer MCP server takes is here under the staff account behind it.
+         */
+        get: operations["listTestCompanyAudit"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/platform/companies/{tenantId}/exports": {
         parameters: {
             query?: never;
@@ -81816,6 +81856,8 @@ export interface operations {
                     email: string;
                     password: string;
                     code: string;
+                    /** @enum {string} */
+                    scope?: "full" | "test_companies";
                 };
             };
         };
@@ -81836,6 +81878,10 @@ export interface operations {
                             refreshTokenExpiresAt: string;
                             /** Format: uuid */
                             sessionId: string;
+                            /** Format: date-time */
+                            sessionExpiresAt: string;
+                            /** @enum {string} */
+                            scope: "full" | "test_companies";
                         };
                         platformUser: {
                             /** Format: uuid */
@@ -81928,6 +81974,10 @@ export interface operations {
                         refreshTokenExpiresAt: string;
                         /** Format: uuid */
                         sessionId: string;
+                        /** Format: date-time */
+                        sessionExpiresAt: string;
+                        /** @enum {string} */
+                        scope: "full" | "test_companies";
                     };
                 };
             };
@@ -82067,6 +82117,12 @@ export interface operations {
                         email: string;
                         displayName: string;
                         canManageStaff: boolean;
+                        /** @enum {string} */
+                        scope: "full" | "test_companies";
+                        /** Format: date-time */
+                        sessionExpiresAt: string;
+                        /** @enum {string} */
+                        environment: "development" | "test" | "staging" | "production";
                     };
                 };
             };
@@ -82122,6 +82178,7 @@ export interface operations {
             query?: {
                 includeCancelled?: "true" | "false";
                 search?: string;
+                test?: "true" | "false";
             };
             header?: never;
             path?: never;
@@ -82160,6 +82217,7 @@ export interface operations {
                             suspendedReason: string | null;
                             /** Format: date-time */
                             deletionScheduledFor: string | null;
+                            isTest: boolean;
                         }[];
                     };
                 };
@@ -82260,6 +82318,8 @@ export interface operations {
                         code: string;
                     }[];
                     tabs?: string[];
+                    /** @default false */
+                    isTest?: boolean;
                 };
             };
         };
@@ -82295,6 +82355,7 @@ export interface operations {
                             suspendedReason: string | null;
                             /** Format: date-time */
                             deletionScheduledFor: string | null;
+                            isTest: boolean;
                         };
                         ownerInvitation: {
                             /** Format: uuid */
@@ -82408,6 +82469,7 @@ export interface operations {
                         suspendedReason: string | null;
                         /** Format: date-time */
                         deletionScheduledFor: string | null;
+                        isTest: boolean;
                         settings: {
                             /** Format: uuid */
                             logoMediaId: string | null;
@@ -82583,6 +82645,7 @@ export interface operations {
                         suspendedReason: string | null;
                         /** Format: date-time */
                         deletionScheduledFor: string | null;
+                        isTest: boolean;
                     };
                 };
             };
@@ -82681,6 +82744,7 @@ export interface operations {
                         suspendedReason: string | null;
                         /** Format: date-time */
                         deletionScheduledFor: string | null;
+                        isTest: boolean;
                     };
                 };
             };
@@ -82790,6 +82854,7 @@ export interface operations {
                         suspendedReason: string | null;
                         /** Format: date-time */
                         deletionScheduledFor: string | null;
+                        isTest: boolean;
                     };
                 };
             };
@@ -82914,6 +82979,13 @@ export interface operations {
             };
             /** @description No such company. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `test_company_no_apps`: a test company cannot switch its apps on. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -83081,7 +83153,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description `apps_not_enabled`: switch "Build apps" on first. */
+            /** @description `apps_not_enabled`: switch "Build apps" on first. `test_company_no_apps`: a test company has no apps. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -83342,6 +83414,7 @@ export interface operations {
                             /** Format: date-time */
                             endedAt: string | null;
                             endedReason: string | null;
+                            fromLimitedSession: boolean;
                             durationSeconds: number | null;
                         }[];
                     };
@@ -83355,6 +83428,207 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Error"];
                 };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listTestOutbox: {
+        parameters: {
+            query?: {
+                since?: string;
+                channel?: "email" | "push";
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Newest first. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            /** @enum {string} */
+                            channel: "email" | "push";
+                            recipient: string;
+                            subject: string | null;
+                            body: string;
+                            details: {
+                                [key: string]: unknown;
+                            };
+                            /** Format: date-time */
+                            createdAt: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description A platform session is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such company. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `not_a_test_company`. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listTestCompanyAudit: {
+        parameters: {
+            query?: {
+                since?: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Newest first. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: date-time */
+                            occurredAt: string;
+                            actorKind: string;
+                            actorId: string | null;
+                            actorLabel: string;
+                            action: string;
+                            resourceType: string;
+                            resourceId: string | null;
+                            requestId: string | null;
+                            metadata: {
+                                [key: string]: unknown;
+                            };
+                        }[];
+                    };
+                };
+            };
+            /** @description A platform session is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such company. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `not_a_test_company`. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description The request failed validation. */
             422: {

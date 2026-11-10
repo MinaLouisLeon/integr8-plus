@@ -83,6 +83,9 @@ export {
   type AccessTokenClaims,
   type OfflineGrantClaims,
   type PlatformPrincipal,
+  type PlatformTokenPrincipal,
+  PLATFORM_SESSION_SCOPES,
+  type PlatformSessionScope,
   type PlatformTokenClaims,
   type Principal,
 } from './claims.js';
