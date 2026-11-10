@@ -25,7 +25,7 @@ import {
   type AiPolicyFields,
 } from '~/components/ai-policy-editor';
 import { type AppBuild, AppBuildResult } from '~/components/app-build-result';
-import { Badge, Panel, StatusBadge } from '~/components/platform-bits';
+import { Badge, Panel, StatusBadge, TestBadge } from '~/components/platform-bits';
 import { TabPicker } from '~/components/tab-picker';
 import { Button, ErrorState, Field, LoadingState } from '~/components/ui';
 import {
@@ -91,6 +91,7 @@ export default function CompanyPage() {
           <p className="font-mono text-xs text-content-muted">{detail.slug}</p>
         </div>
         <StatusBadge status={detail.status} deletionScheduledFor={detail.deletionScheduledFor} />
+        {detail.isTest ? <TestBadge /> : null}
       </header>
 
       {detail.status === 'suspended' && detail.suspendedReason !== null ? (

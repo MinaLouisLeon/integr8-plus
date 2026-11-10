@@ -59,6 +59,51 @@ database backup yields nothing without the key; a stolen key yields nothing with
 **Rotating that key makes every enrolled second factor unreadable** and every super admin has
 to enrol again — plan it.
 
+### A session limited to test companies (0077, P38)
+
+`POST /v1/platform/auth/sign-in` takes an optional `scope: "test_companies"`. The developer MCP
+server's terminal login (`pnpm dev-mcp login`, [developer-mcp.md](../contributing/developer-mcp.md))
+asks for it; the dashboard never does. Such a session:
+
+- ends **8 hours after sign-in**, whatever happens; refreshing never moves the end or changes the
+  scope (`sessionExpiresAt` and `scope` come back with every token pair, and from `/v1/platform/me`);
+- may call only the platform routes that list `test_companies` in their `platformScopes`
+  (`apps/api/src/http/session-scope.ts`): `me`, sign-out, the companies list (which then holds
+  test companies only), one company's page, starting, ending and listing impersonation, and a
+  test company's outbox and audit lines. `session-scope.test.ts` pins that list;
+- on a route whose path names a company (`:tenantId`) is refused for any company that is not a
+  test company, or does not exist, with the same answer;
+- is refused everywhere else with 403 `session_scope`, and each refusal is written to the platform
+  audit log as `platform.session_scope_refused`;
+- starts impersonation only with a reason beginning `Developer MCP:` (422
+  `developer_reason_required` otherwise); the grant records `from_limited_session`.
+
+New platform routes are closed to it by default: a route opens only by listing the scope.
+
+---
+
+## Test companies (0077, P38)
+
+A company is a **test company** from the moment it is created, or never: `tenants.is_test` is
+written by the insert and a trigger refuses any later change, in either direction, so a real
+company can never become one the developer tool may enter. The demo seeder always makes test
+companies; the onboarding form has a **Test company** switch, off by default, with a warning.
+
+| Area            | For a test company                                                                                                  |
+| --------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Dashboard       | A **Test** badge on the list and the company page; **Show** filters all, real or test companies (`?test=`)          |
+| Billing         | Not in `billing.list`, lapsed trials or dunning; not listed for storage overage                                     |
+| Totals          | Left out of the sign-up funnel. The storage page's projected Cloudflare bill still counts it: Cloudflare charges it |
+| Email and push  | Not sent. Kept in `test_outbox` for 7 days (`GET /v1/platform/companies/{id}/test-outbox`)                          |
+| Company apps    | Refused (409 `test_company_no_apps`), and never in the release pipeline's list                                      |
+| Everything else | Unchanged: plan limits, modules, tabs, export, close and purge work as for any company                              |
+
+The places that send are `email/deliver.ts` (every company email passes `tenantId`; a sign-in
+code is kept when every company of the address is a test company) and the push senders' callers
+(`push/notify.ts`, deadline alerts, certificate expiry), all through `test-companies/outbox.ts`.
+`GET /v1/platform/companies/{id}/test-audit` reads a test company's own audit log, so the
+developer tool can read back what a call changed.
+
 ---
 
 ## Staff

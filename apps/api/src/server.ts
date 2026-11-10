@@ -29,7 +29,14 @@ import { createLogger, type Logger, principalContext } from './http/logger.js';
 import { createRateLimiter } from './http/rate-limit.js';
 import { assertTenantServable, assertTenantWritable } from './http/suspension.js';
 import { assertFeatureEnabled } from './http/features.js';
-import type { AnyRoute, ClientApp, PublicRequestContext, RequestContext } from './http/routes.js';
+import type {
+  AnyRoute,
+  ClientApp,
+  PlatformRequestContext,
+  PublicRequestContext,
+  RequestContext,
+} from './http/routes.js';
+import { assertWithinSessionScope } from './http/session-scope.js';
 import { captureException } from './observability/sentry.js';
 
 /**
@@ -295,6 +302,9 @@ export function buildServer(options: BuildServerOptions): FastifyInstance {
             platformUserId: context.platform.platformUserId,
             platformSessionId: context.platform.sessionId,
           });
+          // 5'. A session limited to test companies (the developer MCP server,
+          // P38) reaches only the routes opened to it, for test companies only.
+          await assertWithinSessionScope(route, params, context as PlatformRequestContext);
         }
 
         if (route.security === 'authenticated') {

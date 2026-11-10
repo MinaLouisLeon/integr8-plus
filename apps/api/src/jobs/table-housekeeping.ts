@@ -1,4 +1,8 @@
-import { getPlatformDataSource, type HousekeepingReport } from '@integr8/db';
+import {
+  getPlatformDataSource,
+  TEST_OUTBOX_RETENTION_DAYS,
+  type HousekeepingReport,
+} from '@integr8/db';
 import type { Logger } from '../http/logger.js';
 
 /**
@@ -54,10 +58,15 @@ export async function runTableHousekeeping(options: {
       idempotencyExpiredBefore: now,
       loginAttemptsBefore: new Date(now.getTime() - LOGIN_ATTEMPT_RETENTION_MS),
     });
+    // What test companies would have sent is kept a week for the developer
+    // MCP server (0077), then forgotten.
+    const testOutbox = await platform.testOutbox.deleteOlderThan(
+      new Date(now.getTime() - TEST_OUTBOX_RETENTION_DAYS * 24 * 60 * 60 * 1000),
+    );
     await platform.metering.finishTask(TABLE_HOUSEKEEPING_TASK);
 
-    if (report.rateLimitBuckets + report.idempotencyKeys + report.loginAttempts > 0) {
-      options.logger.info('Table housekeeping finished', { ...report });
+    if (report.rateLimitBuckets + report.idempotencyKeys + report.loginAttempts + testOutbox > 0) {
+      options.logger.info('Table housekeeping finished', { ...report, testOutbox });
     }
     return report;
   } catch (error) {

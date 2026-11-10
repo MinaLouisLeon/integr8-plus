@@ -271,6 +271,8 @@ export class StorageMeteringRepository {
       .where('s.sampled_on', '>=', first)
       .where('s.sampled_on', '<=', last)
       .where('s.overage_bytes', '>', sql<string>`0`)
+      // A test company (0077) is never listed for invoicing.
+      .where('t.is_test', '=', false)
       .orderBy('s.tenant_id')
       .orderBy('s.sampled_on')
       .execute();

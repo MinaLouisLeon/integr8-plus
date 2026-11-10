@@ -45,6 +45,16 @@ export function StatusBadge({
   return <Badge tone="ok">{t('platform.companies.statusActive')}</Badge>;
 }
 
+/** A test company (P38): not billed or counted, sends nothing. */
+export function TestBadge() {
+  const { t } = useTranslation();
+  return (
+    <span title={t('platform.companies.testTitle')}>
+      <Badge tone="warning">{t('platform.companies.test')}</Badge>
+    </span>
+  );
+}
+
 const TONES = {
   ok: 'bg-success-subtle text-success',
   warning: 'bg-warning-subtle text-warning',

@@ -25,6 +25,8 @@ export interface ImpersonationGrant {
   expiresAt: Date;
   endedAt: Date | null;
   endedReason: ImpersonationEndReason | null;
+  /** Started from a staff session limited to test companies (0077). */
+  fromLimitedSession: boolean;
 }
 
 export interface CreateImpersonationGrantInput {
@@ -40,6 +42,8 @@ export interface CreateImpersonationGrantInput {
    */
   auditLogId: string;
   expiresAt: Date;
+  /** Started from a staff session limited to test companies (0077). */
+  fromLimitedSession?: boolean;
 }
 
 /**
@@ -75,6 +79,7 @@ export class ImpersonationRepository extends TenantScopedRepository {
         reason: input.reason.trim(),
         audit_log_id: input.auditLogId,
         expires_at: input.expiresAt,
+        from_limited_session: input.fromLimitedSession ?? false,
       })
       .returningAll()
       .executeTakeFirstOrThrow();
@@ -142,5 +147,6 @@ function toDomain(row: Selectable<ImpersonationGrantsTable>): ImpersonationGrant
     endedAt: row.ended_at,
     endedReason:
       row.ended_reason === null ? null : impersonationEndReasonSchema.parse(row.ended_reason),
+    fromLimitedSession: row.from_limited_session,
   };
 }

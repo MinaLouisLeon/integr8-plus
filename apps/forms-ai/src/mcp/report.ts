@@ -39,8 +39,25 @@ export function formatCheck(check: FormPackageCheck, subject: 'form' | 'package'
   parts.push(
     `\nAs JSON:\n${JSON.stringify({ ok: check.ok, problems: check.problems, warnings: check.warnings })}`,
   );
+  if (check.problems.some(isUnsupported)) {
+    parts.push(`\n${UNSUPPORTED_OFFER}`);
+  }
   return parts.join('\n');
 }
+
+/**
+ * A problem that says the format has no such thing (an unknown key, question
+ * type or block), as opposed to a mistake in something the format has (P39).
+ */
+export function isUnsupported(problem: PackageProblem): boolean {
+  return /Unrecognized key|Invalid discriminator value|unknown (question |field |block )?type/iu.test(
+    problem.message,
+  );
+}
+
+/** What the AI is told when the check refuses something the format does not have (P39). */
+export const UNSUPPORTED_OFFER =
+  'Some of these use something the Integr8 Plus format does not have (an unknown key, question type or block). If it is a mistake, fix it from get_format_guide. If the person really needs it, tell them: "The platform cannot do this yet. Shall I record it as a change request?" and, if they agree, ask what should happen, for whom, on which apps and what they do today, then call record_change_request.';
 
 /** A refusal from packing or reading a package, or any other failure, as text. */
 export function formatError(error: unknown): string {

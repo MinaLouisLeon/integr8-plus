@@ -50,6 +50,7 @@ export const listCompaniesRoute = defineRoute({
     'Status, plan, seats, storage used, when they joined and when anybody last did anything. One query with correlated sub-selects rather than a fan-out per company: the directory is the first screen and it has to stay fast as the list grows.',
   tags: ['platform'],
   security: 'platform',
+  platformScopes: ['full', 'test_companies'],
   params: noSchema,
   query: z.object({
     /** Cancelled companies are hidden unless asked for. */
@@ -58,15 +59,22 @@ export const listCompaniesRoute = defineRoute({
       .default('false')
       .transform((value) => value === 'true'),
     search: z.string().max(200).optional(),
+    /** `true`: test companies only; `false`: real companies only (P38). */
+    test: z.enum(['true', 'false']).optional(),
   }),
   body: noSchema,
   responses: {
     200: { description: 'The directory.', schema: platformListSchema(companySummarySchema) },
   },
   handler: async ({ query }, context) => {
-    void context;
     const platform = getPlatformDataSource();
-    const companies = await platform.tenants.directory({ includeDeleted: query.includeCancelled });
+    // A session limited to test companies sees nothing else, whatever it asks.
+    const testOnly = context.platform.scope === 'test_companies' || query.test === 'true';
+    const companies = (
+      await platform.tenants.directory({ includeDeleted: query.includeCancelled })
+    ).filter((company) =>
+      testOnly ? company.isTest : query.test === 'false' ? !company.isTest : true,
+    );
     const scheduled = await pendingPurges();
 
     const needle = query.search?.trim().toLowerCase();
@@ -93,6 +101,7 @@ export const getCompanyRoute = defineRoute({
   summary: 'One company, with its activity and flags',
   tags: ['platform'],
   security: 'platform',
+  platformScopes: ['full', 'test_companies'],
   params: z.object({ tenantId: z.uuid() }),
   query: noSchema,
   body: noSchema,
@@ -246,6 +255,12 @@ export const onboardCompanyRoute = defineRoute({
      * one of its tabs is listed and off when none is.
      */
     tabs: z.array(z.string().max(64)).max(200).optional(),
+    /**
+     * A test company (P38): left out of billing and totals, sends no real mail
+     * or push, gets no app builds, and is the only kind the developer MCP
+     * server may reach. Cannot be changed after the company is created.
+     */
+    isTest: z.boolean().default(false),
   }),
   responses: {
     201: { description: 'Onboarded.', schema: onboardResponseSchema },
@@ -270,6 +285,7 @@ export const onboardCompanyRoute = defineRoute({
       ownerEmail: body.ownerEmail,
       websiteUrl: body.websiteUrl ?? null,
       aiChannels: body.aiChannels,
+      isTest: body.isTest,
       ...(body.jobTypes === undefined ? {} : { jobTypes: body.jobTypes }),
       onboardedBy: toPlatformUserId(context.platform.platformUserId),
       // The platform path always invites: whoever is onboarding this company is
@@ -300,6 +316,7 @@ export const onboardCompanyRoute = defineRoute({
         billingMode: body.billingMode,
         ownerEmail: body.ownerEmail,
         aiChannels: body.aiChannels,
+        isTest: body.isTest,
         jobTypes: onboarded.jobTypes,
         bucket: onboarded.storage.bucket,
         storageError: onboarded.storage.error,
@@ -545,6 +562,7 @@ export const updateCompanySettingsRoute = defineRoute({
   responses: {
     200: { description: 'Changed.', schema: companySettingsChangeSchema },
     404: { description: 'No such company.' },
+    409: { description: '`test_company_no_apps`: a test company cannot switch its apps on.' },
     422: { description: 'A document link address that cannot be used.' },
   },
   handler: async ({ params, body }, context) => {
@@ -552,6 +570,9 @@ export const updateCompanySettingsRoute = defineRoute({
     const tenant = await platform.tenants.findById(params.tenantId);
     if (tenant?.deletedAt !== null) {
       throw notFound(`No company with id ${params.tenantId}`);
+    }
+    if (tenant.isTest && body.appsEnabled === true) {
+      throw conflict('test_company_no_apps', 'A test company has no phone or desktop apps.');
     }
 
     const { before, settings } = await withTenant(toTenantId(tenant.id), async (tx) => {
@@ -668,12 +689,18 @@ export const startCompanyAppBuildRoute = defineRoute({
   responses: {
     200: { description: 'What came of asking GitHub.', schema: appBuildSchema },
     404: { description: 'No such company.' },
-    409: { description: '`apps_not_enabled`: switch "Build apps" on first.' },
+    409: {
+      description:
+        '`apps_not_enabled`: switch "Build apps" on first. `test_company_no_apps`: a test company has no apps.',
+    },
   },
   handler: async ({ params }, context) => {
     const tenant = await getPlatformDataSource().tenants.findById(params.tenantId);
     if (tenant?.deletedAt !== null) {
       throw notFound(`No company with id ${params.tenantId}`);
+    }
+    if (tenant.isTest) {
+      throw conflict('test_company_no_apps', 'A test company has no phone or desktop apps.');
     }
     const settings = await withTenant(toTenantId(tenant.id), (tx) => tx.settings.get());
     if (!settings.appsEnabled) {
@@ -782,6 +809,7 @@ function toSummary(
     suspendedAt: isoOrNull(company.suspendedAt),
     suspendedReason: company.suspendedReason,
     deletionScheduledFor: isoOrNull(scheduled.get(company.id) ?? null),
+    isTest: company.isTest,
   };
 }
 

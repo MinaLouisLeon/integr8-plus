@@ -104,7 +104,9 @@ export async function seedDemoCompany(input: DemoSeedInput): Promise<DemoSeedRes
   }
 
   // 2. The company, onboarded like a real one: invoiced, so it starts active
-  //    on the top plan with no trial to run out mid-test.
+  //    on the top plan with no trial to run out mid-test. Always a test company
+  //    (P38): not billed or counted, sends no mail or push, and the only kind
+  //    the developer MCP server may reach.
   const owner = people.owner;
   const onboarded = await onboardCompany({
     slug: input.slug,
@@ -116,6 +118,7 @@ export async function seedDemoCompany(input: DemoSeedInput): Promise<DemoSeedRes
     ownerAccess: { kind: 'direct', userId: owner.userId, displayName: owner.displayName },
     websiteUrl: null,
     aiChannels: { web: true, desktop: true, mobile: true },
+    isTest: true,
     onboardedBy: input.platformUserId as never,
     invitationTtlSeconds: 7 * 24 * 60 * 60,
     media: input.services.media,
