@@ -1,7 +1,7 @@
 # P37 — Forms for AI: a live preview window
 
 **Version:** v1.4 AI tooling
-**Status:** `NOT STARTED`
+**Status:** `IN PROGRESS` (built 2026-11-10; waiting for a run with a real AI tool)
 **Depends on:** P07 (form builder), P08 (web renderer), the 1.3.0 form files and Forms for AI
 (`docs/forms-ai/README.md`)
 
@@ -155,33 +155,64 @@ on.
 
 ## Tasks
 
-- [ ] `feat(forms-ai)`: the preview session and the loopback page server with its safety rules
-- [ ] `feat(forms-ai)`: the page (Form, PDF and Checks tabs, language, width, theme) and its bundle
-- [ ] `feat(forms-ai)`: `open_preview`, `update_preview`, `get_preview_state`, `close_preview`;
+- [x] `feat(forms-ai)`: the preview session and the loopback page server with its safety rules
+- [x] `feat(forms-ai)`: the page (Form, PDF and Checks tabs, language, width, theme) and its bundle
+- [x] `feat(forms-ai)`: `open_preview`, `update_preview`, `get_preview_state`, `close_preview`;
       `preview_pdf` refreshes an open window; the instructions text
-- [ ] `feat(forms-ai)`: Save from the window; notes for the AI
-- [ ] `build(forms-ai)`: page bundle as SEA assets; exact pins
-- [ ] `docs`: Forms for AI page, `MEMORY.md`
+- [x] `feat(forms-ai)`: Save from the window; notes for the AI
+- [x] `build(forms-ai)`: page bundle as SEA assets; exact pins
+- [x] `docs`: Forms for AI page, `MEMORY.md`
 
 ## Exit criteria
 
 - [ ] With an AI tool connected, `open_preview` opens a browser window showing the form in the
-      product's own filler and each PDF template
-- [ ] After the AI changes the form or a template, the window shows the change without a reload
+      product's own filler and each PDF template (proved through an MCP client in
+      `tools.test.ts` and in headless Chrome in `smoke.test.ts`; not yet tried from a real AI
+      tool opening the person's own browser)
+- [x] After the AI changes the form or a template, the window shows the change without a reload
       by the person, and answers already typed are still there
-- [ ] Conditions, calculations, required checks and repeating sections behave in the window as
+- [x] Conditions, calculations, required checks and repeating sections behave in the window as
       they do in the web app, in English and Arabic
-- [ ] The PDF tab prints with the answers typed in the Form tab
-- [ ] "Save the form file…" writes a file that imports into the app as a draft
-- [ ] The page server answers only on `127.0.0.1`, only with its token, and the page loads
+- [x] The PDF tab prints with the answers typed in the Form tab
+- [x] "Save the form file…" writes a file that imports into the app as a draft (read back with
+      the strict reader the API imports with; not yet imported on a running server)
+- [x] The page server answers only on `127.0.0.1`, only with its token, and the page loads
       nothing from another host (checked by a test)
-- [ ] Without Chrome or Edge the window still shows the form and says why there is no PDF
-- [ ] The Windows, macOS and Linux executables carry the page (the release build's own check)
+- [x] Without Chrome or Edge the window still shows the form and says why there is no PDF
+- [ ] The Windows, macOS and Linux executables carry the page (the release build's own check:
+      `build-sea.mjs` now runs `--check-assets`; passed for Windows x64 on this machine, the
+      others wait for the next release run)
+
+## Implementation notes (2026-11-10)
+
+- Files: `apps/forms-ai/src/window/` (`session.ts`, `printer.ts`, `server.ts`,
+  `preview-window.ts`, `open-browser.ts`) and `src/window/page/` (React, its own
+  `tsconfig.json`; tests in jsdom by a file comment). Strings: `formsAiWindow.*` in
+  `packages/i18n/src/messages/forms-ai-window.{en,ar}.ts`.
+- Opening the browser on Windows uses `rundll32 url.dll,FileProtocolHandler` (what `start` does)
+  so no shell reads the address; the opener also refuses any address that is not the window's
+  own. Tests pass an `openUrl` that opens nothing (on `ServerOptions`, not on `Host`).
+- `open_preview` on an open window updates it and opens no second tab while a page is listening.
+- Photos and signatures typed in the window are uploaded to the page server's memory (at most
+  64 MB in all) so prints can show them; `previewTemplate` gained `answerMedia`, `withSamples`
+  (the window's "Use my answers" prints only what was typed) and `rasterize: false`.
+- The page's requests go one at a time, in order, so answers typed just before opening the PDF
+  tab reach the program before the print that uses them (found by the smoke test).
+- The page sets zod's `jitless`: zod's one-off `new Function` probe was reported as a policy
+  violation under the strict Content-Security-Policy, though zod caught it.
+- The stylesheet is compiled by `@tailwindcss/node` and `@tailwindcss/oxide` (4.3.3, as the
+  desktop app's Tailwind) and the Integr8 Media fonts are inlined as data URIs, so the page is
+  two files (about 2.5 MB of script and 1.6 MB of style; the Windows executable is 98 MB).
+- The right-to-left lint rule is on for the page only; the rest of the program writes guides
+  for an AI with "left" and "right" in prose.
+- The page does not offer "Suggest a change to the platform" yet (P39).
 
 ## Notes
 
 - To verify during the build: that the browser's built-in viewer shows a PDF inside the page
   under the strict policy on Chrome, Edge, Firefox and Safari; if one refuses, that browser gets
-  the page pictures `preview_pdf` already makes.
+  the page pictures `preview_pdf` already makes. Checked so far: headless Chrome loads the frame
+  with no policy violation (`smoke.test.ts`). Still to try by hand: Edge, Firefox, Safari, and
+  Chrome with its viewer visible.
 - Forms for AI's update check still finds nothing while the repository is private (an open item
   in `MEMORY.md`); the new version reaches staff through the Downloads page.

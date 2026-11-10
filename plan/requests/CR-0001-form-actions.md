@@ -2,8 +2,9 @@
 
 **Date:** 2026-11-10
 **Kind:** `form_action`
-**Status:** `received` — not planned yet. It is planned with the tools of P37–P39
-([`plan/v1.4-ai-tooling/`](../v1.4-ai-tooling/)), as the first change request.
+**Status:** `planned` — [P40](../v1.5-form-actions/P40-form-actions.md), proposed on
+2026-11-10 and waiting for the owner. Planned with the procedure of P39
+([`docs/contributing/planning-a-change-request.md`](../../docs/contributing/planning-a-change-request.md)).
 
 This note keeps what the owner asked for and decided in the conversation of 2026-11-10, and
 what was found in the code, so the plan starts from it. It is written by hand because the

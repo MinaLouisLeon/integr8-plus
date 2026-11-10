@@ -11,7 +11,7 @@ what is already done**.
 ## How this plan is organised
 
 Work is grouped into **versions**. Each version is a shippable release with a goal and
-exit criteria. Each version contains numbered **phases** (`P01`…`P39`), one file each.
+exit criteria. Each version contains numbered **phases** (`P01`…`P40`), one file each.
 
 ```
 plan/
@@ -128,9 +128,16 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` completed · `[!]` block
 > feature of its own. Platform wishes found with these tools arrive as change requests in
 > [`requests/`](./requests/); the first is form actions (CR-0001).
 
-- [ ] **P37** — Forms for AI: a live preview window
-- [ ] **P38** — Developer MCP server and test companies
-- [ ] **P39** — Change requests and planning from the preview
+- [ ] **P37** — Forms for AI: a live preview window (built 2026-11-10, in progress: a run with a real AI tool and the other release builds remain)
+- [ ] **P38** — Developer MCP server and test companies (built 2026-11-10, in progress: the database suites and a run against a real API remain)
+- [ ] **P39** — Change requests and planning from the preview (built 2026-11-10, in progress: CR-0001's plan needs its evidence step and the owner's review)
+
+### v1.5 — Form actions
+
+> Proposed on 2026-11-10 from change request CR-0001, with the planning procedure of P39. Waits
+> for the owner's decisions; nothing is built.
+
+- [ ] **P40** — Form actions (proposed, waiting for the owner)
 
 ### v2.0 — Scale and Enterprise
 

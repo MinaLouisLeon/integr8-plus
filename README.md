@@ -6,7 +6,7 @@ with its own forms, job types, look and apps. The company's office plans and
 dispatches work; its engineers do the work on a phone that keeps working with no
 signal; the office sees the result the moment the phone reconnects.
 
-Current version: **1.3.6**. The build plan lives in [`plan/`](./plan/README.md);
+Current version: **1.4.0**. The build plan lives in [`plan/`](./plan/README.md);
 start with [`plan/ROADMAP.md`](./plan/ROADMAP.md).
 
 ---
@@ -489,6 +489,7 @@ each with a down file, applied by `pnpm --filter @integr8/db db up` (or
 | 0074      | Business PDFs in the Documents register: quotes, invoices, purchase orders and job reports            |
 | 0075      | Tabs staff switch per company, the name beside the logo, document links on the company's website      |
 | 0076      | A submission's own name, chosen at the submit step                                                    |
+| 0077      | Test companies (fixed at creation), staff sessions limited to them, and their outbox                  |
 
 See [`docs/database/migrations.md`](./docs/database/migrations.md) and the
 [backup and restore runbook](./docs/database/runbook-backup-and-restore.md).

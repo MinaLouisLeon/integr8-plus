@@ -1,7 +1,7 @@
 # P39 — Change requests and planning from the preview
 
 **Version:** v1.4 AI tooling
-**Status:** `NOT STARTED`
+**Status:** `IN PROGRESS` (built 2026-11-10; CR-0001's plan needs its evidence step and the owner's review)
 **Depends on:** P37 (the preview window), P38 (the developer MCP server)
 
 ## Goal
@@ -135,26 +135,52 @@ pointer, `MEMORY.md`.
 
 ## Tasks
 
-- [ ] `feat(forms-ai)`: the change-request format, the four tools, the refusal line in check
+- [x] `feat(forms-ai)`: the change-request format, the four tools, the refusal line in check
       reports
-- [ ] `feat(forms-ai)`: the window's suggestion box and requests list
-- [ ] `feat(dev-mcp)`: `list_change_requests` and `get_change_request`
-- [ ] `docs`: the format, the planning procedure, the project command, `plan/requests/README.md`,
+- [x] `feat(forms-ai)`: the window's suggestion box and requests list
+- [x] `feat(dev-mcp)`: `list_change_requests` and `get_change_request`
+- [x] `docs`: the format, the planning procedure, the project command, `plan/requests/README.md`,
       the `AGENTS.md` pointer
-- [ ] `docs(plan)`: plan CR-0001 (form actions) with the procedure, for the owner's review
+- [x] `docs(plan)`: plan CR-0001 (form actions) with the procedure, for the owner's review
+      ([P40](../v1.5-form-actions/P40-form-actions.md), without its evidence step: see below)
 
 ## Exit criteria
 
-- [ ] Asking the AI for something the form format cannot do ends with an offer to record it, and
+- [x] Asking the AI for something the form format cannot do ends with an offer to record it, and
       accepting writes a request folder with the text, the example file and pictures
-- [ ] "Suggest a change to the platform" in the window reaches the AI and becomes a request
-- [ ] A request copied into `plan/requests/` is found by the developer MCP server's tools
+      (`requests.test.ts`; pictures in a real browser in `smoke.test.ts`)
+- [x] "Suggest a change to the platform" in the window reaches the AI and becomes a request
+- [x] A request copied into `plan/requests/` is found by the developer MCP server's tools
 - [ ] Running the planning procedure on CR-0001 produces a phase file in the house format, with
       evidence from a test company and the owner's decisions listed as questions, and changes no
-      product code
-- [ ] No request contains a real customer's data (the example is saved without typed answers)
-- [ ] Forms for AI still makes no network request (the existing offline test covers the new
-      tools)
+      product code (P40 is written, with the decisions and no product code; the test-company
+      evidence is still to add, since no API could be reached when it was written)
+- [x] No request contains a real customer's data (the example is saved without typed answers)
+- [x] Forms for AI still makes no network request (`offline.test.ts`, new: every tool, with
+      `fetch` and outgoing sockets watched; there was no such test before)
+
+## Implementation notes (2026-11-10)
+
+- Forms for AI: `apps/forms-ai/src/requests/` (`format.ts` header schema and Markdown,
+  `store.ts`, `pictures.ts`, `tools.ts`). Requests go under `<output folder>/change-requests/`.
+  The header is a Markdown table (readable by people, parsed and checked by the tools). The
+  example is packed as `example.integr8form`, or kept as `example.json` when the form cannot be
+  packed yet.
+- The offer line is added by `formatCheck` when a problem says "Unrecognized key", "Invalid
+  discriminator value" or an unknown type (`isUnsupported`), so every check and preview carries
+  it; the server's instructions say when to offer as well.
+- Pictures: the window's Form tab is drawn at `?blank=1`, a new page mode that shows the form with
+  nothing typed and sends nothing back (no answers, no view changes), so a person's answers
+  never reach a picture; PDFs print with sample answers; up to five templates.
+- The window: "Suggest a change to the platform" in the footer sends a note marked `platform`,
+  which `get_preview_state` flags and tells the AI to offer a request; the Checks tab lists the
+  requests (`GET /requests`). New strings `formsAiWindow.suggest.*` and `.requests.*`.
+- Developer MCP server: `apps/dev-mcp/src/requests.ts` reads `plan/requests/`, both Forms for
+  AI's table header and a hand-written note's bold lines.
+- Docs: `docs/forms-ai/change-requests.md`, `docs/contributing/planning-a-change-request.md`,
+  `.claude/commands/plan-change-request.md`, `plan/requests/README.md`, `AGENTS.md`.
+- CR-0001 was planned as **P40 — Form actions** (`plan/v1.5-form-actions/`), status proposed, with
+  six decisions for the owner. Its evidence step is written into the plan as what to run.
 
 ## Notes
 

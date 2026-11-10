@@ -1,7 +1,7 @@
 # P38 — Developer MCP server and test companies
 
 **Version:** v1.4 AI tooling
-**Status:** `NOT STARTED`
+**Status:** `IN PROGRESS` (built 2026-11-10; the database suites and a run against a real API remain)
 **Depends on:** P15 (platform dashboard, impersonation), the demo company seeder
 (`apps/api/src/demo/`), P04 (the route registry and `openapi.json`)
 
@@ -209,17 +209,17 @@ how the AI checks "the customer would have been emailed the PDF" without sending
 
 ## Tasks
 
-- [ ] `feat(db)`: 0077: `tenants.is_test` with its trigger, `platform_sessions.scope`, the
+- [x] `feat(db)`: 0077: `tenants.is_test` with its trigger, `platform_sessions.scope`, the
       test outbox table
-- [ ] `feat(api)`: the seeder and the onboarding route set the mark; test companies left out of
+- [x] `feat(api)`: the seeder and the onboarding route set the mark; test companies left out of
       billing, totals and builds; mail and push recorded to the outbox
-- [ ] `feat(api)`: `scope` at staff sign-in, the 8-hour limit, per-route scopes, the outbox and
+- [x] `feat(api)`: `scope` at staff sign-in, the 8-hour limit, per-route scopes, the outbox and
       audit reads; OpenAPI and client regenerated
-- [ ] `feat(web)`: the Test badge, filter and onboarding switch (English and Arabic)
-- [ ] `feat(dev-mcp)`: the app, `login`/`logout`/`status`, the keychain store
-- [ ] `feat(dev-mcp)`: remote and local modes, the tools, the trace with secrets hidden
-- [ ] `chore(repo)`: `.mcp.json`, the commitlint scope
-- [ ] `docs`: setup guide (both copies), developer MCP page, platform and API pages, `MEMORY.md`
+- [x] `feat(web)`: the Test badge, filter and onboarding switch (English and Arabic)
+- [x] `feat(dev-mcp)`: the app, `login`/`logout`/`status`, the keychain store
+- [x] `feat(dev-mcp)`: remote and local modes, the tools, the trace with secrets hidden
+- [x] `chore(repo)`: `.mcp.json`, the commitlint scope
+- [x] `docs`: setup guide (both copies), developer MCP page, platform and API pages, `MEMORY.md`
 
 ## Exit criteria
 
@@ -227,8 +227,8 @@ how the AI checks "the customer would have been emailed the PDF" without sending
       running API, calls a route as an engineer of one and shows the request and the response
 - [ ] The same session is refused, by the API, on a company that is not a test company and on
       every staff route outside the open list (integration test)
-- [ ] The password, the authenticator code and every token never appear in a tool result or in
-      the trace file (test)
+- [x] The password, the authenticator code and every token never appear in a tool result or in
+      the trace file (test: `apps/dev-mcp/src/server.test.ts`, `redact.test.ts`)
 - [ ] The session stops working 8 hours after sign-in
 - [ ] `is_test` cannot be changed on an existing company (database test)
 - [ ] A test company is not invoiced, not counted in the dashboard's totals, and its emails and
@@ -238,7 +238,56 @@ how the AI checks "the customer would have been emailed the PDF" without sending
       test company through the tools
 - [ ] Local mode creates a seeded test company and runs the same tools with no sign-in, and
       refuses to start outside development and test
-- [ ] The setup guide's two copies agree (`pnpm guide:check`) and name migration 0077
+- [x] The setup guide's two copies agree (`pnpm guide:check`) and name migration 0077
+
+## Implementation notes (2026-11-10)
+
+Written but **not run on this machine** (no Postgres here): the integration suites
+`packages/db/src/testing/test-companies.integration.test.ts`,
+`apps/api/src/routes/v1/platform/test-companies.integration.test.ts` and the new cases in
+`packages/auth/src/services/platform-sessions.integration.test.ts` (the 8-hour end, with a
+clock). The exit criteria they cover stay unticked until they pass on a disposable Postgres,
+and the end-to-end ones until a run against a real API.
+
+- **Where mail and push are stopped:** `apps/api/src/test-companies/outbox.ts`, called from
+  `email/deliver.ts` (every company email passes `tenantId`; a sign-in code is kept when every
+  company of the address is a test company, so `IssuedSignInCode` now carries `tenantIds`),
+  `push/notify.ts`, `maintenance/tasks.ts` (deadline alerts) and `qualifications/expiry.ts`.
+- **Billing and totals:** `billing.list`, `lapsedTrials` and `inDunning` leave test companies
+  out; `metering.overageBetween` (the invoicing list) too; the release pipeline's
+  `companiesWithApps` too; the sign-up funnel joins on `not is_test`. **Deviation:** the storage
+  page's projected Cloudflare bill still counts test companies, because Cloudflare charges for
+  their files.
+- **Builds:** `POST …/app-builds` and switching `appsEnabled` on answer 409
+  `test_company_no_apps`.
+- **Routes added:** `GET /v1/platform/companies/{id}/test-outbox` and `…/test-audit` (the
+  company's own audit lines; 409 `not_a_test_company` for a real company). `GET
+/v1/platform/companies?test=true|false` filters. `/v1/platform/me` gains `scope`,
+  `sessionExpiresAt` and `environment`; token pairs gain `sessionExpiresAt` and `scope`; the
+  directory rows and impersonation grants gain `isTest` and `fromLimitedSession`. All additive.
+- **Error codes:** `session_scope`, `developer_reason_required`, `test_company_no_apps`,
+  `not_a_test_company`, with English and Arabic messages.
+- **OpenAPI:** each operation now carries `x-integr8-permission`, `x-integr8-any-permission`,
+  `x-integr8-feature`, `x-integr8-idempotency` and `x-integr8-platform-scopes`, which
+  `get_route` reads. The generated client is unchanged by them.
+- **The scope check** is `apps/api/src/http/session-scope.ts`, run right after the staff session
+  is read. Request validation still runs first, so a limited session sending a malformed body
+  gets 400 before 403; nothing is read or changed either way.
+- **Local mode** boots the API in a child process (`pnpm --filter @integr8/api dev-mcp-local`,
+  `apps/api/src/demo/local-api.ts`), not inside the tool, so no app imports another; the tool
+  reaches it over 127.0.0.1 with the same client as remote mode. It signs in a tool account,
+  `dev-mcp@integr8.invalid`, whose password and second factor are replaced on each start.
+  `create_test_company` runs the seeder with `--without-sign-in`.
+- **Verified during the build:** `x-client-app` needs no new value: the API records anything
+  that is not `web`, `desktop` or `mobile` as `api`, which the tool sends. The keychain library
+  is `@napi-rs/keyring` 2.1.2 (MIT, prebuilt for Windows, macOS and Linux); it works on this
+  Windows machine. The seeder's people need no sign-in accounts for the tool, which acts
+  through impersonation; `--without-sign-in` stays refused on production as before, so on
+  production the seeder still makes accounts.
+- **Still to verify:** that an impersonated member may call the phone's sync routes
+  (`/v1/sync/*`); the Windows `cmd /c` form some AI tools need for `pnpm` in `.mcp.json`.
+- `pnpm licences:check` cannot start on Windows (it runs `pnpm` without `.cmd`); the new
+  dependency's licence (MIT) was checked by hand.
 
 ## Notes
 

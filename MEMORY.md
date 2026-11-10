@@ -7,7 +7,7 @@ the end of any piece of work that changes one of them, and date each section.
 
 ## Snapshot (2026-11-01, after the form builder and PDF builder round)
 
-- **Version:** root `package.json` is **1.3.6** (history below starts at 1.3.1). 1.3.0 reached `main` (PR #148) but its
+- **Version:** root `package.json` is **1.4.0** (2026-11-10, branch `ccr-56fb45d1-5mq6bt`: carries the AI tooling stage P37–P39 and migration 0077; history below starts at 1.3.1). 1.3.0 reached `main` (PR #148) but its
   release never published: the publish job attached the secret scan's report folder
   (`dist/work`) and failed, so there is no v1.3.0 tag. The owner bumped `main` to 1.3.1 on
   GitHub (PR #151, `package.json` only, which failed `app-info.test.ts`); branch
@@ -21,14 +21,15 @@ the end of any piece of work that changes one of them, and date each section.
   arrival time in `onRequest` (`context.receivedAt`) and bumps every copy to **1.3.3**; no
   v1.3.1 or v1.3.2 tag exists. **2026-11-04:** branch `bugfix/fix-build` bumps every copy to
   **1.3.4** (it carries migration 0075 and this round's fixes). Branch `chore/bump-1.3.5` (from
-  `dev`) bumps every copy to **1.3.5**. Branch `fix/submission-names-pdf-links-pickers` bumps every copy to **1.3.6** (it carries migration 0076). The root `package.json` is the only
+  `dev`) bumps every copy to **1.3.5**. Branch `fix/submission-names-pdf-links-pickers` bumps every copy to **1.3.6** (it carries migration 0076). Branch `ccr-56fb45d1-5mq6bt` bumps every copy to **1.4.0**. The root `package.json` is the only
   source: the phone (`app.config.ts`) and the web build (`next.config.ts`) read it, and
   `apps/api/src/app-info.ts` has a copy a test keeps equal. A version bump must also change
   every place listed under "Places that state the version".
-- **Migrations:** `packages/db/migrations` reaches **0076** (0075 merged into `dev`, released
+- **Migrations:** `packages/db/migrations` reaches **0077** (0077 `test_companies`, P38,
+  unreleased, branch `ccr-56fb45d1-5mq6bt`). Before that it reached **0076** (0075 merged into `dev`, released
   with 1.3.4; **0076** `submissions.title` is unreleased, on branch
   `fix/submission-names-pdf-links-pickers`). **0059 was never used** (workers had reserved ranges) and the migrator
-  does not need contiguous numbers; the next one is **0077**. 1.2.2 carries 0054–0057;
+  does not need contiguous numbers; the next one is **0078**. 1.2.2 carries 0054–0057;
   1.2.3 adds 0058 and 0060–0066; 1.2.4 adds 0067–0068; 1.3.0 adds 0069 and 0074 (0070–0073 were reserved by workers and never used).
 - **Pre-production audit (2026-10-31):** plans, docs and code compared area by area; the
   report is the claude.ai artifact https://claude.ai/artifact/FB7vANrUc691VfMXkR5h2U. Its
@@ -50,7 +51,8 @@ the end of any piece of work that changes one of them, and date each section.
   (Arabic, mostly built) are `IN PROGRESS`; v1.3 (P28–P31) and P33–P35 are `NOT STARTED`,
   though parts exist (see the notes in `plan/README.md`). Modules planned outside the phase
   list are indexed in `plan/README.md` ("Module plans outside the phase list").
-  P37–P39 (v1.4 AI tooling, planned 2026-11-10) are `NOT STARTED`.
+  P37–P39 (v1.4 AI tooling, planned 2026-11-10) are built (`IN PROGRESS`, see Decisions). P40
+  (form actions, from CR-0001) is proposed and waits for the owner's decisions.
 - **P36 self-hosted sign-in** (`plan/v1.0-launch/P36-self-hosted-sign-in.md`): merged into
   `main` in PRs #130 and #135; CI's database job, real Auth included, is green. Auth container in
   `deploy/compose.yml` (`supabase/auth:v2.197.0`, private ports, memory caps), bootstrap's
@@ -256,6 +258,38 @@ the end of any piece of work that changes one of them, and date each section.
   accountant corrects amounts), waits as `plan/requests/CR-0001-form-actions.md`. Company
   plugins, hooks and splitting the product into installable modules were discussed and not
   chosen.
+- **P37 preview window built (2026-11-10, unreleased, branch `ccr-56fb45d1-5mq6bt`):** Forms for
+  AI gained `open_preview`, `update_preview`, `get_preview_state`, `close_preview` (19 tools) and
+  a page it serves on `127.0.0.1` with a token, a strict CSP and Host/Origin checks
+  (`apps/forms-ai/src/window/`). The page is React with the web filler, bundled with Tailwind into
+  `dist/window/page.{js,css}` and carried as SEA assets; `build-sea.mjs` now runs the new
+  executable's `--check-assets`. Strings are `formsAiWindow.*`. A smoke test drives the built
+  page in the machine's Chrome. Still open: a run from a real AI tool, the PDF frame in Edge,
+  Firefox and Safari, and the macOS/Linux builds' asset check (next release run). The page needs
+  `form-renderer-dom`, `i18n` and `tokens` built first, which the release job's
+  `--filter=@integr8/forms-ai^...` build now includes.
+- **P38 developer MCP server and test companies built (2026-11-10, unreleased, branch
+  `ccr-56fb45d1-5mq6bt`; migration 0077):** `tenants.is_test` (trigger: fixed at creation),
+  `platform_sessions.scope` (`full` | `test_companies`, 8 hours), `impersonation_grants.from_limited_session`
+  and `test_outbox` (7 days). The seeder and the onboarding switch make test companies; they are
+  left out of billing, overage invoicing, the funnel and app builds, and their mail and push go
+  to the outbox (`apps/api/src/test-companies/outbox.ts`). Platform routes declare
+  `platformScopes`; a limited session is refused elsewhere (403 `session_scope`, audited) and on
+  real companies (`http/session-scope.ts`, list pinned in `session-scope.test.ts`). `apps/dev-mcp`
+  (`pnpm dev-mcp login|logout|status|serve [--local]`, `.mcp.json`) keeps the session in the
+  keychain (`@napi-rs/keyring`) and hides secrets in its trace. The new integration suites were
+  written but not run (no Postgres on the build machine). Storage cost projection still counts
+  test companies (Cloudflare bills them).
+- **P39 change requests built (2026-11-10, unreleased, branch `ccr-56fb45d1-5mq6bt`):** Forms
+  for AI records what the platform cannot do yet as folders under
+  `<output>/change-requests/CR-<n>-<slug>/` (`request.md` with a checked table header, the example
+  `.integr8form`, pictures made with `?blank=1` so no typed answer is pictured) with four tools
+  (23 in all); checks that refuse an unknown key, type or block end with an offer to record one;
+  the window has "Suggest a change to the platform" and a requests list. Handed over by copying
+  into `plan/requests/` (README there); planned with `docs/contributing/planning-a-change-request.md`
+  (`/plan-change-request`); the developer MCP server lists and reads them. `offline.test.ts` now
+  proves no Forms for AI tool makes a network request. CR-0001 became **P40 — Form actions**
+  (`plan/v1.5-form-actions/`, proposed; its test-company evidence step is still to run).
 - **The demo seeder goes through the API**, in-process with Fastify's `inject`, as the
   company's own people (plus a staff impersonation for staff-only setup). Direct inserts
   were rejected: they skip numbering, stock, ledger postings and audit, and produce data
