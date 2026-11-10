@@ -336,19 +336,26 @@ describe('a session limited to test companies (P38)', () => {
       'test_companies',
     );
 
-    // Seven hours in, a refresh keeps the scope and does not move the end.
-    services.setNow(new Date(start.getTime() + 7 * 60 * 60 * 1000));
-    const refreshed = await services.platform.refresh(signedIn.refreshToken);
-    expect(refreshed.scope).toBe('test_companies');
-    expect(refreshed.sessionExpiresAt.getTime()).toBe(signedIn.sessionExpiresAt.getTime());
+    try {
+      // A client refreshes as it goes (a refresh token lasts an hour): every 50
+      // minutes for seven and a half hours. Each keeps the scope and the end.
+      let current = signedIn;
+      for (let step = 1; step <= 9; step += 1) {
+        services.setNow(new Date(start.getTime() + step * 50 * 60 * 1000));
+        current = await services.platform.refresh(current.refreshToken);
+        expect(current.scope).toBe('test_companies');
+        expect(current.sessionExpiresAt.getTime()).toBe(signedIn.sessionExpiresAt.getTime());
+      }
 
-    // Past 8 hours nothing works, whatever was refreshed.
-    services.setNow(new Date(start.getTime() + 8 * 60 * 60 * 1000 + 1000));
-    await expect(services.platform.authenticate(refreshed.accessToken)).rejects.toThrow();
-    await expect(services.platform.refresh(refreshed.refreshToken)).rejects.toThrow(
-      SessionRevokedError,
-    );
-    services.setNow(new Date());
+      // Past 8 hours nothing works, however often it was refreshed.
+      services.setNow(new Date(start.getTime() + 8 * 60 * 60 * 1000 + 1000));
+      await expect(services.platform.authenticate(current.accessToken)).rejects.toThrow();
+      await expect(services.platform.refresh(current.refreshToken)).rejects.toThrow(
+        SessionRevokedError,
+      );
+    } finally {
+      services.setNow(new Date());
+    }
   });
 
   it('is full when no scope is asked for', async () => {
