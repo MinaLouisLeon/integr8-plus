@@ -22,6 +22,7 @@
 import type { Messages } from './en.js';
 import { apiErrorsAr } from './api-errors.ar.js';
 import { legalAr } from './legal.ar.js';
+import { formsAiWindowAr } from './forms-ai-window.ar.js';
 import { siteAr } from './site.ar.js';
 
 /**
@@ -856,6 +857,8 @@ export const ar: Catalogue<Messages> = {
   legal: legalAr,
 
   site: siteAr,
+
+  formsAiWindow: formsAiWindowAr,
 
   states: {
     emptyTitle: 'لا شيء هنا بعد',
@@ -8802,6 +8805,12 @@ export const ar: Catalogue<Messages> = {
       title: 'الشركات',
       search: 'البحث في الشركات',
       includeCancelled: 'عرض الشركات المغلقة',
+      test: 'تجريبية',
+      testTitle: 'شركة تجريبية: لا تُفوتر ولا تُحتسب، ولا ترسل بريدًا إلكترونيًا أو إشعارات',
+      kind: 'عرض',
+      kindAll: 'كل الشركات',
+      kindReal: 'الشركات الحقيقية',
+      kindTest: 'الشركات التجريبية',
       empty: 'لا توجد شركات بعد.',
       name: 'الشركة',
       status: 'الحالة',
@@ -8847,6 +8856,9 @@ export const ar: Catalogue<Messages> = {
       invitationNotSent:
         'تعذّر إرسال الدعوة بالبريد الإلكتروني إلى {{email}} ({{problem}}). انسخ الرابط أدناه، أو أعد إرسالها من صفحة الشركة.',
       sendInvitation: 'أرسل دعوة المالك بالبريد الإلكتروني الآن',
+      isTest: 'شركة تجريبية',
+      isTestHint:
+        'لتجربة المنتج ولأداة المطوّرين. لا تُفوتر ولا تُحتسب، ولا ترسل بريدًا إلكترونيًا أو إشعارات، ولا تُبنى لها تطبيقات. لا يمكن تغيير هذا بعد إنشاء الشركة.',
       sendInvitationHint:
         'اترك هذا الخيار غير محدد لتجهيز الشركة أولًا — النماذج وأنواع المهام ومظهرها — ثم أرسل الدعوة من صفحتها عندما تصبح جاهزة.',
       copyInvitation: 'نسخ رابط الدعوة',

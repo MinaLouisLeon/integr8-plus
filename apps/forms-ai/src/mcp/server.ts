@@ -2,7 +2,11 @@ import { randomUUID } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import { checkFormPackage, DEFAULT_FILL_ROLES } from '@integr8/form-package';
+import {
+  checkFormPackage,
+  DEFAULT_FILL_ROLES,
+  type FormPackageSettings,
+} from '@integr8/form-package';
 import { z } from 'zod';
 import { currentHost, type Host, workDir } from '../host.js';
 import { type FoundBrowser, findBrowser } from '../preview/browser.js';
@@ -10,13 +14,22 @@ import { outputFolder } from '../settings.js';
 import { SERVER_NAME, VERSION } from '../version.js';
 import { EXAMPLES, findExample } from './examples.js';
 import { GUIDE_SECTIONS, guideContents, guideSection } from './guide.js';
-import { FileExistsError, openPackage, savePackage } from './package-files.js';
+import {
+  FileExistsError,
+  loadPicture,
+  openPackage,
+  type PictureInput,
+  savePackage,
+} from './package-files.js';
 import { previewTemplate } from './preview.js';
 import { confirmSection, interviewGuide, summarizeForm } from './interview.js';
 import { formatCheck, formatError } from './report.js';
 import { checkWebsite, formatWebsiteCheck } from '../website/check.js';
 import { WEBSITE_GUIDE_SECTIONS, websiteApiText, websiteGuideSection } from '../website/guide.js';
 import { nextExampleText, ROUTE_PATTERN } from '../website/nextjs.js';
+import { type OpenUrl, systemOpener } from '../window/open-browser.js';
+import { PreviewWindow } from '../window/preview-window.js';
+import { registerRequestTools } from '../requests/tools.js';
 
 /**
  * The MCP server: the tools an AI coding assistant calls to write a
@@ -32,11 +45,15 @@ export interface ServerOptions {
   scratch?: string;
   /** Finds the browser previews print with; tests pass one that finds none. */
   browser?: () => FoundBrowser | undefined;
+  /** Opens the preview window in a browser; tests pass one that opens nothing. */
+  openUrl?: OpenUrl;
 }
 
 const INSTRUCTIONS = `Integr8 Forms builds .integr8form files: an Integr8 Plus form (questions, rules, calculations, English and Arabic) with its PDF templates, for Integr8 staff to import.
 Build it WITH the person, not for them: before writing anything, call get_interview_guide and ask the person, step by step, about every question you will create (type, English and Arabic label, required, choices, checks, rules, where it prints) and wait for the answers. For every QR code in a PDF template, always ask whether it is the document's share QR code or a fixed link, and what a fixed one opens; never choose for them.
 Then: get_format_guide (section "overview"), list_examples/get_example, write the form definition and check it with check_form until it is OK. Add PDF templates and check them with check_package; answer every "To confirm with the person" item by asking. Look at them with preview_pdf. Call summarize_form and show the person the list; save with save_package only after they confirm it. To edit an existing file, open_package it first.
+Let the person watch it take shape: once the first version of the form checks OK, call open_preview (it opens a window in their browser with the form as the app shows it and each PDF). After every change, call update_preview with what changed and tell the person the window refreshed. When they say "look at what I typed", "see my note" or similar, call get_preview_state. They may also save from the window.
+When the person wants something the platform cannot do (a check refuses an unknown key, question type or block, they press "Suggest a change to the platform" in the window, or they say so), offer: "The platform cannot do this yet. Shall I record it as a change request?" If yes, ask what should happen, for whom, on which apps and what they do today, then call record_change_request. Never put a real customer's data in a request.
 Always write every text in both English ("en") and Arabic ("ar").
 
 It also helps add a shared PDF search and download page to a company's own Next.js website, using the company's Integr8 website key: start with get_website_guide, then get_website_api and get_website_example, and check the website with check_website_integration. These tools never call Integr8 and never need the key; never ask the user to paste the key into the chat.`;
@@ -70,6 +87,43 @@ const picture = z.object({
   base64: z.string().optional().describe("Or the picture's bytes as base64 (instead of path)."),
 });
 
+const settings = z
+  .object({
+    fillRoles: z
+      .array(
+        z.enum([
+          'owner',
+          'admin',
+          'hr_manager',
+          'inventory_manager',
+          'dispatcher',
+          'engineer',
+          'viewer',
+        ]),
+      )
+      .optional()
+      .describe(`Who may fill the form (default ${DEFAULT_FILL_ROLES.join(', ')}).`),
+    signatureRequired: z
+      .boolean()
+      .optional()
+      .describe('A job using the form needs a signature before it closes (default false).'),
+  })
+  .optional();
+
+/** The pictures a tool was given, read and checked; undefined when none were given. */
+const loadPictures = (pictures: readonly PictureInput[] | undefined) =>
+  pictures?.map((entry) => loadPicture(entry));
+
+const settingsOf = (given: z.infer<typeof settings>): Partial<FormPackageSettings> | undefined =>
+  given === undefined
+    ? undefined
+    : {
+        ...(given.fillRoles === undefined ? {} : { fillRoles: given.fillRoles }),
+        ...(given.signatureRequired === undefined
+          ? {}
+          : { signatureRequired: given.signatureRequired }),
+      };
+
 const text = (value: string): CallToolResult => ({ content: [{ type: 'text', text: value }] });
 const failure = (value: string): CallToolResult => ({
   content: [{ type: 'text', text: value }],
@@ -90,11 +144,23 @@ export function createFormsServer(options: ServerOptions = {}): McpServer {
   const host = options.host ?? currentHost();
   const scratch = options.scratch ?? workDir(tmpdir());
   const browser = options.browser ?? (() => findBrowser(host));
+  const preview = new PreviewWindow({
+    scratch,
+    browser,
+    openUrl: options.openUrl ?? systemOpener(host),
+    outputFolder: () => outputFolder(host),
+  });
 
   const server = new McpServer(
     { name: SERVER_NAME, title: 'Integr8 Forms for AI', version: VERSION },
     { instructions: INSTRUCTIONS },
   );
+  // The window's page server stops with the MCP server.
+  const closed = server.server.onclose;
+  server.server.onclose = () => {
+    closed?.();
+    void preview.close();
+  };
 
   server.registerTool(
     'get_format_guide',
@@ -321,6 +387,11 @@ export function createFormsServer(options: ServerOptions = {}): McpServer {
           },
           { browser: browser(), scratch },
         );
+        preview.recordAiPrint(input.template, result, {
+          useAnswers: false,
+          language: input.language,
+          companyColour: input.companyColour,
+        });
         const lines = [
           result.pdfPath === undefined
             ? `No preview: ${result.skipped ?? 'nothing to print.'}`
@@ -350,28 +421,7 @@ export function createFormsServer(options: ServerOptions = {}): McpServer {
         'Packs the form definition, its settings, PDF templates and pictures into one .integr8form file in the output folder (default: Documents/Integr8 forms, set in the installer) and returns its path with the check result. Refuses to replace an existing file unless "overwrite" is true — ask the user first.',
       inputSchema: {
         definition,
-        settings: z
-          .object({
-            fillRoles: z
-              .array(
-                z.enum([
-                  'owner',
-                  'admin',
-                  'hr_manager',
-                  'inventory_manager',
-                  'dispatcher',
-                  'engineer',
-                  'viewer',
-                ]),
-              )
-              .optional()
-              .describe(`Who may fill the form (default ${DEFAULT_FILL_ROLES.join(', ')}).`),
-            signatureRequired: z
-              .boolean()
-              .optional()
-              .describe('A job using the form needs a signature before it closes (default false).'),
-          })
-          .optional(),
+        settings,
         templates: z.array(template).max(50).optional(),
         pictures: z.array(picture).max(200).optional(),
         fileName: z
@@ -397,17 +447,7 @@ export function createFormsServer(options: ServerOptions = {}): McpServer {
         try {
           const saved = savePackage({
             definition: input.definition,
-            settings:
-              input.settings === undefined
-                ? undefined
-                : {
-                    ...(input.settings.fillRoles === undefined
-                      ? {}
-                      : { fillRoles: input.settings.fillRoles }),
-                    ...(input.settings.signatureRequired === undefined
-                      ? {}
-                      : { signatureRequired: input.settings.signatureRequired }),
-                  },
+            settings: settingsOf(input.settings),
             templates: input.templates,
             pictures: input.pictures,
             fileName: input.fileName,
@@ -454,6 +494,114 @@ export function createFormsServer(options: ServerOptions = {}): McpServer {
         );
       }),
   );
+
+  server.registerTool(
+    'open_preview',
+    {
+      title: 'Open the live preview window',
+      description:
+        "Opens a window in the person's own browser that shows the form exactly as the app's filler shows it (conditions, calculations, checks, English and Arabic; phone or desktop width) and each PDF template as the server prints it. It refreshes by itself after every update_preview. The page is served by this program on 127.0.0.1 only; nothing leaves the computer. Call it once the first version of the form checks OK. Returns the window's address and the check report.",
+      inputSchema: {
+        definition,
+        settings,
+        templates: z.array(template).max(50).optional(),
+        pictures: z
+          .array(picture)
+          .max(200)
+          .optional()
+          .describe('The pictures the templates use, by id.'),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    },
+    (input) =>
+      guarded(async () => {
+        const opened = await preview.open({
+          definition: input.definition,
+          settings: settingsOf(input.settings),
+          templates: input.templates ?? [],
+          pictures: loadPictures(input.pictures) ?? [],
+        });
+        const how = opened.opened
+          ? 'The window was opened in the default browser.'
+          : opened.openFailed
+            ? `The browser could not be opened from here. Ask the person to open this address themselves: ${opened.url}`
+            : 'The window was already open and has refreshed.';
+        const templates = input.templates ?? [];
+        return text(
+          `${how}\nWindow: ${opened.url}\nTell the person they can fill the form there, look at each PDF, leave notes for you and save the file. Call update_preview after every change.\n\n${formatCheck(opened.check, templates.length === 0 ? 'form' : 'package')}${confirmSection(templates)}`,
+        );
+      }),
+  );
+
+  server.registerTool(
+    'update_preview',
+    {
+      title: 'Refresh the preview window',
+      description:
+        'Replaces the form definition, the PDF templates (with their pictures) or the settings shown in the open preview window; parts you leave out stay as they were. The window refreshes without the person reloading, and keeps the answers they typed for questions that still exist with the same type. Returns the check report. Call it after every change, then tell the person the window refreshed.',
+      inputSchema: {
+        definition: definition.optional(),
+        settings,
+        templates: z.array(template).max(50).optional(),
+        pictures: z.array(picture).max(200).optional(),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    },
+    (input) =>
+      guarded(() => {
+        if (!preview.isOpen) {
+          return failure('The preview window is not open; call open_preview first.');
+        }
+        const check = preview.update({
+          ...(input.definition === undefined ? {} : { definition: input.definition }),
+          ...(input.settings === undefined ? {} : { settings: settingsOf(input.settings) }),
+          ...(input.templates === undefined ? {} : { templates: input.templates }),
+          ...(input.pictures === undefined ? {} : { pictures: loadPictures(input.pictures) ?? [] }),
+        });
+        const templates = preview.session.content?.templates ?? [];
+        return text(
+          `The window refreshed (version ${String(preview.session.version)}). Tell the person.\n\n${formatCheck(check, templates.length === 0 ? 'form' : 'package')}${confirmSection(templates)}`,
+        );
+      }),
+  );
+
+  server.registerTool(
+    'get_preview_state',
+    {
+      title: 'Read what the person did in the preview window',
+      description:
+        'What the person did in the open preview window: the answers they typed (by question id), whether they pressed Submit and what the app would have sent, the notes they left for you (each with the tab and the question or template it is about; returned once), which tab they are on, and each PDF print. Call it when the person says "look at what I typed", "see my note" or similar.',
+      inputSchema: {},
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    () => guarded(async () => text(await preview.describe())),
+  );
+
+  server.registerTool(
+    'close_preview',
+    {
+      title: 'Close the preview window',
+      description:
+        "Stops the preview window's page server; the page in the browser then says it is disconnected. What the person typed there is forgotten. It also stops by itself when the AI tool closes.",
+      inputSchema: {},
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    },
+    () =>
+      guarded(async () =>
+        text(
+          (await preview.close())
+            ? 'The preview window was closed.'
+            : 'The preview window was not open.',
+        ),
+      ),
+  );
+
+  registerRequestTools(server, {
+    preview,
+    outputFolder: () => outputFolder(host),
+    browser,
+    scratch,
+  });
 
   server.registerTool(
     'get_website_guide',

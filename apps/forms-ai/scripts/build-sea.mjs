@@ -1,16 +1,17 @@
 #!/usr/bin/env node
 /* global console, process */
 // Builds the single executable for the computer it runs on (Node's Single
-// Executable Applications): the bundle, plus pdf.js and the website fonts as
-// SEA assets, injected into a copy of this Node binary. The release workflow
-// runs it on a Windows, a macOS (arm64 and x64) and a Linux runner.
+// Executable Applications): the bundle, plus pdf.js, the website fonts and the
+// preview window's page as SEA assets, injected into a copy of this Node
+// binary. The release workflow runs it on a Windows, a macOS (arm64 and x64)
+// and a Linux runner.
 //
 //   node scripts/build-sea.mjs [--out <folder>]
 //
 // Writes <out>/integr8-forms-ai-<version>-<os>-<arch>[.exe] and a .sha256
-// beside it (default out: dist/release), then runs the result once to prove
-// it starts. On macOS the binary is signed ad hoc after injection, without
-// which Apple Silicon refuses to run it at all.
+// beside it (default out: dist/release), then runs the result to prove it
+// starts and carries every asset. On macOS the binary is signed ad hoc after
+// injection, without which Apple Silicon refuses to run it at all.
 
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -39,8 +40,11 @@ rmSync(work, { recursive: true, force: true });
 mkdirSync(work, { recursive: true });
 mkdirSync(out, { recursive: true });
 
-/** Where an asset's file is: through the package's exports, or beside its package.json. */
+/** Where an asset's file is: in this app, through the package's exports, or beside its package.json. */
 function assetPath({ packageName, file }) {
+  if (packageName === '@integr8/forms-ai') {
+    return join(app, file);
+  }
   try {
     return require.resolve(`${packageName}/${file}`);
   } catch {
@@ -92,6 +96,8 @@ const reported = execFileSync(target, ['--version'], { encoding: 'utf8' }).trim(
 if (reported !== version) {
   throw new Error(`The executable says it is ${reported}, not ${version}.`);
 }
+// Every asset, the preview window's page included, read back out of the executable.
+console.log(execFileSync(target, ['--check-assets'], { encoding: 'utf8' }).trim());
 
 const hash = createHash('sha256').update(readFileSync(target)).digest('hex');
 writeFileSync(`${target}.sha256`, `${hash}  ${basename(target)}\n`);

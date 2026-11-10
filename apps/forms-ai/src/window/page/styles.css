@@ -1,0 +1,33 @@
+/*
+ * The preview window's stylesheet, compiled by scripts/bundle.mjs with
+ * Tailwind into dist/window/page.css. The same imports as the desktop app,
+ * because the design system has one home; the filler writes Tailwind classes
+ * in its own package, so that is scanned too.
+ */
+@import 'tailwindcss';
+@import '@integr8/tokens/theme.css';
+
+@source '../../../node_modules/@integr8/form-renderer-dom/dist';
+@source './';
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    color-scheme: light dark;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--colour-background);
+    color: var(--colour-text);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--colour-focus);
+    outline-offset: 2px;
+  }
+}
+
+[data-look='integr8'] h1 {
+  font-family: var(--font-site-display);
+}

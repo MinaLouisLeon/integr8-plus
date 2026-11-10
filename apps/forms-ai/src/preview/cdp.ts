@@ -205,7 +205,11 @@ export class Chrome {
   }
 
   /** A new tab, attached, with its own session. */
-  async newPage(options: { javaScript: boolean }): Promise<Tab> {
+  async newPage(options: {
+    javaScript: boolean;
+    /** False only for the window's own smoke test, which loads a loopback page. */
+    blockNetwork?: boolean;
+  }): Promise<Tab> {
     const { targetId } = (await this.send('Target.createTarget', { url: 'about:blank' })) as {
       targetId: string;
     };
@@ -216,11 +220,13 @@ export class Chrome {
     await this.send('Page.enable', {}, sessionId);
     await this.send('Network.enable', {}, sessionId);
     // Nothing on the page may reach the network: images and fonts are data URIs.
-    await this.send(
-      'Network.setBlockedURLs',
-      { urls: ['http://*', 'https://*', 'ws://*', 'wss://*', 'ftp://*'] },
-      sessionId,
-    );
+    if (options.blockNetwork !== false) {
+      await this.send(
+        'Network.setBlockedURLs',
+        { urls: ['http://*', 'https://*', 'ws://*', 'wss://*', 'ftp://*'] },
+        sessionId,
+      );
+    }
     if (!options.javaScript) {
       await this.send('Emulation.setScriptExecutionDisabled', { value: true }, sessionId);
     }
