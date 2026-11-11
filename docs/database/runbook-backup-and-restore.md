@@ -43,8 +43,7 @@ After a change of HR key, an older backup still needs the older key: keep every
 retired key in the password manager, labelled with the date it was retired,
 for as long as backups made before that date are kept (`BACKUP_REMOTE_KEEP`
 nights off the machine). A restore of such a backup puts the old key back in
-`HR_DATA_KEYS_PREVIOUS` and runs `admin-cli hr-reseal` (setup guide, Stage 11,
-"Change the HR key").
+`HR_DATA_KEYS_PREVIOUS` and runs `admin-cli hr-reseal` (see above).
 
 | Setting       | Default                        | Meaning                                                 |
 | ------------- | ------------------------------ | ------------------------------------------------------- |
@@ -326,7 +325,7 @@ Stop `web`, `api`, `worker` and `auth` first, every time: the API and worker
 write to `public`, Auth writes sign-ins and sessions to `auth`, and a restore
 that runs under any of them ends with a mix of the dump and whatever they
 wrote meanwhile. Stopping `web` keeps people from working in a half-restored
-app. The setup guide's rollback (Stage 11, part I) uses the same list.
+app. The setup checklist's "If something goes wrong" step uses the same list.
 
 ```bash
 cd /opt/integr8

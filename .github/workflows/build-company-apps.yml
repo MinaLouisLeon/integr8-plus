@@ -178,7 +178,7 @@ jobs:
         platform: ${{ fromJSON(needs.resolve.outputs.desktop_platforms) }}
     # Which signing this deployment has, as 'true' or 'false': a step cannot test
     # a secret directly. Every one is optional; without it the build is what it
-    # always was (setup guide, Stage 6, "Code signing"). TAURI_SIGNING_PRIVATE_KEY signs
+    # always was (setup checklist, "The staff desktop app"). TAURI_SIGNING_PRIVATE_KEY signs
     # updates, which the app checks against the public key it carries; the
     # others are the operating systems' own code signing, which only changes
     # what Windows and macOS say when the installer is first opened.

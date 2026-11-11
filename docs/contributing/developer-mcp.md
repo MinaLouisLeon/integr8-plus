@@ -20,7 +20,7 @@ Three rules hold whatever the tool does, because the API enforces them, not the 
 ## Signing in (remote mode)
 
 For the test box and production. A separate staff account keeps the audit log apart from your
-own work, and is recommended (`node dist/platform/admin-cli.js create`, setup guide Stage 7).
+own work, and is recommended (`node dist/platform/admin-cli.js create`, setup checklist, "You and your staff").
 
 ```bash
 pnpm install
@@ -39,7 +39,7 @@ pnpm dev-mcp logout                                    # signs out and forgets t
   company, with the audit log open.
 - The session ends 8 hours after sign-in; sign in again then. Signing in again replaces it.
 - On production and the test box, test companies are made on the machine with the seeder
-  (setup guide Stage 14); every company it makes is a test company.
+  (CLAUDE.md, "The demo company seeder"); every company it makes is a test company.
 
 ## Local mode
 

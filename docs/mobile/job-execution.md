@@ -246,7 +246,7 @@ a phone ([checklist](device-checklist.md#p14)).
    fails a build whose package is missing, so such a build is made without push and its log says
    which package to add. Then give each application identifier the Firebase service account
    key (FCM V1) under the EAS project's **Credentials** (or `eas credentials`, Android → Push
-   Notifications). The setup guide has the clicks (Stage 0, Part J; Stage 8, part A).
+   Notifications). The setup guide has the clicks ("Accounts and keys" and "Apps for each company").
 3. **iOS (APNs).** `eas credentials` creates the push key when the first build is made, with an
    Apple Developer account.
 4. **The API.** Set `PUSH_SENDER=expo`. Production refuses to start without it. If the EAS

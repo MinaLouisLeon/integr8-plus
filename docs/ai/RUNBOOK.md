@@ -341,7 +341,7 @@ setting on a plan or a company (ADR-0002 D13–D14).
   Windows needs the Arabic language pack installed.
 - **Phone.** The first tap asks for the microphone and, on iOS, speech
   recognition. A phone must run a build that includes the feature: rebuild and
-  reinstall each company's phone app (setup checklist, Stage 8).
+  reinstall each company's phone app (setup checklist, "Apps for each company").
 
 **Checking it by hand** (CI uses fake recognisers and voices, so no automated
 test hears a real microphone). On a company answered by a model:

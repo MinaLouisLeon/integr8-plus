@@ -78,16 +78,17 @@ the end of any piece of work that changes one of them, and date each section.
 - Domain `integr8-media.com`: web `app.integr8-media.com`, API `api.integr8-media.com`. R2
   for files, Resend for mail, Stripe test mode.
 - **Sign-in:** the owner has only used the staff login so far and has no Supabase project.
-  After P36 the machine needs the three Auth secrets (setup guide, Stage 11 part Q).
+  After P36 the machine needs the three Auth secrets (setup checklist, "The settings file").
 - The home test box is Ubuntu 24.04 with Docker, Arcane, Webmin and Samba (no longer
   ZimaOS).
-- The owner keeps a published copy of the setup guide as a claude.ai artifact:
-  https://claude.ai/artifact/HCVbJdp3u9YJT28cCaRw29 (the HTML with its CSS and JS as separate
-  files). On 1 Nov it was republished from branch `ccr-4f86fb34-8uvkk9` (1.3.0);
-  republish it from `setup-checklist.html` whenever the guide changes. **2026-11-04:** the owner
-  asked for a short steps-only checklist instead (no per-release sections), in the Integr8 Media
-  look: https://claude.ai/artifact/KrY8XQBYC5ehzjG7DU4khX, a hand-written page (not generated
-  from the repository guide); update it when a setup or update step changes.
+- **The setup guide lives only in the repository** (2026-11-11): the owner no longer keeps
+  claude.ai artifact copies of it, so do not republish one. Update it with every change that
+  affects an operator's steps (rule in AGENTS.md); `pnpm guide:serve` previews it. The repository guide (`docs/deployment/setup-checklist.{md,html,css,js}`) was
+  rewritten to be that same short steps-only checklist (12 stages, 85 tick boxes, same wording and
+  look), replacing the 1,900-line guide with per-release parts; the old one is in git history.
+  Other docs now name stages by title ("Go live", "Apps for each company"), not by number. Parts
+  that were dropped with it (demo company stage, test box, rebuild, per-release update parts) are
+  only in git history; `plan/` files still cite the old numbers as history.
 
 ## Decisions
 
@@ -302,10 +303,9 @@ Update them together at each release or new migration:
 
 - `README.md`: "Current version" line and the migration table.
 - `PROJECT_INDEX.md` ("Read carefully" line) and `PROJECT_INDEX.json` (`version`).
-- `docs/deployment/setup-checklist.md` **and** `.html`: header line, Stage 0 "Nothing to
-  merge", Stage 3 `APP_VERSION`/`API_RELEASE`, Stage 6 latest release, Stage 7 company
-  release name, Stage 11 example bump and feature parts, Stage 13, footer. References
-  like "included in v1.1.2" are history and stay as they are.
+- `docs/deployment/setup-checklist.md` **and** `.html`: the "version" line at the top and
+  the `sed` example in "Update to a new version" (both read the version from one place when
+  regenerated; see the 2026-11-11 decision). Their steps no longer name releases.
 - `deploy/.env.example` (`APP_VERSION`, `API_RELEASE`) and `apps/api/src/app-info.ts`
   (`VERSION`; `app-info.test.ts` fails when it differs from the root `package.json`).
 - Released versions: `gh release list`. v1.2.1 (2026-10-27) carries migrations 0051–0053.

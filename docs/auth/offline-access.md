@@ -71,7 +71,7 @@ while the phone waits for a connection, and goes as soon as it has one.
 - **The phone's clock, within the grant's week.** Setting the clock back to a time between
   when the grant was issued and when it ends keeps it open. The phone has no other clock to trust;
   its lock screen is the barrier, and an attacker who can unlock the phone has the app anyway.
-- **Issuer and audience.** Each deployment has its own keys (Stage 0, Part L), so a grant signed by
+- **Issuer and audience.** Each deployment has its own keys (setup checklist, "Accounts and keys"), so a grant signed by
   the test box does not verify against production's keys at all.
 - **That the grant belongs to the data on the phone.** The phone is wiped whenever somebody else
   signs in, before anything of theirs is shown.
@@ -146,7 +146,7 @@ proportionally.
 
 The phone checks grants against the public keys it was built with:
 `EXPO_PUBLIC_AUTH_VERIFICATION_KEYS`, an EAS environment variable per environment, holding
-exactly the deployment's `AUTH_VERIFICATION_KEYS` (setup guide, Stage 8). They are public by
+exactly the deployment's `AUTH_VERIFICATION_KEYS` (setup checklist, "Apps for each company"). They are public by
 nature: they can check a token, never mint one. Because they are written into the JavaScript
 bundle, an over-the-air update (`eas update`) carries new keys as well as a store build does.
 

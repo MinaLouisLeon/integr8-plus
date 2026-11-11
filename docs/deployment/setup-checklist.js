@@ -1,77 +1,89 @@
-/* global document, navigator, window, setTimeout, localStorage */
-// Integr8 Plus Setup Checklist: copy buttons and the tick boxes.
+/* global document, navigator, window, setTimeout, clearTimeout, localStorage */
+// Integr8 Plus Setup Checklist: copy buttons, tick boxes and progress.
 // Supports the HTML version of setup-checklist.md (see AGENTS.md).
+(function () {
+  'use strict';
+
   // Copy buttons, with selection as the fallback where the clipboard is refused.
-  for (const button of document.querySelectorAll('.copy')) {
-    button.addEventListener('click', async () => {
-      const code = button.parentElement.querySelector('code');
-      try {
-        await navigator.clipboard.writeText(code.textContent);
-        button.textContent = 'Copied';
-      } catch {
-        const range = document.createRange();
+  document.querySelectorAll('.copy').forEach(function (button) {
+    button.addEventListener('click', function () {
+      var code = button.parentElement.querySelector('code');
+      var reset = function () { setTimeout(function () { button.textContent = 'Copy'; }, 1600); };
+      var select = function () {
+        var range = document.createRange();
         range.selectNodeContents(code);
-        const selection = window.getSelection();
+        var selection = window.getSelection();
         selection.removeAllRanges();
         selection.addRange(range);
         button.textContent = 'Selected';
-      }
-      setTimeout(() => { button.textContent = 'Copy'; }, 1600);
+        reset();
+      };
+      try {
+        navigator.clipboard.writeText(code.textContent).then(function () {
+          button.textContent = 'Copied';
+          reset();
+        }, select);
+      } catch { select(); }
     });
-  }
+  });
 
-  // The checklist remembers its ticks in this browser. Storage may be missing
-  // or refused (private window, previews), so every touch is wrapped.
-  const KEY = 'integr8-setup-ticks-v3';
-  const boxes = [...document.querySelectorAll('.check input[type=checkbox]')];
-  const text = document.getElementById('progress-text');
-  const bar = document.getElementById('progress-bar');
-  let saved = {};
+  // The checklist remembers its ticks in this browser. Storage may be missing or
+  // refused (private window, previews), so every touch is wrapped.
+  var KEY = 'integr8-setup-ticks-v4';
+  var boxes = Array.prototype.slice.call(document.querySelectorAll('.check'));
+  var saved = {};
   try { saved = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch { saved = {}; }
-  const render = () => {
-    let done = 0;
-    for (const box of boxes) {
+  function store() { try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch { /* the tick still shows this session */ } }
+
+  function render() {
+    var done = 0;
+    boxes.forEach(function (box) {
       box.closest('li').classList.toggle('done', box.checked);
       if (box.checked) done += 1;
-    }
-    text.textContent = `${done} of ${boxes.length} steps ticked`;
-    bar.style.width = `${boxes.length ? (done / boxes.length) * 100 : 0}%`;
-    clearButton.disabled = done === 0;
-    if (done === 0) disarm();
-  };
+    });
+    document.querySelectorAll('.stage').forEach(function (stage) {
+      var all = stage.querySelectorAll('.check');
+      var ticked = stage.querySelectorAll('.check:checked').length;
+      var label = ticked + '/' + all.length;
+      var complete = ticked === all.length;
+      stage.querySelector('.stage-count').textContent = label;
+      stage.classList.toggle('complete', complete);
+      var link = document.querySelector('[data-rail="' + stage.id + '"]');
+      link.querySelector('.c').textContent = label;
+      link.classList.toggle('done', complete);
+    });
+    document.getElementById('progress-text').textContent = done + ' of ' + boxes.length + ' done';
+    document.getElementById('progress-bar').style.width = (boxes.length ? (done / boxes.length) * 100 : 0) + '%';
+  }
 
-  // Clearing takes two clicks, so a stray tap never wipes a morning's progress.
-  const clearButton = document.getElementById('clear-ticks');
-  const cancelButton = document.getElementById('clear-cancel');
-  let armed = false;
-  const disarm = () => {
-    armed = false;
-    clearButton.classList.remove('armed');
-    clearButton.textContent = 'Clear all ticks';
-    cancelButton.hidden = true;
-  };
-  clearButton.addEventListener('click', () => {
-    if (!armed) {
-      armed = true;
-      const done = boxes.filter((box) => box.checked).length;
-      clearButton.classList.add('armed');
-      clearButton.textContent = `Yes, clear all ${done}`;
-      cancelButton.hidden = false;
-      return;
-    }
-    for (const box of boxes) box.checked = false;
-    saved = {};
-    try { localStorage.removeItem(KEY); } catch { /* fine: cleared for this session */ }
-    disarm();
-    render();
-  });
-  cancelButton.addEventListener('click', disarm);
-  for (const box of boxes) {
+  boxes.forEach(function (box) {
     box.checked = saved[box.id] === true;
-    box.addEventListener('change', () => {
-      saved[box.id] = box.checked;
-      try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch { /* fine: the tick still shows this session */ }
+    box.addEventListener('change', function () {
+      if (box.checked) saved[box.id] = true; else delete saved[box.id];
+      store();
       render();
     });
-  }
+  });
+
+  // Clearing takes two clicks, so a stray tap never wipes a morning's progress.
+  var clear = document.getElementById('clear-ticks');
+  var armed = false;
+  var timer;
+  clear.addEventListener('click', function () {
+    if (!armed) {
+      armed = true;
+      clear.textContent = 'Click again to clear';
+      timer = setTimeout(function () { armed = false; clear.textContent = 'Clear ticks'; }, 3000);
+      return;
+    }
+    clearTimeout(timer);
+    armed = false;
+    clear.textContent = 'Clear ticks';
+    boxes.forEach(function (box) { box.checked = false; });
+    saved = {};
+    try { localStorage.removeItem(KEY); } catch { /* cleared for this session */ }
+    render();
+  });
+
   render();
+})();

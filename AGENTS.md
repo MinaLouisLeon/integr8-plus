@@ -55,6 +55,7 @@ pnpm build | lint | typecheck | test     # whole workspace; none need a database
 pnpm test:integration                    # needs a disposable Postgres (see README "Everyday commands")
 pnpm format:check                        # what CI runs; `pnpm format` writes
 pnpm guide:check                         # setup checklist MD/HTML parity (see below)
+pnpm guide:serve                         # serve the setup checklist page and open it in the browser
 pnpm pins:check                          # exact dependency versions; one Node release everywhere
 pnpm --filter @integr8/<name> <script>   # scope anything to one package
 pnpm --filter @integr8/api openapi && pnpm --filter @integr8/api-client generate   # after any API schema change
@@ -141,5 +142,11 @@ The deployment checklist has two maintained content versions:
 2. **`docs/deployment/setup-checklist.html`**: the downloadable interactive checklist. Its `setup-checklist.css` and `setup-checklist.js` files support the HTML presentation and behavior; they are assets, not additional checklist content versions.
 
 Update the Markdown and HTML together whenever a feature adds or changes deployment, configuration, migration, rollout, or recovery steps. Keep their stages, parts, tick boxes, and wording aligned. Update CSS or JavaScript only when the HTML's presentation or behavior needs to change. Keep the guide's stated current release synchronized with the root `package.json` version.
+
+**This is a standing rule:** after any change that adds, removes or alters a step an operator
+performs (a setting, migration, service, app build, release or recovery step), update both copies
+before finishing the task, even if nobody mentions the guide. Keep it short: one tick box per
+step, one line of explanation. `pnpm guide:serve` serves `docs/deployment` on localhost and opens
+the page in the browser (`--port <n>`, `--no-open`) to check how it looks.
 
 Run `pnpm guide:check` before committing: it checks that Markdown and HTML agree on stages, parts, tick boxes, and their words, and that the HTML loads its stylesheet and script.

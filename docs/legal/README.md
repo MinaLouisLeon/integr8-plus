@@ -83,7 +83,7 @@ ahead (the terms promise that).
 | Deleted files restorable for thirty days                    | `MEDIA_RESTORE_DAYS`, `docs/media` ("Deleting")                                        |
 | Closing: export, suspend, purge after seven days            | `docs/platform` ("Closing a company"), export downloadable 30 days (`EXPORT_TTL_DAYS`) |
 | Sign-in accounts deleted with the company                   | `identity_deletions` (P36), unless the person belongs to another company               |
-| Nightly backups kept fourteen days                          | setup guide Stage 9 B, `deploy/vps/backup-postgres.sh`                                 |
+| Nightly backups kept fourteen days                          | setup checklist, "Go live", `deploy/vps/backup-postgres.sh`                            |
 | Sentry gets no personal details                             | `sendDefaultPii: false` / `dataCollection` off in the API, web, desktop and phone      |
 | Mapbox, Expo, Resend, Stripe, R2 in production              | `apps/api/src/config.ts` refuses the stand-ins in production                           |
 | AI: questions to the provider, company data only if allowed | ADR-0001 D5 (`company_data_to_provider`, platform-only, default off), ADR-0002         |
@@ -109,7 +109,7 @@ cookies beyond the ones the site needs to work.
      most once a year.
 2. **Fill in `LEGAL_OPERATOR`** in `packages/core/src/legal.ts`: the registered name, registered
    address, commercial registration, tax registration, a privacy email address that is read, and
-   the hosting location (the Oracle Cloud home region chosen in setup guide Stage 0).
+   the hosting location (the Oracle Cloud home region chosen in setup checklist, "Accounts and keys").
    `missingOperatorDetails()` must return nothing; its test in `legal.test.ts` pins today's list,
    so update the test with it.
 3. **Check the provider list against the deployment**: the AI provider actually configured

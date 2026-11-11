@@ -347,8 +347,7 @@ Every route also needs the company's module: `hr`, `payroll` (which needs
   `HR_DATA_KEY` seals, older keys listed in `HR_DATA_KEYS_PREVIOUS` still open
   (each tried in turn; GCM's tag rejects a wrong one), and `admin-cli
 hr-reseal` re-seals every company's fields under the current key, company by
-  company in its own tenant transaction, with an audit line each (setup guide,
-  Stage 11 part Z). Stored values keep their `hr1.` shape, so a rollback reads
+  company in its own tenant transaction, with an audit line each (docs/database/runbook-backup-and-restore.md). Stored values keep their `hr1.` shape, so a rollback reads
   them.
 - **Separation of duties.** Nobody decides their own expense claim (API and
   `hr_expense_claims_not_self_approved`); a pay run is approved by somebody

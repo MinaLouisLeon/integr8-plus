@@ -67,7 +67,7 @@ type PushStep = 'channels' | 'permission' | 'token' | 'register';
  * tagged with the step, and the device log either way.
  *
  * `token` failing on Android almost always means the build had no
- * `google-services.json` for its package (setup guide, Stage 8), and it was
+ * `google-services.json` for its package (setup checklist, "Apps for each company"), and it was
  * once swallowed without a trace: the phone simply never heard about a job.
  */
 function reportPushFailure(step: PushStep, error: unknown): void {

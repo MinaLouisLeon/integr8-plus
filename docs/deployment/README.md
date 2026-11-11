@@ -218,7 +218,7 @@ The desktop app's policy is in `apps/desktop/src-tauri/tauri.conf.json`, and
 Tauri enforces it: scripts from the app only, the API (stamped in per build by
 `apps/desktop/scripts/stamp.mjs`), R2 and Sentry, nothing else.
 
-Checked on the machine (setup guide, Stage 4):
+Checked on the machine (setup checklist, "Start the stack"):
 
 ```bash
 curl -sI https://api.your-domain.example/health | grep -iE 'strict-transport|x-content-type|x-frame|referrer-policy'
@@ -241,7 +241,7 @@ heartbeat in Better Stack, healthchecks.io or UptimeRobot) when the API is
 ready, or that URL with `/fail` added when it is not (`HEALTH_PING_FAIL=off`
 for a monitor with no `/fail` address). The monitor alerts on a failure and on
 silence, which also covers the machine or cron being down. It reads
-`deploy/.env` line by line, never with `source`. Setup guide, Stage 9 part C.
+`deploy/.env` line by line, never with `source`. Setup checklist, "Go live".
 
 ```bash
 # sudo crontab -e
@@ -271,8 +271,8 @@ silence, which also covers the machine or cron being down. It reads
    exits cleanly; its readiness check passes with a note naming them. So the
    API, worker and web start on the newer schema, which expand/contract
    ([migrations.md](../database/migrations.md#rolling-back-a-release)) keeps
-   safe. Releases up to v1.2.1 predate this and stop at `migrate`: the setup
-   guide's Stage 11, part Q, has the way round it.
+   safe. Releases up to v1.2.1 predate this and stop at `migrate`; going back
+   that far means restoring a backup taken before the update.
 5. Migrations are rolled back deliberately, never automatically, and only by
    the release that added them, because only its image has their down files:
    with the newer tag still set, after reading the migration's down file,

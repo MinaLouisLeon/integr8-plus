@@ -141,7 +141,7 @@ Auth suites, and the secret scan. Nothing runs after the merge.
 ### `staging` — the test box
 
 A merge into `staging` runs nothing on GitHub. The home test box checks out
-`staging` and builds it (setup guide, Stage 10).
+`staging` and builds it (the same steps as the Oracle machine, on Ubuntu).
 
 ### `main` — a version
 

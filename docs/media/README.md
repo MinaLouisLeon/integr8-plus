@@ -346,7 +346,7 @@ and deletion are proven on local disk only (P09's exit criteria). Two ways to ru
 
 Use a **separate Cloudflare account** (or at least a separate token) for this: the suite needs
 an account-level R2 token because it creates buckets, and such a token can delete any bucket in
-its account. Then, on the production server, `storage-cli provision --all` (setup guide, Stage 4) and `storage verify <company id>` for the first real company confirm the production account.
+its account. Then, on the production server, `storage-cli provision --all` (setup checklist, "Start the stack") and `storage verify <company id>` for the first real company confirm the production account.
 
 - `apps/api/src/media/media.test.ts` and `packages/form-renderer-dom/src/compress.test.ts`
   — the pure parts.

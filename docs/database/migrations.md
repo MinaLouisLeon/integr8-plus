@@ -283,5 +283,5 @@ migration applied is almost always the right choice.
 
 Releases up to v1.2.1 predate this: their `migrate` refuses any database with
 an applied migration it has no file for, so their API and worker never start
-on a newer schema. The setup guide (Stage 11, part Q) has the way round it for
-going back from the self-hosted sign-in release to v1.2.1.
+on a newer schema. There is no setup-checklist step for going back that far; restore a
+backup taken before the update instead.

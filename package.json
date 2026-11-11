@@ -21,6 +21,7 @@
     "format:check": "prettier --check .",
     "licences:check": "node scripts/licences/check.mjs && node --test scripts/licences/check.test.mjs",
     "guide:check": "node scripts/guide/check.mjs",
+    "guide:serve": "node scripts/guide/serve.mjs",
     "pins:check": "node scripts/pins/check.mjs && node --test scripts/pins/check.test.mjs",
     "clean": "turbo run clean",
     "dev-mcp": "pnpm --filter @integr8/dev-mcp --silent start",

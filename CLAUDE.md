@@ -104,9 +104,10 @@ pointed at a separate database: they truncate tables.
   per company.
 - **Lint is strict**: no `any` (use a type or `unknown`), `interface` over
   `type` for object shapes, Prettier everywhere.
-- **The setup guide** has two copies that must match (see AGENTS.md above);
-  the user also keeps a published copy of it as a claude.ai artifact (see
-  MEMORY.md).
+- **The setup guide** has two copies that must match (see AGENTS.md above).
+  Any change that touches deployment, configuration, migrations, rollout,
+  recovery, apps or a release step updates the guide in the same change, then
+  `pnpm guide:check`. `pnpm guide:serve` opens the page in the browser.
 - Do not put model identifiers in commits, PRs or code.
 
 ## API facts worth knowing before calling it
@@ -180,7 +181,7 @@ The whole operator procedure is `docs/deployment/setup-checklist.md`.
 - **API changes:** regenerate `apps/api/openapi.json` and the api-client and include both
   in the change.
 - **Deployment-affecting changes** (new env var, migration, rollout or recovery step):
-  update `docs/deployment/setup-checklist.md` **and** `.html` together, the relevant
+  always update `docs/deployment/setup-checklist.md` **and** `.html` together, the relevant
   `.env.example`, then run `pnpm guide:check`.
 - **Docs and plan:** a feature also updates its `docs/<area>/` page and its phase file in
   `plan/`. Keep `MEMORY.md` current when the project state it describes changes.
