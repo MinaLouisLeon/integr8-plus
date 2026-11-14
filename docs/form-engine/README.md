@@ -18,6 +18,7 @@ compileDefinition(json)  ──▶  CompiledForm  ──▶  createFormState / t
 | P13 mobile          | `createFormState`, `transition`, `viewForm`, `toSubmission`, the conformance check — see [forms on the phone](../mobile/forms.md) |
 | API (P08)           | `validateSubmission` — the client validates for speed, the server for truth                                                       |
 | Drafts (P12)        | `migrateAnswers` when a newer version is published under a draft                                                                  |
+| Form actions (P40)  | `checkFormActions` and `planFormActions`: what a submit makes — see [form actions](form-actions.md)                               |
 
 ---
 

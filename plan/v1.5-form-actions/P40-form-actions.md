@@ -1,7 +1,8 @@
 # P40 — Form actions
 
 **Version:** v1.5 Form actions
-**Status:** `PROPOSED — waiting for the owner` (planned 2026-11-10 from
+**Status:** `IN PROGRESS` — server side built 2026-11-14 on branch `ccr-916cc1b1-6sp5my`, on the
+recommended answers to the decisions below, which the owner has not confirmed yet (planned 2026-11-10 from
 [CR-0001](../requests/CR-0001-form-actions.md) with the procedure in
 `docs/contributing/planning-a-change-request.md`)
 **Depends on:** P07 (form builder), P09/P13 (submissions and phone sync), the expenses module
@@ -183,6 +184,12 @@ categories by name and stops at a missing one with a choice to create it (decisi
 
 ## Decisions for the owner
 
+> **Built on the recommendations (2026-11-14).** The owner asked to start building before
+> going through these; the server follows each recommended answer (1: always wait; 2: in the
+> form's calculation; 3: yes, through the job's required forms; 4: by name, and ask — import
+> not built yet; 5: every claim; 6: no). Each is small to change if the owner decides
+> otherwise.
+
 1. **Do claims made by a form wait for approval?** Options: always wait; approve automatically;
    a switch per action. **Recommended: always wait for approval.** The accountant's correction
    (section 3) is how a wrong amount is fixed, and it happens at approval.
@@ -205,22 +212,27 @@ categories by name and stops at a missing one with a choice to create it (decisi
 
 ## Tasks
 
-- [ ] `feat(db)`: 0078: `form_versions.actions`; `hr_expense_claims.submission_id`,
-      `form_action_id`, `approved_amount`, `amount_note` (frozen-trigger list updated);
-      `submission_links`; export and purge coverage
-- [ ] `feat(form-engine)`: actions schema and checks in `@integr8/form-package` (server and Forms
-      for AI share them)
-- [ ] `feat(api)`: actions saved and published with a form version; `forms/actions.ts` called by
-      both submit paths; claims made once (UUID v5); approved amount at approval; follow-up drafts
-      and `nextForms`; `job_follow_up_open`; read-only submission access for claim deciders;
-      OpenAPI and client
+- [x] `feat(db)`: **0079** (0078 went to the accountant role): `form_versions.actions`;
+      `hr_expense_claims.submission_id`, `form_action_id`, `approved_amount`, `amount_note`
+      (frozen-trigger list updated; the ledger posts the approved amount); `submission_links`;
+      `submission_action_results` (what each action did, for "Claim not made"); export and purge
+      coverage
+- [x] `feat(form-engine)`: actions schema and checks in **`@integr8/form-engine`** (`actions.ts`),
+      not `form-package`, which is Node-only: the web builder needs them too
+- [x] `feat(api)`: actions saved (`PUT /v1/forms/{id}/draft/actions`) and published with a form
+      version; `forms/actions.ts` called by both submit paths; claims made once (UUID v5); approved
+      amount at approval; follow-up drafts and `nextForms`; a required follow-up joins the job's
+      required forms, so `completion_blocked` holds the job (instead of a new
+      `job_follow_up_open`); `GET /v1/expenses/{id}/submission` for claim deciders; **Make it now**
+      (`POST /v1/submissions/{id}/actions/retry`); OpenAPI and client
 - [ ] `feat(web)`, `feat(desktop)`: the builder's Actions tab; claim, job and submission panels;
       opening the next form (operations-dom and form-renderer-dom)
 - [ ] `feat(mobile)`: opening the follow-up draft; the update-the-app gate
 - [ ] `feat(forms-ai)`: guide, interview, checks, example, multi-form package, preview of a submit
 - [ ] `feat(api)`: the demo seeder's forms section gains a trip form with claim actions
-- [ ] `docs`: forms, expenses, form package format, Forms for AI, setup guide (migration 0078
-      part, both copies), `MEMORY.md`; CR-0001 marked `built`
+- [ ] `docs`: forms, expenses, form package format, Forms for AI, setup guide (migration 0079
+      part, both copies), `MEMORY.md`; CR-0001 marked `built` — the setup guide part AI, the page
+      `docs/form-engine/form-actions.md` and `MEMORY.md` are done; the rest follows the screens
 
 ## Exit criteria
 
@@ -238,6 +250,20 @@ categories by name and stops at a missing one with a choice to create it (decisi
 - [ ] Forms for AI builds, checks, previews and saves a form with actions, and staff import it
       into another company with categories matched
 - [ ] Integration suites cover both submit paths, the retry, the trigger and the permissions
+
+## Implementation notes (2026-11-14)
+
+- Integration suite `apps/api/src/routes/v1/form-actions.integration.test.ts` covers the web and
+  phone submits (a phone sending the same submit again makes no second claim), the correction and
+  its journal, the claim decider's read-only view, a claim that cannot be made and Make it now,
+  and a required follow-up holding the job open. It ran against Postgres 16 with the related
+  suites (expenses, submissions, forms, sync, payroll, work orders, ledger postings) and the db
+  suite (down and up of every migration).
+- The phone's "Update the app" gate for forms with follow-ups waits for the mobile step: no phone
+  release reads follow-ups yet, so marking them now would lock every engineer out of those forms.
+  Meanwhile a phone finds the follow-up in the job's forms, and the job cannot complete without it.
+- Form-made claims use the submitter as claimant and the submission's day (company time) as the
+  spending day; the description uses the company's language.
 
 ## Notes
 

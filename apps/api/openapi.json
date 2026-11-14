@@ -9820,6 +9820,13 @@
                         "definition": {
                           "type": "object",
                           "additionalProperties": {}
+                        },
+                        "actions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": {}
+                          }
                         }
                       },
                       "required": [
@@ -9834,7 +9841,8 @@
                         "updatedAt",
                         "publishedAt",
                         "publishedBy",
-                        "definition"
+                        "definition",
+                        "actions"
                       ],
                       "additionalProperties": false
                     },
@@ -9898,6 +9906,13 @@
                         "definition": {
                           "type": "object",
                           "additionalProperties": {}
+                        },
+                        "actions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": {}
+                          }
                         }
                       },
                       "required": [
@@ -9912,7 +9927,8 @@
                         "updatedAt",
                         "publishedAt",
                         "publishedBy",
-                        "definition"
+                        "definition",
+                        "actions"
                       ],
                       "additionalProperties": false
                     }
@@ -10163,6 +10179,13 @@
                         "definition": {
                           "type": "object",
                           "additionalProperties": {}
+                        },
+                        "actions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": {}
+                          }
                         }
                       },
                       "required": [
@@ -10177,7 +10200,8 @@
                         "updatedAt",
                         "publishedAt",
                         "publishedBy",
-                        "definition"
+                        "definition",
+                        "actions"
                       ],
                       "additionalProperties": false
                     },
@@ -10241,6 +10265,13 @@
                         "definition": {
                           "type": "object",
                           "additionalProperties": {}
+                        },
+                        "actions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": {}
+                          }
                         }
                       },
                       "required": [
@@ -10255,7 +10286,8 @@
                         "updatedAt",
                         "publishedAt",
                         "publishedBy",
-                        "definition"
+                        "definition",
+                        "actions"
                       ],
                       "additionalProperties": false
                     }
@@ -10741,6 +10773,13 @@
                         "definition": {
                           "type": "object",
                           "additionalProperties": {}
+                        },
+                        "actions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": {}
+                          }
                         }
                       },
                       "required": [
@@ -10755,7 +10794,8 @@
                         "updatedAt",
                         "publishedAt",
                         "publishedBy",
-                        "definition"
+                        "definition",
+                        "actions"
                       ],
                       "additionalProperties": false
                     },
@@ -10819,6 +10859,13 @@
                         "definition": {
                           "type": "object",
                           "additionalProperties": {}
+                        },
+                        "actions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": {}
+                          }
                         }
                       },
                       "required": [
@@ -10833,7 +10880,8 @@
                         "updatedAt",
                         "publishedAt",
                         "publishedBy",
-                        "definition"
+                        "definition",
+                        "actions"
                       ],
                       "additionalProperties": false
                     }
@@ -11041,6 +11089,13 @@
                     "definition": {
                       "type": "object",
                       "additionalProperties": {}
+                    },
+                    "actions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": {}
+                      }
                     }
                   },
                   "required": [
@@ -11055,7 +11110,8 @@
                     "updatedAt",
                     "publishedAt",
                     "publishedBy",
-                    "definition"
+                    "definition",
+                    "actions"
                   ],
                   "additionalProperties": false
                 }
@@ -11097,6 +11153,216 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-integr8-permission": "form.manage"
+      }
+    },
+    "/v1/forms/{formId}/draft/actions": {
+      "put": {
+        "operationId": "saveFormDraftActions",
+        "summary": "Save what the draft does when a submission is submitted",
+        "description": "Form actions (P40): up to ten expense claims made from the answers and follow-up forms opened for the same job. Stored when they have the right shape (422 `invalid_actions` otherwise); whether they publish — questions, categories, next forms, the HR module — is for `draft/check` and `draft/publish` to say. On `expectedRevision`, as the definition is (409 `draft_conflict`). A new draft starts with the live version’s actions.",
+        "tags": [
+          "forms"
+        ],
+        "parameters": [
+          {
+            "name": "formId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "actions": {
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "expectedRevision": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "actions",
+                  "expectedRevision"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The saved draft.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "formId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "draft",
+                        "published"
+                      ]
+                    },
+                    "versionNumber": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "revision": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "changeNote": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "changes": {
+                      "nullable": true,
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    },
+                    "updatedAt": {
+                      "type": "string"
+                    },
+                    "publishedAt": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "publishedBy": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "definition": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "actions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": {}
+                      }
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "formId",
+                    "status",
+                    "versionNumber",
+                    "revision",
+                    "changeNote",
+                    "changes",
+                    "createdAt",
+                    "updatedAt",
+                    "publishedAt",
+                    "publishedBy",
+                    "definition",
+                    "actions"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller lacks the required permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such form, or no draft."
+          },
+          "409": {
+            "description": "Somebody saved first. Reload the draft and reapply."
+          },
+          "422": {
+            "description": "An action of the wrong shape. Details name it."
           },
           "429": {
             "description": "Rate limit exceeded.",
@@ -11387,6 +11653,34 @@
                         ],
                         "additionalProperties": false
                       }
+                    },
+                    "actionIssues": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "code": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          },
+                          "path": {
+                            "type": "string"
+                          },
+                          "action": {
+                            "nullable": true,
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "code",
+                          "message",
+                          "path",
+                          "action"
+                        ],
+                        "additionalProperties": false
+                      }
                     }
                   },
                   "required": [
@@ -11395,7 +11689,8 @@
                     "issues",
                     "diff",
                     "documentTemplates",
-                    "warnings"
+                    "warnings",
+                    "actionIssues"
                   ],
                   "additionalProperties": false
                 }
@@ -11633,7 +11928,7 @@
             "description": "The draft changed since it was reviewed, breaking changes were not acknowledged, or PDF templates would need attention and that was not acknowledged (`document_templates_affected`)."
           },
           "422": {
-            "description": "The definition does not compile. Details name the fields."
+            "description": "The definition does not compile (`invalid_definition`), its actions do not check (`invalid_actions`), or it makes claims while the HR module is off (`form_action_needs_module`). Details name each problem."
           },
           "429": {
             "description": "Rate limit exceeded.",
@@ -12139,6 +12434,13 @@
                     "definition": {
                       "type": "object",
                       "additionalProperties": {}
+                    },
+                    "actions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": {}
+                      }
                     }
                   },
                   "required": [
@@ -12153,7 +12455,8 @@
                     "updatedAt",
                     "publishedAt",
                     "publishedBy",
-                    "definition"
+                    "definition",
+                    "actions"
                   ],
                   "additionalProperties": false
                 }
@@ -12727,6 +13030,13 @@
                         "definition": {
                           "type": "object",
                           "additionalProperties": {}
+                        },
+                        "actions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": {}
+                          }
                         }
                       },
                       "required": [
@@ -12741,7 +13051,8 @@
                         "updatedAt",
                         "publishedAt",
                         "publishedBy",
-                        "definition"
+                        "definition",
+                        "actions"
                       ],
                       "additionalProperties": false
                     },
@@ -12805,6 +13116,13 @@
                         "definition": {
                           "type": "object",
                           "additionalProperties": {}
+                        },
+                        "actions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": {}
+                          }
                         }
                       },
                       "required": [
@@ -12819,7 +13137,8 @@
                         "updatedAt",
                         "publishedAt",
                         "publishedBy",
-                        "definition"
+                        "definition",
+                        "actions"
                       ],
                       "additionalProperties": false
                     },
@@ -14303,6 +14622,187 @@
                         "fields"
                       ],
                       "additionalProperties": false
+                    },
+                    "formActions": {
+                      "type": "object",
+                      "properties": {
+                        "results": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "actionId": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "expense_claim",
+                                  "open_form"
+                                ]
+                              },
+                              "outcome": {
+                                "type": "string",
+                                "enum": [
+                                  "made",
+                                  "skipped",
+                                  "failed"
+                                ]
+                              },
+                              "reasonCode": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "reason": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "claim": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "reference": {
+                                    "type": "string"
+                                  },
+                                  "status": {
+                                    "type": "string"
+                                  },
+                                  "amount": {
+                                    "type": "string"
+                                  },
+                                  "payableAmount": {
+                                    "type": "string"
+                                  },
+                                  "currency": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "reference",
+                                  "status",
+                                  "amount",
+                                  "payableAmount",
+                                  "currency"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "followUp": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "submissionId": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "formId": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "formTitle": {
+                                    "type": "string"
+                                  },
+                                  "status": {
+                                    "type": "string",
+                                    "enum": [
+                                      "draft",
+                                      "submitted",
+                                      "reopened"
+                                    ]
+                                  },
+                                  "required": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "submissionId",
+                                  "formId",
+                                  "formTitle",
+                                  "status",
+                                  "required"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "required": [
+                              "actionId",
+                              "kind",
+                              "outcome",
+                              "reasonCode",
+                              "reason",
+                              "claim",
+                              "followUp"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "openedFrom": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "submissionId": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "formTitle": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "submissionId",
+                            "formTitle"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "canRetry": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "results",
+                        "openedFrom",
+                        "canRetry"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "nextForms": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "submissionId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "formId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "formTitle": {
+                            "type": "string"
+                          },
+                          "required": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "submissionId",
+                          "formId",
+                          "formTitle",
+                          "required"
+                        ],
+                        "additionalProperties": false
+                      }
                     }
                   },
                   "required": [
@@ -14311,7 +14811,9 @@
                     "events",
                     "can",
                     "asset",
-                    "carriedOver"
+                    "carriedOver",
+                    "formActions",
+                    "nextForms"
                   ],
                   "additionalProperties": false
                 }
@@ -15388,6 +15890,187 @@
                         "fields"
                       ],
                       "additionalProperties": false
+                    },
+                    "formActions": {
+                      "type": "object",
+                      "properties": {
+                        "results": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "actionId": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "expense_claim",
+                                  "open_form"
+                                ]
+                              },
+                              "outcome": {
+                                "type": "string",
+                                "enum": [
+                                  "made",
+                                  "skipped",
+                                  "failed"
+                                ]
+                              },
+                              "reasonCode": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "reason": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "claim": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "reference": {
+                                    "type": "string"
+                                  },
+                                  "status": {
+                                    "type": "string"
+                                  },
+                                  "amount": {
+                                    "type": "string"
+                                  },
+                                  "payableAmount": {
+                                    "type": "string"
+                                  },
+                                  "currency": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "reference",
+                                  "status",
+                                  "amount",
+                                  "payableAmount",
+                                  "currency"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "followUp": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "submissionId": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "formId": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "formTitle": {
+                                    "type": "string"
+                                  },
+                                  "status": {
+                                    "type": "string",
+                                    "enum": [
+                                      "draft",
+                                      "submitted",
+                                      "reopened"
+                                    ]
+                                  },
+                                  "required": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "submissionId",
+                                  "formId",
+                                  "formTitle",
+                                  "status",
+                                  "required"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "required": [
+                              "actionId",
+                              "kind",
+                              "outcome",
+                              "reasonCode",
+                              "reason",
+                              "claim",
+                              "followUp"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "openedFrom": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "submissionId": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "formTitle": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "submissionId",
+                            "formTitle"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "canRetry": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "results",
+                        "openedFrom",
+                        "canRetry"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "nextForms": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "submissionId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "formId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "formTitle": {
+                            "type": "string"
+                          },
+                          "required": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "submissionId",
+                          "formId",
+                          "formTitle",
+                          "required"
+                        ],
+                        "additionalProperties": false
+                      }
                     }
                   },
                   "required": [
@@ -15396,7 +16079,9 @@
                     "events",
                     "can",
                     "asset",
-                    "carriedOver"
+                    "carriedOver",
+                    "formActions",
+                    "nextForms"
                   ],
                   "additionalProperties": false
                 }
@@ -16180,6 +16865,187 @@
                         "fields"
                       ],
                       "additionalProperties": false
+                    },
+                    "formActions": {
+                      "type": "object",
+                      "properties": {
+                        "results": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "actionId": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "expense_claim",
+                                  "open_form"
+                                ]
+                              },
+                              "outcome": {
+                                "type": "string",
+                                "enum": [
+                                  "made",
+                                  "skipped",
+                                  "failed"
+                                ]
+                              },
+                              "reasonCode": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "reason": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "claim": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "reference": {
+                                    "type": "string"
+                                  },
+                                  "status": {
+                                    "type": "string"
+                                  },
+                                  "amount": {
+                                    "type": "string"
+                                  },
+                                  "payableAmount": {
+                                    "type": "string"
+                                  },
+                                  "currency": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "reference",
+                                  "status",
+                                  "amount",
+                                  "payableAmount",
+                                  "currency"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "followUp": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "submissionId": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "formId": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "formTitle": {
+                                    "type": "string"
+                                  },
+                                  "status": {
+                                    "type": "string",
+                                    "enum": [
+                                      "draft",
+                                      "submitted",
+                                      "reopened"
+                                    ]
+                                  },
+                                  "required": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "submissionId",
+                                  "formId",
+                                  "formTitle",
+                                  "status",
+                                  "required"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "required": [
+                              "actionId",
+                              "kind",
+                              "outcome",
+                              "reasonCode",
+                              "reason",
+                              "claim",
+                              "followUp"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "openedFrom": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "submissionId": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "formTitle": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "submissionId",
+                            "formTitle"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "canRetry": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "results",
+                        "openedFrom",
+                        "canRetry"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "nextForms": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "submissionId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "formId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "formTitle": {
+                            "type": "string"
+                          },
+                          "required": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "submissionId",
+                          "formId",
+                          "formTitle",
+                          "required"
+                        ],
+                        "additionalProperties": false
+                      }
                     }
                   },
                   "required": [
@@ -16188,7 +17054,9 @@
                     "events",
                     "can",
                     "asset",
-                    "carriedOver"
+                    "carriedOver",
+                    "formActions",
+                    "nextForms"
                   ],
                   "additionalProperties": false
                 }
@@ -16706,6 +17574,187 @@
                         "fields"
                       ],
                       "additionalProperties": false
+                    },
+                    "formActions": {
+                      "type": "object",
+                      "properties": {
+                        "results": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "actionId": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "expense_claim",
+                                  "open_form"
+                                ]
+                              },
+                              "outcome": {
+                                "type": "string",
+                                "enum": [
+                                  "made",
+                                  "skipped",
+                                  "failed"
+                                ]
+                              },
+                              "reasonCode": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "reason": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "claim": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "reference": {
+                                    "type": "string"
+                                  },
+                                  "status": {
+                                    "type": "string"
+                                  },
+                                  "amount": {
+                                    "type": "string"
+                                  },
+                                  "payableAmount": {
+                                    "type": "string"
+                                  },
+                                  "currency": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "reference",
+                                  "status",
+                                  "amount",
+                                  "payableAmount",
+                                  "currency"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "followUp": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "submissionId": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "formId": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "formTitle": {
+                                    "type": "string"
+                                  },
+                                  "status": {
+                                    "type": "string",
+                                    "enum": [
+                                      "draft",
+                                      "submitted",
+                                      "reopened"
+                                    ]
+                                  },
+                                  "required": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "submissionId",
+                                  "formId",
+                                  "formTitle",
+                                  "status",
+                                  "required"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "required": [
+                              "actionId",
+                              "kind",
+                              "outcome",
+                              "reasonCode",
+                              "reason",
+                              "claim",
+                              "followUp"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "openedFrom": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "submissionId": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "formTitle": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "submissionId",
+                            "formTitle"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "canRetry": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "results",
+                        "openedFrom",
+                        "canRetry"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "nextForms": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "submissionId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "formId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "formTitle": {
+                            "type": "string"
+                          },
+                          "required": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "submissionId",
+                          "formId",
+                          "formTitle",
+                          "required"
+                        ],
+                        "additionalProperties": false
+                      }
                     }
                   },
                   "required": [
@@ -16714,7 +17763,9 @@
                     "events",
                     "can",
                     "asset",
-                    "carriedOver"
+                    "carriedOver",
+                    "formActions",
+                    "nextForms"
                   ],
                   "additionalProperties": false
                 }
@@ -16794,6 +17845,700 @@
           }
         ],
         "x-integr8-permission": "submission.amend"
+      }
+    },
+    "/v1/submissions/{submissionId}/actions/retry": {
+      "post": {
+        "operationId": "retryFormActions",
+        "summary": "Make it now: run a submission’s failed form actions again",
+        "description": "For those who correct submissions or approve claims (P40). Runs every action of the submitted form that failed, as the first submit would have, and makes each at most once; claims and follow-ups still belong to the person who submitted. Nothing to do is not an error.",
+        "tags": [
+          "submissions"
+        ],
+        "parameters": [
+          {
+            "name": "submissionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 255
+            },
+            "description": "A client-generated key. Replaying a request with the same key returns the original response and repeats no effect."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The submission, with what its actions did.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "submission": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "workOrder": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "reference": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "referenceLabel": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "reference",
+                            "referenceLabel"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "formId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "formTitle": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "formVersionId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "versionNumber": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "submitted",
+                            "reopened"
+                          ]
+                        },
+                        "revision": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "submittedBy": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "submittedAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "amendedAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "answers": {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        "submitLocation": {
+                          "nullable": true,
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "status": {
+                                  "type": "string",
+                                  "enum": [
+                                    "captured"
+                                  ]
+                                },
+                                "latitude": {
+                                  "type": "string",
+                                  "pattern": "^-?d{1,3}(.d{1,9})?$"
+                                },
+                                "longitude": {
+                                  "type": "string",
+                                  "pattern": "^-?d{1,3}(.d{1,9})?$"
+                                },
+                                "accuracyMeters": {
+                                  "type": "string",
+                                  "pattern": "^d{1,7}(.d{1,3})?$"
+                                },
+                                "capturedAt": {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                                }
+                              },
+                              "required": [
+                                "status",
+                                "latitude",
+                                "longitude",
+                                "capturedAt"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "status": {
+                                  "type": "string",
+                                  "enum": [
+                                    "denied",
+                                    "unavailable"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "status"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "workOrder",
+                        "formId",
+                        "formTitle",
+                        "title",
+                        "formVersionId",
+                        "versionNumber",
+                        "status",
+                        "revision",
+                        "submittedBy",
+                        "submittedAt",
+                        "amendedAt",
+                        "createdAt",
+                        "updatedAt",
+                        "answers",
+                        "submitLocation"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "version": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "versionNumber": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "definition": {
+                          "type": "object",
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "versionNumber",
+                        "definition"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "events": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "sequence": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "submitted",
+                              "reopened",
+                              "amended"
+                            ]
+                          },
+                          "answers": {
+                            "nullable": true,
+                            "type": "object",
+                            "additionalProperties": {}
+                          },
+                          "actor": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "reason": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "location": {
+                            "nullable": true,
+                            "oneOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "status": {
+                                    "type": "string",
+                                    "enum": [
+                                      "captured"
+                                    ]
+                                  },
+                                  "latitude": {
+                                    "type": "string",
+                                    "pattern": "^-?d{1,3}(.d{1,9})?$"
+                                  },
+                                  "longitude": {
+                                    "type": "string",
+                                    "pattern": "^-?d{1,3}(.d{1,9})?$"
+                                  },
+                                  "accuracyMeters": {
+                                    "type": "string",
+                                    "pattern": "^d{1,7}(.d{1,3})?$"
+                                  },
+                                  "capturedAt": {
+                                    "type": "string",
+                                    "format": "date-time",
+                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                                  }
+                                },
+                                "required": [
+                                  "status",
+                                  "latitude",
+                                  "longitude",
+                                  "capturedAt"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "status": {
+                                    "type": "string",
+                                    "enum": [
+                                      "denied",
+                                      "unavailable"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "status"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          },
+                          "occurredAt": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "sequence",
+                          "kind",
+                          "answers",
+                          "actor",
+                          "reason",
+                          "location",
+                          "occurredAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "can": {
+                      "type": "object",
+                      "properties": {
+                        "edit": {
+                          "type": "boolean"
+                        },
+                        "submit": {
+                          "type": "boolean"
+                        },
+                        "reopen": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "edit",
+                        "submit",
+                        "reopen"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "asset": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "reference": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "reference",
+                        "name"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "carriedOver": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "fromSubmissionId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "fields": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "fromSubmissionId",
+                        "fields"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "formActions": {
+                      "type": "object",
+                      "properties": {
+                        "results": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "actionId": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "expense_claim",
+                                  "open_form"
+                                ]
+                              },
+                              "outcome": {
+                                "type": "string",
+                                "enum": [
+                                  "made",
+                                  "skipped",
+                                  "failed"
+                                ]
+                              },
+                              "reasonCode": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "reason": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "claim": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "reference": {
+                                    "type": "string"
+                                  },
+                                  "status": {
+                                    "type": "string"
+                                  },
+                                  "amount": {
+                                    "type": "string"
+                                  },
+                                  "payableAmount": {
+                                    "type": "string"
+                                  },
+                                  "currency": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "reference",
+                                  "status",
+                                  "amount",
+                                  "payableAmount",
+                                  "currency"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "followUp": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "submissionId": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "formId": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "formTitle": {
+                                    "type": "string"
+                                  },
+                                  "status": {
+                                    "type": "string",
+                                    "enum": [
+                                      "draft",
+                                      "submitted",
+                                      "reopened"
+                                    ]
+                                  },
+                                  "required": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "submissionId",
+                                  "formId",
+                                  "formTitle",
+                                  "status",
+                                  "required"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "required": [
+                              "actionId",
+                              "kind",
+                              "outcome",
+                              "reasonCode",
+                              "reason",
+                              "claim",
+                              "followUp"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "openedFrom": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "submissionId": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "formTitle": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "submissionId",
+                            "formTitle"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "canRetry": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "results",
+                        "openedFrom",
+                        "canRetry"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "nextForms": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "submissionId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "formId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "formTitle": {
+                            "type": "string"
+                          },
+                          "required": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "submissionId",
+                          "formId",
+                          "formTitle",
+                          "required"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "submission",
+                    "version",
+                    "events",
+                    "can",
+                    "asset",
+                    "carriedOver",
+                    "formActions",
+                    "nextForms"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "This person neither corrects submissions nor approves claims."
+          },
+          "404": {
+            "description": "No such submission this person may see."
+          },
+          "409": {
+            "description": "The submission is a draft (`submission_state`)."
+          },
+          "422": {
+            "description": "The request failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-integr8-permission": "form.read",
+        "x-integr8-idempotency": "honoured"
       }
     },
     "/v1/document-templates": {
@@ -129291,6 +131036,42 @@
                             "nullable": true,
                             "type": "string"
                           },
+                          "approvedAmount": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "amountNote": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "payableAmount": {
+                            "type": "string"
+                          },
+                          "submission": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "formId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "title": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "formId",
+                              "title"
+                            ],
+                            "additionalProperties": false
+                          },
                           "version": {
                             "type": "integer",
                             "minimum": -9007199254740991,
@@ -129317,6 +131098,10 @@
                           "paidBy",
                           "paidAt",
                           "paymentReference",
+                          "approvedAmount",
+                          "amountNote",
+                          "payableAmount",
+                          "submission",
                           "version"
                         ],
                         "additionalProperties": false
@@ -129647,6 +131432,42 @@
                       "nullable": true,
                       "type": "string"
                     },
+                    "approvedAmount": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "amountNote": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "payableAmount": {
+                      "type": "string"
+                    },
+                    "submission": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "formId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "title": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "formId",
+                        "title"
+                      ],
+                      "additionalProperties": false
+                    },
                     "version": {
                       "type": "integer",
                       "minimum": -9007199254740991,
@@ -129777,6 +131598,10 @@
                     "paidBy",
                     "paidAt",
                     "paymentReference",
+                    "approvedAmount",
+                    "amountNote",
+                    "payableAmount",
+                    "submission",
                     "version",
                     "receipts",
                     "can"
@@ -130054,6 +131879,42 @@
                       "nullable": true,
                       "type": "string"
                     },
+                    "approvedAmount": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "amountNote": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "payableAmount": {
+                      "type": "string"
+                    },
+                    "submission": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "formId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "title": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "formId",
+                        "title"
+                      ],
+                      "additionalProperties": false
+                    },
                     "version": {
                       "type": "integer",
                       "minimum": -9007199254740991,
@@ -130184,6 +132045,10 @@
                     "paidBy",
                     "paidAt",
                     "paymentReference",
+                    "approvedAmount",
+                    "amountNote",
+                    "payableAmount",
+                    "submission",
                     "version",
                     "receipts",
                     "can"
@@ -130263,6 +132128,694 @@
           }
         ],
         "x-integr8-permission": "expense.submit",
+        "x-integr8-feature": "hr"
+      }
+    },
+    "/v1/expenses/{claimId}/submission": {
+      "get": {
+        "operationId": "getExpenseClaimSubmission",
+        "summary": "The submitted form a claim was made from, read-only",
+        "description": "For those who approve claims (P40): the one submission whose form action made this claim, even without access to other submissions, so the claim is decided beside the answers it came from. 404 when the claim was not made by a form.",
+        "tags": [
+          "expenses"
+        ],
+        "parameters": [
+          {
+            "name": "claimId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The submission, as its page shows it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "submission": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "workOrder": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "reference": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "referenceLabel": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "reference",
+                            "referenceLabel"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "formId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "formTitle": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "formVersionId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "versionNumber": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "submitted",
+                            "reopened"
+                          ]
+                        },
+                        "revision": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "submittedBy": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "submittedAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "amendedAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "answers": {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        "submitLocation": {
+                          "nullable": true,
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "status": {
+                                  "type": "string",
+                                  "enum": [
+                                    "captured"
+                                  ]
+                                },
+                                "latitude": {
+                                  "type": "string",
+                                  "pattern": "^-?d{1,3}(.d{1,9})?$"
+                                },
+                                "longitude": {
+                                  "type": "string",
+                                  "pattern": "^-?d{1,3}(.d{1,9})?$"
+                                },
+                                "accuracyMeters": {
+                                  "type": "string",
+                                  "pattern": "^d{1,7}(.d{1,3})?$"
+                                },
+                                "capturedAt": {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                                }
+                              },
+                              "required": [
+                                "status",
+                                "latitude",
+                                "longitude",
+                                "capturedAt"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "status": {
+                                  "type": "string",
+                                  "enum": [
+                                    "denied",
+                                    "unavailable"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "status"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "workOrder",
+                        "formId",
+                        "formTitle",
+                        "title",
+                        "formVersionId",
+                        "versionNumber",
+                        "status",
+                        "revision",
+                        "submittedBy",
+                        "submittedAt",
+                        "amendedAt",
+                        "createdAt",
+                        "updatedAt",
+                        "answers",
+                        "submitLocation"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "version": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "versionNumber": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "definition": {
+                          "type": "object",
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "versionNumber",
+                        "definition"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "events": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "sequence": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "submitted",
+                              "reopened",
+                              "amended"
+                            ]
+                          },
+                          "answers": {
+                            "nullable": true,
+                            "type": "object",
+                            "additionalProperties": {}
+                          },
+                          "actor": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "reason": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "location": {
+                            "nullable": true,
+                            "oneOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "status": {
+                                    "type": "string",
+                                    "enum": [
+                                      "captured"
+                                    ]
+                                  },
+                                  "latitude": {
+                                    "type": "string",
+                                    "pattern": "^-?d{1,3}(.d{1,9})?$"
+                                  },
+                                  "longitude": {
+                                    "type": "string",
+                                    "pattern": "^-?d{1,3}(.d{1,9})?$"
+                                  },
+                                  "accuracyMeters": {
+                                    "type": "string",
+                                    "pattern": "^d{1,7}(.d{1,3})?$"
+                                  },
+                                  "capturedAt": {
+                                    "type": "string",
+                                    "format": "date-time",
+                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                                  }
+                                },
+                                "required": [
+                                  "status",
+                                  "latitude",
+                                  "longitude",
+                                  "capturedAt"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "status": {
+                                    "type": "string",
+                                    "enum": [
+                                      "denied",
+                                      "unavailable"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "status"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          },
+                          "occurredAt": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "sequence",
+                          "kind",
+                          "answers",
+                          "actor",
+                          "reason",
+                          "location",
+                          "occurredAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "can": {
+                      "type": "object",
+                      "properties": {
+                        "edit": {
+                          "type": "boolean"
+                        },
+                        "submit": {
+                          "type": "boolean"
+                        },
+                        "reopen": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "edit",
+                        "submit",
+                        "reopen"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "asset": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "reference": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "reference",
+                        "name"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "carriedOver": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "fromSubmissionId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "fields": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "fromSubmissionId",
+                        "fields"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "formActions": {
+                      "type": "object",
+                      "properties": {
+                        "results": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "actionId": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "expense_claim",
+                                  "open_form"
+                                ]
+                              },
+                              "outcome": {
+                                "type": "string",
+                                "enum": [
+                                  "made",
+                                  "skipped",
+                                  "failed"
+                                ]
+                              },
+                              "reasonCode": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "reason": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "claim": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "reference": {
+                                    "type": "string"
+                                  },
+                                  "status": {
+                                    "type": "string"
+                                  },
+                                  "amount": {
+                                    "type": "string"
+                                  },
+                                  "payableAmount": {
+                                    "type": "string"
+                                  },
+                                  "currency": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "reference",
+                                  "status",
+                                  "amount",
+                                  "payableAmount",
+                                  "currency"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "followUp": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "submissionId": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "formId": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "formTitle": {
+                                    "type": "string"
+                                  },
+                                  "status": {
+                                    "type": "string",
+                                    "enum": [
+                                      "draft",
+                                      "submitted",
+                                      "reopened"
+                                    ]
+                                  },
+                                  "required": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "submissionId",
+                                  "formId",
+                                  "formTitle",
+                                  "status",
+                                  "required"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "required": [
+                              "actionId",
+                              "kind",
+                              "outcome",
+                              "reasonCode",
+                              "reason",
+                              "claim",
+                              "followUp"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "openedFrom": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "submissionId": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "formTitle": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "submissionId",
+                            "formTitle"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "canRetry": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "results",
+                        "openedFrom",
+                        "canRetry"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "nextForms": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "submissionId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "formId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "formTitle": {
+                            "type": "string"
+                          },
+                          "required": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "submissionId",
+                          "formId",
+                          "formTitle",
+                          "required"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "submission",
+                    "version",
+                    "events",
+                    "can",
+                    "asset",
+                    "carriedOver",
+                    "formActions",
+                    "nextForms"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller lacks the required permission, or the company does not have the `hr` module switched on (`feature_disabled`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such claim, or it was not made by a form."
+          },
+          "422": {
+            "description": "The request failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-integr8-permission": "expense.approve",
         "x-integr8-feature": "hr"
       }
     },
@@ -130480,6 +133033,42 @@
                       "nullable": true,
                       "type": "string"
                     },
+                    "approvedAmount": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "amountNote": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "payableAmount": {
+                      "type": "string"
+                    },
+                    "submission": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "formId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "title": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "formId",
+                        "title"
+                      ],
+                      "additionalProperties": false
+                    },
                     "version": {
                       "type": "integer",
                       "minimum": -9007199254740991,
@@ -130610,6 +133199,10 @@
                     "paidBy",
                     "paidAt",
                     "paymentReference",
+                    "approvedAmount",
+                    "amountNote",
+                    "payableAmount",
+                    "submission",
                     "version",
                     "receipts",
                     "can"
@@ -130699,7 +133292,7 @@
       "post": {
         "operationId": "approveExpenseClaim",
         "summary": "Approve a claim, to be paid back directly or through payroll",
-        "description": "By an owner, admin or HR manager who is not the claimant (409 `self_approval`). `settleVia: payroll` needs the payroll module (422 `payroll_off`). Posts to the ledger when it is set up.",
+        "description": "By an approver who is not the claimant (409 `self_approval`). `settleVia: payroll` needs the payroll module (422 `payroll_off`). `approvedAmount` approves a different amount than was claimed, with `amountNote` saying why (422 `amount_note_required`); the claim itself is unchanged, and the approved amount is what is posted and paid back. Posts to the ledger when it is set up.",
         "tags": [
           "expenses"
         ],
@@ -130734,6 +133327,15 @@
                       "direct",
                       "payroll"
                     ]
+                  },
+                  "approvedAmount": {
+                    "type": "string",
+                    "pattern": "^\\d{1,16}(\\.\\d{1,4})?$"
+                  },
+                  "amountNote": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1000
                   }
                 },
                 "required": [
@@ -130918,6 +133520,42 @@
                       "nullable": true,
                       "type": "string"
                     },
+                    "approvedAmount": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "amountNote": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "payableAmount": {
+                      "type": "string"
+                    },
+                    "submission": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "formId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "title": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "formId",
+                        "title"
+                      ],
+                      "additionalProperties": false
+                    },
                     "version": {
                       "type": "integer",
                       "minimum": -9007199254740991,
@@ -131048,6 +133686,10 @@
                     "paidBy",
                     "paidAt",
                     "paymentReference",
+                    "approvedAmount",
+                    "amountNote",
+                    "payableAmount",
+                    "submission",
                     "version",
                     "receipts",
                     "can"
@@ -131084,7 +133726,7 @@
             "description": "One’s own, already decided, or changed elsewhere."
           },
           "422": {
-            "description": "Payroll is not switched on."
+            "description": "Payroll is not switched on, or a different amount without a note."
           },
           "429": {
             "description": "Rate limit exceeded.",
@@ -131346,6 +133988,42 @@
                       "nullable": true,
                       "type": "string"
                     },
+                    "approvedAmount": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "amountNote": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "payableAmount": {
+                      "type": "string"
+                    },
+                    "submission": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "formId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "title": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "formId",
+                        "title"
+                      ],
+                      "additionalProperties": false
+                    },
                     "version": {
                       "type": "integer",
                       "minimum": -9007199254740991,
@@ -131476,6 +134154,10 @@
                     "paidBy",
                     "paidAt",
                     "paymentReference",
+                    "approvedAmount",
+                    "amountNote",
+                    "payableAmount",
+                    "submission",
                     "version",
                     "receipts",
                     "can"
@@ -131790,6 +134472,42 @@
                       "nullable": true,
                       "type": "string"
                     },
+                    "approvedAmount": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "amountNote": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "payableAmount": {
+                      "type": "string"
+                    },
+                    "submission": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "formId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "title": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "formId",
+                        "title"
+                      ],
+                      "additionalProperties": false
+                    },
                     "version": {
                       "type": "integer",
                       "minimum": -9007199254740991,
@@ -131920,6 +134638,10 @@
                     "paidBy",
                     "paidAt",
                     "paymentReference",
+                    "approvedAmount",
+                    "amountNote",
+                    "payableAmount",
+                    "submission",
                     "version",
                     "receipts",
                     "can"
@@ -188195,6 +190917,13 @@
                               "definition": {
                                 "type": "object",
                                 "additionalProperties": {}
+                              },
+                              "actions": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "additionalProperties": {}
+                                }
                               }
                             },
                             "required": [
@@ -188209,7 +190938,8 @@
                               "updatedAt",
                               "publishedAt",
                               "publishedBy",
-                              "definition"
+                              "definition",
+                              "actions"
                             ],
                             "additionalProperties": false
                           },
@@ -188273,6 +191003,13 @@
                               "definition": {
                                 "type": "object",
                                 "additionalProperties": {}
+                              },
+                              "actions": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "additionalProperties": {}
+                                }
                               }
                             },
                             "required": [
@@ -188287,7 +191024,8 @@
                               "updatedAt",
                               "publishedAt",
                               "publishedBy",
-                              "definition"
+                              "definition",
+                              "actions"
                             ],
                             "additionalProperties": false
                           }

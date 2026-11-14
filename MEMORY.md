@@ -25,12 +25,12 @@ the end of any piece of work that changes one of them, and date each section.
   source: the phone (`app.config.ts`) and the web build (`next.config.ts`) read it, and
   `apps/api/src/app-info.ts` has a copy a test keeps equal. A version bump must also change
   every place listed under "Places that state the version".
-- **Migrations:** `packages/db/migrations` reaches **0078** (0078 `accountant_role`, unreleased,
-  branch `ccr-56130823-gs6hbv`; 0077 `test_companies`, P38, unreleased, branch
+- **Migrations:** `packages/db/migrations` reaches **0079** (0079 `form_actions`, P40, unreleased,
+  branch `ccr-916cc1b1-6sp5my`; 0078 `accountant_role`, unreleased, merged into `dev` in PR #188; 0077 `test_companies`, P38, unreleased, branch
   `ccr-56fb45d1-5mq6bt`). Before that it reached **0076** (0075 merged into `dev`, released
   with 1.3.4; **0076** `submissions.title` is unreleased, on branch
   `fix/submission-names-pdf-links-pickers`). **0059 was never used** (workers had reserved ranges) and the migrator
-  does not need contiguous numbers; the next one is **0079**. 1.2.2 carries 0054–0057;
+  does not need contiguous numbers; the next one is **0080**. 1.2.2 carries 0054–0057;
   1.2.3 adds 0058 and 0060–0066; 1.2.4 adds 0067–0068; 1.3.0 adds 0069 and 0074 (0070–0073 were reserved by workers and never used).
 - **Pre-production audit (2026-10-31):** plans, docs and code compared area by area; the
   report is the claude.ai artifact https://claude.ai/artifact/FB7vANrUc691VfMXkR5h2U. Its
@@ -53,7 +53,8 @@ the end of any piece of work that changes one of them, and date each section.
   though parts exist (see the notes in `plan/README.md`). Modules planned outside the phase
   list are indexed in `plan/README.md` ("Module plans outside the phase list").
   P37–P39 (v1.4 AI tooling, planned 2026-11-10) are built (`IN PROGRESS`, see Decisions). P40
-  (form actions, from CR-0001) is proposed and waits for the owner's decisions.
+  (form actions, from CR-0001) is `IN PROGRESS`: its server side is built (see Decisions); screens,
+  phone and Forms for AI are next.
 - **P36 self-hosted sign-in** (`plan/v1.0-launch/P36-self-hosted-sign-in.md`): merged into
   `main` in PRs #130 and #135; CI's database job, real Auth included, is green. Auth container in
   `deploy/compose.yml` (`supabase/auth:v2.197.0`, private ports, memory caps), bootstrap's
@@ -317,6 +318,25 @@ the end of any piece of work that changes one of them, and date each section.
   `member.update_role`) using the shared `CompanyRolesScreen` (`peopleOnWeb`); roles are still
   given to people on the web. Older phones reject an accountant's offline grant (strict
   `roleSchema`).
+- **Form actions, server side (2026-11-14, unreleased, branch `ccr-916cc1b1-6sp5my` from `dev`;
+  migration 0079), as the owner asked ("start implementing P40", decisions to discuss later):**
+  built on P40's recommended answers, not yet confirmed by the owner (claims wait for approval;
+  the km rate lives in the form's calculation; a required follow-up holds the job; categories
+  matched by name; the approved amount applies to every claim; a claim that cannot be made never
+  refuses the submission). Actions sit beside the definition in `form_versions.actions`; their
+  schema, checks and the plan of a submit are in `@integr8/form-engine` (`actions.ts`), not
+  `form-package` (Node-only, and the web builder needs them). `apps/api/src/forms/actions.ts`
+  runs them in the submit's transaction from both submit paths, each in a savepoint; a claim's
+  `client_action_id` is a UUID v5 of submission + action, so it is made once. Outcomes are kept in
+  `submission_action_results` (Make it now: `POST /v1/submissions/{id}/actions/retry`).
+  Follow-ups are drafts linked in `submission_links`, and the form joins the job's forms (the
+  database refuses a job submission for a form not on the job), so a required one blocks completing
+  through the existing `completion_blocked`. Approving takes `approvedAmount` + `amountNote`; the
+  ledger, direct payment and payroll use `payableAmount` (`coalesce(approved_amount, amount)`).
+  Claim deciders read the claim's submission at `GET /v1/expenses/{id}/submission`. Not built: the
+  builder's Actions tab and the other screens, the phone's next-form button and its "Update the
+  app" gate (left out on purpose until a phone release reads follow-ups), Forms for AI, form-file
+  import of actions, the demo seeder's trip form. Doc: `docs/form-engine/form-actions.md`.
 - **The demo seeder goes through the API**, in-process with Fastify's `inject`, as the
   company's own people (plus a staff impersonation for staff-only setup). Direct inserts
   were rejected: they skip numbering, stock, ledger postings and audit, and produce data
@@ -338,6 +358,9 @@ Update them together at each release or new migration:
 - Released versions: `gh release list`. v1.2.1 (2026-10-27) carries migrations 0051–0053.
 
 ## Open items
+
+- **P40 decisions (2026-11-14):** the owner still has to go through P40's six decisions; the server
+  follows the recommendations. Setup guide Stage 11 part AI covers migration 0079.
 
 - **Owner steps for 1.3.0 (2026-11-01):** Stage 11 parts AC and AD (migrations 0069 and
   0074; the api container's 1 GB cap; wait a day after updating before publishing forms

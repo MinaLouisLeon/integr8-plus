@@ -70,6 +70,9 @@ export const EXPORTED_TABLES = [
   'submissions',
   'submission_events',
   'submission_values',
+  // Form actions (0079): follow-ups opened and what each action did.
+  'submission_links',
+  'submission_action_results',
   'files',
   'attachments',
   // How the company works: timezone, currency, working hours, branding (0018).

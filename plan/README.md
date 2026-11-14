@@ -137,7 +137,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` completed · `[!]` block
 > Proposed on 2026-11-10 from change request CR-0001, with the planning procedure of P39. Waits
 > for the owner's decisions; nothing is built.
 
-- [ ] **P40** — Form actions (proposed, waiting for the owner)
+- [ ] **P40** — Form actions (server side built 2026-11-14; screens, phone and Forms for AI next)
 
 ### v2.0 — Scale and Enterprise
 

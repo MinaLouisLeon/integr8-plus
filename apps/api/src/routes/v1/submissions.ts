@@ -1,5 +1,6 @@
 import {
   formatAssetReference,
+  formatExpenseReference,
   formatWorkOrderReference,
   holds,
   type Principal,
@@ -41,6 +42,7 @@ import { assertSubmissionAllowed, startOfMonth } from '../../billing/entitlement
 import { assertFeatureEnabled } from '../../http/features.js';
 import { planFor } from '../../http/suspension.js';
 import { defineRoute, noSchema, type RequestContext } from '../../http/routes.js';
+import { actionsOf, openNextForms, runFormActions, type NextForm } from '../../forms/actions.js';
 import { readableAsset } from './assets.js';
 import { readableWorkOrder, requireWork } from './operations.js';
 import { iso, isoOrNull } from './schemas.js';
@@ -144,7 +146,7 @@ const eventSchema = z.object({
   occurredAt: z.string(),
 });
 
-const detailSchema = z.object({
+export const detailSchema = z.object({
   submission: submissionSchema,
   version: z.object({
     id: z.uuid(),
@@ -162,6 +164,53 @@ const detailSchema = z.object({
    * submission of this form when it was started, in reading order.
    */
   carriedOver: z.object({ fromSubmissionId: z.uuid(), fields: z.array(z.string()) }).nullable(),
+  /**
+   * What the form's actions did on submit (P40): each action's outcome, the
+   * claim or follow-up it made, and the submission that opened this one.
+   * Claims are shown to their claimant and to those who approve claims.
+   */
+  formActions: z.object({
+    results: z.array(
+      z.object({
+        actionId: z.string(),
+        kind: z.enum(['expense_claim', 'open_form']),
+        outcome: z.enum(['made', 'skipped', 'failed']),
+        reasonCode: z.string().nullable(),
+        reason: z.string().nullable(),
+        claim: z
+          .object({
+            id: z.uuid(),
+            reference: z.string(),
+            status: z.string(),
+            amount: z.string(),
+            payableAmount: z.string(),
+            currency: z.string(),
+          })
+          .nullable(),
+        followUp: z
+          .object({
+            submissionId: z.uuid(),
+            formId: z.uuid(),
+            formTitle: z.string(),
+            status: statusSchema,
+            required: z.boolean(),
+          })
+          .nullable(),
+      }),
+    ),
+    openedFrom: z.object({ submissionId: z.uuid(), formTitle: z.string() }).nullable(),
+    /** Whether this caller may run the failed actions again ("Make it now"). */
+    canRetry: z.boolean(),
+  }),
+  /** Follow-up forms waiting for this caller to fill, to open next (P40). */
+  nextForms: z.array(
+    z.object({
+      submissionId: z.uuid(),
+      formId: z.uuid(),
+      formTitle: z.string(),
+      required: z.boolean(),
+    }),
+  ),
 });
 
 const submissionParams = z.object({ submissionId: z.uuid() });
@@ -351,6 +400,95 @@ export async function detailBody(
         ? null
         : { id: asset.id, reference: formatAssetReference(asset.reference), name: asset.name },
     carriedOver: submission.carriedOver,
+    formActions: await formActionsBody(tx, principal, submission, known, actionsOf(version)),
+    nextForms:
+      submission.submittedBy === principal.userId && submission.status !== 'draft'
+        ? await openNextForms(tx, submission)
+        : ([] as NextForm[]),
+  };
+}
+
+/** Who may run a submission's failed actions again: those who correct or decide. */
+export function mayRetryActions(principal: Principal): boolean {
+  return holds(principal, 'submission.amend') || holds(principal, 'expense.approve');
+}
+
+async function formActionsBody(
+  tx: TenantTransaction,
+  principal: Principal,
+  submission: Submission,
+  known: Lookups,
+  actions: readonly { id: string }[],
+): Promise<z.infer<typeof detailSchema>['formActions']> {
+  // In the form's own order: one submit records them all at the same moment.
+  const position = new Map(actions.map((action, index) => [action.id, index]));
+  const [results, links, claims, company] = await Promise.all([
+    tx.formActions
+      .results(submission.id)
+      .then((found) =>
+        found.sort(
+          (a, b) =>
+            (position.get(a.formActionId) ?? Number.MAX_SAFE_INTEGER) -
+            (position.get(b.formActionId) ?? Number.MAX_SAFE_INTEGER),
+        ),
+      ),
+    tx.formActions.linksOf(submission.id),
+    tx.hrExpenses.forSubmission(submission.id),
+    tx.settings.get(),
+  ]);
+  const seesClaims =
+    submission.submittedBy === principal.userId || holds(principal, 'expense.approve');
+  const claimById = new Map(claims.map((claim) => [claim.id, claim]));
+  const linkById = new Map(links.to.map((link) => [link.id, link]));
+  const followUps = new Map(
+    (
+      await Promise.all(links.to.map((link) => tx.submissions.findById(link.toSubmissionId)))
+    ).flatMap((found) => (found === undefined ? [] : [[found.id, found] as const])),
+  );
+  const openedFrom =
+    links.from === null ? undefined : await tx.submissions.findById(links.from.fromSubmissionId);
+  return {
+    results: results.map((result) => {
+      const claim = result.claimId === null ? undefined : claimById.get(result.claimId);
+      const link = result.linkId === null ? undefined : linkById.get(result.linkId);
+      const followUp = link === undefined ? undefined : followUps.get(link.toSubmissionId);
+      return {
+        actionId: result.formActionId,
+        kind: result.kind,
+        outcome: result.outcome,
+        reasonCode: result.reasonCode,
+        reason: result.reason,
+        claim:
+          claim === undefined || !seesClaims
+            ? null
+            : {
+                id: claim.id,
+                reference: formatExpenseReference(claim.reference),
+                status: claim.status,
+                amount: claim.amount,
+                payableAmount: claim.payableAmount,
+                currency: claim.currency ?? company.currency,
+              },
+        followUp:
+          link === undefined || followUp === undefined
+            ? null
+            : {
+                submissionId: followUp.id,
+                formId: followUp.formId,
+                formTitle: known.forms.get(followUp.formId) ?? '',
+                status: followUp.status,
+                required: link.required,
+              },
+      };
+    }),
+    openedFrom:
+      openedFrom === undefined
+        ? null
+        : {
+            submissionId: openedFrom.id,
+            formTitle: openedFrom.title ?? known.forms.get(openedFrom.formId) ?? '',
+          },
+    canRetry: mayRetryActions(principal) && results.some((result) => result.outcome === 'failed'),
   };
 }
 
@@ -1240,6 +1378,12 @@ export const submitRoute = defineRoute({
         await audit(tx, context, 'submission.amended', submission.id, {
           reason: body.reason ?? '',
         });
+      } else {
+        // P40: claims and follow-up forms. A correction makes none: what the
+        // first submit made stays, beside the corrected answers.
+        await runFormActions(tx, result.submission, principal.userId, {
+          today: resolveToday(body.today),
+        });
       }
       return detailBody(tx, principal, result.submission);
     });
@@ -1288,6 +1432,58 @@ export const reopenRoute = defineRoute({
   },
 });
 
+export const retryFormActionsRoute = defineRoute({
+  method: 'post',
+  path: '/v1/submissions/:submissionId/actions/retry',
+  operationId: 'retryFormActions',
+  summary: 'Make it now: run a submission’s failed form actions again',
+  description:
+    'For those who correct submissions or approve claims (P40). Runs every action of the submitted form that failed, as the first submit would have, and makes each at most once; claims and follow-ups still belong to the person who submitted. Nothing to do is not an error.',
+  tags: TAGS,
+  security: 'authenticated',
+  permission: 'form.read',
+  idempotent: true,
+  params: submissionParams,
+  query: noSchema,
+  body: noSchema,
+  responses: {
+    200: { description: 'The submission, with what its actions did.', schema: detailSchema },
+    403: { description: 'This person neither corrects submissions nor approves claims.' },
+    404: { description: 'No such submission this person may see.' },
+    409: { description: 'The submission is a draft (`submission_state`).' },
+  },
+  handler: async ({ params }, context) => {
+    const { principal } = context;
+    if (!mayRetryActions(principal)) {
+      throw forbidden('Only those who correct submissions or approve claims make them now.');
+    }
+    const detail = await withTenant(principal.tenantId, async (tx) => {
+      const submission = await tx.submissions.findById(params.submissionId);
+      if (
+        submission === undefined ||
+        !(mayRead(principal, submission) || holds(principal, 'expense.approve'))
+      ) {
+        throw notFound('This submission does not exist.');
+      }
+      if (submission.status === 'draft') {
+        throw conflict('submission_state', 'A draft has not been submitted, so nothing ran.');
+      }
+      const before = (await tx.formActions.results(submission.id)).filter(
+        (result) => result.outcome === 'failed',
+      );
+      const run = await runFormActions(tx, submission, principal.userId);
+      await audit(tx, context, 'submission.actions_retried', submission.id, {
+        failedBefore: before.map((result) => result.formActionId),
+        failedAfter: run.results
+          .filter((result) => result.outcome === 'failed')
+          .map((result) => result.formActionId),
+      });
+      return detailBody(tx, principal, submission);
+    });
+    return { status: 200, body: detail };
+  },
+});
+
 async function audit(
   tx: TenantTransaction,
   context: RequestContext,
@@ -1317,4 +1513,5 @@ export const submissionRoutes = [
   saveAnswersRoute,
   submitRoute,
   reopenRoute,
+  retryFormActionsRoute,
 ];

@@ -637,6 +637,12 @@ export {
   type SealedValues,
 } from './repositories/hr-employees.js';
 export {
+  FormActionsRepository,
+  type SubmissionActionResult,
+  type SubmissionActionResultInput,
+  type SubmissionLink,
+} from './repositories/form-actions.js';
+export {
   HrExpensesRepository,
   type ExpenseCategory,
   type ExpenseClaim,

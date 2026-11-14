@@ -49,6 +49,7 @@ import { LedgerRepository } from './repositories/ledger.js';
 import { LedgerReportsRepository } from './repositories/ledger-reports.js';
 import { MemberGrantsRepository } from './repositories/member-grants.js';
 import { HrEmployeesRepository } from './repositories/hr-employees.js';
+import { FormActionsRepository } from './repositories/form-actions.js';
 import { HrExpensesRepository } from './repositories/hr-expenses.js';
 import { HrPayrollRepository } from './repositories/hr-payroll.js';
 import { ManufacturingRepository } from './repositories/manufacturing.js';
@@ -181,6 +182,8 @@ export interface TenantTransaction {
   readonly memberGrants: MemberGrantsRepository;
   readonly hrEmployees: HrEmployeesRepository;
   readonly hrExpenses: HrExpensesRepository;
+  /** What submitted forms' actions did: follow-up links and outcomes (P40). */
+  readonly formActions: FormActionsRepository;
   readonly hrPayroll: HrPayrollRepository;
   readonly manufacturing: ManufacturingRepository;
   readonly customerTimeline: CustomerTimelineRepository;
@@ -487,6 +490,7 @@ export function buildTenantTransaction(scope: TenantScope): InternalTenantTransa
     memberGrants: new MemberGrantsRepository(scope),
     hrEmployees: new HrEmployeesRepository(scope),
     hrExpenses: new HrExpensesRepository(scope),
+    formActions: new FormActionsRepository(scope),
     hrPayroll: new HrPayrollRepository(scope),
     manufacturing: new ManufacturingRepository(scope),
     customerTimeline: new CustomerTimelineRepository(scope),

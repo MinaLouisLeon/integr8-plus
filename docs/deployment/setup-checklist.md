@@ -1522,6 +1522,13 @@ Migration 0078 runs by itself at part D. Companies get a new built-in role, **Ac
 - [ ] **An accountant can be invited**: on a company's People screen, the role list offers **Accountant**; an accountant who signs in sees Finance, Accounting and E-invoicing, and no work orders or HR.
 - [ ] **Company roles in the desktop app**: signed in to the updated desktop app as an owner, the menu shows **Company roles** under Company, listing the same roles as the web.
 
+### AI. Form actions: claims and follow-up forms from a submitted form (included in the release after v1.4.0)
+
+Migration 0079 runs by itself at part D. A form can now say what happens when it is submitted: make expense claims from its answers (for example mileage and a daily allowance, in the company's own categories) and open another form for the same job, optionally only when an answer says so, and optionally required before the job can be completed. Claims a form makes wait for approval like any other, and whoever approves a claim can approve a different amount with a note: the claim keeps what was asked, and the ledger and the pay-back use the amount approved. A claim that cannot be made (its category archived, the HR module off) never refuses the engineer's submission: the submission says why, and **Make it now** makes it once the cause is fixed. Existing forms do nothing new until staff give them actions. The builder's screen for actions and the phone's "next form" button come in a later release; until then the API takes them (`PUT /v1/forms/{id}/draft/actions`) and phones find a follow-up form in the job's list of forms. No new settings, no new image.
+
+- [ ] **Migration ran**: after part D, `docker compose -f deploy/compose.yml --env-file deploy/.env logs migrate | grep 0079` shows `applied 0079_form_actions`.
+- [ ] **Nothing changed for forms without actions**: submit any existing form on a job; it saves as before and no expense claim appears under Expenses.
+
 > [!NOTE]
 > **The test box (Stage 10)** updates the same way, from `staging` instead of `main`: `git pull` on its `staging` checkout, then `up -d --build`. Updating it first, the day before, is the cheapest rehearsal there is.
 

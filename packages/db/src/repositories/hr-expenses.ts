@@ -49,6 +49,14 @@ export interface ExpenseClaim {
   paymentReference: string | null;
   /** The pay run that paid it back, when paid through payroll. */
   payrollRunId: string | null;
+  /** The submission whose form action made it (P40), and that action's id. */
+  submissionId: string | null;
+  formActionId: string | null;
+  /** What the approver settled on when it differs from `amount`, and why. */
+  approvedAmount: string | null;
+  amountNote: string | null;
+  /** What is posted and paid back: the approved amount, or the amount claimed. */
+  payableAmount: string;
   version: number;
 }
 
@@ -61,6 +69,9 @@ export interface ExpenseClaimInput {
   currency: string;
   description: string;
   clientActionId?: string | null;
+  /** Set when a form action makes the claim (P40); both or neither. */
+  submissionId?: string | null;
+  formActionId?: string | null;
 }
 
 export interface ExpenseClaimQuery {
@@ -104,6 +115,11 @@ function toClaim(row: Selectable<HrExpenseClaimsTable>): ExpenseClaim {
     paidAt: row.paid_at,
     paymentReference: row.payment_reference,
     payrollRunId: row.payroll_run_id,
+    submissionId: row.submission_id,
+    formActionId: row.form_action_id,
+    approvedAmount: row.approved_amount === null ? null : trimDecimal(row.approved_amount),
+    amountNote: row.amount_note,
+    payableAmount: trimDecimal(row.approved_amount ?? row.amount),
     version: row.version,
   };
 }
@@ -271,6 +287,8 @@ export class HrExpensesRepository extends TenantScopedRepository {
         currency: input.currency,
         description: input.description,
         client_action_id: input.clientActionId ?? null,
+        submission_id: input.submissionId ?? null,
+        form_action_id: input.formActionId ?? null,
       })
       .returningAll()
       .executeTakeFirstOrThrow();
@@ -334,18 +352,51 @@ export class HrExpensesRepository extends TenantScopedRepository {
     return this.#move(id, expectedVersion, { status: 'withdrawn' });
   }
 
+  /**
+   * Approves a claim, at the amount claimed or, with a note, at another
+   * amount (P40). The claim itself never changes; the approved amount is what
+   * the ledger posts and what is paid back.
+   */
   approve(
     id: string,
     expectedVersion: number,
     by: UserId | string,
     settleVia: ExpenseSettlement,
+    correction?: { amount: string; note: string } | null,
   ): Promise<ExpenseClaim | undefined> {
     return this.#move(id, expectedVersion, {
       status: 'approved',
       decided_by: toUserId(by),
       decided_at: sql<Date>`now()`,
       settle_via: settleVia,
+      ...(correction === undefined || correction === null
+        ? {}
+        : { approved_amount: correction.amount, amount_note: correction.note }),
     });
+  }
+
+  /** Claims a submission's form actions made, oldest first. */
+  async forSubmission(submissionId: string): Promise<ExpenseClaim[]> {
+    const rows = await this.db
+      .selectFrom('hr_expense_claims')
+      .selectAll()
+      .where('tenant_id', '=', this.tenantId)
+      .where('submission_id', '=', submissionId)
+      .orderBy('submitted_at')
+      .execute();
+    return rows.map(toClaim);
+  }
+
+  /** Claims of a job, newest first. */
+  async forWorkOrder(workOrderId: string): Promise<ExpenseClaim[]> {
+    const rows = await this.db
+      .selectFrom('hr_expense_claims')
+      .selectAll()
+      .where('tenant_id', '=', this.tenantId)
+      .where('work_order_id', '=', workOrderId)
+      .orderBy('submitted_at', 'desc')
+      .execute();
+    return rows.map(toClaim);
   }
 
   reject(

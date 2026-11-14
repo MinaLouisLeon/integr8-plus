@@ -501,6 +501,8 @@ function Builder({
             setLive({
               ...version,
               definition: editor.definition as unknown as Record<string, unknown>,
+              // This builder does not edit actions (P40) yet: the version keeps the draft's.
+              actions: detail.draft?.actions ?? live?.actions ?? [],
             });
             // The draft became the version; the next edit starts a new draft.
             sync.reset({ revision: null, definition: editor.definition });

@@ -491,6 +491,7 @@ each with a down file, applied by `pnpm --filter @integr8/db db up` (or
 | 0076      | A submission's own name, chosen at the submit step                                                    |
 | 0077      | Test companies (fixed at creation), staff sessions limited to them, and their outbox                  |
 | 0078      | The accountant, a built-in role that keeps the books                                                  |
+| 0079      | Form actions: claims and follow-up forms from a submitted form, and an approved amount on claims      |
 
 See [`docs/database/migrations.md`](./docs/database/migrations.md) and the
 [backup and restore runbook](./docs/database/runbook-backup-and-restore.md).
