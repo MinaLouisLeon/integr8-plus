@@ -3,7 +3,7 @@
 **Date:** 2026-11-10
 **Kind:** `form_action`
 **Status:** `planned` — [P40](../v1.5-form-actions/P40-form-actions.md), proposed on
-2026-11-10 and waiting for the owner. Planned with the procedure of P39
+2026-11-10; its server side was built on 2026-11-14 (screens and Forms for AI to follow). Planned with the procedure of P39
 ([`docs/contributing/planning-a-change-request.md`](../../docs/contributing/planning-a-change-request.md)).
 
 This note keeps what the owner asked for and decided in the conversation of 2026-11-10, and

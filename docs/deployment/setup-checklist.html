@@ -1272,6 +1272,13 @@ docker compose -f deploy/compose.yml --env-file deploy/.env exec postgres psql -
           <li><input type="checkbox" id="s12-ah3"><label for="s12-ah3"><b>Company roles in the desktop app</b>: signed in to the updated desktop app as an owner, the menu shows <b>Company roles</b> under Company, listing the same roles as the web.</label></li>
         </ul>
 
+        <h3 id="form-actions-update">AI. Form actions: claims and follow-up forms from a submitted form (included in the release after v1.4.0)</h3>
+        <p>Migration 0079 runs by itself at part D. A form can now say what happens when it is submitted: make expense claims from its answers (for example mileage and a daily allowance, in the company's own categories) and open another form for the same job, optionally only when an answer says so, and optionally required before the job can be completed. Claims a form makes wait for approval like any other, and whoever approves a claim can approve a different amount with a note: the claim keeps what was asked, and the ledger and the pay-back use the amount approved. A claim that cannot be made (its category archived, the HR module off) never refuses the engineer's submission: the submission says why, and <b>Make it now</b> makes it once the cause is fixed. Existing forms do nothing new until staff give them actions. The builder's screen for actions and the phone's "next form" button come in a later release; until then the API takes them (<code>PUT /v1/forms/{id}/draft/actions</code>) and phones find a follow-up form in the job's list of forms. No new settings, no new image.</p>
+        <ul class="check" data-stage="s12ai">
+          <li><input type="checkbox" id="s12-ai1"><label for="s12-ai1"><b>Migration ran</b>: after part D, <code>docker compose -f deploy/compose.yml --env-file deploy/.env logs migrate | grep 0079</code> shows <code>applied 0079_form_actions</code>.</label></li>
+          <li><input type="checkbox" id="s12-ai2"><label for="s12-ai2"><b>Nothing changed for forms without actions</b>: submit any existing form on a job; it saves as before and no expense claim appears under Expenses.</label></li>
+        </ul>
+
         <div class="note"><p><b>The test box (Stage 10)</b> updates the same way, from <code>staging</code> instead of <code>main</code>: <code>git pull</code> on its <code>staging</code> checkout, then <code>up -d --build</code>. Updating it first, the day before, is the cheapest rehearsal there is.</p></div>
       </section>
 
