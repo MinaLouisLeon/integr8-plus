@@ -410,7 +410,7 @@ async function proposeLines(
       reimbursements:
         candidate.userId === null
           ? '0'
-          : sum((claims.get(candidate.userId) ?? []).map((claim) => claim.amount)),
+          : sum((claims.get(candidate.userId) ?? []).map((claim) => claim.payableAmount)),
       declaredInsurableWage: terms.insurableWage,
       insured: terms.insured,
       payMethod: terms.payMethod,
@@ -1303,7 +1303,9 @@ export const approvePayRunRoute = defineRoute({
       for (const line of lines) {
         const userId = userOf.get(line.employeeId) ?? null;
         const waiting = userId === null ? [] : (claims.get(userId) ?? []);
-        if (toUnits(sum(waiting.map((claim) => claim.amount))) !== toUnits(line.reimbursements)) {
+        if (
+          toUnits(sum(waiting.map((claim) => claim.payableAmount))) !== toUnits(line.reimbursements)
+        ) {
           throw conflict(
             'run_out_of_date',
             'Expense claims changed since this run was calculated. Recalculate it, check it, then approve.',

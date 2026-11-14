@@ -65,6 +65,7 @@ export const apiErrorsEn = {
   already_set_up: 'The ledger is already set up.',
   already_submitted:
     'This form was submitted from somewhere else while you were offline. Your answers were not sent.',
+  amount_note_required: 'Say why the approved amount differs from the amount claimed.',
   answers_changed:
     'These answers were changed on another device while you were offline. Choose which to keep.',
   app_icon_not_found: 'The app icon must be an image uploaded by this company. Upload it again.',
@@ -174,6 +175,10 @@ export const apiErrorsEn = {
   document_link_needs_website:
     'Add the company’s website first: document links may only point to it.',
   document_link_other_site: 'The document link address must be on the company’s own website.',
+  form_action_needs_module:
+    'This form makes expense claims, which need the HR module. Switch it on for the company first.',
+  invalid_actions:
+    'What this form does on submit has problems to fix before it can be saved or published.',
   not_a_test_company: 'This is not a test company.',
   session_scope:
     'This staff session can reach test companies only, and this is not something it may do.',

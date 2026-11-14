@@ -1093,6 +1093,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/forms/{formId}/draft/actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Save what the draft does when a submission is submitted
+         * @description Form actions (P40): up to ten expense claims made from the answers and follow-up forms opened for the same job. Stored when they have the right shape (422 `invalid_actions` otherwise); whether they publish — questions, categories, next forms, the HR module — is for `draft/check` and `draft/publish` to say. On `expectedRevision`, as the definition is (409 `draft_conflict`). A new draft starts with the live version’s actions.
+         */
+        put: operations["saveFormDraftActions"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/forms/{formId}/draft/check": {
         parameters: {
             query?: never;
@@ -1459,6 +1479,26 @@ export interface paths {
          * @description Needs a reason, which is kept in the submission’s history with who reopened it and when. The answers as submitted are kept too; nothing about the original is lost.
          */
         post: operations["reopenSubmission"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/submissions/{submissionId}/actions/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Make it now: run a submission’s failed form actions again
+         * @description For those who correct submissions or approve claims (P40). Runs every action of the submitted form that failed, as the first submit would have, and makes each at most once; claims and follow-ups still belong to the person who submitted. Nothing to do is not an error.
+         */
+        post: operations["retryFormActions"];
         delete?: never;
         options?: never;
         head?: never;
@@ -6171,6 +6211,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/expenses/{claimId}/submission": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The submitted form a claim was made from, read-only
+         * @description For those who approve claims (P40): the one submission whose form action made this claim, even without access to other submissions, so the claim is decided beside the answers it came from. 404 when the claim was not made by a form.
+         */
+        get: operations["getExpenseClaimSubmission"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/expenses/{claimId}/withdraw": {
         parameters: {
             query?: never;
@@ -6199,7 +6259,7 @@ export interface paths {
         put?: never;
         /**
          * Approve a claim, to be paid back directly or through payroll
-         * @description By an owner, admin or HR manager who is not the claimant (409 `self_approval`). `settleVia: payroll` needs the payroll module (422 `payroll_off`). Posts to the ledger when it is set up.
+         * @description By an approver who is not the claimant (409 `self_approval`). `settleVia: payroll` needs the payroll module (422 `payroll_off`). `approvedAmount` approves a different amount than was claimed, with `amountNote` saying why (422 `amount_note_required`); the claim itself is unchanged, and the approved amount is what is posted and paid back. Posts to the ledger when it is set up.
          */
         post: operations["approveExpenseClaim"];
         delete?: never;
@@ -14504,6 +14564,9 @@ export interface operations {
                             definition: {
                                 [key: string]: unknown;
                             };
+                            actions: {
+                                [key: string]: unknown;
+                            }[];
                         } | null;
                         live: {
                             /** Format: uuid */
@@ -14526,6 +14589,9 @@ export interface operations {
                             definition: {
                                 [key: string]: unknown;
                             };
+                            actions: {
+                                [key: string]: unknown;
+                            }[];
                         } | null;
                     };
                 };
@@ -14647,6 +14713,9 @@ export interface operations {
                             definition: {
                                 [key: string]: unknown;
                             };
+                            actions: {
+                                [key: string]: unknown;
+                            }[];
                         } | null;
                         live: {
                             /** Format: uuid */
@@ -14669,6 +14738,9 @@ export interface operations {
                             definition: {
                                 [key: string]: unknown;
                             };
+                            actions: {
+                                [key: string]: unknown;
+                            }[];
                         } | null;
                     };
                 };
@@ -14901,6 +14973,9 @@ export interface operations {
                             definition: {
                                 [key: string]: unknown;
                             };
+                            actions: {
+                                [key: string]: unknown;
+                            }[];
                         } | null;
                         live: {
                             /** Format: uuid */
@@ -14923,6 +14998,9 @@ export interface operations {
                             definition: {
                                 [key: string]: unknown;
                             };
+                            actions: {
+                                [key: string]: unknown;
+                            }[];
                         } | null;
                     };
                 };
@@ -15046,6 +15124,9 @@ export interface operations {
                         definition: {
                             [key: string]: unknown;
                         };
+                        actions: {
+                            [key: string]: unknown;
+                        }[];
                     };
                 };
             };
@@ -15089,6 +15170,127 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Error"];
                 };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    saveFormDraftActions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                formId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    actions: {
+                        [key: string]: unknown;
+                    }[];
+                    expectedRevision: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The saved draft. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        formId: string;
+                        /** @enum {string} */
+                        status: "draft" | "published";
+                        versionNumber: number | null;
+                        revision: number;
+                        changeNote: string | null;
+                        changes: {
+                            [key: string]: unknown;
+                        } | null;
+                        createdAt: string;
+                        updatedAt: string;
+                        publishedAt: string | null;
+                        /** Format: uuid */
+                        publishedBy: string | null;
+                        definition: {
+                            [key: string]: unknown;
+                        };
+                        actions: {
+                            [key: string]: unknown;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such form, or no draft. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Somebody saved first. Reload the draft and reapply. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An action of the wrong shape. Details name it. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Rate limit exceeded. */
             429: {
@@ -15182,6 +15384,12 @@ export interface operations {
                             path: string;
                             elements: string[];
                             locale?: string;
+                        }[];
+                        actionIssues: {
+                            code: string;
+                            message: string;
+                            path: string;
+                            action: string | null;
                         }[];
                     };
                 };
@@ -15330,7 +15538,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description The definition does not compile. Details name the fields. */
+            /** @description The definition does not compile (`invalid_definition`), its actions do not check (`invalid_actions`), or it makes claims while the HR module is off (`form_action_needs_module`). Details name each problem. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -15616,6 +15824,9 @@ export interface operations {
                         definition: {
                             [key: string]: unknown;
                         };
+                        actions: {
+                            [key: string]: unknown;
+                        }[];
                     };
                 };
             };
@@ -15935,6 +16146,9 @@ export interface operations {
                             definition: {
                                 [key: string]: unknown;
                             };
+                            actions: {
+                                [key: string]: unknown;
+                            }[];
                         } | null;
                         live: {
                             /** Format: uuid */
@@ -15957,6 +16171,9 @@ export interface operations {
                             definition: {
                                 [key: string]: unknown;
                             };
+                            actions: {
+                                [key: string]: unknown;
+                            }[];
                         } | null;
                         documentTemplatesCopied: number;
                     };
@@ -16817,6 +17034,50 @@ export interface operations {
                             fromSubmissionId: string;
                             fields: string[];
                         } | null;
+                        formActions: {
+                            results: {
+                                actionId: string;
+                                /** @enum {string} */
+                                kind: "expense_claim" | "open_form";
+                                /** @enum {string} */
+                                outcome: "made" | "skipped" | "failed";
+                                reasonCode: string | null;
+                                reason: string | null;
+                                claim: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    status: string;
+                                    amount: string;
+                                    payableAmount: string;
+                                    currency: string;
+                                } | null;
+                                followUp: {
+                                    /** Format: uuid */
+                                    submissionId: string;
+                                    /** Format: uuid */
+                                    formId: string;
+                                    formTitle: string;
+                                    /** @enum {string} */
+                                    status: "draft" | "submitted" | "reopened";
+                                    required: boolean;
+                                } | null;
+                            }[];
+                            openedFrom: {
+                                /** Format: uuid */
+                                submissionId: string;
+                                formTitle: string;
+                            } | null;
+                            canRetry: boolean;
+                        };
+                        nextForms: {
+                            /** Format: uuid */
+                            submissionId: string;
+                            /** Format: uuid */
+                            formId: string;
+                            formTitle: string;
+                            required: boolean;
+                        }[];
                     };
                 };
             };
@@ -17094,6 +17355,50 @@ export interface operations {
                             fromSubmissionId: string;
                             fields: string[];
                         } | null;
+                        formActions: {
+                            results: {
+                                actionId: string;
+                                /** @enum {string} */
+                                kind: "expense_claim" | "open_form";
+                                /** @enum {string} */
+                                outcome: "made" | "skipped" | "failed";
+                                reasonCode: string | null;
+                                reason: string | null;
+                                claim: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    status: string;
+                                    amount: string;
+                                    payableAmount: string;
+                                    currency: string;
+                                } | null;
+                                followUp: {
+                                    /** Format: uuid */
+                                    submissionId: string;
+                                    /** Format: uuid */
+                                    formId: string;
+                                    formTitle: string;
+                                    /** @enum {string} */
+                                    status: "draft" | "submitted" | "reopened";
+                                    required: boolean;
+                                } | null;
+                            }[];
+                            openedFrom: {
+                                /** Format: uuid */
+                                submissionId: string;
+                                formTitle: string;
+                            } | null;
+                            canRetry: boolean;
+                        };
+                        nextForms: {
+                            /** Format: uuid */
+                            submissionId: string;
+                            /** Format: uuid */
+                            formId: string;
+                            formTitle: string;
+                            required: boolean;
+                        }[];
                     };
                 };
             };
@@ -17413,6 +17718,50 @@ export interface operations {
                             fromSubmissionId: string;
                             fields: string[];
                         } | null;
+                        formActions: {
+                            results: {
+                                actionId: string;
+                                /** @enum {string} */
+                                kind: "expense_claim" | "open_form";
+                                /** @enum {string} */
+                                outcome: "made" | "skipped" | "failed";
+                                reasonCode: string | null;
+                                reason: string | null;
+                                claim: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    status: string;
+                                    amount: string;
+                                    payableAmount: string;
+                                    currency: string;
+                                } | null;
+                                followUp: {
+                                    /** Format: uuid */
+                                    submissionId: string;
+                                    /** Format: uuid */
+                                    formId: string;
+                                    formTitle: string;
+                                    /** @enum {string} */
+                                    status: "draft" | "submitted" | "reopened";
+                                    required: boolean;
+                                } | null;
+                            }[];
+                            openedFrom: {
+                                /** Format: uuid */
+                                submissionId: string;
+                                formTitle: string;
+                            } | null;
+                            canRetry: boolean;
+                        };
+                        nextForms: {
+                            /** Format: uuid */
+                            submissionId: string;
+                            /** Format: uuid */
+                            formId: string;
+                            formTitle: string;
+                            required: boolean;
+                        }[];
                     };
                 };
             };
@@ -17604,6 +17953,50 @@ export interface operations {
                             fromSubmissionId: string;
                             fields: string[];
                         } | null;
+                        formActions: {
+                            results: {
+                                actionId: string;
+                                /** @enum {string} */
+                                kind: "expense_claim" | "open_form";
+                                /** @enum {string} */
+                                outcome: "made" | "skipped" | "failed";
+                                reasonCode: string | null;
+                                reason: string | null;
+                                claim: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    status: string;
+                                    amount: string;
+                                    payableAmount: string;
+                                    currency: string;
+                                } | null;
+                                followUp: {
+                                    /** Format: uuid */
+                                    submissionId: string;
+                                    /** Format: uuid */
+                                    formId: string;
+                                    formTitle: string;
+                                    /** @enum {string} */
+                                    status: "draft" | "submitted" | "reopened";
+                                    required: boolean;
+                                } | null;
+                            }[];
+                            openedFrom: {
+                                /** Format: uuid */
+                                submissionId: string;
+                                formTitle: string;
+                            } | null;
+                            canRetry: boolean;
+                        };
+                        nextForms: {
+                            /** Format: uuid */
+                            submissionId: string;
+                            /** Format: uuid */
+                            formId: string;
+                            formTitle: string;
+                            required: boolean;
+                        }[];
                     };
                 };
             };
@@ -17633,6 +18026,237 @@ export interface operations {
                 content?: never;
             };
             /** @description Changed elsewhere, or not submitted. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    retryFormActions: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                submissionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The submission, with what its actions did. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        submission: {
+                            /** Format: uuid */
+                            id: string;
+                            workOrder: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: number;
+                                referenceLabel: string;
+                            } | null;
+                            /** Format: uuid */
+                            formId: string;
+                            formTitle: string;
+                            title: string | null;
+                            /** Format: uuid */
+                            formVersionId: string;
+                            versionNumber: number | null;
+                            /** @enum {string} */
+                            status: "draft" | "submitted" | "reopened";
+                            revision: number;
+                            submittedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            submittedAt: string | null;
+                            amendedAt: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            answers: {
+                                [key: string]: unknown;
+                            };
+                            submitLocation: ({
+                                /** @enum {string} */
+                                status: "captured";
+                                latitude: string;
+                                longitude: string;
+                                accuracyMeters?: string;
+                                /** Format: date-time */
+                                capturedAt: string;
+                            } | {
+                                /** @enum {string} */
+                                status: "denied" | "unavailable";
+                            }) | null;
+                        };
+                        version: {
+                            /** Format: uuid */
+                            id: string;
+                            versionNumber: number | null;
+                            definition: {
+                                [key: string]: unknown;
+                            };
+                        };
+                        events: {
+                            sequence: number;
+                            /** @enum {string} */
+                            kind: "submitted" | "reopened" | "amended";
+                            answers: {
+                                [key: string]: unknown;
+                            } | null;
+                            actor: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            reason: string | null;
+                            location: ({
+                                /** @enum {string} */
+                                status: "captured";
+                                latitude: string;
+                                longitude: string;
+                                accuracyMeters?: string;
+                                /** Format: date-time */
+                                capturedAt: string;
+                            } | {
+                                /** @enum {string} */
+                                status: "denied" | "unavailable";
+                            }) | null;
+                            occurredAt: string;
+                        }[];
+                        can: {
+                            edit: boolean;
+                            submit: boolean;
+                            reopen: boolean;
+                        };
+                        asset: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            name: string;
+                        } | null;
+                        carriedOver: {
+                            /** Format: uuid */
+                            fromSubmissionId: string;
+                            fields: string[];
+                        } | null;
+                        formActions: {
+                            results: {
+                                actionId: string;
+                                /** @enum {string} */
+                                kind: "expense_claim" | "open_form";
+                                /** @enum {string} */
+                                outcome: "made" | "skipped" | "failed";
+                                reasonCode: string | null;
+                                reason: string | null;
+                                claim: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    status: string;
+                                    amount: string;
+                                    payableAmount: string;
+                                    currency: string;
+                                } | null;
+                                followUp: {
+                                    /** Format: uuid */
+                                    submissionId: string;
+                                    /** Format: uuid */
+                                    formId: string;
+                                    formTitle: string;
+                                    /** @enum {string} */
+                                    status: "draft" | "submitted" | "reopened";
+                                    required: boolean;
+                                } | null;
+                            }[];
+                            openedFrom: {
+                                /** Format: uuid */
+                                submissionId: string;
+                                formTitle: string;
+                            } | null;
+                            canRetry: boolean;
+                        };
+                        nextForms: {
+                            /** Format: uuid */
+                            submissionId: string;
+                            /** Format: uuid */
+                            formId: string;
+                            formTitle: string;
+                            required: boolean;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This person neither corrects submissions nor approves claims. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such submission this person may see. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The submission is a draft (`submission_state`). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -60753,6 +61377,16 @@ export interface operations {
                             /** Format: date-time */
                             paidAt: string | null;
                             paymentReference: string | null;
+                            approvedAmount: string | null;
+                            amountNote: string | null;
+                            payableAmount: string;
+                            submission: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                formId: string;
+                                title: string;
+                            } | null;
                             version: number;
                         }[];
                         nextCursor: string | null;
@@ -60895,6 +61529,16 @@ export interface operations {
                         /** Format: date-time */
                         paidAt: string | null;
                         paymentReference: string | null;
+                        approvedAmount: string | null;
+                        amountNote: string | null;
+                        payableAmount: string;
+                        submission: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            formId: string;
+                            title: string;
+                        } | null;
                         version: number;
                         receipts: {
                             /** Format: uuid */
@@ -61052,6 +61696,16 @@ export interface operations {
                         /** Format: date-time */
                         paidAt: string | null;
                         paymentReference: string | null;
+                        approvedAmount: string | null;
+                        amountNote: string | null;
+                        payableAmount: string;
+                        submission: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            formId: string;
+                            title: string;
+                        } | null;
                         version: number;
                         receipts: {
                             /** Format: uuid */
@@ -61100,6 +61754,229 @@ export interface operations {
                 };
             };
             /** @description No such claim, or not one this person may read. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getExpenseClaimSubmission: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                claimId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The submission, as its page shows it. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        submission: {
+                            /** Format: uuid */
+                            id: string;
+                            workOrder: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: number;
+                                referenceLabel: string;
+                            } | null;
+                            /** Format: uuid */
+                            formId: string;
+                            formTitle: string;
+                            title: string | null;
+                            /** Format: uuid */
+                            formVersionId: string;
+                            versionNumber: number | null;
+                            /** @enum {string} */
+                            status: "draft" | "submitted" | "reopened";
+                            revision: number;
+                            submittedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            submittedAt: string | null;
+                            amendedAt: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            answers: {
+                                [key: string]: unknown;
+                            };
+                            submitLocation: ({
+                                /** @enum {string} */
+                                status: "captured";
+                                latitude: string;
+                                longitude: string;
+                                accuracyMeters?: string;
+                                /** Format: date-time */
+                                capturedAt: string;
+                            } | {
+                                /** @enum {string} */
+                                status: "denied" | "unavailable";
+                            }) | null;
+                        };
+                        version: {
+                            /** Format: uuid */
+                            id: string;
+                            versionNumber: number | null;
+                            definition: {
+                                [key: string]: unknown;
+                            };
+                        };
+                        events: {
+                            sequence: number;
+                            /** @enum {string} */
+                            kind: "submitted" | "reopened" | "amended";
+                            answers: {
+                                [key: string]: unknown;
+                            } | null;
+                            actor: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            reason: string | null;
+                            location: ({
+                                /** @enum {string} */
+                                status: "captured";
+                                latitude: string;
+                                longitude: string;
+                                accuracyMeters?: string;
+                                /** Format: date-time */
+                                capturedAt: string;
+                            } | {
+                                /** @enum {string} */
+                                status: "denied" | "unavailable";
+                            }) | null;
+                            occurredAt: string;
+                        }[];
+                        can: {
+                            edit: boolean;
+                            submit: boolean;
+                            reopen: boolean;
+                        };
+                        asset: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            name: string;
+                        } | null;
+                        carriedOver: {
+                            /** Format: uuid */
+                            fromSubmissionId: string;
+                            fields: string[];
+                        } | null;
+                        formActions: {
+                            results: {
+                                actionId: string;
+                                /** @enum {string} */
+                                kind: "expense_claim" | "open_form";
+                                /** @enum {string} */
+                                outcome: "made" | "skipped" | "failed";
+                                reasonCode: string | null;
+                                reason: string | null;
+                                claim: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    status: string;
+                                    amount: string;
+                                    payableAmount: string;
+                                    currency: string;
+                                } | null;
+                                followUp: {
+                                    /** Format: uuid */
+                                    submissionId: string;
+                                    /** Format: uuid */
+                                    formId: string;
+                                    formTitle: string;
+                                    /** @enum {string} */
+                                    status: "draft" | "submitted" | "reopened";
+                                    required: boolean;
+                                } | null;
+                            }[];
+                            openedFrom: {
+                                /** Format: uuid */
+                                submissionId: string;
+                                formTitle: string;
+                            } | null;
+                            canRetry: boolean;
+                        };
+                        nextForms: {
+                            /** Format: uuid */
+                            submissionId: string;
+                            /** Format: uuid */
+                            formId: string;
+                            formTitle: string;
+                            required: boolean;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `hr` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such claim, or it was not made by a form. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -61215,6 +62092,16 @@ export interface operations {
                         /** Format: date-time */
                         paidAt: string | null;
                         paymentReference: string | null;
+                        approvedAmount: string | null;
+                        amountNote: string | null;
+                        payableAmount: string;
+                        submission: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            formId: string;
+                            title: string;
+                        } | null;
                         version: number;
                         receipts: {
                             /** Format: uuid */
@@ -61332,6 +62219,8 @@ export interface operations {
                      * @enum {string}
                      */
                     settleVia?: "direct" | "payroll";
+                    approvedAmount?: string;
+                    amountNote?: string;
                 };
             };
         };
@@ -61390,6 +62279,16 @@ export interface operations {
                         /** Format: date-time */
                         paidAt: string | null;
                         paymentReference: string | null;
+                        approvedAmount: string | null;
+                        amountNote: string | null;
+                        payableAmount: string;
+                        submission: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            formId: string;
+                            title: string;
+                        } | null;
                         version: number;
                         receipts: {
                             /** Format: uuid */
@@ -61451,7 +62350,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Payroll is not switched on. */
+            /** @description Payroll is not switched on, or a different amount without a note. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -61559,6 +62458,16 @@ export interface operations {
                         /** Format: date-time */
                         paidAt: string | null;
                         paymentReference: string | null;
+                        approvedAmount: string | null;
+                        amountNote: string | null;
+                        payableAmount: string;
+                        submission: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            formId: string;
+                            title: string;
+                        } | null;
                         version: number;
                         receipts: {
                             /** Format: uuid */
@@ -61732,6 +62641,16 @@ export interface operations {
                         /** Format: date-time */
                         paidAt: string | null;
                         paymentReference: string | null;
+                        approvedAmount: string | null;
+                        amountNote: string | null;
+                        payableAmount: string;
+                        submission: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            formId: string;
+                            title: string;
+                        } | null;
                         version: number;
                         receipts: {
                             /** Format: uuid */
@@ -80222,6 +81141,9 @@ export interface operations {
                                 definition: {
                                     [key: string]: unknown;
                                 };
+                                actions: {
+                                    [key: string]: unknown;
+                                }[];
                             } | null;
                             live: {
                                 /** Format: uuid */
@@ -80244,6 +81166,9 @@ export interface operations {
                                 definition: {
                                     [key: string]: unknown;
                                 };
+                                actions: {
+                                    [key: string]: unknown;
+                                }[];
                             } | null;
                         }[];
                         submissions: {
