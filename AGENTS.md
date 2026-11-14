@@ -32,7 +32,7 @@ is pinned to an exact version.
 | `apps/desktop`               | `@integr8/desktop`           | React + Vite SPA in Tauri v2; `staff` / `company` flavours. Port 3002           |
 | `apps/mobile`                | `@integr8/mobile`            | Expo Router, offline-first (SQLCipher); one build per company                   |
 | `apps/forms-ai`              | `@integr8/forms-ai`          | Offline MCP server + installer for AI tools writing `.integr8form`; Node SEA    |
-| `apps/dev-mcp`               | `@integr8/dev-mcp`           | Developer MCP server: act in test companies on a running API (run from source)  |
+| `apps/dev-mcp`               | `@integr8/dev-mcp`           | Developer MCP server: test companies on a running API + every Forms for AI tool |
 | `packages/core`              | `@integr8/core`              | Domain types, zod schemas, permission matrix, navigation model                  |
 | `packages/db`                | `@integr8/db`                | Migrations, repositories, tenant isolation, seeds — the only place SQL runs     |
 | `packages/auth`              | `@integr8/auth`              | Sessions, EdDSA tokens, refresh rotation, impersonation, offline grants         |
@@ -91,7 +91,9 @@ refuses pushes to `main`/`staging`/`dev`, then runs `pnpm typecheck` and `pnpm t
 
 ## Conventions
 
-- Shared domain types live only in `@integr8/core`. Apps never import from each other.
+- Shared domain types live only in `@integr8/core`. Apps never import from each other, with one
+  exception: `apps/dev-mcp` (never shipped) imports `@integr8/forms-ai/tools` to carry every Forms
+  for AI tool.
 - No shared UI component package: each app owns its `components/ui`; web and desktop share
   screens through `form-renderer-dom` / `operations-dom`.
 - Never store tokens in `localStorage` — use the `TokenStore` contract (keychain,

@@ -290,6 +290,13 @@ the end of any piece of work that changes one of them, and date each section.
   (`/plan-change-request`); the developer MCP server lists and reads them. `offline.test.ts` now
   proves no Forms for AI tool makes a network request. CR-0001 became **P40 — Form actions**
   (`plan/v1.5-form-actions/`, proposed; its test-company evidence step is still to run).
+- **One MCP server for developers (2026-11-14, unreleased, branch `ccr-712995a6-da3hqy` from
+  `main`), as the owner asked:** the developer MCP server (`apps/dev-mcp`) carries every Forms for
+  AI tool beside its own (37 tools), through `registerFormsTools` from `@integr8/forms-ai/tools`
+  (the one app-to-app import allowed). Forms for AI's two change-request read tools are renamed
+  there `list_draft_change_requests` / `get_draft_change_request`. The Forms tools need no
+  sign-in; the preview page needs `pnpm --filter @integr8/forms-ai build`. Forms for AI's own
+  program is unchanged and still what staff install.
 - **The demo seeder goes through the API**, in-process with Fastify's `inject`, as the
   company's own people (plus a staff impersonation for staff-only setup). Direct inserts
   were rejected: they skip numbering, stock, ledger postings and audit, and produce data

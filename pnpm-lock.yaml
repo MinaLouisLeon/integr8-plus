@@ -253,6 +253,9 @@ importers:
       '@integr8/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
+      '@integr8/forms-ai':
+        specifier: workspace:*
+        version: link:../forms-ai
       '@modelcontextprotocol/sdk':
         specifier: 1.32.2
         version: 1.32.2(zod@4.6.1)
@@ -10507,7 +10510,9 @@ snapshots:
       metro-runtime: 0.87.1
     transitivePeerDependencies:
       - '@babel/core'
+      - bufferutil
       - supports-color
+      - utf-8-validate
 
   '@react-native/normalize-colors@0.88.0': {}
 

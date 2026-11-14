@@ -17,6 +17,30 @@ Three rules hold whatever the tool does, because the API enforces them, not the 
 - **Everything is on record.** Each action is audited under your staff account, and every
   impersonation reason starts `Developer MCP:`.
 
+## One server for everything (Forms for AI included)
+
+The developer server also carries **every Integr8 Forms for AI tool** (the 23 in
+[`docs/forms-ai/README.md`](../forms-ai/README.md#the-tools)): building and checking
+`.integr8form` files, PDF previews, the live preview window, the website integration tools and
+change requests. A developer in this repository connects this one server and does not install
+Forms for AI as well. Those tools are the same code (`registerFormsTools` from
+`@integr8/forms-ai/tools`), stay offline and need **no sign-in**, so they work while the staff
+session is missing or over; only the developer tools below need it.
+
+- Two Forms tools are renamed here, because this server already has tools by their names:
+  Forms for AI's `list_change_requests` and `get_change_request` (requests recorded **on this
+  computer**, in the output folder's `change-requests/`) are `list_draft_change_requests` and
+  `get_draft_change_request`. `list_change_requests` and `get_change_request` read the
+  repository's `plan/requests/`. Hand a recorded request over by copying its folder there.
+- Files are saved where Forms for AI saves them: `INTEGR8_FORMS_OUTPUT` if set, else the folder
+  chosen in Forms for AI's installer, else `Documents/Integr8 forms`.
+- The preview window's page is built, not run from source: run
+  `pnpm --filter @integr8/forms-ai build` once (any `pnpm build` does it). Without it `serve`
+  writes a notice to stderr and the window shows only that message.
+- From building to testing in one server: `save_package` → `use_company` →
+  `import_form_package` (with `publish: true`) → `submit_form` as an engineer → `get_audit`,
+  `read_outbox`.
+
 ## Signing in (remote mode)
 
 For the test box and production. A separate staff account keeps the audit log apart from your
@@ -60,6 +84,8 @@ it is chosen by itself; `INTEGR8_DEV_MCP_API` also names one.
 
 ## The tools
 
+The developer tools, beside the Forms for AI tools above:
+
 | Tool                   | What it does                                                                                                                   |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | `status`               | Mode, API address, environment, signed-in account, time left, the chosen company, the trace file                               |
@@ -72,7 +98,7 @@ it is chosen by itself; `INTEGR8_DEV_MCP_API` also names one.
 | `get_trace`            | This session's requests and answers, newest first, or one in full                                                              |
 | `get_audit`            | The company's audit lines since a moment                                                                                       |
 | `read_outbox`          | The email and push notifications the company would have sent (kept 7 days)                                                     |
-| `import_form_package`  | Imports a `.integr8form` file (Forms for AI, P37) as a draft and publishes it if asked                                         |
+| `import_form_package`  | Imports a `.integr8form` file (from `save_package` or the preview window) as a draft and publishes it if asked                 |
 | `list_change_requests` | The change requests handed to the repository (`plan/requests/`), with kind and status                                          |
 | `get_change_request`   | One of them in full, with the files beside it ([planning-a-change-request.md](planning-a-change-request.md))                   |
 | `submit_form`          | Starts and submits a form as a person, with given answers                                                                      |
@@ -99,12 +125,13 @@ src/store.ts       keychain or user-only file; apis.json lists APIs without secr
 src/connection.ts  staff session (refresh, persist), impersonation grants, every request traced
 src/openapi.ts     route index from openapi.json; request check with zod's fromJSONSchema
 src/local.ts       local mode: the API and the seeder as child processes
-src/server.ts      the MCP tools
+src/server.ts      the MCP tools, and Forms for AI's (registerFormsTools)
 src/redact.ts      what is hidden
 ```
 
 `pnpm --filter @integr8/dev-mcp test` runs without a database: the tools against a stand-in
-API (`server.test.ts`), the route index against the real `openapi.json`, the store and the
+API (`server.test.ts`), the Forms tools listed, renamed and working signed out
+(`forms-tools.test.ts`), the route index against the real `openapi.json`, the store and the
 redaction. The API's side (scopes, test companies, the outbox) is covered by its own suites,
 which need a disposable Postgres (`apps/api/src/routes/v1/platform/test-companies.integration.test.ts`,
 `packages/db/src/testing/test-companies.integration.test.ts`, and the platform session suite in
