@@ -30,6 +30,13 @@ export interface RequestToolDeps {
   outputFolder: () => string;
   browser: () => FoundBrowser | undefined;
   scratch: string;
+  /** Other names for the list and read tools (the developer MCP server has its own). */
+  names?: RequestToolNames;
+}
+
+export interface RequestToolNames {
+  list?: string;
+  get?: string;
 }
 
 const text = (value: string): CallToolResult => ({ content: [{ type: 'text', text: value }] });
@@ -61,6 +68,8 @@ export const HANDOVER =
 
 export function registerRequestTools(server: McpServer, deps: RequestToolDeps): void {
   const root = () => requestsFolder(deps.outputFolder());
+  const listName = deps.names?.list ?? 'list_change_requests';
+  const getName = deps.names?.get ?? 'get_change_request';
 
   server.registerTool(
     'record_change_request',
@@ -173,7 +182,7 @@ export function registerRequestTools(server: McpServer, deps: RequestToolDeps): 
   );
 
   server.registerTool(
-    'list_change_requests',
+    listName,
     {
       title: 'List the change requests on this computer',
       description:
@@ -201,7 +210,7 @@ export function registerRequestTools(server: McpServer, deps: RequestToolDeps): 
   );
 
   server.registerTool(
-    'get_change_request',
+    getName,
     {
       title: 'Read one change request',
       description: 'One change request in full: its request.md and the files beside it.',

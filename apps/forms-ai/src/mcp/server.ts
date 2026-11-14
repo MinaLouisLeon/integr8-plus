@@ -29,7 +29,7 @@ import { WEBSITE_GUIDE_SECTIONS, websiteApiText, websiteGuideSection } from '../
 import { nextExampleText, ROUTE_PATTERN } from '../website/nextjs.js';
 import { type OpenUrl, systemOpener } from '../window/open-browser.js';
 import { PreviewWindow } from '../window/preview-window.js';
-import { registerRequestTools } from '../requests/tools.js';
+import { registerRequestTools, type RequestToolNames } from '../requests/tools.js';
 
 /**
  * The MCP server: the tools an AI coding assistant calls to write a
@@ -49,7 +49,23 @@ export interface ServerOptions {
   openUrl?: OpenUrl;
 }
 
-const INSTRUCTIONS = `Integr8 Forms builds .integr8form files: an Integr8 Plus form (questions, rules, calculations, English and Arabic) with its PDF templates, for Integr8 staff to import.
+export interface FormsToolOptions extends ServerOptions {
+  /**
+   * Other names for the change-request tools that list and read requests on
+   * this computer, for a server that already has tools by those names (the
+   * developer MCP server's read the repository's plan/requests/).
+   */
+  requestToolNames?: RequestToolNames;
+}
+
+/** What {@link registerFormsTools} hands back to the server it registered on. */
+export interface FormsTools {
+  /** Stops the preview window's page server, if one is open. */
+  close: () => Promise<void>;
+}
+
+/** What the tools are for and how to use them: Forms for AI's own server instructions. */
+export const FORMS_INSTRUCTIONS = `Integr8 Forms builds .integr8form files: an Integr8 Plus form (questions, rules, calculations, English and Arabic) with its PDF templates, for Integr8 staff to import.
 Build it WITH the person, not for them: before writing anything, call get_interview_guide and ask the person, step by step, about every question you will create (type, English and Arabic label, required, choices, checks, rules, where it prints) and wait for the answers. For every QR code in a PDF template, always ask whether it is the document's share QR code or a fixed link, and what a fixed one opens; never choose for them.
 Then: get_format_guide (section "overview"), list_examples/get_example, write the form definition and check it with check_form until it is OK. Add PDF templates and check them with check_package; answer every "To confirm with the person" item by asking. Look at them with preview_pdf. Call summarize_form and show the person the list; save with save_package only after they confirm it. To edit an existing file, open_package it first.
 Let the person watch it take shape: once the first version of the form checks OK, call open_preview (it opens a window in their browser with the form as the app shows it and each PDF). After every change, call update_preview with what changed and tell the person the window refreshed. When they say "look at what I typed", "see my note" or similar, call get_preview_state. They may also save from the window.
@@ -141,6 +157,26 @@ async function guarded(
 }
 
 export function createFormsServer(options: ServerOptions = {}): McpServer {
+  const server = new McpServer(
+    { name: SERVER_NAME, title: 'Integr8 Forms for AI', version: VERSION },
+    { instructions: FORMS_INSTRUCTIONS },
+  );
+  const tools = registerFormsTools(server, options);
+  // The window's page server stops with the MCP server.
+  const closed = server.server.onclose;
+  server.server.onclose = () => {
+    closed?.();
+    void tools.close();
+  };
+  return server;
+}
+
+/**
+ * Registers every Forms for AI tool on a server: this program's own, or the
+ * developer MCP server's, which carries them so a developer needs one server
+ * (P38). The caller stops the preview window with the returned `close`.
+ */
+export function registerFormsTools(server: McpServer, options: FormsToolOptions = {}): FormsTools {
   const host = options.host ?? currentHost();
   const scratch = options.scratch ?? workDir(tmpdir());
   const browser = options.browser ?? (() => findBrowser(host));
@@ -150,17 +186,6 @@ export function createFormsServer(options: ServerOptions = {}): McpServer {
     openUrl: options.openUrl ?? systemOpener(host),
     outputFolder: () => outputFolder(host),
   });
-
-  const server = new McpServer(
-    { name: SERVER_NAME, title: 'Integr8 Forms for AI', version: VERSION },
-    { instructions: INSTRUCTIONS },
-  );
-  // The window's page server stops with the MCP server.
-  const closed = server.server.onclose;
-  server.server.onclose = () => {
-    closed?.();
-    void preview.close();
-  };
 
   server.registerTool(
     'get_format_guide',
@@ -601,6 +626,7 @@ export function createFormsServer(options: ServerOptions = {}): McpServer {
     outputFolder: () => outputFolder(host),
     browser,
     scratch,
+    ...(options.requestToolNames === undefined ? {} : { names: options.requestToolNames }),
   });
 
   server.registerTool(
@@ -692,5 +718,9 @@ export function createFormsServer(options: ServerOptions = {}): McpServer {
     ({ paths }) => guarded(() => text(formatWebsiteCheck(checkWebsite(paths)))),
   );
 
-  return server;
+  return {
+    close: async () => {
+      await preview.close();
+    },
+  };
 }

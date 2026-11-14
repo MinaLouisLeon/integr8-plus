@@ -1,9 +1,11 @@
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { Connection, NotSignedInError, type StaffTokens } from './connection.js';
 import { seedTestCompany, startLocalApi } from './local.js';
 import { RouteIndex } from './openapi.js';
-import { normaliseApi, repoVersion } from './paths.js';
+import { normaliseApi, REPO_ROOT, repoVersion } from './paths.js';
 import { ask, askHidden } from './prompt.js';
 import { type DevContext, createDevServer } from './server.js';
 import { SessionStore, type StoredSession } from './store.js';
@@ -200,6 +202,13 @@ function status() {
 }
 
 async function serve(values: { api?: string; local?: boolean }) {
+  // The Forms tools run from source, but the preview window's page is built.
+  // stderr only: stdout carries the MCP messages.
+  if (!existsSync(join(REPO_ROOT, 'apps', 'forms-ai', 'dist', 'window', 'page.js'))) {
+    process.stderr.write(
+      'The Forms preview window is not built yet; open_preview will show an empty page. Run: pnpm --filter @integr8/forms-ai build\n',
+    );
+  }
   const trace = new Trace();
   const routes = RouteIndex.load();
   let context: Promise<DevContext> | undefined;
@@ -258,7 +267,10 @@ async function serve(values: { api?: string; local?: boolean }) {
     }
     stop?.();
   };
+  // Keep the server's own handler: it stops the Forms preview window.
+  const closed = server.server.onclose;
   server.server.onclose = () => {
+    closed?.();
     void finish();
   };
   process.once('SIGTERM', () => {

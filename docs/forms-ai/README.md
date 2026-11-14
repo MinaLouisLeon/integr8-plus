@@ -17,6 +17,12 @@ and never holds the key.
 The program is `apps/forms-ai` (`@integr8/forms-ai`). It is released with the app, at the app's
 version, so a tool and a server of the same version always agree on the file format.
 
+**Developers working in this repository** do not need to install it: the
+[developer MCP server](../contributing/developer-mcp.md#one-server-for-everything-forms-for-ai-included)
+(`.mcp.json`) carries every tool below, from the same code, beside its own tools for trying a
+form on a test company. Two are renamed there: `list_change_requests` and `get_change_request`
+are `list_draft_change_requests` and `get_draft_change_request`.
+
 ## For staff
 
 1. Sign in to the staff dashboard on the web app and open **Downloads** (`/platform/downloads`),
@@ -201,6 +207,8 @@ src/preview/          finding Chrome/Edge, a minimal DevTools-protocol client, p
 src/window/           the preview window: session, printer queue, loopback page server, browser opener
 src/window/page/      the window's React page (its own tsconfig; jsdom tests)
 src/setup/            the installer: menus, tool adapters, JSON/TOML edits, self-test, self-install, update
+src/tools.ts          @integr8/forms-ai/tools: registerFormsTools and the instructions, for the
+                      developer MCP server (apps/dev-mcp) to carry every tool
 scripts/bundle.mjs    esbuild → dist/integr8-forms-ai.cjs (the version written in), and the window's
                       page → dist/window/page.js + page.css (Tailwind, fonts inlined)
 scripts/build-sea.mjs the single executable for this computer, with its .sha256

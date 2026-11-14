@@ -289,6 +289,30 @@ and the end-to-end ones until a run against a real API.
 - `pnpm licences:check` cannot start on Windows (it runs `pnpm` without `.cmd`); the new
   dependency's licence (MIT) was checked by hand.
 
+## Addendum: one server for developers (2026-11-14)
+
+The owner asked that a developer need only this server. It now carries **every Integr8 Forms
+for AI tool** beside its own (14 + 23 = 37 tools), from the same code: Forms for AI's
+`createFormsServer` was split into `registerFormsTools`, exported as `@integr8/forms-ai/tools`
+(source, run by `tsx`), and `createDevServer` registers it. Forms for AI's own server and
+executable are unchanged.
+
+- **Names:** Forms for AI's `list_change_requests` and `get_change_request` (requests recorded on
+  this computer) are `list_draft_change_requests` and `get_draft_change_request` here; this
+  server's own names keep reading `plan/requests/`. No other name clashes; a test lists both
+  sets against Forms for AI's own list (`FORMS_TOOLS`).
+- **Sign-in:** the Forms tools are offline and work with no staff session; the developer tools
+  still answer with the sign-in instruction.
+- **Instructions:** the developer server's instructions, a paragraph on the two sets and the
+  build-then-test path (`save_package` → `import_form_package` → `submit_form`), then Forms for
+  AI's own instructions.
+- **Deviation:** an app imports another (`apps/dev-mcp` → `@integr8/forms-ai`), allowed for this
+  pair only (AGENTS.md conventions): the developer server is never shipped, and moving Forms for
+  AI's tools into a package would also move its window page build and SEA assets.
+- **Preview window:** its page is built (`pnpm --filter @integr8/forms-ai build`); `serve` warns
+  on stderr when it is missing. Checked over stdio from the repository root: 37 tools listed,
+  `open_preview` served its page and script, `status` asked for a sign-in.
+
 ## Notes
 
 - To verify during the build:

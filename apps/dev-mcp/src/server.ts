@@ -2,6 +2,11 @@ import { readFileSync, statSync } from 'node:fs';
 import { isAbsolute } from 'node:path';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import {
+  FORMS_INSTRUCTIONS,
+  type FormsToolOptions,
+  registerFormsTools,
+} from '@integr8/forms-ai/tools';
 import { z } from 'zod';
 import { type ApiAnswer, type Connection, NotSignedInError, type Person } from './connection.js';
 import type { SeededCompany } from './local.js';
@@ -16,6 +21,11 @@ import type { Trace } from './trace.js';
  * lines, the outbox). It has no tool that signs in and none that returns a
  * token: the person signs in in a terminal, and every answer passes through
  * `redact` before the AI sees it.
+ *
+ * It also carries every Integr8 Forms for AI tool (building `.integr8form`
+ * files, the preview window, website integration, change requests on this
+ * computer), so a developer needs this one server. Those tools are offline
+ * and work without a session.
  */
 
 export interface DevContext {
@@ -36,11 +46,26 @@ export interface DevServerOptions {
   trace: Trace;
   /** Where handed-over change requests are (P39); the repository's plan/requests/ by default. */
   requestsFolder?: string;
+  /** Options for the Forms for AI tools; tests pass a browser that finds none and an opener that opens nothing. */
+  forms?: Omit<FormsToolOptions, 'requestToolNames'>;
 }
 
-const INSTRUCTIONS = `Integr8 developer tools: try features of this repository on a running Integr8 Plus API, as the people of a TEST company. You never sign in and never see a password, an authenticator code or a token: the person signs in in a terminal (pnpm dev-mcp login --api <address>); if a tool says the session is missing or over, ask them to do that, and never ask them for a password or code.
+/**
+ * Forms for AI's change-request tools for this computer, renamed: this
+ * server's list_change_requests and get_change_request read the repository.
+ */
+export const DRAFT_REQUEST_TOOLS = {
+  list: 'list_draft_change_requests',
+  get: 'get_draft_change_request',
+} as const;
+
+const DEV_INSTRUCTIONS = `Integr8 developer tools: try features of this repository on a running Integr8 Plus API, as the people of a TEST company. You never sign in and never see a password, an authenticator code or a token: the person signs in in a terminal (pnpm dev-mcp login --api <address>); if a tool says the session is missing or over, ask them to do that, and never ask them for a password or code.
 Rules: test companies only (the API refuses anything else). On production (status says the environment), say what you are about to do before any write, and start with read-only calls. Everything you do is audited under the person's staff account and appears in the company's audit log with your stated purpose.
 Workflow: status → list_test_companies (create_test_company in local mode) → use_company → find_route / get_route → call_api as a role, a person or "company" → get_trace, get_audit, read_outbox to see what it did. import_form_package and submit_form cover the form flow in one call each.`;
+
+const BRIDGE = `This server also has every Integr8 Forms for AI tool, below. They are offline and need no sign-in, so use them even when the session is missing. In this server two of them are renamed: the change requests recorded on this computer are listed with ${DRAFT_REQUEST_TOOLS.list} and read with ${DRAFT_REQUEST_TOOLS.get}; list_change_requests and get_change_request read the repository's plan/requests/ (a recorded request is handed over by copying its folder there). To try a form you built on a running API: save_package, then use_company, import_form_package (publish: true) with the saved path, and submit_form as an engineer.`;
+
+const INSTRUCTIONS = `${DEV_INSTRUCTIONS}\n\n${BRIDGE}\n\n${FORMS_INSTRUCTIONS}`;
 
 const text = (value: string): CallToolResult => ({ content: [{ type: 'text', text: value }] });
 const failure = (value: string): CallToolResult => ({
@@ -80,9 +105,19 @@ export function createDevServer(options: DevServerOptions): McpServer {
   let people: Member[] = [];
 
   const server = new McpServer(
-    { name: 'integr8-dev', title: 'Integr8 developer tools', version: '1.0.0' },
+    { name: 'integr8-dev', title: 'Integr8 developer tools', version: '1.1.0' },
     { instructions: INSTRUCTIONS },
   );
+
+  const forms = registerFormsTools(server, {
+    ...options.forms,
+    requestToolNames: DRAFT_REQUEST_TOOLS,
+  });
+  // The preview window's page server stops with the MCP server; a caller that
+  // sets its own onclose keeps this one by calling the previous handler.
+  server.server.onclose = () => {
+    void forms.close();
+  };
 
   const guarded = async (work: (context: DevContext) => Promise<CallToolResult>) => {
     try {
@@ -562,7 +597,7 @@ export function createDevServer(options: DevServerOptions): McpServer {
     {
       title: 'Import a .integr8form file into the company',
       description:
-        'Imports a .integr8form file (from Forms for AI or its preview window) into the chosen test company as a new draft form, acting as the company (forms are staff-only), and publishes it if asked: the step between building a form and testing it.',
+        "Imports a .integr8form file (written by save_package, the preview window's Save, or Forms for AI) into the chosen test company as a new draft form, acting as the company (forms are staff-only), and publishes it if asked: the step between building a form and testing it.",
       inputSchema: {
         path: z.string().min(1).max(1000).describe('Absolute path of the .integr8form file.'),
         publish: z.boolean().optional(),
@@ -671,8 +706,7 @@ export function createDevServer(options: DevServerOptions): McpServer {
     'list_change_requests',
     {
       title: 'List the change requests handed to the repository',
-      description:
-        'The change requests in plan/requests/ (copied there from Integr8 Forms for AI, or written by hand): code, title, kind and status. Start planning one with docs/contributing/planning-a-change-request.md.',
+      description: `The change requests handed to the repository, in plan/requests/ (copied there from a recorded request, or written by hand; the ones recorded on this computer are in ${DRAFT_REQUEST_TOOLS.list}): code, title, kind and status. Start planning one with docs/contributing/planning-a-change-request.md.`,
       inputSchema: {},
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
@@ -698,7 +732,7 @@ export function createDevServer(options: DevServerOptions): McpServer {
     {
       title: 'Read one change request from the repository',
       description:
-        'One change request from plan/requests/ in full, by its code (CR-0001) or number, with the files beside it (its example .integr8form opens with Forms for AI’s open_package; import it with import_form_package).',
+        'One change request from plan/requests/ in full, by its code (CR-0001) or number, with the files beside it (its example .integr8form opens with open_package; import it with import_form_package).',
       inputSchema: {
         request: z.union([z.string().regex(/^CR-\d{4}$/iu), z.number().int().min(1).max(9999)]),
       },
