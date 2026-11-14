@@ -3,6 +3,7 @@ import {
   EtaDocumentScreen,
   EtaScreen,
   CrmOverviewScreen,
+  CompanyRolesScreen,
   CustomerListScreen,
   CustomerScreen,
   ImportsScreen,
@@ -520,6 +521,19 @@ export function JobTypesRoute() {
   return (
     <OperationsScreens>
       <JobTypesScreen />
+    </OperationsScreens>
+  );
+}
+
+/**
+ * The company's own roles (ADR-0013). The desktop has no People screen, so
+ * the roles have their own tab here and no way back to people; they are given
+ * to people on the web.
+ */
+export function CompanyRolesRoute() {
+  return (
+    <OperationsScreens>
+      <CompanyRolesScreen peopleOnWeb />
     </OperationsScreens>
   );
 }

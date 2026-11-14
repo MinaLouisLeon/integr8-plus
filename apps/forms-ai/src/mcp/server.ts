@@ -112,6 +112,7 @@ const settings = z
           'admin',
           'hr_manager',
           'inventory_manager',
+          'accountant',
           'dispatcher',
           'engineer',
           'viewer',

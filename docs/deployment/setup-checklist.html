@@ -1264,6 +1264,14 @@ docker compose -f deploy/compose.yml --env-file deploy/.env exec postgres psql -
           <li><input type="checkbox" id="s12-ag3"><label for="s12-ag3"><b>A test company sends nothing</b>: on a test company's page, send the owner's invitation again; nobody receives it, and <code>docker compose -f deploy/compose.yml --env-file deploy/.env logs api | grep "test outbox"</code> shows it was kept.</label></li>
         </ul>
 
+        <h3 id="accountant-role-update">AH. The accountant role and company roles in the desktop app (included in the release after v1.4.0)</h3>
+        <p>Migration 0078 runs by itself at part D. Companies get a new built-in role, <b>Accountant</b>: it issues invoices and credit notes, records payments, posts and manages the general ledger, approves and pays expense claims, and prepares, signs and sends e-invoices. It reads customers, sales, purchases, stock, assets, contracts and documents and changes none of them, and it has no HR, payroll, people management or job work. Reopening a closed ledger period, approving purchases and setting up e-invoicing stay with the owner (and admins, for the last two). Owners and admins can invite people as accountants and give the role to existing members; a company role can be built on it. The desktop app gets a <b>Company roles</b> tab for owners and admins (the owner creates and changes roles there; they are still given to people on the web's People screen); this needs the new desktop app, which updates itself. Desktop and phone apps older than this release do not know the new role (an older phone cannot open offline for an accountant), so update them before giving it out. No new settings, no new image.</p>
+        <ul class="check" data-stage="s12ah">
+          <li><input type="checkbox" id="s12-ah1"><label for="s12-ah1"><b>Migration ran</b>: after part D, <code>docker compose -f deploy/compose.yml --env-file deploy/.env logs migrate | grep 0078</code> shows <code>applied 0078_accountant_role</code>.</label></li>
+          <li><input type="checkbox" id="s12-ah2"><label for="s12-ah2"><b>An accountant can be invited</b>: on a company's People screen, the role list offers <b>Accountant</b>; an accountant who signs in sees Finance, Accounting and E-invoicing, and no work orders or HR.</label></li>
+          <li><input type="checkbox" id="s12-ah3"><label for="s12-ah3"><b>Company roles in the desktop app</b>: signed in to the updated desktop app as an owner, the menu shows <b>Company roles</b> under Company, listing the same roles as the web.</label></li>
+        </ul>
+
         <div class="note"><p><b>The test box (Stage 10)</b> updates the same way, from <code>staging</code> instead of <code>main</code>: <code>git pull</code> on its <code>staging</code> checkout, then <code>up -d --build</code>. Updating it first, the day before, is the cheapest rehearsal there is.</p></div>
       </section>
 

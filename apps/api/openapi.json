@@ -229,6 +229,7 @@
                               "admin",
                               "hr_manager",
                               "inventory_manager",
+                              "accountant",
                               "dispatcher",
                               "engineer",
                               "viewer"
@@ -533,6 +534,7 @@
                               "admin",
                               "hr_manager",
                               "inventory_manager",
+                              "accountant",
                               "dispatcher",
                               "engineer",
                               "viewer"
@@ -865,6 +867,7 @@
                               "admin",
                               "hr_manager",
                               "inventory_manager",
+                              "accountant",
                               "dispatcher",
                               "engineer",
                               "viewer"
@@ -4599,6 +4602,7 @@
                         "admin",
                         "hr_manager",
                         "inventory_manager",
+                        "accountant",
                         "dispatcher",
                         "engineer",
                         "viewer"
@@ -4769,6 +4773,7 @@
                         "admin",
                         "hr_manager",
                         "inventory_manager",
+                        "accountant",
                         "dispatcher",
                         "engineer",
                         "viewer"
@@ -4941,6 +4946,7 @@
                       "admin",
                       "hr_manager",
                       "inventory_manager",
+                      "accountant",
                       "dispatcher",
                       "engineer",
                       "viewer"
@@ -4982,6 +4988,7 @@
                         "admin",
                         "hr_manager",
                         "inventory_manager",
+                        "accountant",
                         "dispatcher",
                         "engineer",
                         "viewer"
@@ -5184,6 +5191,7 @@
                         "admin",
                         "hr_manager",
                         "inventory_manager",
+                        "accountant",
                         "dispatcher",
                         "engineer",
                         "viewer"
@@ -5498,6 +5506,7 @@
                         "admin",
                         "hr_manager",
                         "inventory_manager",
+                        "accountant",
                         "dispatcher",
                         "engineer",
                         "viewer"
@@ -5688,6 +5697,7 @@
                         "admin",
                         "hr_manager",
                         "inventory_manager",
+                        "accountant",
                         "dispatcher",
                         "engineer",
                         "viewer"
@@ -7837,6 +7847,7 @@
                         "admin",
                         "hr_manager",
                         "inventory_manager",
+                        "accountant",
                         "dispatcher",
                         "engineer",
                         "viewer"
@@ -8539,6 +8550,7 @@
                               "admin",
                               "hr_manager",
                               "inventory_manager",
+                              "accountant",
                               "dispatcher",
                               "engineer",
                               "viewer"
@@ -8720,6 +8732,7 @@
                       "admin",
                       "hr_manager",
                       "inventory_manager",
+                      "accountant",
                       "dispatcher",
                       "engineer",
                       "viewer"
@@ -8757,6 +8770,7 @@
                         "admin",
                         "hr_manager",
                         "inventory_manager",
+                        "accountant",
                         "dispatcher",
                         "engineer",
                         "viewer"
@@ -8890,6 +8904,7 @@
                               "admin",
                               "hr_manager",
                               "inventory_manager",
+                              "accountant",
                               "dispatcher",
                               "engineer",
                               "viewer"
@@ -9479,6 +9494,7 @@
                                 "admin",
                                 "hr_manager",
                                 "inventory_manager",
+                                "accountant",
                                 "dispatcher",
                                 "engineer",
                                 "viewer"
@@ -9696,6 +9712,7 @@
                               "admin",
                               "hr_manager",
                               "inventory_manager",
+                              "accountant",
                               "dispatcher",
                               "engineer",
                               "viewer"
@@ -10038,6 +10055,7 @@
                               "admin",
                               "hr_manager",
                               "inventory_manager",
+                              "accountant",
                               "dispatcher",
                               "engineer",
                               "viewer"
@@ -10356,7 +10374,7 @@
                   },
                   "fillRoles": {
                     "minItems": 1,
-                    "maxItems": 7,
+                    "maxItems": 8,
                     "type": "array",
                     "items": {
                       "type": "string",
@@ -10365,6 +10383,7 @@
                         "admin",
                         "hr_manager",
                         "inventory_manager",
+                        "accountant",
                         "dispatcher",
                         "engineer",
                         "viewer"
@@ -10413,6 +10432,7 @@
                           "admin",
                           "hr_manager",
                           "inventory_manager",
+                          "accountant",
                           "dispatcher",
                           "engineer",
                           "viewer"
@@ -10613,6 +10633,7 @@
                               "admin",
                               "hr_manager",
                               "inventory_manager",
+                              "accountant",
                               "dispatcher",
                               "engineer",
                               "viewer"
@@ -12598,6 +12619,7 @@
                               "admin",
                               "hr_manager",
                               "inventory_manager",
+                              "accountant",
                               "dispatcher",
                               "engineer",
                               "viewer"
@@ -48694,6 +48716,7 @@
                               "admin",
                               "hr_manager",
                               "inventory_manager",
+                              "accountant",
                               "dispatcher",
                               "engineer",
                               "viewer"
@@ -49019,6 +49042,7 @@
                               "admin",
                               "hr_manager",
                               "inventory_manager",
+                              "accountant",
                               "dispatcher",
                               "engineer",
                               "viewer"
@@ -49649,6 +49673,7 @@
                       "admin",
                       "hr_manager",
                       "inventory_manager",
+                      "accountant",
                       "dispatcher",
                       "engineer",
                       "viewer"
@@ -49689,6 +49714,7 @@
                         "admin",
                         "hr_manager",
                         "inventory_manager",
+                        "accountant",
                         "dispatcher",
                         "engineer",
                         "viewer"
@@ -50332,6 +50358,7 @@
                         "admin",
                         "hr_manager",
                         "inventory_manager",
+                        "accountant",
                         "dispatcher",
                         "engineer",
                         "viewer"
@@ -50781,6 +50808,7 @@
                         "admin",
                         "hr_manager",
                         "inventory_manager",
+                        "accountant",
                         "dispatcher",
                         "engineer",
                         "viewer"
@@ -126748,6 +126776,7 @@
                                   "admin",
                                   "hr_manager",
                                   "inventory_manager",
+                                  "accountant",
                                   "dispatcher",
                                   "engineer",
                                   "viewer"
@@ -127165,6 +127194,7 @@
                             "admin",
                             "hr_manager",
                             "inventory_manager",
+                            "accountant",
                             "dispatcher",
                             "engineer",
                             "viewer"
@@ -127449,6 +127479,7 @@
                             "admin",
                             "hr_manager",
                             "inventory_manager",
+                            "accountant",
                             "dispatcher",
                             "engineer",
                             "viewer"
@@ -127757,6 +127788,7 @@
                             "admin",
                             "hr_manager",
                             "inventory_manager",
+                            "accountant",
                             "dispatcher",
                             "engineer",
                             "viewer"
@@ -128174,6 +128206,7 @@
                             "admin",
                             "hr_manager",
                             "inventory_manager",
+                            "accountant",
                             "dispatcher",
                             "engineer",
                             "viewer"
@@ -188054,6 +188087,7 @@
                                     "admin",
                                     "hr_manager",
                                     "inventory_manager",
+                                    "accountant",
                                     "dispatcher",
                                     "engineer",
                                     "viewer"

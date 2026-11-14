@@ -1514,6 +1514,14 @@ Migration 0077 runs by itself at part D. A company can now be a **test company**
 - [ ] **Real companies stay real**: the dashboard's Companies list shows no **Test** badge on any company that existed before; choose **Show** → **Test companies** and only demo companies are listed.
 - [ ] **A test company sends nothing**: on a test company's page, send the owner's invitation again; nobody receives it, and `docker compose -f deploy/compose.yml --env-file deploy/.env logs api | grep "test outbox"` shows it was kept.
 
+### AH. The accountant role and company roles in the desktop app (included in the release after v1.4.0)
+
+Migration 0078 runs by itself at part D. Companies get a new built-in role, **Accountant**: it issues invoices and credit notes, records payments, posts and manages the general ledger, approves and pays expense claims, and prepares, signs and sends e-invoices. It reads customers, sales, purchases, stock, assets, contracts and documents and changes none of them, and it has no HR, payroll, people management or job work. Reopening a closed ledger period, approving purchases and setting up e-invoicing stay with the owner (and admins, for the last two). Owners and admins can invite people as accountants and give the role to existing members; a company role can be built on it. The desktop app gets a **Company roles** tab for owners and admins (the owner creates and changes roles there; they are still given to people on the web's People screen); this needs the new desktop app, which updates itself. Desktop and phone apps older than this release do not know the new role (an older phone cannot open offline for an accountant), so update them before giving it out. No new settings, no new image.
+
+- [ ] **Migration ran**: after part D, `docker compose -f deploy/compose.yml --env-file deploy/.env logs migrate | grep 0078` shows `applied 0078_accountant_role`.
+- [ ] **An accountant can be invited**: on a company's People screen, the role list offers **Accountant**; an accountant who signs in sees Finance, Accounting and E-invoicing, and no work orders or HR.
+- [ ] **Company roles in the desktop app**: signed in to the updated desktop app as an owner, the menu shows **Company roles** under Company, listing the same roles as the web.
+
 > [!NOTE]
 > **The test box (Stage 10)** updates the same way, from `staging` instead of `main`: `git pull` on its `staging` checkout, then `up -d --build`. Updating it first, the day before, is the cheapest rehearsal there is.
 

@@ -22,12 +22,14 @@ describe('roles on offer', () => {
       'admin',
       'hr_manager',
       'inventory_manager',
+      'accountant',
       'dispatcher',
       'engineer',
       'viewer',
     ]);
     expect(invitableRoles('admin')).not.toContain('hr_manager');
     expect(invitableRoles('admin')).toContain('inventory_manager');
+    expect(invitableRoles('admin')).toContain('accountant');
     expect(invitableRoles(undefined)).not.toContain('hr_manager');
     expect(invitableRoles('owner')).not.toContain('owner');
   });

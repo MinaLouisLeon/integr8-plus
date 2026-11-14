@@ -52,6 +52,7 @@ const PEOPLE: readonly PersonSeed[] = [
   { key: 'admin', first: 'Omar', last: 'Hassan', role: 'admin' },
   { key: 'hr', first: 'Laila', last: 'Mansour', role: 'hr_manager' },
   { key: 'store', first: 'Karim', last: 'Fathy', role: 'inventory_manager' },
+  { key: 'accounts', first: 'Hana', last: 'Mostafa', role: 'accountant' },
   { key: 'dispatcher', first: 'Nour', last: 'Ibrahim', role: 'dispatcher' },
   { key: 'engineer1', first: 'Youssef', last: 'Adel', role: 'engineer' },
   { key: 'engineer2', first: 'Mariam', last: 'Saeed', role: 'engineer' },

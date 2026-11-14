@@ -98,8 +98,8 @@ Every screen is available in English and Arabic, and the Dashboard shows where y
     en: {
       title: 'Roles, permissions and the People screen',
       summary:
-        'The seven built-in roles, what each may do, the HR and inventory grants, company roles of your own, and inviting or removing people.',
-      body: `Everybody in a company holds one role. Owner does everything, including company settings, billing, defining company roles and unlocking closed months. Admin does everything an owner does except change the company itself and its subscription. Dispatcher runs the day: customers, work orders, dispatching, filling forms, and the day-to-day CRM, stock, purchasing drafts, quotes and draft invoices. Engineer works the jobs assigned to them, fills forms, records parts from their van and registers assets on site. Viewer reads everything and changes nothing. HR manager keeps employees, expense claims and payroll. Inventory manager keeps items, stock, vans, suppliers, purchase orders and manufacturing.
+        'The eight built-in roles, what each may do, the HR and inventory grants, company roles of your own, and inviting or removing people.',
+      body: `Everybody in a company holds one role. Owner does everything, including company settings, billing, defining company roles and unlocking closed months. Admin does everything an owner does except change the company itself and its subscription. Dispatcher runs the day: customers, work orders, dispatching, filling forms, and the day-to-day CRM, stock, purchasing drafts, quotes and draft invoices. Engineer works the jobs assigned to them, fills forms, records parts from their van and registers assets on site. Viewer reads everything and changes nothing. HR manager keeps employees, expense claims and payroll. Inventory manager keeps items, stock, vans, suppliers, purchase orders and manufacturing. Accountant keeps the books: issues invoices and credit notes, records payments, posts the ledger, approves and pays expense claims and sends e-invoices; it reads sales, purchases and stock without changing them, and has no HR, payroll or job work.
 
 Three things are never done by the company: building forms, setting up job types and company branding. Those are done by Integr8 staff.
 
@@ -107,7 +107,7 @@ Open People under Company in the web app. Invite somebody with their email addre
 
 HR and inventory work can also be given on top of a role: Also make HR manager or Also make Inventory manager. Only the owner makes somebody an HR manager.
 
-The owner can define Company roles: a role of your own, built on a built-in role, with permissions ticked on or off. A company role can never hold what only the owner or Integr8 does. A new role takes effect when the person next signs in, within fifteen minutes.`,
+The owner can define Company roles: a role of your own, built on a built-in role, with permissions ticked on or off. A company role can never hold what only the owner or Integr8 does. A new role takes effect when the person next signs in, within fifteen minutes. In the desktop app, owners and admins find them under Company roles; they are given to people on the People screen of the web app.`,
       keywords: [
         'roles',
         'permissions',
@@ -118,6 +118,7 @@ The owner can define Company roles: a role of your own, built on a built-in role
         'viewer',
         'hr manager',
         'inventory manager',
+        'accountant',
         'invite',
         'people',
         'suspend',
@@ -129,8 +130,8 @@ The owner can define Company roles: a role of your own, built on a built-in role
     ar: {
       title: 'الأدوار والصلاحيات وشاشة الأشخاص',
       summary:
-        'الأدوار السبعة المضمّنة وما يستطيعه كل منها، وصلاحيات الموارد البشرية والمخزون الإضافية، وأدوار الشركة الخاصة، ودعوة الأشخاص أو إزالتهم.',
-      body: `لكل شخص في الشركة دور واحد. المالك يفعل كل شيء، بما فيه إعدادات الشركة والفوترة وتعريف أدوار الشركة وفتح الأشهر المقفلة. المسؤول يفعل كل ما يفعله المالك عدا تغيير الشركة نفسها واشتراكها. المنسّق يدير اليوم: العملاء وأوامر العمل والتوجيه وتعبئة النماذج، والعمل اليومي في إدارة علاقات العملاء والمخزون ومسودات الشراء وعروض الأسعار ومسودات الفواتير. المهندس ينفّذ المهام المسندة إليه ويعبّئ النماذج ويسجّل القطع من سيارته ويسجّل الأصول في الموقع. المشاهد يقرأ كل شيء ولا يغيّر شيئًا. مدير الموارد البشرية يتولى الموظفين ومطالبات المصروفات والرواتب. مدير المخزون يتولى الأصناف والمخزون والسيارات والموردين وأوامر الشراء والتصنيع.
+        'الأدوار الثمانية المضمّنة وما يستطيعه كل منها، وصلاحيات الموارد البشرية والمخزون الإضافية، وأدوار الشركة الخاصة، ودعوة الأشخاص أو إزالتهم.',
+      body: `لكل شخص في الشركة دور واحد. المالك يفعل كل شيء، بما فيه إعدادات الشركة والفوترة وتعريف أدوار الشركة وفتح الأشهر المقفلة. المسؤول يفعل كل ما يفعله المالك عدا تغيير الشركة نفسها واشتراكها. المنسّق يدير اليوم: العملاء وأوامر العمل والتوجيه وتعبئة النماذج، والعمل اليومي في إدارة علاقات العملاء والمخزون ومسودات الشراء وعروض الأسعار ومسودات الفواتير. المهندس ينفّذ المهام المسندة إليه ويعبّئ النماذج ويسجّل القطع من سيارته ويسجّل الأصول في الموقع. المشاهد يقرأ كل شيء ولا يغيّر شيئًا. مدير الموارد البشرية يتولى الموظفين ومطالبات المصروفات والرواتب. مدير المخزون يتولى الأصناف والمخزون والسيارات والموردين وأوامر الشراء والتصنيع. المحاسب يتولى الحسابات: يصدر الفواتير وإشعارات الدائن، ويسجّل المدفوعات، ويرحّل القيود في دفتر الأستاذ، ويوافق على مطالبات المصروفات ويصرفها، ويرسل الفواتير الإلكترونية؛ ويطّلع على المبيعات والمشتريات والمخزون دون تغييرها، ولا علاقة له بالموارد البشرية أو الرواتب أو المهام.
 
 ثلاثة أمور لا تقوم بها الشركة أبدًا: بناء النماذج، وإعداد أنواع المهام، وهوية الشركة. يقوم بها موظفو Integr8.
 
@@ -138,7 +139,7 @@ The owner can define Company roles: a role of your own, built on a built-in role
 
 يمكن أيضًا منح عمل الموارد البشرية أو المخزون فوق الدور الأصلي: «جعله أيضًا مدير الموارد البشرية» أو «جعله أيضًا مدير المخزون». المالك وحده يجعل شخصًا مدير موارد بشرية.
 
-ويستطيع المالك تعريف «أدوار الشركة»: دور خاص بكم مبني على دور مضمّن، مع تفعيل صلاحيات أو إلغائها. لا يمكن لدور الشركة أن يحمل ما يختص به المالك أو Integr8. يسري الدور الجديد عند تسجيل الدخول التالي للشخص، خلال خمس عشرة دقيقة.`,
+ويستطيع المالك تعريف «أدوار الشركة»: دور خاص بكم مبني على دور مضمّن، مع تفعيل صلاحيات أو إلغائها. لا يمكن لدور الشركة أن يحمل ما يختص به المالك أو Integr8. يسري الدور الجديد عند تسجيل الدخول التالي للشخص، خلال خمس عشرة دقيقة. وفي تطبيق سطح المكتب يجدها المالك والمسؤول تحت «أدوار الشركة»، وتُمنح للأشخاص من شاشة الأشخاص في تطبيق الويب.`,
       keywords: [
         'الأدوار',
         'الصلاحيات',
@@ -149,6 +150,7 @@ The owner can define Company roles: a role of your own, built on a built-in role
         'مشاهد',
         'مدير الموارد البشرية',
         'مدير المخزون',
+        'محاسب',
         'دعوة',
         'الأشخاص',
         'إيقاف',

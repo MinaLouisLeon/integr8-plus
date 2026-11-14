@@ -36,6 +36,7 @@ export const NAV_ROUTES: Readonly<Record<NavPath, string | null>> = {
   eInvoicingSwitch: '/settings/e-invoicing',
   getStarted: null,
   people: null,
+  companyRoles: '/settings/roles',
   companySettings: null,
   websiteAccess: null,
   storage: null,

@@ -35,7 +35,15 @@ type Editing = { kind: 'new' } | { kind: 'edit'; role: CompanyRole };
 
 const roleQueryPrefix = ['roles'] as const;
 
-export function CompanyRolesScreen({ peoplePath }: { peoplePath?: string } = {}) {
+export function CompanyRolesScreen({
+  peoplePath,
+  peopleOnWeb = false,
+}: {
+  /** Where "Back to people" leads; no link when absent. */
+  peoplePath?: string;
+  /** The app has no People screen (the desktop), so roles are given out on the web. */
+  peopleOnWeb?: boolean;
+} = {}) {
   const { t } = useTranslation();
   const { client, locale } = useOperations();
   const queries = useQueryClient();
@@ -70,7 +78,9 @@ export function CompanyRolesScreen({ peoplePath }: { peoplePath?: string } = {})
       {peoplePath === undefined ? null : <BackLink to={peoplePath} label={t('roles.back')} />}
       <header className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold text-content">{t('roles.title')}</h1>
-        <p className="max-w-prose text-sm text-content-muted">{t('roles.intro')}</p>
+        <p className="max-w-prose text-sm text-content-muted">
+          {t(peopleOnWeb ? 'roles.introPeopleOnWeb' : 'roles.intro')}
+        </p>
       </header>
 
       {notice === null ? null : (

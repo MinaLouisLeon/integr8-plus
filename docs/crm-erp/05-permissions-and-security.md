@@ -394,6 +394,24 @@ hr-reseal` re-seals every company's fields under the current key, company by
   unless it is listed, with a reason, in `scripts/licences/exceptions.json`
   (`pnpm licences:check`).
 
+## The accountant (2026-11-14; migration 0078)
+
+- **A built-in role that keeps the books**, ranked between the inventory
+  manager and the dispatcher: `finance.manage` and `finance.issue` (invoices,
+  credit notes, payments), `ledger.post` and `ledger.manage`,
+  `expense.approve` (approving and paying claims), and `eta.prepare`,
+  `eta.sign`, `eta.submit`. It reads customers, sales, purchasing, stock,
+  assets, contracts and documents and changes none of them.
+- **Left to others:** `ledger.unlock` (the owner's), `purchasing.approve` and
+  `eta.configure` (owners and admins), payroll and every HR permission (the
+  HR manager's: a pay run shows people's sensitive details), members, and
+  everything on the job side. An owner who wants an accountant to run payroll
+  gives the HR manager grant on top, or builds a company role on it.
+- **Who gives it:** owners and admins, by the ordinary rank rule; a company
+  role may be based on it. It is not a grant (`GRANTS` still has two).
+- **Not in a job's crew:** like viewers and HR managers, accountants are left
+  out of the people a work order can be assigned to.
+
 ## Product gaps before the pilot (G1; ADR-0013)
 
 - **Company roles** are a built-in base plus permissions added or taken
@@ -421,3 +439,8 @@ hr-reseal` re-seals every company's fields under the current key, company by
 - **Amount history** is written only by trigger; the runtime role can read
   it and cannot change it, so value by stage reflects what deals were
   worth, not what someone later said they were.
+- **The desktop app** has its own **Company roles** tab (2026-11-14), shown to
+  those holding `member.update_role` (owners and admins): the same screen as
+  the web's, where the owner creates and changes roles and an admin reads
+  them. The desktop still has no People screen, so roles are given out on
+  the web.
