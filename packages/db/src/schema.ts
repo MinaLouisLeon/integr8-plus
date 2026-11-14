@@ -556,6 +556,8 @@ export interface FormVersionsTable {
   changes: Jsonb<Record<string, unknown>> | null;
   /** Set at publish: which answers are copied into submission_values. Null on versions published before 0008. */
   reportable_fields: Jsonb<ReportableFieldSpec[]> | null;
+  /** What a submit of this version does (0079, P40); checked by `@integr8/form-package`. */
+  actions: Jsonb<unknown[]>;
 }
 
 export interface ReportableFieldSpec {
@@ -750,6 +752,36 @@ export interface SubmissionFileUsesTable {
   file_id: ColumnType<string, never, never>;
   submission_id: ColumnType<string, never, never>;
   source: ColumnType<SubmissionFileUseSource, never, never>;
+}
+
+/** A follow-up submission a form action opened (0079, P40). Written once. */
+export interface SubmissionLinksTable {
+  id: Generated<string>;
+  tenant_id: string;
+  from_submission_id: string;
+  to_submission_id: string;
+  form_action_id: string;
+  required: boolean;
+  created_at: CreatedAt;
+}
+
+export const SUBMISSION_ACTION_OUTCOMES = ['made', 'skipped', 'failed'] as const;
+export type SubmissionActionOutcome = (typeof SUBMISSION_ACTION_OUTCOMES)[number];
+
+/** The last outcome of each action of a submitted form (0079, P40). */
+export interface SubmissionActionResultsTable {
+  tenant_id: string;
+  submission_id: string;
+  form_action_id: string;
+  kind: 'expense_claim' | 'open_form';
+  outcome: SubmissionActionOutcome;
+  claim_id: string | null;
+  link_id: string | null;
+  reason_code: string | null;
+  reason: string | null;
+  attempts: Generated<number>;
+  attempted_by: string;
+  attempted_at: Generated<Date>;
 }
 
 export const MEDIA_CATEGORIES = ['image', 'video', 'document', 'other'] as const;
@@ -2112,6 +2144,12 @@ export interface HrExpenseClaimsTable {
   paid_at: Date | null;
   payment_reference: string | null;
   payroll_run_id: string | null;
+  /** The submission whose form action made it (0079), with that action's id. Fixed at insert. */
+  submission_id: Generated<string | null>;
+  form_action_id: Generated<string | null>;
+  /** What the approver settled on, with the reason; set only when approving (0079). */
+  approved_amount: Generated<string | null>;
+  amount_note: Generated<string | null>;
   version: Generated<number>;
   updated_at: Generated<Date>;
 }
@@ -3686,6 +3724,8 @@ export interface Database {
   submission_events: SubmissionEventsTable;
   submission_values: SubmissionValuesTable;
   submission_file_uses: SubmissionFileUsesTable;
+  submission_links: SubmissionLinksTable;
+  submission_action_results: SubmissionActionResultsTable;
   test_outbox: TestOutboxTable;
   tenant_storage: TenantStorageTable;
   upload_intents: UploadIntentsTable;
@@ -4076,6 +4116,8 @@ const TENANT_SCOPED: Readonly<Record<TenantScopedTable, true>> = {
   submission_events: true,
   submission_values: true,
   submission_file_uses: true,
+  submission_links: true,
+  submission_action_results: true,
   test_outbox: true,
   tenant_storage: true,
   upload_intents: true,

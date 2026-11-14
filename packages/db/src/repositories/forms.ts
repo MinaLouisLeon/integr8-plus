@@ -53,10 +53,12 @@ export interface FormVersion {
   changes: Record<string, unknown> | null;
   /** Which answers are copied into submission_values. Null on versions published before 0008. */
   reportableFields: ReportableFieldSpec[] | null;
+  /** What a submit does (P40). Raw: `@integr8/form-package`'s schema checks it. */
+  actions: unknown[];
 }
 
 /** A version without its definition, for lists where the definition is dead weight. */
-export type FormVersionSummary = Omit<FormVersion, 'definition'>;
+export type FormVersionSummary = Omit<FormVersion, 'definition' | 'actions'>;
 
 export interface CreateFormInput {
   title: string;
@@ -77,6 +79,8 @@ export interface CreateDraftInput {
   formId: string;
   definition: Record<string, unknown>;
   createdBy: UserId | string;
+  /** The draft's actions (P40); left out, it starts with the latest published version's. */
+  actions?: unknown[];
 }
 
 export type SaveDraftResult =
@@ -203,6 +207,10 @@ export class FormsRepository extends TenantScopedRepository {
         definition: input.definition,
         definition_schema_version: schemaVersionOf(input.definition),
         created_by: toUserId(input.createdBy),
+        actions:
+          input.actions === undefined
+            ? this.#latestPublishedActions(input.formId)
+            : (JSON.stringify(input.actions) as unknown as unknown[]),
       })
       .returningAll()
       .executeTakeFirstOrThrow();
@@ -274,6 +282,7 @@ export class FormsRepository extends TenantScopedRepository {
             definition,
             definition_schema_version: schemaVersionOf(definition),
             created_by: toUserId(savedBy),
+            actions: this.#latestPublishedActions(formId),
           })
           .returningAll()
           .executeTakeFirstOrThrow();
@@ -302,6 +311,43 @@ export class FormsRepository extends TenantScopedRepository {
       .returningAll()
       .executeTakeFirst();
 
+    return row === undefined
+      ? { outcome: 'conflict', current: await this.findDraft(formId) }
+      : { outcome: 'saved', version: toVersion(row) };
+  }
+
+  /** A new draft keeps what the form does on submit until the builder changes it. */
+  #latestPublishedActions(formId: string) {
+    return sql<unknown[]>`coalesce((
+      select prior.actions from form_versions as prior
+       where prior.tenant_id = ${this.tenantId}
+         and prior.form_id = ${formId}
+         and prior.status = 'published'
+       order by prior.version_number desc
+       limit 1), '[]'::jsonb)`;
+  }
+
+  /**
+   * Replaces a draft's actions (P40), over the revision the builder last saw.
+   * Checked by the caller; the database only bounds their count.
+   */
+  async saveDraftActions(
+    formId: string,
+    actions: unknown[],
+    expectedRevision: number,
+  ): Promise<SaveDraftResult> {
+    const row = await this.db
+      .updateTable('form_versions')
+      .set({
+        actions: JSON.stringify(actions) as unknown as unknown[],
+        revision: sql<number>`revision + 1`,
+      })
+      .where('tenant_id', '=', this.tenantId)
+      .where('form_id', '=', formId)
+      .where('status', '=', 'draft')
+      .where('revision', '=', expectedRevision)
+      .returningAll()
+      .executeTakeFirst();
     return row === undefined
       ? { outcome: 'conflict', current: await this.findDraft(formId) }
       : { outcome: 'saved', version: toVersion(row) };
@@ -458,7 +504,9 @@ function toForm(row: Selectable<FormsTable>): Form {
   };
 }
 
-function summaryOf(row: Omit<Selectable<FormVersionsTable>, 'definition'>): FormVersionSummary {
+function summaryOf(
+  row: Omit<Selectable<FormVersionsTable>, 'definition' | 'actions'>,
+): FormVersionSummary {
   return {
     id: row.id,
     tenantId: toTenantId(row.tenant_id),
@@ -479,5 +527,9 @@ function summaryOf(row: Omit<Selectable<FormVersionsTable>, 'definition'>): Form
 }
 
 function toVersion(row: Selectable<FormVersionsTable>): FormVersion {
-  return { ...summaryOf(row), definition: row.definition };
+  return {
+    ...summaryOf(row),
+    definition: row.definition,
+    actions: Array.isArray(row.actions) ? row.actions : [],
+  };
 }
