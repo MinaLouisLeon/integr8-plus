@@ -292,6 +292,7 @@ export function formDetail(overrides: { live?: boolean } = {}): FormDetail {
               title: { en: 'Gas safety check' },
               pages: [],
             } as unknown as NonNullable<FormDetail['live']>['definition'],
+            actions: [],
           },
   };
 }
