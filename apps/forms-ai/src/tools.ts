@@ -11,7 +11,10 @@ export {
   type FormsTools,
   registerFormsTools,
 } from './mcp/server.js';
-export type { Host } from './host.js';
+export { failure, text } from './mcp/results.js';
+export { currentHost, type Host } from './host.js';
+export { outputFolder } from './settings.js';
+export { type HandedOver, handOverRequest, requestsFolder } from './requests/store.js';
 export type { RequestToolNames } from './requests/tools.js';
 /** Every tool name Forms for AI's own server lists (its self-test checks the same list). */
 export { EXPECTED_TOOLS as FORMS_TOOLS } from './setup/self-test.js';

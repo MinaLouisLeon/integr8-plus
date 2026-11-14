@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import {
   checkFormPackage,
   DEFAULT_FILL_ROLES,
@@ -23,7 +22,8 @@ import {
 } from './package-files.js';
 import { previewTemplate } from './preview.js';
 import { confirmSection, interviewGuide, summarizeForm } from './interview.js';
-import { formatCheck, formatError } from './report.js';
+import { formatCheck } from './report.js';
+import { failure, guarded, text } from './results.js';
 import { checkWebsite, formatWebsiteCheck } from '../website/check.js';
 import { WEBSITE_GUIDE_SECTIONS, websiteApiText, websiteGuideSection } from '../website/guide.js';
 import { nextExampleText, ROUTE_PATTERN } from '../website/nextjs.js';
@@ -139,22 +139,6 @@ const settingsOf = (given: z.infer<typeof settings>): Partial<FormPackageSetting
           ? {}
           : { signatureRequired: given.signatureRequired }),
       };
-
-const text = (value: string): CallToolResult => ({ content: [{ type: 'text', text: value }] });
-const failure = (value: string): CallToolResult => ({
-  content: [{ type: 'text', text: value }],
-  isError: true,
-});
-
-async function guarded(
-  work: () => Promise<CallToolResult> | CallToolResult,
-): Promise<CallToolResult> {
-  try {
-    return await work();
-  } catch (error) {
-    return failure(formatError(error));
-  }
-}
 
 export function createFormsServer(options: ServerOptions = {}): McpServer {
   const server = new McpServer(

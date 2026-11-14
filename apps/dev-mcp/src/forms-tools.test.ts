@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -43,6 +43,7 @@ const DEV_TOOLS = [
   'submit_form',
   'list_change_requests',
   'get_change_request',
+  'hand_over_change_request',
 ];
 
 beforeAll(async () => {
@@ -124,6 +125,55 @@ describe('the Forms for AI tools in the developer server', () => {
     expect(drafts.text).toContain(join(output, 'change-requests'));
     const repository = await call('list_change_requests');
     expect(repository.text).toBe('No change requests in plan/requests/.');
+  });
+
+  it('hands a recorded request over to plan/requests/, taking the next free number', async () => {
+    const recorded = await call('record_change_request', {
+      title: 'A barcode question',
+      kind: 'form_format',
+      wanted: 'A barcode question.',
+      why: 'Parts carry barcodes.',
+      blocked: 'No such question type.',
+      answers: [],
+      example: 'none',
+    });
+    expect(recorded.text).toMatch(/Recorded CR-0001/u);
+    const repository = join(root, 'no-requests');
+    mkdirSync(repository, { recursive: true });
+    writeFileSync(join(repository, 'CR-0001-form-actions.md'), '# CR-0001 — Form actions\n');
+    writeFileSync(
+      join(repository, 'README.md'),
+      [
+        '# Change requests',
+        '',
+        '## Requests',
+        '',
+        '| Request | Kind | Status in the repository | Plan or reason |',
+        '| --- | --- | --- | --- |',
+        '| [CR-0001](CR-0001-form-actions.md) Form actions | `form_action` | `planned` | P40 |',
+        '',
+        'Statuses: received.',
+        '',
+      ].join('\n'),
+    );
+
+    const handed = await call('hand_over_change_request', { number: 1 });
+    expect(handed.error).toBe(false);
+    expect(handed.text).toMatch(/Handed over as CR-0002/u);
+    expect(handed.text).toMatch(/keep CR-0001/u);
+    const copy = join(repository, 'CR-0002-a-barcode-question');
+    expect(readFileSync(join(copy, 'request.md'), 'utf8')).toMatch(/A barcode question/u);
+    const readme = readFileSync(join(repository, 'README.md'), 'utf8');
+    expect(readme).toContain(
+      '| [CR-0002](CR-0002-a-barcode-question/request.md) A barcode question | `form_format` | `received` | — |\n\nStatuses',
+    );
+    expect(readme).toContain('`planned` | P40 |\n| [CR-0002]');
+    expect((await call(DRAFT_REQUEST_TOOLS.list)).text).toMatch(/handed_over/u);
+    expect((await call('list_change_requests')).text).toMatch(/CR-0002 A barcode question/u);
+
+    const again = await call('hand_over_change_request', { number: 1 });
+    expect(again.error).toBe(true);
+    expect(again.text).toMatch(/only an open request/u);
   });
 
   it('still asks for a sign-in on the developer tools', async () => {

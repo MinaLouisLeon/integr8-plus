@@ -19,6 +19,22 @@ export function repoVersion(): string {
   }
 }
 
+/**
+ * This server's own version, from apps/dev-mcp/package.json: the one place
+ * it is written, so the MCP handshake cannot drift from the package.
+ */
+export function serverVersion(): string {
+  try {
+    return (
+      JSON.parse(readFileSync(join(REPO_ROOT, 'apps', 'dev-mcp', 'package.json'), 'utf8')) as {
+        version: string;
+      }
+    ).version;
+  } catch {
+    return '0.0.0';
+  }
+}
+
 export interface HostInfo {
   platform: NodeJS.Platform;
   home: string;

@@ -1,11 +1,10 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
 import type { FoundBrowser } from '../preview/browser.js';
 import { loadPicture } from '../mcp/package-files.js';
-import { formatError } from '../mcp/report.js';
+import { failure, guarded, text } from '../mcp/results.js';
 import { VERSION } from '../version.js';
 import type { PreviewWindow } from '../window/preview-window.js';
 import { REQUEST_KINDS, requestCode } from './format.js';
@@ -37,20 +36,6 @@ export interface RequestToolDeps {
 export interface RequestToolNames {
   list?: string;
   get?: string;
-}
-
-const text = (value: string): CallToolResult => ({ content: [{ type: 'text', text: value }] });
-const failure = (value: string): CallToolResult => ({
-  content: [{ type: 'text', text: value }],
-  isError: true,
-});
-
-async function guarded(work: () => Promise<CallToolResult> | CallToolResult) {
-  try {
-    return await work();
-  } catch (error) {
-    return failure(formatError(error));
-  }
 }
 
 const words = z.string().trim().min(1).max(4000);

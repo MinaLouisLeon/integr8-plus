@@ -20,7 +20,7 @@ Three rules hold whatever the tool does, because the API enforces them, not the 
 ## One server for everything (Forms for AI included)
 
 The developer server also carries **every Integr8 Forms for AI tool** (the 23 in
-[`docs/forms-ai/README.md`](../forms-ai/README.md#the-tools)): building and checking
+[`docs/forms-ai/README.md`](../forms-ai/README.md#the-tools-the-ai-sees)): building and checking
 `.integr8form` files, PDF previews, the live preview window, the website integration tools and
 change requests. A developer in this repository connects this one server and does not install
 Forms for AI as well. Those tools are the same code (`registerFormsTools` from
@@ -31,7 +31,9 @@ session is missing or over; only the developer tools below need it.
   Forms for AI's `list_change_requests` and `get_change_request` (requests recorded **on this
   computer**, in the output folder's `change-requests/`) are `list_draft_change_requests` and
   `get_draft_change_request`. `list_change_requests` and `get_change_request` read the
-  repository's `plan/requests/`. Hand a recorded request over by copying its folder there.
+  repository's `plan/requests/`. `hand_over_change_request` hands a recorded request over:
+  it copies its folder there (taking the next free number when its own is taken), adds its row
+  to `plan/requests/README.md` as `received` and marks it handed over on this computer.
 - Files are saved where Forms for AI saves them: `INTEGR8_FORMS_OUTPUT` if set, else the folder
   chosen in Forms for AI's installer, else `Documents/Integr8 forms`.
 - The preview window's page is built, not run from source: run
@@ -86,32 +88,35 @@ it is chosen by itself; `INTEGR8_DEV_MCP_API` also names one.
 
 The developer tools, beside the Forms for AI tools above:
 
-| Tool                   | What it does                                                                                                                   |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `status`               | Mode, API address, environment, signed-in account, time left, the chosen company, the trace file                               |
-| `list_test_companies`  | The test companies the session can use                                                                                         |
-| `create_test_company`  | Local mode: runs the seeder (all sections or `only`). Remote mode: explains the command to run on the machine                  |
-| `use_company`          | Chooses the company and lists its people with roles, emails and user ids                                                       |
-| `find_route`           | Searches `apps/api/openapi.json` by words, path or tag                                                                         |
-| `get_route`            | One route in full: parameters, body and response schemas, permission, module, idempotency                                      |
-| `call_api`             | One request as `company`, a role, an email or a user id: checked against the schema first, headers and `Idempotency-Key` added |
-| `get_trace`            | This session's requests and answers, newest first, or one in full                                                              |
-| `get_audit`            | The company's audit lines since a moment                                                                                       |
-| `read_outbox`          | The email and push notifications the company would have sent (kept 7 days)                                                     |
-| `import_form_package`  | Imports a `.integr8form` file (from `save_package` or the preview window) as a draft and publishes it if asked                 |
-| `list_change_requests` | The change requests handed to the repository (`plan/requests/`), with kind and status                                          |
-| `get_change_request`   | One of them in full, with the files beside it ([planning-a-change-request.md](planning-a-change-request.md))                   |
-| `submit_form`          | Starts and submits a form as a person, with given answers                                                                      |
+| Tool                       | What it does                                                                                                                                                                               |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `status`                   | Mode, API address, environment, signed-in account, time left, the chosen company, the trace file                                                                                           |
+| `list_test_companies`      | The test companies the session can use                                                                                                                                                     |
+| `create_test_company`      | Local mode: runs the seeder (all sections or `only`). Remote mode: explains the command to run on the machine                                                                              |
+| `use_company`              | Chooses the company and lists its people with roles, emails and user ids                                                                                                                   |
+| `find_route`               | Searches `apps/api/openapi.json` by words, path or tag                                                                                                                                     |
+| `get_route`                | One route in full: parameters, body and response schemas, permission, module, idempotency                                                                                                  |
+| `call_api`                 | One request as `company`, a role, an email or a user id: checked against the schema first, headers and `Idempotency-Key` added                                                             |
+| `get_trace`                | This session's requests and answers, newest first, or one in full                                                                                                                          |
+| `get_audit`                | The company's audit lines since a moment                                                                                                                                                   |
+| `read_outbox`              | The email and push notifications the company would have sent (kept 7 days)                                                                                                                 |
+| `import_form_package`      | Imports a `.integr8form` file (from `save_package` or the preview window) as a draft and publishes it if asked; refuses any other file (by name and its ZIP start) before sending anything |
+| `list_change_requests`     | The change requests handed to the repository (`plan/requests/`), with kind and status                                                                                                      |
+| `get_change_request`       | One of them in full, with the files beside it ([planning-a-change-request.md](planning-a-change-request.md))                                                                               |
+| `submit_form`              | Starts and submits a form as a person, with given answers                                                                                                                                  |
+| `hand_over_change_request` | Copies a request recorded on this computer into `plan/requests/` and adds its README row (run Prettier on the README after)                                                                |
 
-`call_api` starts an impersonation grant for the person when there is none (reason
-`Developer MCP: <purpose>`), reuses it until it lapses, and ends every grant when the server
-stops. It sends `x-client-app: api` (the value the API keeps for callers that are not one of its
+`call_api` acts through an impersonation grant whose reason is `Developer MCP: <purpose>`. A
+grant's reason is the only place the company's audit log records why the tool acted, so a
+person's grant is reused only while the purpose stays the same: a call with a new purpose ends
+that grant and starts one stating it. Every grant still open is ended when the server stops. It sends `x-client-app: api` (the value the API keeps for callers that are not one of its
 apps) and the repository's version as `x-client-version`. Staff routes are not called through it.
 
 ## The trace
 
 Every request and answer goes to a JSON Lines file in the temporary folder
-(`integr8-dev-mcp/trace-<time>-<pid>.jsonl`, written only you can read), one per session, and
+(`integr8-dev-mcp/trace-<time>-<pid>.jsonl`, written only you can read, in a folder made or
+narrowed to yours alone; a folder owned by someone else, or a link in its place, is refused), one per session, and
 `get_trace` reads the same. Before anything is written or returned, `src/redact.ts` replaces
 tokens (JWTs, `i8…` refresh and invitation tokens, any `token`/`password`/`secret` field),
 sign-in codes on the sign-in routes, `Authorization` and cookie headers, and signed file links
@@ -126,6 +131,8 @@ src/connection.ts  staff session (refresh, persist), impersonation grants, every
 src/openapi.ts     route index from openapi.json; request check with zod's fromJSONSchema
 src/local.ts       local mode: the API and the seeder as child processes
 src/server.ts      the MCP tools, and Forms for AI's (registerFormsTools)
+src/requests.ts    plan/requests/: read, and the README row a hand-over adds
+src/trace.ts       the trace file and its private folder
 src/redact.ts      what is hidden
 ```
 

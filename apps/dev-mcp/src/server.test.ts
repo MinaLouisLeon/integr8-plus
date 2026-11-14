@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -226,6 +226,13 @@ describe('the developer tools', () => {
     );
   });
 
+  it('reports the version written in its package.json', () => {
+    const own = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
+      version: string;
+    };
+    expect(client.getServerVersion()?.version).toBe(own.version);
+  });
+
   it('says where it points, refreshing the staff token and keeping the new pair', async () => {
     const status = await call('status');
     expect(status.text).toMatch(/Environment: staging/u);
@@ -273,6 +280,30 @@ describe('the developer tools', () => {
     expect(sent?.headers.authorization).toBe(`Bearer ${GRANT_TOKEN}`);
   });
 
+  it('states each purpose in a grant: the same purpose reuses it, a new one ends it and starts another', async () => {
+    const grants = () =>
+      seen.filter((entry) => entry.method === 'POST' && entry.path.endsWith('/impersonate'));
+    const ended = () => seen.filter((entry) => entry.path.endsWith('/end'));
+    const before = grants().length;
+    const endedBefore = ended().length;
+    const send = (purpose: string) =>
+      call('call_api', {
+        method: 'POST',
+        path: '/v1/customers',
+        as: 'engineer',
+        purpose,
+        body: { name: 'Acme' },
+      });
+    await send('creating a customer');
+    expect(grants().length).toBe(before);
+    await send('checking duplicate customer names');
+    expect(grants().length).toBe(before + 1);
+    expect((grants().at(-1)?.body as { reason: string }).reason).toBe(
+      'Developer MCP: checking duplicate customer names',
+    );
+    expect(ended().length).toBe(endedBefore + 1);
+  });
+
   it('imports a form file saved with the Forms tools into the company', async () => {
     const example = JSON.parse((await call('get_example', { key: 'boiler_service' })).text) as {
       definition: Record<string, unknown>;
@@ -286,6 +317,24 @@ describe('the developer tools', () => {
     expect(sent?.headers['content-type']).toBe('application/vnd.integr8.form+zip');
     expect(sent?.headers['idempotency-key']).toMatch(/^[0-9a-f-]{36}$/u);
     expect(sent?.body).toEqual({ bytes: readFileSync(path).length, start: 'PK' });
+  });
+
+  it('refuses to send a file that is not a form file', async () => {
+    const before = seen.length;
+    const notes = join(folder, 'notes.txt');
+    writeFileSync(notes, 'private notes');
+    const disguised = join(folder, 'notes.integr8form');
+    writeFileSync(disguised, 'private notes');
+    expect((await call('import_form_package', { path: notes })).text).toMatch(
+      /Only a \.integr8form/u,
+    );
+    expect((await call('import_form_package', { path: disguised })).text).toMatch(
+      /does not start like one/u,
+    );
+    expect(
+      (await call('import_form_package', { path: join(folder, 'missing.integr8form') })).text,
+    ).toMatch(/There is no file/u);
+    expect(seen.length).toBe(before);
   });
 
   it('refuses staff routes through call_api', async () => {

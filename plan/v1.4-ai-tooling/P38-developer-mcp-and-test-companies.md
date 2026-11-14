@@ -313,6 +313,27 @@ executable are unchanged.
   on stderr when it is missing. Checked over stdio from the repository root: 37 tools listed,
   `open_preview` served its page and script, `status` asked for a sign-in.
 
+## Addendum: review of the two servers (2026-11-14)
+
+A comparison of the two servers found seven things to fix; all are done, with tests:
+
+- **Purpose in the audit log:** a grant was reused for every call by the same person, so only
+  the first call's purpose reached the company's audit log. A grant is now reused only for the
+  same purpose; a new purpose ends it and starts one stating it.
+- **Trace folder:** made `0700` (or narrowed to it); a folder owned by another user, or a link
+  in its place, is refused (`trace.test.ts`).
+- **Version:** the MCP handshake reads `apps/dev-mcp/package.json` instead of a copy.
+- **`import_form_package`:** refuses a file that is not named `.integr8form` or does not start
+  like a ZIP, before anything is sent.
+- **Shared answers:** `text`, `failure` and `guarded` live once in Forms for AI
+  (`src/mcp/results.ts`) and the developer server imports `text`/`failure` from
+  `@integr8/forms-ai/tools` (its own `guarded` also resolves the connection).
+- **`hand_over_change_request`** (15 + 23 = 38 tools): copies a recorded request into
+  `plan/requests/` as its README describes (next free number when taken), adds the README row
+  as `received` and marks it handed over on the computer.
+- **Docs:** Forms for AI's tool table now lists all 23 (it lacked `get_interview_guide` and
+  `summarize_form`), and the developer doc's link to it works.
+
 ## Notes
 
 - To verify during the build:

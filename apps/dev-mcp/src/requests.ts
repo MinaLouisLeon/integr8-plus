@@ -1,5 +1,5 @@
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { basename, join } from 'node:path';
 import { REPO_ROOT } from './paths.js';
 
 /**
@@ -81,4 +81,47 @@ export function getRepoRequest(
     typeof which === 'number' ? `CR-${String(which).padStart(4, '0')}` : which.toUpperCase().trim();
   const found = listRepoRequests(folder).find((request) => request.code === code);
   return found === undefined ? undefined : { ...found, text: readFileSync(found.file, 'utf8') };
+}
+
+/**
+ * Adds a handed-over request's row to plan/requests/README.md, status
+ * `received`, after the table's last row. Returns false when the README or its
+ * table is not there (the request is still handed over; the row is written by
+ * hand). The table's columns are aligned again by Prettier afterwards.
+ */
+export function addReadmeRow(
+  entry: { code: string; folder: string; title: string; kind: string },
+  folder: string = REQUESTS_DIR,
+): boolean {
+  const readme = join(folder, 'README.md');
+  if (!existsSync(readme)) {
+    return false;
+  }
+  const original = readFileSync(readme, 'utf8');
+  const newline = original.includes('\r\n') ? '\r\n' : '\n';
+  const lines = original.split(/\r?\n/u);
+  const heading = lines.findIndex((line) => line.trim() === '## Requests');
+  if (heading === -1) {
+    return false;
+  }
+  let last = -1;
+  for (let index = heading + 1; index < lines.length; index += 1) {
+    const line = lines[index] ?? '';
+    if (line.startsWith('## ')) {
+      break;
+    }
+    if (line.startsWith('|')) {
+      last = index;
+    } else if (last !== -1 && line.trim() !== '') {
+      break;
+    }
+  }
+  if (last === -1) {
+    return false;
+  }
+  const title = entry.title.replace(/\|/gu, '\\|');
+  const row = `| [${entry.code}](${basename(entry.folder)}/request.md) ${title} | \`${entry.kind}\` | \`received\` | — |`;
+  lines.splice(last + 1, 0, row);
+  writeFileSync(readme, lines.join(newline));
+  return true;
 }
