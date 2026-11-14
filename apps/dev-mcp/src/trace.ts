@@ -1,4 +1,4 @@
-import { appendFileSync, mkdirSync } from 'node:fs';
+import { appendFileSync, chmodSync, lstatSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { isAuthPath, redact, redactHeaders } from './redact.js';
@@ -33,6 +33,26 @@ export type NewTraceEntry = Omit<TraceEntry, 'id' | 'at'>;
 
 const KEPT_IN_MEMORY = 500;
 
+/**
+ * The folder for trace files, readable by this user only. On a shared
+ * temporary folder (Linux /tmp) another user could have made it first, or put
+ * a link there to a folder of theirs: refused rather than written into.
+ */
+export function privateFolder(folder: string): void {
+  mkdirSync(folder, { recursive: true, mode: 0o700 });
+  const found = lstatSync(folder);
+  if (!found.isDirectory()) {
+    throw new Error(`${folder} is not a folder (a link?); the trace is not written there.`);
+  }
+  if (process.platform !== 'win32') {
+    if (typeof process.getuid === 'function' && found.uid !== process.getuid()) {
+      throw new Error(`${folder} belongs to another user; the trace is not written there.`);
+    }
+    // A folder this user made earlier, or made with a wider umask, is narrowed.
+    chmodSync(folder, 0o700);
+  }
+}
+
 export class Trace {
   readonly file: string | undefined;
   readonly #entries: TraceEntry[] = [];
@@ -44,7 +64,7 @@ export class Trace {
       return;
     }
     const folder = options.folder ?? join(tmpdir(), 'integr8-dev-mcp');
-    mkdirSync(folder, { recursive: true });
+    privateFolder(folder);
     this.file = join(
       folder,
       `trace-${new Date().toISOString().replace(/[:.]/gu, '-')}-${String(process.pid)}.jsonl`,

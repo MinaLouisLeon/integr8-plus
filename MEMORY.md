@@ -297,6 +297,13 @@ the end of any piece of work that changes one of them, and date each section.
   there `list_draft_change_requests` / `get_draft_change_request`. The Forms tools need no
   sign-in; the preview page needs `pnpm --filter @integr8/forms-ai build`. Forms for AI's own
   program is unchanged and still what staff install.
+- **Review of the two MCP servers (2026-11-14, unreleased, branch `ccr-11ad0982-coofjh` from
+  `dev`):** the developer server now has 38 tools (`hand_over_change_request` copies a recorded
+  request into `plan/requests/` and adds its README row). A grant is reused only for the same
+  purpose, so each call's purpose reaches the audit log; the trace folder is `0700` and refuses a
+  link or another user's folder; the handshake version comes from its `package.json`;
+  `import_form_package` refuses anything but a `.integr8form` ZIP before sending; the tool-answer
+  helpers live once in `apps/forms-ai/src/mcp/results.ts`. Details: P38's second addendum.
 - **The demo seeder goes through the API**, in-process with Fastify's `inject`, as the
   company's own people (plus a staff impersonation for staff-only setup). Direct inserts
   were rejected: they skip numbering, stock, ledger postings and audit, and produce data

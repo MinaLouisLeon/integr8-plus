@@ -8,7 +8,9 @@ by hand (`CR-<number>-<slug>.md`).
 
 **Handing one over:** copy its folder here. If its number is taken, give it the next free number
 in the folder name and leave the number in its `request.md` as it was, so the person can still
-find it on their computer. Then add a row below.
+find it on their computer. Then add a row below. The developer MCP server's
+`hand_over_change_request` does all of this for a request recorded on the same computer (run
+Prettier on this file afterwards).
 
 **Planning one:** an AI coding tool follows
 [`docs/contributing/planning-a-change-request.md`](../../docs/contributing/planning-a-change-request.md)
