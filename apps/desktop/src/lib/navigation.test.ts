@@ -54,6 +54,20 @@ describe('mapping the shared menu onto hash routes', () => {
   });
 });
 
+describe('the company roles tab', () => {
+  it('is shown to those who give roles out, at its own route, and to nobody else', () => {
+    const keysFor = (permissions: Parameters<typeof desktopNavigation>[0]) =>
+      desktopNavigation(permissions).flatMap((group) =>
+        group.sections.map((section) => [section.key, section.to] as const),
+      );
+    expect(keysFor(['member.read', 'member.update_role'])).toContainEqual([
+      'companyRoles',
+      '/settings/roles',
+    ]);
+    expect(keysFor(['member.read']).map(([key]) => key)).not.toContain('companyRoles');
+  });
+});
+
 describe('finding the section a route is in', () => {
   it('matches a root, a nested route and a trailing slash', () => {
     expect(sectionPathFor('/work-orders')).toBe('workOrders');
@@ -65,6 +79,7 @@ describe('finding the section a route is in', () => {
     expect(sectionPathFor('/settings/e-invoicing')).toBe('eInvoicingSwitch');
     expect(sectionPathFor('/e-invoicing/signing')).toBe('eInvoicing');
     expect(sectionPathFor('/settings/branding')).toBe('branding');
+    expect(sectionPathFor('/settings/roles')).toBe('companyRoles');
     expect(sectionPathFor('/assistant')).toBe('assistant');
     expect(sectionPathFor('/assistant/c1')).toBe('assistant');
   });

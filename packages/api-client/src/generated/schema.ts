@@ -9041,7 +9041,7 @@ export interface operations {
                             /** Format: uuid */
                             tenantId: string;
                             /** @enum {string} */
-                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                             /** @enum {string} */
                             status: "invited" | "active" | "suspended";
                         }[];
@@ -9232,7 +9232,7 @@ export interface operations {
                             /** Format: uuid */
                             tenantId: string;
                             /** @enum {string} */
-                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                             /** @enum {string} */
                             status: "invited" | "active" | "suspended";
                         }[];
@@ -9437,7 +9437,7 @@ export interface operations {
                             /** Format: uuid */
                             tenantId: string;
                             /** @enum {string} */
-                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                             /** @enum {string} */
                             status: "invited" | "active" | "suspended";
                         }[];
@@ -11478,7 +11478,7 @@ export interface operations {
                         id: string;
                         email: string;
                         /** @enum {string} */
-                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                         /** Format: date-time */
                         createdAt: string;
                         /** Format: date-time */
@@ -11580,7 +11580,7 @@ export interface operations {
                         email: string;
                         displayName: string;
                         /** @enum {string} */
-                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                         grants: ("hr_manager" | "inventory_manager")[];
                         customRole?: {
                             /** Format: uuid */
@@ -11671,7 +11671,7 @@ export interface operations {
             content: {
                 "application/json": {
                     /** @enum {string} */
-                    role?: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                    role?: "owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                     /** Format: uuid */
                     customRoleId?: string;
                 };
@@ -11690,7 +11690,7 @@ export interface operations {
                         email: string;
                         displayName: string;
                         /** @enum {string} */
-                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                         grants: ("hr_manager" | "inventory_manager")[];
                         customRole?: {
                             /** Format: uuid */
@@ -11803,7 +11803,7 @@ export interface operations {
                         email: string;
                         displayName: string;
                         /** @enum {string} */
-                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                         grants: ("hr_manager" | "inventory_manager")[];
                         customRole?: {
                             /** Format: uuid */
@@ -12004,7 +12004,7 @@ export interface operations {
                         email: string;
                         displayName: string;
                         /** @enum {string} */
-                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                         grants: ("hr_manager" | "inventory_manager")[];
                         customRole?: {
                             /** Format: uuid */
@@ -12111,7 +12111,7 @@ export interface operations {
                         email: string;
                         displayName: string;
                         /** @enum {string} */
-                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                         grants: ("hr_manager" | "inventory_manager")[];
                         customRole?: {
                             /** Format: uuid */
@@ -13475,7 +13475,7 @@ export interface operations {
                         email: string;
                         displayName: string;
                         /** @enum {string} */
-                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                         grants: ("hr_manager" | "inventory_manager")[];
                         customRole?: {
                             /** Format: uuid */
@@ -13786,7 +13786,7 @@ export interface operations {
                             email: string;
                             displayName: string;
                             /** @enum {string} */
-                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                             grants: ("hr_manager" | "inventory_manager")[];
                             customRole?: {
                                 /** Format: uuid */
@@ -13879,7 +13879,7 @@ export interface operations {
                             id: string;
                             email: string;
                             /** @enum {string} */
-                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                             /** Format: date-time */
                             createdAt: string;
                             /** Format: date-time */
@@ -13961,7 +13961,7 @@ export interface operations {
                 "application/json": {
                     email: string;
                     /** @enum {string} */
-                    role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                    role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                 };
             };
         };
@@ -13977,7 +13977,7 @@ export interface operations {
                         id: string;
                         email: string;
                         /** @enum {string} */
-                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                         /** Format: date-time */
                         createdAt: string;
                         /** Format: date-time */
@@ -14371,7 +14371,7 @@ export interface operations {
                             /** Format: uuid */
                             id: string;
                             title: string;
-                            fillRoles: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer")[];
+                            fillRoles: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer")[];
                             signatureRequired: boolean;
                             requiredByJobTypeIds: string[];
                             /** Format: uuid */
@@ -14474,7 +14474,7 @@ export interface operations {
                             /** Format: uuid */
                             id: string;
                             title: string;
-                            fillRoles: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer")[];
+                            fillRoles: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer")[];
                             signatureRequired: boolean;
                             requiredByJobTypeIds: string[];
                             /** Format: uuid */
@@ -14617,7 +14617,7 @@ export interface operations {
                             /** Format: uuid */
                             id: string;
                             title: string;
-                            fillRoles: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer")[];
+                            fillRoles: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer")[];
                             signatureRequired: boolean;
                             requiredByJobTypeIds: string[];
                             /** Format: uuid */
@@ -14749,7 +14749,7 @@ export interface operations {
             content: {
                 "application/json": {
                     title?: string;
-                    fillRoles?: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer")[];
+                    fillRoles?: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer")[];
                     signatureRequired?: boolean;
                     requiredByJobTypeIds?: string[];
                 };
@@ -14766,7 +14766,7 @@ export interface operations {
                         /** Format: uuid */
                         id: string;
                         title: string;
-                        fillRoles: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer")[];
+                        fillRoles: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer")[];
                         signatureRequired: boolean;
                         requiredByJobTypeIds: string[];
                         /** Format: uuid */
@@ -14871,7 +14871,7 @@ export interface operations {
                             /** Format: uuid */
                             id: string;
                             title: string;
-                            fillRoles: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer")[];
+                            fillRoles: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer")[];
                             signatureRequired: boolean;
                             requiredByJobTypeIds: string[];
                             /** Format: uuid */
@@ -15905,7 +15905,7 @@ export interface operations {
                             /** Format: uuid */
                             id: string;
                             title: string;
-                            fillRoles: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer")[];
+                            fillRoles: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer")[];
                             signatureRequired: boolean;
                             requiredByJobTypeIds: string[];
                             /** Format: uuid */
@@ -31833,7 +31833,7 @@ export interface operations {
                     "application/json": {
                         bases: {
                             /** @enum {string} */
-                            role: "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                            role: "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                             permissions: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                         }[];
                         addable: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
@@ -31920,7 +31920,7 @@ export interface operations {
                             name: string;
                             description: string | null;
                             /** @enum {string} */
-                            baseRole: "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                            baseRole: "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                             added: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                             removed: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                             permissions: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
@@ -32014,7 +32014,7 @@ export interface operations {
                     /** @default [] */
                     removed?: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                     /** @enum {string} */
-                    baseRole: "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                    baseRole: "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                 };
             };
         };
@@ -32031,7 +32031,7 @@ export interface operations {
                         name: string;
                         description: string | null;
                         /** @enum {string} */
-                        baseRole: "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                        baseRole: "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                         added: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                         removed: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                         permissions: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
@@ -32141,7 +32141,7 @@ export interface operations {
                         name: string;
                         description: string | null;
                         /** @enum {string} */
-                        baseRole: "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                        baseRole: "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                         added: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                         removed: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                         permissions: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
@@ -32251,7 +32251,7 @@ export interface operations {
                         name: string;
                         description: string | null;
                         /** @enum {string} */
-                        baseRole: "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                        baseRole: "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                         added: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                         removed: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                         permissions: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
@@ -59648,7 +59648,7 @@ export interface operations {
                                 userId: string;
                                 displayName: string;
                                 /** @enum {string} */
-                                role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                                role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                             } | null;
                             sensitive: {
                                 nationalId: {
@@ -59795,7 +59795,7 @@ export interface operations {
                             userId: string;
                             displayName: string;
                             /** @enum {string} */
-                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                         } | null;
                         sensitive: {
                             nationalId: {
@@ -59919,7 +59919,7 @@ export interface operations {
                             userId: string;
                             displayName: string;
                             /** @enum {string} */
-                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                         } | null;
                         sensitive: {
                             nationalId: {
@@ -60049,7 +60049,7 @@ export interface operations {
                             userId: string;
                             displayName: string;
                             /** @enum {string} */
-                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                         } | null;
                         sensitive: {
                             nationalId: {
@@ -60203,7 +60203,7 @@ export interface operations {
                             userId: string;
                             displayName: string;
                             /** @enum {string} */
-                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                         } | null;
                         sensitive: {
                             nationalId: {
@@ -80192,7 +80192,7 @@ export interface operations {
                                 /** Format: uuid */
                                 id: string;
                                 title: string;
-                                fillRoles: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer")[];
+                                fillRoles: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer")[];
                                 signatureRequired: boolean;
                                 requiredByJobTypeIds: string[];
                                 /** Format: uuid */

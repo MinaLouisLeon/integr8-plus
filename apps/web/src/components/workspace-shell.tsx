@@ -66,14 +66,15 @@ export function WorkspaceShell({
     key: group.group,
     label: t(`nav.group.${group.group}`),
     items: group.sections.flatMap((section) => {
-      // Forms, branding, the e-invoicing switch and the schedule are
-      // desktop-only and filtered out above; the check keeps the type honest
-      // about which paths this app has.
+      // Forms, branding, the e-invoicing switch, the schedule and the company
+      // roles tab are desktop-only and filtered out above; the check keeps the
+      // type honest about which paths this app has.
       if (
         section.path === 'forms' ||
         section.path === 'branding' ||
         section.path === 'eInvoicingSwitch' ||
-        section.path === 'schedule'
+        section.path === 'schedule' ||
+        section.path === 'companyRoles'
       ) {
         return [];
       }

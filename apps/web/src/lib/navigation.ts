@@ -11,10 +11,14 @@ import type { NavPath, PlatformNavPath } from '@integr8/core';
 
 /**
  * The web routes for every section the web app draws. Forms, branding, the
- * e-invoicing switch and the schedule are desktop-only.
+ * e-invoicing switch, the schedule and the company roles tab are desktop-only
+ * (the web keeps company roles under People).
  */
 export const NAV_PATHS: Readonly<
-  Record<Exclude<NavPath, 'forms' | 'branding' | 'eInvoicingSwitch' | 'schedule'>, string>
+  Record<
+    Exclude<NavPath, 'forms' | 'branding' | 'eInvoicingSwitch' | 'schedule' | 'companyRoles'>,
+    string
+  >
 > = {
   dashboard: '/dashboard',
   assistant: '/assistant',

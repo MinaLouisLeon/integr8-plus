@@ -263,6 +263,7 @@ export const ar: Catalogue<Messages> = {
       admin: 'مسؤول',
       hr_manager: 'مدير الموارد البشرية',
       inventory_manager: 'مدير المخزون',
+      accountant: 'محاسب',
       dispatcher: 'منسّق',
       engineer: 'مهندس',
       viewer: 'مشاهد',
@@ -643,6 +644,8 @@ export const ar: Catalogue<Messages> = {
     title: 'أدوار الشركة',
     intro:
       'أدوار خاصة بشركتك، يُبنى كلٌّ منها على دور أساسي مع إضافة صلاحيات أو سحبها. امنحها للأشخاص من شاشة الأشخاص.',
+    introPeopleOnWeb:
+      'أدوار خاصة بشركتك، يُبنى كلٌّ منها على دور أساسي مع إضافة صلاحيات أو سحبها. امنحها للأشخاص من شاشة الأشخاص في تطبيق الويب.',
     open: 'أدوار الشركة',
     openHint: 'أدوار خاصة بك، مبنية على الأدوار القياسية.',
     back: 'رجوع إلى الأشخاص',
@@ -8654,6 +8657,7 @@ export const ar: Catalogue<Messages> = {
       documents: 'المستندات',
       eInvoicing: 'الفاتورة الإلكترونية',
       eInvoicingSwitch: 'مفتاح الفاتورة الإلكترونية',
+      companyRoles: 'أدوار الشركة',
     },
     hint: {
       dashboard: 'أين أنت، وما الذي يحتاج إلى إنجاز.',
@@ -8715,6 +8719,7 @@ export const ar: Catalogue<Messages> = {
       eInvoicing: 'الفواتير المرسلة إلى مصلحة الضرائب المصرية وحالتها.',
       eInvoicingSwitch:
         'هل تستطيع هذه الشركة استخدام الفاتورة الإلكترونية أصلًا. لموظفي Integr8 فقط.',
+      companyRoles: 'أدوار خاصة بك، مبنية على الأدوار القياسية.',
     },
   },
 

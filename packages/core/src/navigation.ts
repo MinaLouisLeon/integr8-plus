@@ -80,7 +80,7 @@ export interface NavSection {
   icon: NavIcon;
   /** Shown only to a seat holding this; absent means everybody signed in. */
   permission?: Permission;
-  /** Only the desktop app has this screen (the form builder, company branding). */
+  /** Only the desktop app has this screen (the form builder, company branding, company roles). */
   desktopOnly?: boolean;
   /** Only the web app has this screen (billing, storage, people, get started). */
   webOnly?: boolean;
@@ -119,6 +119,7 @@ export type NavPath =
   | 'eInvoicingSwitch'
   | 'getStarted'
   | 'people'
+  | 'companyRoles'
   | 'companySettings'
   | 'websiteAccess'
   | 'storage'
@@ -590,6 +591,17 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     icon: 'user-plus',
     permission: 'member.read',
     webOnly: true,
+  },
+  // The company's own roles (ADR-0013). The web keeps them under People; the
+  // desktop has no People screen, so they get a tab of their own there, for
+  // those who give roles out: the owner changes them, an admin reads them.
+  {
+    key: 'companyRoles',
+    group: 'company',
+    path: 'companyRoles',
+    icon: 'users',
+    permission: 'member.update_role',
+    desktopOnly: true,
   },
   {
     key: 'companySettings',

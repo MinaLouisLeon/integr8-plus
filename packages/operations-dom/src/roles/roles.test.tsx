@@ -151,6 +151,17 @@ describe('the company roles screen', { timeout: 30_000 }, () => {
     expect(screen.queryByRole('button', { name: /Change|Archive/u })).toBeNull();
   });
 
+  it('says roles are given out on the web where the app has no People screen', async () => {
+    const { client } = fakeApi({
+      'GET /v1/roles': list(false),
+      'GET /v1/roles/catalogue': catalogue,
+    });
+    renderScreen(<CompanyRolesScreen peopleOnWeb />, client);
+
+    expect(await screen.findByText(/on the People screen of the web app\./u)).toBeVisible();
+    expect(screen.queryByRole('link', { name: 'Back to people' })).toBeNull();
+  });
+
   it('asks for archived roles when the filter is on', async () => {
     const user = userEvent.setup();
     const { client, calls } = fakeApi({

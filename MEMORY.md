@@ -25,11 +25,12 @@ the end of any piece of work that changes one of them, and date each section.
   source: the phone (`app.config.ts`) and the web build (`next.config.ts`) read it, and
   `apps/api/src/app-info.ts` has a copy a test keeps equal. A version bump must also change
   every place listed under "Places that state the version".
-- **Migrations:** `packages/db/migrations` reaches **0077** (0077 `test_companies`, P38,
-  unreleased, branch `ccr-56fb45d1-5mq6bt`). Before that it reached **0076** (0075 merged into `dev`, released
+- **Migrations:** `packages/db/migrations` reaches **0078** (0078 `accountant_role`, unreleased,
+  branch `ccr-56130823-gs6hbv`; 0077 `test_companies`, P38, unreleased, branch
+  `ccr-56fb45d1-5mq6bt`). Before that it reached **0076** (0075 merged into `dev`, released
   with 1.3.4; **0076** `submissions.title` is unreleased, on branch
   `fix/submission-names-pdf-links-pickers`). **0059 was never used** (workers had reserved ranges) and the migrator
-  does not need contiguous numbers; the next one is **0078**. 1.2.2 carries 0054–0057;
+  does not need contiguous numbers; the next one is **0079**. 1.2.2 carries 0054–0057;
   1.2.3 adds 0058 and 0060–0066; 1.2.4 adds 0067–0068; 1.3.0 adds 0069 and 0074 (0070–0073 were reserved by workers and never used).
 - **Pre-production audit (2026-10-31):** plans, docs and code compared area by area; the
   report is the claude.ai artifact https://claude.ai/artifact/FB7vANrUc691VfMXkR5h2U. Its
@@ -304,6 +305,18 @@ the end of any piece of work that changes one of them, and date each section.
   link or another user's folder; the handshake version comes from its `package.json`;
   `import_form_package` refuses anything but a `.integr8form` ZIP before sending; the tool-answer
   helpers live once in `apps/forms-ai/src/mcp/results.ts`. Details: P38's second addendum.
+- **The accountant role and company roles on the desktop (2026-11-14, unreleased, branch
+  `ccr-56130823-gs6hbv`; migration 0078), as the owner asked:** an eighth built-in role,
+  `accountant`, ranked between `inventory_manager` and `dispatcher`: finance (manage + issue),
+  ledger (post + manage), `expense.approve`, ETA prepare/sign/submit, and read-only customers,
+  sales, purchasing, stock, assets, contracts, documents. Not `ledger.unlock`,
+  `purchasing.approve`, `eta.configure`, payroll or HR (Claude's proposed default, for the owner
+  to review; `permissions.table.md` has it). Not a grant; left out of work-order crews; the demo
+  seeder adds Hana Mostafa as accountant, who drafts the manual journals. The desktop app has a
+  **Company roles** tab (`/settings/roles`, nav key `companyRoles`, desktop-only, shown with
+  `member.update_role`) using the shared `CompanyRolesScreen` (`peopleOnWeb`); roles are still
+  given to people on the web. Older phones reject an accountant's offline grant (strict
+  `roleSchema`).
 - **The demo seeder goes through the API**, in-process with Fastify's `inject`, as the
   company's own people (plus a staff impersonation for staff-only setup). Direct inserts
   were rejected: they skip numbering, stock, ledger postings and audit, and produce data

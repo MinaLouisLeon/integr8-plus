@@ -278,6 +278,7 @@ export const en = {
       admin: 'Admin',
       hr_manager: 'HR manager',
       inventory_manager: 'Inventory manager',
+      accountant: 'Accountant',
       dispatcher: 'Dispatcher',
       engineer: 'Engineer',
       viewer: 'Viewer',
@@ -678,6 +679,9 @@ export const en = {
     title: 'Company roles',
     intro:
       'Roles of your own, each built on a built-in role with permissions added or taken away. Give them to people on the People screen.',
+    // The desktop app has no People screen: roles are given out on the web.
+    introPeopleOnWeb:
+      'Roles of your own, each built on a built-in role with permissions added or taken away. Give them to people on the People screen of the web app.',
     open: 'Company roles',
     openHint: 'Roles of your own, built on the standard ones.',
     back: 'Back to people',
@@ -8604,6 +8608,7 @@ export const en = {
       documents: 'Documents',
       eInvoicing: 'E-invoicing',
       eInvoicingSwitch: 'E-invoicing switch',
+      companyRoles: 'Company roles',
     },
     hint: {
       dashboard: 'Where you are, and what needs doing.',
@@ -8665,6 +8670,7 @@ export const en = {
       documents: 'The PDFs made from your submissions, their links and QR codes.',
       eInvoicing: 'Invoices sent to the Egyptian Tax Authority, and their status.',
       eInvoicingSwitch: 'Whether this company can use e-invoicing at all. Integr8 staff only.',
+      companyRoles: 'Roles of your own, built on the standard ones.',
     },
   },
 
