@@ -114,7 +114,12 @@ import {
   WorkOrdersRoute,
 } from '~/features/operations/screens';
 import { FillRoute, SubmissionRoute, SubmissionsRoute } from '~/features/submissions/screens';
-import { AssistantSettingsRoute } from '~/routes/assistant-settings';
+import { BillingRoute } from '~/features/company/billing';
+import { CompanySettingsRoute } from '~/features/company/company-settings';
+import { GetStartedRoute } from '~/features/company/get-started';
+import { PeopleRoute } from '~/features/company/people';
+import { StorageRoute } from '~/features/company/storage';
+import { WebsiteAccessRoute } from '~/features/company/website-access';
 import { BrandingRoute } from '~/routes/branding';
 import { DashboardRoute } from '~/routes/dashboard';
 import { EInvoicingSwitchRoute } from '~/routes/e-invoicing-switch';
@@ -245,7 +250,12 @@ const SIGNED_IN_ROUTES: readonly { path: string; element: ReactNode }[] = [
   { path: '/settings/job-types', element: <JobTypesRoute /> },
   { path: '/settings/branding', element: <BrandingRoute /> },
   { path: '/settings/e-invoicing', element: <EInvoicingSwitchRoute /> },
-  { path: '/settings/assistant', element: <AssistantSettingsRoute /> },
+  { path: '/get-started', element: <GetStartedRoute /> },
+  { path: '/settings/people', element: <PeopleRoute /> },
+  { path: '/settings/company', element: <CompanySettingsRoute /> },
+  { path: '/settings/website-access', element: <WebsiteAccessRoute /> },
+  { path: '/storage', element: <StorageRoute /> },
+  { path: '/billing', element: <BillingRoute /> },
   { path: '/settings/password', element: <ChangePasswordRoute /> },
   { path: '/settings/roles', element: <CompanyRolesRoute /> },
   { path: '/imports', element: <ImportsRoute /> },
