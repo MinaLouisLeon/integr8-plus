@@ -9238,7 +9238,7 @@ export const en = {
     plan: {
       title: 'Plan and billing',
       description:
-        'The plan the API enforces and the company sees. An invoiced company has no trial, no checkout and no card portal; its plan is whatever is set here.',
+        'The plan the API enforces and the company sees on its Billing screen. Integr8 invoices the company directly for it.',
       mode: 'Billing',
       plan: 'Plan',
       seats: 'Seats',
