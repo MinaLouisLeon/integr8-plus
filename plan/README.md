@@ -17,6 +17,17 @@ at real sizes (`db:volume`, `db:plans`), and a company can be moved between
 servers (`transfer`). All data before 2.0.0 was test data, so a 1.x database is
 created again rather than upgraded.
 
+## Proposed
+
+### P42 Desktop only
+
+[P42](./2.1.0/P42-desktop-only.md): companies and staff work only in the desktop
+apps. The web-only company screens and the whole platform dashboard move into
+the desktop, and `apps/web` becomes a small public site (marketing, help, legal,
+`/download`, quote and document links, the update feed, accepting an
+invitation). Self-serve sign-up and card checkout go. **PROPOSED — waiting for
+the owner** (six decisions, D1–D6).
+
 ## In progress
 
 ### P40 Form actions
