@@ -67,6 +67,7 @@ import {
   DocumentScreen,
   AssistantScreen,
   AssetScreen,
+  AssetTagOpener,
   InvoiceListScreen,
   InvoiceScreen,
   PaymentListScreen,
@@ -802,6 +803,19 @@ export function AssetRoute() {
   return (
     <OperationsScreens>
       <AssetScreen key={assetId} assetId={assetId} />
+    </OperationsScreens>
+  );
+}
+
+/**
+ * An asset by its printed tag (P42, D5): a tag code typed, or a tag's address
+ * pasted from its QR code. The Assets list's search finds a tag code too.
+ */
+export function AssetTagRoute() {
+  const { code = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <AssetTagOpener key={code} code={code} />
     </OperationsScreens>
   );
 }
