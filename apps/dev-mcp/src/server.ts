@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { closeSync, openSync, readFileSync, readSync, statSync } from 'node:fs';
 import { extname, isAbsolute } from 'node:path';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -68,7 +69,7 @@ export const DRAFT_REQUEST_TOOLS = {
 
 const DEV_INSTRUCTIONS = `Integr8 developer tools: try features of this repository on a running Integr8 Plus API, as the people of a TEST company. You never sign in and never see a password, an authenticator code or a token: the person signs in in a terminal (pnpm dev-mcp login --api <address>); if a tool says the session is missing or over, ask them to do that, and never ask them for a password or code.
 Rules: test companies only (the API refuses anything else). On production (status says the environment), say what you are about to do before any write, and start with read-only calls. Everything you do is audited under the person's staff account and appears in the company's audit log under an impersonation grant whose reason is your stated purpose (a call with a new purpose starts a new grant), so give each call a purpose that says what it tests.
-Workflow: status → list_test_companies (create_test_company in local mode) → use_company → find_route / get_route → call_api as a role, a person or "company" → get_trace, get_audit, read_outbox to see what it did. import_form_package and submit_form cover the form flow in one call each.`;
+Workflow: status → list_test_companies (create_test_company in local mode) → use_company → find_route / get_route → call_api as a role, a person or "company" (public routes go as a visitor with no sign-in) → get_trace, get_audit, read_outbox to see what it did. import_form_package and submit_form cover the form flow in one call each.`;
 
 const BRIDGE = `This server also has every Integr8 Forms for AI tool, below. They are offline and need no sign-in, so use them even when the session is missing. In this server two of them are renamed: the change requests recorded on this computer are listed with ${DRAFT_REQUEST_TOOLS.list} and read with ${DRAFT_REQUEST_TOOLS.get}; list_change_requests and get_change_request read the repository's plan/requests/, and hand_over_change_request copies a recorded request there. To try a form you built on a running API: save_package, then use_company, import_form_package (publish: true) with the saved path, and submit_form as an engineer.`;
 
@@ -442,7 +443,7 @@ export function createDevServer(options: DevServerOptions): McpServer {
     {
       title: 'Call the API as one of the company’s people',
       description:
-        'Sends one request to the chosen test company as "company", a role (the first active member with it), an email or a user id. Checks the request against the route’s schema first, adds the client headers and an Idempotency-Key where the route takes one, and acts through an audited impersonation grant whose reason is "Developer MCP: <purpose>": the same person’s grant is reused only while the purpose stays the same, so the audit log states why each call was made. Returns the status, body, timing, request id and the audit lines the call wrote. Platform (staff) routes are not called this way.',
+        'Sends one request to the chosen test company as "company", a role (the first active member with it), an email or a user id. Checks the request against the route’s schema first, adds the client headers and an Idempotency-Key where the route takes one, and acts through an audited impersonation grant whose reason is "Developer MCP: <purpose>": the same person’s grant is reused only while the purpose stays the same, so the audit log states why each call was made. A public route (the public site’s quote, document and asset-tag links, accepting an invitation) is sent as a visitor with no sign-in, whatever "as" says. Returns the status, body, timing, request id and the audit lines the call wrote. Platform (staff) routes are not called this way.',
       inputSchema: {
         method: z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']),
         path: z.string().min(1).max(500).describe('A concrete path, e.g. /v1/work-orders/<id>.'),
@@ -484,8 +485,34 @@ export function createDevServer(options: DevServerOptions): McpServer {
             );
           }
         }
-        const person = personFor(input.as);
         const since = new Date(Date.now() - 2000).toISOString();
+        if (route.security === 'public') {
+          // A public route (the public site's quote, document and asset-tag
+          // links, accepting an invitation) is what a visitor with no sign-in
+          // sends, so it goes without a grant and "as" does not apply.
+          const visit = await context.connection.request({
+            as: 'visitor (no sign-in)',
+            method: input.method,
+            path,
+            query,
+            ...(input.body === undefined ? {} : { body: input.body }),
+            ...(input.idempotencyKey !== undefined
+              ? { idempotencyKey: input.idempotencyKey }
+              : route.idempotency !== null && input.method !== 'GET'
+                ? { idempotencyKey: randomUUID() }
+                : {}),
+          });
+          const audit = await auditLines(context, chosen.id, since, visit.trace.requestId);
+          return text(
+            describeAnswer(visit, [
+              'Sent as a visitor with no sign-in: this is a public route.',
+              audit.length === 0
+                ? 'Audit lines from this call: none.'
+                : `Audit lines from this call:\n${audit.map((line) => `- ${line}`).join('\n')}`,
+            ]),
+          );
+        }
+        const person = personFor(input.as);
         const answer = await context.connection.as({
           tenantId: chosen.id,
           person,
