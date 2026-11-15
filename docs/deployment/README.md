@@ -57,7 +57,7 @@ unreadable without them: `HR_DATA_KEY` (and `HR_DATA_KEYS_PREVIOUS`),
 Caddy (`deploy/vps/Caddyfile.example`) sends HSTS for a year (no
 `includeSubDomains`, no preload), and on the API `nosniff`, `Referrer-Policy:
 no-referrer`, `X-Frame-Options: DENY`; it answers 404 for `/health*` on the
-public name. The web app sets its own (`apps/web/src/lib/content-security-policy.ts`):
+public name. The public site sets its own (`apps/web/src/lib/content-security-policy.ts`):
 an enforced `frame-ancestors 'none'` and a full Content Security Policy in
 **report-only** mode (to the API, R2 and Sentry), reported to Sentry when
 `NEXT_PUBLIC_SENTRY_DSN` is set, to be enforced once reports are quiet. The

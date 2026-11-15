@@ -12,8 +12,9 @@ This block is written and re-added by `turbo` before repository-scoped commands 
 # Integr8 Plus — guide for coding agents
 
 A multi-tenant field-operations platform sold to service companies on subscription.
-Office staff use the web app or their company's desktop app; engineers use an
-offline-first phone app; Integr8 staff run tenants from the platform dashboard.
+Office staff use their company's desktop app; engineers use an offline-first
+phone app; Integr8 staff run tenants from the staff desktop app. The web app is
+the public site only (P42).
 
 Longer references: `docs/README.md` (the documentation index, written for 2.0.0),
 `docs/contributing/README.md` (rules and checklists), `plan/README.md` (what is not finished).
@@ -28,7 +29,7 @@ is pinned to an exact version.
 | Path                         | Package                      | What                                                                            |
 | ---------------------------- | ---------------------------- | ------------------------------------------------------------------------------- |
 | `apps/api`                   | `@integr8/api`               | Fastify `/v1` service, OpenAPI, worker, platform/storage CLIs. Port 3000        |
-| `apps/web`                   | `@integr8/web`               | Next.js: marketing, office app, billing, platform dashboard. Port 3001          |
+| `apps/web`                   | `@integr8/web`               | Next.js: the public site only, no sign-in (P42). Port 3001                      |
 | `apps/desktop`               | `@integr8/desktop`           | React + Vite SPA in Tauri v2; `staff` / `company` flavours. Port 3002           |
 | `apps/mobile`                | `@integr8/mobile`            | Expo Router, offline-first (SQLCipher); one build per company                   |
 | `apps/forms-ai`              | `@integr8/forms-ai`          | Offline MCP server + installer for AI tools writing `.integr8form`; Node SEA    |
@@ -40,13 +41,14 @@ is pinned to an exact version.
 | `packages/form-engine`       | `@integr8/form-engine`       | Pure form engine + conformance suite (Node and Hermes must agree byte-for-byte) |
 | `packages/form-package`      | `@integr8/form-package`      | The `.integr8form` file: pack, strict unpack, publish-level check (Node only)   |
 | `packages/form-input`        | `@integr8/form-input`        | Engine state → what a form filler shows                                         |
-| `packages/form-renderer-dom` | `@integr8/form-renderer-dom` | Form/submission screens for web + desktop                                       |
-| `packages/operations-dom`    | `@integr8/operations-dom`    | Operations screens shared by web + desktop                                      |
+| `packages/form-renderer-dom` | `@integr8/form-renderer-dom` | Form/submission screens for the desktop (and the public site's quote link)      |
+| `packages/operations-dom`    | `@integr8/operations-dom`    | Operations screens for the desktop app                                          |
 | `packages/offline`           | `@integr8/offline`           | Phone SQLite schema, queries, sync engine (no React Native inside)              |
 | `packages/i18n`              | `@integr8/i18n`              | English + Arabic catalogues (TypeScript), direction helpers                     |
 | `packages/tokens`            | `@integr8/tokens`            | Design tokens, themes, brand accent                                             |
 | `packages/document-render`   | `@integr8/document-render`   | Printable business documents                                                    |
 | `packages/eta`               | `@integr8/eta`               | Egyptian Tax Authority e-invoicing                                              |
+| `packages/releases`          | `@integr8/releases`          | The apps' GitHub releases: update feed, downloads (public site and API)         |
 
 ## Commands
 
@@ -94,12 +96,12 @@ refuses pushes to `main`/`staging`/`dev`, then runs `pnpm typecheck` and `pnpm t
 - Shared domain types live only in `@integr8/core`. Apps never import from each other, with one
   exception: `apps/dev-mcp` (never shipped) imports `@integr8/forms-ai/tools` to carry every Forms
   for AI tool.
-- No shared UI component package: each app owns its `components/ui`; web and desktop share
-  screens through `form-renderer-dom` / `operations-dom`.
+- No shared UI component package: each app owns its `components/ui`; the desktop app draws
+  shared screens from `form-renderer-dom` / `operations-dom`.
 - Never store tokens in `localStorage` — use the `TokenStore` contract (keychain,
   SecureStore, httpOnly cookie).
 - External services have local stand-ins selected by env (`MEDIA_STORAGE=local`,
-  `GEOCODER=fake`, `PUSH_SENDER=recording`, `BILLING_PROVIDER=recording`,
+  `GEOCODER=fake`, `PUSH_SENDER=recording`, `APP_RELEASES=off`,
   `EMAIL_SENDER=recording`, `APP_BUILDS=off`). New integrations follow the same pattern:
   an interface, a `Recording…` stand-in, the real adapter, and a config check that
   refuses to start production on a half-configured switch (`apps/api/src/config.ts`).

@@ -60,16 +60,21 @@ contract.
   "which companies is this person in" run as a third database role,
   `integr8_auth`, which reaches two tables and one view and nothing else.
 - **Switching company** needs no new sign-in.
-- **Accepting an invitation** happens only on the web page
+- **Accepting an invitation** happens only on the public site's
   `/accept-invitation`. A new address chooses its password there; an existing
-  account needs none. Accepting makes the membership and **no session**: the
-  person then signs in. Nobody may invite at a role above their own.
-- **Change password** (`POST /v1/me/password`, web, desktop and phone) needs the
+  account needs none. Accepting makes the membership and **no session**: the page
+  says the password is set and sends the person to their company's desktop or
+  phone app (the answer names the company). Nobody may invite at a role above
+  their own, and nobody is invited before the company's own desktop app exists
+  (409 `company_app_not_built`, P42).
+- **Change password** (`POST /v1/me/password`, desktop and phone) needs the
   current password, or a session that began with an emailed code in the last 15
   minutes, and signs out every other device. Passwords must not contain the
   address's local part (`password-policy.ts`).
 - **Staff** sign in to the platform with their own password and an authenticator
-  code (`/v1/platform/auth/sign-in`, lockout after 5 failures).
+  code (`/v1/platform/auth/sign-in`, lockout after 5 failures), in the staff
+  desktop app, which holds the session in memory only and asks again each time
+  it starts (P42, D2).
 
 ## Roles and permissions
 

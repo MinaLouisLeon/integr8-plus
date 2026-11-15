@@ -1,6 +1,6 @@
 # P42 — Desktop only: no web workspace, no web dashboard
 
-**Status:** PROPOSED — waiting for the owner's approval to build (every decision is answered)
+**Status:** IN PROGRESS — built 2026-11-15 on branch `ccr-982c2137-h4as2m`; waiting for the owner's click-through on Windows (the last exit criterion)
 
 ## Goal
 
@@ -289,36 +289,76 @@ All answered by the owner on 2026-11-15, one by one.
 
 ## Exit criteria
 
-- [ ] `packages/core` has no `webOnly` and no `'web'` `NavApp`. Every section in
+- [x] `packages/core` has no `webOnly` and no `'web'` `NavApp`. Every section in
       `NAV_SECTIONS` has a non-null route in the desktop's `NAV_ROUTES`, checked
       by a test.
-- [ ] A company owner can do in the company desktop app everything they could
+- [x] A company owner can do in the company desktop app everything they could
       do on the web: invite and suspend people and give them roles, change
       company settings and the assistant switches, manage website keys, see
       storage and the plan. Each screen has a test.
-- [ ] A staff member can do every platform dashboard action in the staff desktop
+- [x] A staff member can do every platform dashboard action in the staff desktop
       app, then work inside a company and come back, with the grant ended and
       audited.
-- [ ] `apps/web` builds with only the public routes listed in Design §4. A route
+- [x] `apps/web` builds with only the public routes listed in Design §4. A route
       list test fails if a workspace or platform route comes back.
-- [ ] A company desktop build's bundle contains no platform screen code (bundle
+- [x] A company desktop build's bundle contains no platform screen code (bundle
       test).
-- [ ] The invitation page sets a password and shows the "carry on in the app"
+- [x] The invitation page sets a password and shows the "carry on in the app"
       step for a new and for an existing account.
-- [ ] No email or CLI message links to a web workspace page (test over
+- [x] No email or CLI message links to a web workspace page (test over
       `email/links.ts` callers).
-- [ ] No `/v1/signup`, funnel or Stripe route in `openapi.json`; the API starts
+- [x] No `/v1/signup`, funnel or Stripe route in `openapi.json`; the API starts
       with no billing or sign-up setting; migration 0020 goes down and up again
       in the test setup.
-- [ ] The staff app keeps no platform token on disk (test over the credential
+- [x] The staff app keeps no platform token on disk (test over the credential
       store calls), and "Act as this person" creates a grant naming that person.
-- [ ] An owner invitation for a company with no desktop release is refused with
+- [x] An owner invitation for a company with no desktop release is refused with
       `company_app_not_built`, by the API and on the company page.
-- [ ] A scanned tag address opens the public asset-tag page without sign-in and
+- [x] A scanned tag address opens the public asset-tag page without sign-in and
       shows nothing beyond the company's public name and logo; the desktop opens
       an asset by its tag code.
-- [ ] `pnpm lint`, `typecheck`, `test`, `format:check`, `guide:check` and
+- [x] `pnpm lint`, `typecheck`, `test`, `format:check`, `guide:check` and
       `pins:check` pass. The integration suites pass against a disposable
       Postgres.
 - [ ] The owner clicks through the staff and company desktop apps on Windows
       (real Tauri build) and signs a new person in through an invitation.
+
+## Implementation notes (2026-11-15)
+
+Where the build differs from, or goes beyond, the design above:
+
+- **`@integr8/releases`** (new package): the GitHub release lookup moved out of
+  `apps/web` so the public site's update feed and the API (`APP_RELEASES`, the
+  staff downloads, the invitation gate) share one implementation.
+- **More of billing went than planned.** Besides sign-up, Stripe and the funnel,
+  0020 drops `billing_events`, the card provider's subscription columns
+  (provider and its ids, interval, periods, dunning fields), `plan_allowances`'
+  provider price ids and `tenants.billing_mode`; dunning and the trial-expiry job
+  are gone. Every company starts `active` on its plan. The general read-only
+  switch (`tenants.read_only_*`) stays, though nothing sets it now.
+- **The gate covers company-side invitations too**: `POST /v1/members/invitations`
+  and its resend refuse `company_app_not_built`, so staff acting as a company
+  cannot invite its owner from People before the app exists. The company detail
+  reports `companyApp` (`ready`, `apps_off`, `not_built`, `unavailable`).
+- **Staff session safety**: the staff build ends a company session it finds in
+  the credential store at start-up when no staff session is held, so a restart
+  cannot skip the staff sign-in. The company frame reaches the staff session only
+  through `apps/desktop/src/lib/staff-bridge.ts`.
+- **Assistant settings** moved from the desktop's own screen into People
+  (switches and shares) and Company settings (desktop and phone switches); the
+  separate screen is gone.
+- **The asset tag** (D5): `GET /v1/public/asset-tags/:code` names the company for
+  the public `/a/<code>` page; the desktop opens an asset from a tag code or a
+  pasted tag address at `#/assets/tag/<code>`, and the Assets search finds a tag
+  code.
+- **Accepting an invitation** returns the company (`company: { name, slug }`), so
+  the page links to `/download?company=<slug>`.
+- **Test companies** get no app builds, so their people can sign in only with the
+  development desktop build; the developer MCP server needs no sign-in, and the
+  setup guide's test box steps use the development build.
+- **Checked here**: the database and API integration suites against a local
+  Postgres 16 (migration 0020 rolled down and up), and the staff flow end to end
+  in a browser against a running API (sign in, onboard, the invitation gate, work
+  inside a company, People, Billing, back to the dashboard, downloads). Not
+  checked: a real Tauri build on Windows or macOS, and a real GitHub release
+  lookup (`APP_RELEASES=github`).

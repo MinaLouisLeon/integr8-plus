@@ -46,7 +46,9 @@ files and their reasoning are in git before 2.0.0, and comments on tables and
 columns carry the why into the database. A database built by 1.x is refused
 with a message saying to create it afresh (state `before-baseline`). New work
 takes the next number after the highest file, and is immutable once applied
-like any other.
+like any other. The first after the baseline is `0020_desktop_only` (P42): it
+drops what self-serve sign-up, card billing and the web app's assistant switch
+used, in one release, because every row then was test data; the next is `0021`.
 
 ### Where the old numbers went
 
