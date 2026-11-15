@@ -3,19 +3,20 @@
 A multi-tenant field-operations and business platform. Integr8 sells it to
 service companies (maintenance, installation, inspection), mainly in Egypt, and
 sets each company up with its own forms, job types, look and apps. The company's
-office plans and dispatches work on the web or its own desktop app; its engineers
-do the work on its own phone app, which keeps working with no signal; Integr8
-staff run everything from the platform dashboard. English and Arabic throughout.
+office plans and dispatches work in its own desktop app; its engineers do the
+work on its own phone app, which keeps working with no signal; Integr8 staff run
+everything from the staff desktop app. The web app is the public site only.
+English and Arabic throughout.
 
 Current version: **2.0.0**. The documentation starts at
 [`docs/README.md`](./docs/README.md); what is not finished is in
 [`plan/README.md`](./plan/README.md).
 
-| Who                          | Uses                                                 |
-| ---------------------------- | ---------------------------------------------------- |
-| Integr8 staff (super admins) | The web platform dashboard and the staff desktop app |
-| A company's office           | The web app, or the company's own desktop app        |
-| A company's engineers        | The company's own phone app (works offline)          |
+| Who                          | Uses                                        |
+| ---------------------------- | ------------------------------------------- |
+| Integr8 staff (super admins) | The staff desktop app                       |
+| A company's office           | The company's own desktop app               |
+| A company's engineers        | The company's own phone app (works offline) |
 
 **What it does:** customers and sites, work orders, dispatch and the schedule
 board, visits, timesheets, skills and certificates, contracts, maintenance plans
@@ -57,14 +58,14 @@ pnpm --filter @integr8/db db:templates     # the form template library
 pnpm --filter @integr8/api demo-company --owner-email you@example.com   # optional: a full demo company
 
 pnpm --filter @integr8/api dev             # http://localhost:3000
-pnpm --filter @integr8/web dev             # http://localhost:3001
+pnpm --filter @integr8/web dev             # the public site, http://localhost:3001
 pnpm --filter @integr8/desktop dev         # http://localhost:3002 (tauri:dev for a window)
 pnpm --filter @integr8/mobile dev          # Metro
 ```
 
 Every outside service has a local stand-in chosen by a setting
 (`MEDIA_STORAGE=local`, `GEOCODER=fake`, `PUSH_SENDER=recording`,
-`BILLING_PROVIDER=recording`, `EMAIL_SENDER=recording`); production refuses to
+`EMAIL_SENDER=recording`, `APP_RELEASES=off`); production refuses to
 start on any of them. The database settings are in
 [`docs/contributing/`](./docs/contributing/README.md#before-you-start).
 
@@ -72,7 +73,8 @@ start on any of them. The database settings are in
 
 Postgres 16, one schema shared by every company, each row keyed by `tenant_id`
 with row-level security as the backstop. 2.0.0 started the migrations again from
-one per module; a new feature adds the next number after `0019`.
+one per module; 0020 removed sign-up and card billing (P42); a new feature adds
+the next number after `0020`.
 
 | Migration | Module                                                                               |
 | --------- | ------------------------------------------------------------------------------------ |
@@ -95,6 +97,7 @@ one per module; a new feature adds the next number after `0019`.
 | 0017      | Contracts: service contracts, maintenance plans, deadlines                           |
 | 0018      | E-invoicing: the Egyptian Tax Authority                                              |
 | 0019      | The AI assistant: conversations, actions, usage and cost                             |
+| 0020      | Desktop only (P42): drops sign-up, card billing and the web assistant switch         |
 
 See [`docs/database/`](./docs/database/README.md).
 

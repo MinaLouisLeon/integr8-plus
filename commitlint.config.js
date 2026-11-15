@@ -26,6 +26,7 @@ export default {
         'ci',
         'deps',
         'plan',
+        'releases',
         'repo',
       ],
     ],

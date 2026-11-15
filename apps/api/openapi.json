@@ -1923,7 +1923,6 @@
                     "channel": {
                       "type": "string",
                       "enum": [
-                        "web",
                         "desktop",
                         "mobile"
                       ]
@@ -3853,8 +3852,8 @@
     "/v1/billing/subscription": {
       "get": {
         "operationId": "getSubscription",
-        "summary": "What this company is paying for, and what it is allowed",
-        "description": "The plan, where the subscription stands, and the limits with the usage against them — the same numbers the API enforces, so a screen can warn before a refusal rather than explain one afterwards.",
+        "summary": "What this company is on, and what it is allowed",
+        "description": "The plan, where it stands, and the limits with the usage against them — the same numbers the API enforces, so a screen can warn before a refusal rather than explain one afterwards. Integr8 invoices every company directly; nothing here is paid in the app.",
         "tags": [
           "billing"
         ],
@@ -3866,13 +3865,6 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "billingMode": {
-                      "type": "string",
-                      "enum": [
-                        "self_serve",
-                        "invoiced"
-                      ]
-                    },
                     "plan": {
                       "type": "string"
                     },
@@ -3886,36 +3878,7 @@
                         "incomplete"
                       ]
                     },
-                    "interval": {
-                      "nullable": true,
-                      "type": "string",
-                      "enum": [
-                        "month",
-                        "year"
-                      ]
-                    },
-                    "currentPeriodEnd": {
-                      "nullable": true,
-                      "type": "string",
-                      "format": "date-time",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                    },
-                    "cancelAtPeriodEnd": {
-                      "type": "boolean"
-                    },
                     "trialEndsAt": {
-                      "nullable": true,
-                      "type": "string",
-                      "format": "date-time",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                    },
-                    "pastDueSince": {
-                      "nullable": true,
-                      "type": "string",
-                      "format": "date-time",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                    },
-                    "graceEndsAt": {
                       "nullable": true,
                       "type": "string",
                       "format": "date-time",
@@ -3979,15 +3942,9 @@
                     }
                   },
                   "required": [
-                    "billingMode",
                     "plan",
                     "status",
-                    "interval",
-                    "currentPeriodEnd",
-                    "cancelAtPeriodEnd",
                     "trialEndsAt",
-                    "pastDueSince",
-                    "graceEndsAt",
                     "readOnly",
                     "readOnlyReason",
                     "entitlements",
@@ -4065,498 +4022,6 @@
           }
         ],
         "x-integr8-permission": "billing.read"
-      }
-    },
-    "/v1/billing/invoices": {
-      "get": {
-        "operationId": "listInvoices",
-        "summary": "The invoices this company has been sent",
-        "description": "Newest first, read from the billing provider on each call so a payment made on the provider's page shows here straight away. Each links to the provider's hosted copy and its PDF. Empty for a company that has never subscribed.",
-        "tags": [
-          "billing"
-        ],
-        "responses": {
-          "200": {
-            "description": "The invoices, newest first.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "items": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "id": {
-                            "type": "string"
-                          },
-                          "number": {
-                            "nullable": true,
-                            "type": "string"
-                          },
-                          "status": {
-                            "type": "string",
-                            "enum": [
-                              "draft",
-                              "open",
-                              "paid",
-                              "uncollectible",
-                              "void"
-                            ]
-                          },
-                          "amountDueCents": {
-                            "type": "integer",
-                            "minimum": -9007199254740991,
-                            "maximum": 9007199254740991
-                          },
-                          "amountPaidCents": {
-                            "type": "integer",
-                            "minimum": -9007199254740991,
-                            "maximum": 9007199254740991
-                          },
-                          "currency": {
-                            "type": "string"
-                          },
-                          "periodStart": {
-                            "nullable": true,
-                            "type": "string",
-                            "format": "date-time",
-                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                          },
-                          "periodEnd": {
-                            "nullable": true,
-                            "type": "string",
-                            "format": "date-time",
-                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                          },
-                          "createdAt": {
-                            "type": "string",
-                            "format": "date-time",
-                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                          },
-                          "hostedUrl": {
-                            "nullable": true,
-                            "type": "string"
-                          },
-                          "pdfUrl": {
-                            "nullable": true,
-                            "type": "string"
-                          }
-                        },
-                        "required": [
-                          "id",
-                          "number",
-                          "status",
-                          "amountDueCents",
-                          "amountPaidCents",
-                          "currency",
-                          "periodStart",
-                          "periodEnd",
-                          "createdAt",
-                          "hostedUrl",
-                          "pdfUrl"
-                        ],
-                        "additionalProperties": false
-                      }
-                    }
-                  },
-                  "required": [
-                    "items"
-                  ],
-                  "additionalProperties": false
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Authentication is required.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller lacks the required permission.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "The request failed validation.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Rate limit exceeded.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Something went wrong on our side.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "This client build is older than the minimum supported.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "x-integr8-permission": "billing.manage"
-      }
-    },
-    "/v1/billing/checkout": {
-      "post": {
-        "operationId": "startCheckout",
-        "summary": "Begin paying for a plan",
-        "description": "Returns a link to the provider's hosted page. Card details never touch this API — the browser goes to the provider and comes back, and the subscription becomes real when the provider's webhook says so, not when the browser returns.",
-        "tags": [
-          "billing"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "plan": {
-                    "type": "string",
-                    "enum": [
-                      "starter",
-                      "standard",
-                      "enterprise"
-                    ]
-                  },
-                  "interval": {
-                    "default": "month",
-                    "type": "string",
-                    "enum": [
-                      "month",
-                      "year"
-                    ]
-                  }
-                },
-                "required": [
-                  "plan"
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Where to send the browser.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "url": {
-                      "type": "string"
-                    },
-                    "provider": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "url",
-                    "provider"
-                  ],
-                  "additionalProperties": false
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Authentication is required.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller lacks the required permission.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "This plan has no price configured (`plan_not_purchasable`), or Integr8 invoices this company directly (`billing_invoiced`), as it does every company on a deployment that takes no card payments."
-          },
-          "422": {
-            "description": "The request failed validation.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Rate limit exceeded.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Something went wrong on our side.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "This client build is older than the minimum supported.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "x-integr8-permission": "billing.manage"
-      }
-    },
-    "/v1/billing/portal": {
-      "post": {
-        "operationId": "openBillingPortal",
-        "summary": "Open the provider’s billing portal",
-        "description": "Where a card is updated and a subscription is cancelled. All of it is the provider’s hosted page, so this API never holds a card number. Invoices are listed by `GET /v1/billing/invoices` as well, and each links back here.",
-        "tags": [
-          "billing"
-        ],
-        "responses": {
-          "200": {
-            "description": "Where to send the browser.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "url": {
-                      "type": "string"
-                    },
-                    "provider": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "url",
-                    "provider"
-                  ],
-                  "additionalProperties": false
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Authentication is required.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller lacks the required permission.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "This company has never paid, so there is no portal yet (`no_billing_account`), or Integr8 invoices it directly (`billing_invoiced`), as it does every company on a deployment that takes no card payments."
-          },
-          "422": {
-            "description": "The request failed validation.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Rate limit exceeded.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Something went wrong on our side.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "This client build is older than the minimum supported.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "x-integr8-permission": "billing.manage"
-      }
-    },
-    "/v1/billing/webhook": {
-      "post": {
-        "operationId": "billingWebhook",
-        "summary": "What the billing provider says happened",
-        "description": "Verified by signature over the exact bytes sent, and deduplicated on the provider's own event id. Not for clients: it is called by the provider.",
-        "tags": [
-          "billing"
-        ],
-        "responses": {
-          "200": {
-            "description": "Accepted, whether or not it was acted on.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "received": {
-                      "type": "boolean"
-                    },
-                    "duplicate": {
-                      "type": "boolean"
-                    },
-                    "handled": {
-                      "type": "boolean"
-                    }
-                  },
-                  "required": [
-                    "received",
-                    "duplicate",
-                    "handled"
-                  ],
-                  "additionalProperties": false
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "The signature did not verify."
-          },
-          "422": {
-            "description": "The request failed validation.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Rate limit exceeded.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Something went wrong on our side.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "This client build is older than the minimum supported.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
       }
     },
     "/v1/members/invitations/{invitationId}/resend": {
@@ -4659,6 +4124,9 @@
           },
           "404": {
             "description": "No such invitation, or it has been accepted or withdrawn."
+          },
+          "409": {
+            "description": "`company_app_not_built`: the company has no desktop app to sign in to yet."
           },
           "422": {
             "description": "The request failed validation.",
@@ -5829,402 +5297,6 @@
         "x-integr8-permission": "member.update_role"
       }
     },
-    "/v1/signup": {
-      "post": {
-        "operationId": "startSignup",
-        "summary": "Ask for a company",
-        "description": "Sends a link to prove the address. Nothing is created until that link is followed: no company, no storage, no trial. Answers the same way whether or not the address already has an account.",
-        "tags": [
-          "signup"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "email": {
-                    "type": "string",
-                    "minLength": 3,
-                    "maxLength": 320
-                  },
-                  "companyName": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 120
-                  }
-                },
-                "required": [
-                  "email",
-                  "companyName"
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "202": {
-            "description": "Taken. Check the inbox.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "accepted": {
-                      "type": "boolean"
-                    }
-                  },
-                  "required": [
-                    "accepted"
-                  ],
-                  "additionalProperties": false
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Public sign-up is off on this deployment (`signup_closed`). Integr8 sets companies up."
-          },
-          "422": {
-            "description": "The request failed validation.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Rate limit exceeded.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Something went wrong on our side.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Signing up is not configured on this deployment."
-          }
-        }
-      }
-    },
-    "/v1/signup/verify": {
-      "post": {
-        "operationId": "verifySignup",
-        "summary": "Prove the address, and get the company",
-        "description": "Creates the account, the company, its job types, its storage and its trial — in that order, so a failure part-way leaves nothing orphaned. The caller signs in normally afterwards.",
-        "tags": [
-          "signup"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "token": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 512
-                  },
-                  "displayName": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 120
-                  },
-                  "password": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 200
-                  }
-                },
-                "required": [
-                  "token",
-                  "displayName",
-                  "password"
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "The company exists.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "tenantId": {
-                      "type": "string",
-                      "format": "uuid",
-                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                    },
-                    "email": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "tenantId",
-                    "email"
-                  ],
-                  "additionalProperties": false
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Public sign-up is off on this deployment (`signup_closed`). Integr8 sets companies up."
-          },
-          "422": {
-            "description": "The link is spent, expired or unknown (`invalid_signup_token`), or the password is too weak (`auth.weak_password`)."
-          },
-          "429": {
-            "description": "Rate limit exceeded.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Something went wrong on our side.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "This client build is older than the minimum supported.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/signup/resend": {
-      "post": {
-        "operationId": "resendSignupVerification",
-        "summary": "Send the verification link again",
-        "description": "Rotates the link, so the previous one stops working. Answers the same way whether or not there was anything to send.",
-        "tags": [
-          "signup"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "email": {
-                    "type": "string",
-                    "minLength": 3,
-                    "maxLength": 320
-                  }
-                },
-                "required": [
-                  "email"
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "202": {
-            "description": "Taken.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "accepted": {
-                      "type": "boolean"
-                    }
-                  },
-                  "required": [
-                    "accepted"
-                  ],
-                  "additionalProperties": false
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Public sign-up is off on this deployment (`signup_closed`). Integr8 sets companies up."
-          },
-          "422": {
-            "description": "The request failed validation.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Rate limit exceeded.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Something went wrong on our side.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "This client build is older than the minimum supported.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/signup/step": {
-      "post": {
-        "operationId": "recordSignupStep",
-        "summary": "Record a step of the signup funnel",
-        "description": "Called by the public pages. Anonymous by construction: a step name and an optional plan, nothing that identifies a person.",
-        "tags": [
-          "signup"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "step": {
-                    "type": "string",
-                    "enum": [
-                      "landing.viewed",
-                      "pricing.viewed",
-                      "features.viewed",
-                      "signup.opened"
-                    ]
-                  },
-                  "plan": {
-                    "type": "string",
-                    "enum": [
-                      "trial",
-                      "starter",
-                      "standard",
-                      "enterprise"
-                    ]
-                  }
-                },
-                "required": [
-                  "step"
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "202": {
-            "description": "Recorded, or quietly not.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "accepted": {
-                      "type": "boolean"
-                    }
-                  },
-                  "required": [
-                    "accepted"
-                  ],
-                  "additionalProperties": false
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "The request failed validation.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Rate limit exceeded.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Something went wrong on our side.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "This client build is older than the minimum supported.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/v1/settings": {
       "get": {
         "operationId": "getSettings",
@@ -6303,9 +5375,6 @@
                         "maximum": 7
                       }
                     },
-                    "aiWebEnabled": {
-                      "type": "boolean"
-                    },
                     "aiDesktopEnabled": {
                       "type": "boolean"
                     },
@@ -6330,7 +5399,6 @@
                     "workDayStarts",
                     "workDayEnds",
                     "workingDays",
-                    "aiWebEnabled",
                     "aiDesktopEnabled",
                     "aiMobileEnabled",
                     "showCompanyName"
@@ -6493,9 +5561,6 @@
                       "maximum": 7
                     }
                   },
-                  "aiWebEnabled": {
-                    "type": "boolean"
-                  },
                   "aiDesktopEnabled": {
                     "type": "boolean"
                   },
@@ -6580,9 +5645,6 @@
                         "maximum": 7
                       }
                     },
-                    "aiWebEnabled": {
-                      "type": "boolean"
-                    },
                     "aiDesktopEnabled": {
                       "type": "boolean"
                     },
@@ -6607,7 +5669,6 @@
                     "workDayStarts",
                     "workDayEnds",
                     "workingDays",
-                    "aiWebEnabled",
                     "aiDesktopEnabled",
                     "aiMobileEnabled",
                     "showCompanyName"
@@ -6914,7 +5975,7 @@
         "summary": "What each plan costs and allows",
         "description": "The same rows the API enforces its limits from. A pricing page that reads this cannot disagree with a refusal, which is exactly what it would do if the numbers were written into the copy.",
         "tags": [
-          "signup"
+          "billing"
         ],
         "responses": {
           "200": {
@@ -6971,9 +6032,6 @@
                             "type": "integer",
                             "minimum": -9007199254740991,
                             "maximum": 9007199254740991
-                          },
-                          "purchasable": {
-                            "type": "boolean"
                           }
                         },
                         "required": [
@@ -6983,8 +6041,7 @@
                           "seats",
                           "submissionsPerMonth",
                           "storageBytes",
-                          "retentionDays",
-                          "purchasable"
+                          "retentionDays"
                         ],
                         "additionalProperties": false
                       }
@@ -8826,7 +7883,7 @@
             }
           },
           "409": {
-            "description": "Every seat on this plan is taken (`seat_limit_reached`)."
+            "description": "Every seat on this plan is taken (`seat_limit_reached`), or the company’s own desktop app is not built yet (`company_app_not_built`)."
           },
           "422": {
             "description": "Already a member, or a role above the inviter’s own."
@@ -9215,7 +8272,7 @@
       "post": {
         "operationId": "acceptInvitation",
         "summary": "Accept an invitation",
-        "description": "Public, because the invitee has no session yet. The company comes from the token: there is no parameter in which to name a different one. Makes the membership and signs nobody in: the person signs in afterwards with the address returned. An address with no sign-in yet must send a `password` meeting the password policy (422 `auth.invitation_password_required` without one, `auth.weak_password` for one refused); an address that already signs in needs none, and one sent is not applied (`existingAccount`).",
+        "description": "Public, because the invitee has no session yet. The company comes from the token: there is no parameter in which to name a different one. Makes the membership and signs nobody in: the person signs in afterwards with the address returned, in the company’s own app (`company` names it). An address with no sign-in yet must send a `password` meeting the password policy (422 `auth.invitation_password_required` without one, `auth.weak_password` for one refused); an address that already signs in needs none, and one sent is not applied (`existingAccount`).",
         "tags": [
           "authentication"
         ],
@@ -9278,13 +8335,31 @@
                     },
                     "signInRequired": {
                       "type": "boolean"
+                    },
+                    "company": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "slug": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "slug"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [
                     "accepted",
                     "email",
                     "existingAccount",
-                    "signInRequired"
+                    "signInRequired",
+                    "company"
                   ],
                   "additionalProperties": false
                 }
@@ -26006,6 +25081,109 @@
             "websiteKeyAuth": []
           }
         ]
+      }
+    },
+    "/v1/public/asset-tags/{code}": {
+      "get": {
+        "operationId": "getPublicAssetTag",
+        "summary": "Whose a printed asset tag is",
+        "description": "Public. The company a tag code belongs to, for the page its QR code opens; nothing about the asset. 404 for a code that is unknown, malformed, or belongs to a company without the assets module.",
+        "tags": [
+          "assets"
+        ],
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The company.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "company": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "slug": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "slug"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "code": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "company",
+                    "code"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No company has this tag."
+          },
+          "422": {
+            "description": "The request failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/v1/website/jobs/{workOrderId}": {
@@ -197080,13 +196258,6 @@
                             "minimum": -9007199254740991,
                             "maximum": 9007199254740991
                           },
-                          "billingMode": {
-                            "type": "string",
-                            "enum": [
-                              "self_serve",
-                              "invoiced"
-                            ]
-                          },
                           "members": {
                             "type": "integer",
                             "minimum": -9007199254740991,
@@ -197140,7 +196311,6 @@
                           "status",
                           "plan",
                           "seats",
-                          "billingMode",
                           "members",
                           "activeMembers",
                           "storageBytes",
@@ -197267,14 +196437,6 @@
                     "minimum": 1,
                     "maximum": 100000
                   },
-                  "billingMode": {
-                    "default": "self_serve",
-                    "type": "string",
-                    "enum": [
-                      "self_serve",
-                      "invoiced"
-                    ]
-                  },
                   "ownerEmail": {
                     "type": "string",
                     "maxLength": 320,
@@ -197289,15 +196451,11 @@
                   },
                   "aiChannels": {
                     "default": {
-                      "web": false,
                       "desktop": false,
                       "mobile": false
                     },
                     "type": "object",
                     "properties": {
-                      "web": {
-                        "type": "boolean"
-                      },
                       "desktop": {
                         "type": "boolean"
                       },
@@ -197306,7 +196464,6 @@
                       }
                     },
                     "required": [
-                      "web",
                       "desktop",
                       "mobile"
                     ]
@@ -197405,13 +196562,6 @@
                           "minimum": -9007199254740991,
                           "maximum": 9007199254740991
                         },
-                        "billingMode": {
-                          "type": "string",
-                          "enum": [
-                            "self_serve",
-                            "invoiced"
-                          ]
-                        },
                         "members": {
                           "type": "integer",
                           "minimum": -9007199254740991,
@@ -197465,7 +196615,6 @@
                         "status",
                         "plan",
                         "seats",
-                        "billingMode",
                         "members",
                         "activeMembers",
                         "storageBytes",
@@ -197665,13 +196814,6 @@
                       "minimum": -9007199254740991,
                       "maximum": 9007199254740991
                     },
-                    "billingMode": {
-                      "type": "string",
-                      "enum": [
-                        "self_serve",
-                        "invoiced"
-                      ]
-                    },
                     "members": {
                       "type": "integer",
                       "minimum": -9007199254740991,
@@ -197755,9 +196897,6 @@
                         "appsEnabled": {
                           "type": "boolean"
                         },
-                        "aiWebEnabled": {
-                          "type": "boolean"
-                        },
                         "aiDesktopEnabled": {
                           "type": "boolean"
                         },
@@ -197792,7 +196931,6 @@
                         "defaultTheme",
                         "websiteUrl",
                         "appsEnabled",
-                        "aiWebEnabled",
                         "aiDesktopEnabled",
                         "aiMobileEnabled",
                         "showCompanyName",
@@ -197886,9 +197024,6 @@
                       "nullable": true,
                       "type": "object",
                       "properties": {
-                        "provider": {
-                          "type": "string"
-                        },
                         "status": {
                           "type": "string",
                           "enum": [
@@ -197908,45 +197043,11 @@
                             "enterprise"
                           ]
                         },
-                        "interval": {
-                          "nullable": true,
-                          "type": "string",
-                          "enum": [
-                            "month",
-                            "year"
-                          ]
-                        },
-                        "currentPeriodEnd": {
-                          "nullable": true,
-                          "type": "string",
-                          "format": "date-time",
-                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                        },
-                        "cancelAtPeriodEnd": {
-                          "type": "boolean"
-                        },
                         "trialEndsAt": {
                           "nullable": true,
                           "type": "string",
                           "format": "date-time",
                           "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                        },
-                        "pastDueSince": {
-                          "nullable": true,
-                          "type": "string",
-                          "format": "date-time",
-                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                        },
-                        "graceEndsAt": {
-                          "nullable": true,
-                          "type": "string",
-                          "format": "date-time",
-                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                        },
-                        "remindersSent": {
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
                         },
                         "readOnlySince": {
                           "nullable": true,
@@ -197957,33 +197058,25 @@
                         "readOnlyReason": {
                           "nullable": true,
                           "type": "string"
-                        },
-                        "providerCustomerId": {
-                          "nullable": true,
-                          "type": "string"
-                        },
-                        "providerSubscriptionId": {
-                          "nullable": true,
-                          "type": "string"
                         }
                       },
                       "required": [
-                        "provider",
                         "status",
                         "plan",
-                        "interval",
-                        "currentPeriodEnd",
-                        "cancelAtPeriodEnd",
                         "trialEndsAt",
-                        "pastDueSince",
-                        "graceEndsAt",
-                        "remindersSent",
                         "readOnlySince",
-                        "readOnlyReason",
-                        "providerCustomerId",
-                        "providerSubscriptionId"
+                        "readOnlyReason"
                       ],
                       "additionalProperties": false
+                    },
+                    "companyApp": {
+                      "type": "string",
+                      "enum": [
+                        "ready",
+                        "apps_off",
+                        "not_built",
+                        "unavailable"
+                      ]
                     },
                     "featureFlags": {
                       "type": "object",
@@ -198028,7 +197121,6 @@
                     "status",
                     "plan",
                     "seats",
-                    "billingMode",
                     "members",
                     "activeMembers",
                     "storageBytes",
@@ -198042,6 +197134,7 @@
                     "invitations",
                     "activity",
                     "billing",
+                    "companyApp",
                     "featureFlags",
                     "owners"
                   ],
@@ -198197,13 +197290,6 @@
                       "minimum": -9007199254740991,
                       "maximum": 9007199254740991
                     },
-                    "billingMode": {
-                      "type": "string",
-                      "enum": [
-                        "self_serve",
-                        "invoiced"
-                      ]
-                    },
                     "members": {
                       "type": "integer",
                       "minimum": -9007199254740991,
@@ -198257,7 +197343,6 @@
                     "status",
                     "plan",
                     "seats",
-                    "billingMode",
                     "members",
                     "activeMembers",
                     "storageBytes",
@@ -198395,13 +197480,6 @@
                       "minimum": -9007199254740991,
                       "maximum": 9007199254740991
                     },
-                    "billingMode": {
-                      "type": "string",
-                      "enum": [
-                        "self_serve",
-                        "invoiced"
-                      ]
-                    },
                     "members": {
                       "type": "integer",
                       "minimum": -9007199254740991,
@@ -198455,7 +197533,6 @@
                     "status",
                     "plan",
                     "seats",
-                    "billingMode",
                     "members",
                     "activeMembers",
                     "storageBytes",
@@ -198535,8 +197612,8 @@
     "/v1/platform/companies/{tenantId}/plan": {
       "patch": {
         "operationId": "setCompanyPlan",
-        "summary": "Change a company’s plan, seat count or billing mode",
-        "description": "Sets the plan the API enforces and, for a company Integr8 invoices, the plan its people see on the billing screen. Switching a company to `invoiced` makes its subscription active with no trial and lifts a read-only state that non-payment caused: Integr8 is taking the money now. Switching back to `self_serve` leaves the subscription as the provider last described it. On a deployment that takes no card payments (`BILLING_PROVIDER=none`) every company is invoiced, and `self_serve` is stored as `invoiced`.",
+        "summary": "Change a company’s plan or seat count",
+        "description": "Sets the plan the API enforces and the plan the company’s people see on its billing screen. Integr8 invoices every company directly (P42), so the subscription becomes active on that plan with no trial.",
         "tags": [
           "platform"
         ],
@@ -198574,13 +197651,6 @@
                     "type": "integer",
                     "minimum": 1,
                     "maximum": 100000
-                  },
-                  "billingMode": {
-                    "type": "string",
-                    "enum": [
-                      "self_serve",
-                      "invoiced"
-                    ]
                   }
                 },
                 "required": [
@@ -198632,13 +197702,6 @@
                       "type": "integer",
                       "minimum": -9007199254740991,
                       "maximum": 9007199254740991
-                    },
-                    "billingMode": {
-                      "type": "string",
-                      "enum": [
-                        "self_serve",
-                        "invoiced"
-                      ]
                     },
                     "members": {
                       "type": "integer",
@@ -198693,7 +197756,6 @@
                     "status",
                     "plan",
                     "seats",
-                    "billingMode",
                     "members",
                     "activeMembers",
                     "storageBytes",
@@ -198806,9 +197868,6 @@
                   "appsEnabled": {
                     "type": "boolean"
                   },
-                  "aiWebEnabled": {
-                    "type": "boolean"
-                  },
                   "aiDesktopEnabled": {
                     "type": "boolean"
                   },
@@ -198866,9 +197925,6 @@
                       "type": "string"
                     },
                     "appsEnabled": {
-                      "type": "boolean"
-                    },
-                    "aiWebEnabled": {
                       "type": "boolean"
                     },
                     "aiDesktopEnabled": {
@@ -198938,7 +197994,6 @@
                     "defaultTheme",
                     "websiteUrl",
                     "appsEnabled",
-                    "aiWebEnabled",
                     "aiDesktopEnabled",
                     "aiMobileEnabled",
                     "showCompanyName",
@@ -207531,7 +206586,7 @@
       "post": {
         "operationId": "resendInvitation",
         "summary": "Send somebody their invitation, or a fresh link to it",
-        "description": "Withdraws the old invitation and issues a new one to the same address and role, valid for seven days from now, then emails it unless `sendEmail` is false (the link is returned either way, to send by hand). A new token rather than the old one: the old link may be sitting in a mailbox somebody else can read. Works on an expired invitation too, which is how a company set up weeks ago gets its owner in once its forms are ready.",
+        "description": "Withdraws the old invitation and issues a new one to the same address and role, valid for seven days from now, then emails it unless `sendEmail` is false (the link is returned either way, to send by hand). A new token rather than the old one: the old link may be sitting in a mailbox somebody else can read. Works on an expired invitation too, which is how a company set up weeks ago gets its owner in once its forms are ready. Refused with 409 `company_app_not_built` until the company’s own desktop app exists (P42), and 503 `releases_unavailable` when that cannot be checked.",
         "tags": [
           "platform"
         ],
@@ -207632,6 +206687,9 @@
           "404": {
             "description": "No such invitation, or it has been accepted already."
           },
+          "409": {
+            "description": "`company_app_not_built`: the company has no desktop app to sign in to yet."
+          },
           "422": {
             "description": "The request failed validation.",
             "content": {
@@ -207663,14 +206721,7 @@
             }
           },
           "503": {
-            "description": "This client build is older than the minimum supported.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "description": "`releases_unavailable`: the app releases could not be read."
           }
         },
         "security": [
@@ -209414,14 +208465,6 @@
                             "nullable": true,
                             "type": "string"
                           },
-                          "providerPriceMonthly": {
-                            "nullable": true,
-                            "type": "string"
-                          },
-                          "providerPriceYearly": {
-                            "nullable": true,
-                            "type": "string"
-                          },
                           "updatedAt": {
                             "type": "string",
                             "format": "date-time",
@@ -209438,8 +208481,6 @@
                           "submissionsPerMonth",
                           "priceCents",
                           "currency",
-                          "providerPriceMonthly",
-                          "providerPriceYearly",
                           "updatedAt"
                         ],
                         "additionalProperties": false
@@ -209593,16 +208634,6 @@
                     "type": "string",
                     "minLength": 3,
                     "maxLength": 3
-                  },
-                  "providerPriceMonthly": {
-                    "nullable": true,
-                    "type": "string",
-                    "maxLength": 255
-                  },
-                  "providerPriceYearly": {
-                    "nullable": true,
-                    "type": "string",
-                    "maxLength": 255
                   }
                 }
               }
@@ -209672,14 +208703,6 @@
                       "nullable": true,
                       "type": "string"
                     },
-                    "providerPriceMonthly": {
-                      "nullable": true,
-                      "type": "string"
-                    },
-                    "providerPriceYearly": {
-                      "nullable": true,
-                      "type": "string"
-                    },
                     "updatedAt": {
                       "type": "string",
                       "format": "date-time",
@@ -209696,8 +208719,6 @@
                     "submissionsPerMonth",
                     "priceCents",
                     "currency",
-                    "providerPriceMonthly",
-                    "providerPriceYearly",
                     "updatedAt"
                   ],
                   "additionalProperties": false
@@ -210647,7 +209668,7 @@
       "get": {
         "operationId": "getPlatformHealth",
         "summary": "What is failing quietly",
-        "description": "Phones whose sync runs show trouble, billing deliveries that were recorded but not applied, background work that gave up — over the last few days, across every company — and maintenance plans the worker currently cannot make jobs for. The things that look fine from the office until a customer rings.",
+        "description": "Phones whose sync runs show trouble, background work that gave up — over the last few days, across every company — and maintenance plans the worker currently cannot make jobs for. The things that look fine from the office until a customer rings.",
         "tags": [
           "platform"
         ],
@@ -210775,93 +209796,6 @@
                       ],
                       "additionalProperties": false
                     },
-                    "webhooks": {
-                      "type": "object",
-                      "properties": {
-                        "received": {
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
-                        "applied": {
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
-                        "failed": {
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
-                        "unmatched": {
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
-                        "pending": {
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
-                        "items": {
-                          "type": "array",
-                          "items": {
-                            "type": "object",
-                            "properties": {
-                              "id": {
-                                "type": "string"
-                              },
-                              "type": {
-                                "type": "string"
-                              },
-                              "tenantId": {
-                                "nullable": true,
-                                "type": "string"
-                              },
-                              "receivedAt": {
-                                "type": "string"
-                              },
-                              "processedAt": {
-                                "nullable": true,
-                                "type": "string"
-                              },
-                              "outcome": {
-                                "type": "string",
-                                "enum": [
-                                  "applied",
-                                  "failed",
-                                  "unmatched",
-                                  "pending"
-                                ]
-                              },
-                              "error": {
-                                "nullable": true,
-                                "type": "string"
-                              }
-                            },
-                            "required": [
-                              "id",
-                              "type",
-                              "tenantId",
-                              "receivedAt",
-                              "processedAt",
-                              "outcome",
-                              "error"
-                            ],
-                            "additionalProperties": false
-                          }
-                        }
-                      },
-                      "required": [
-                        "received",
-                        "applied",
-                        "failed",
-                        "unmatched",
-                        "pending",
-                        "items"
-                      ],
-                      "additionalProperties": false
-                    },
                     "jobs": {
                       "type": "object",
                       "properties": {
@@ -210940,7 +209874,6 @@
                   "required": [
                     "since",
                     "sync",
-                    "webhooks",
                     "jobs",
                     "maintenance"
                   ],
@@ -211007,164 +209940,262 @@
         ]
       }
     },
-    "/v1/platform/funnel": {
+    "/v1/platform/downloads": {
       "get": {
-        "operationId": "getSignupFunnel",
-        "summary": "The signup funnel, and where it leaks",
-        "description": "Steps with how many attempts reached each, over a window. The page steps count visits and the rest count attempts; they cannot be combined into one number honestly, so they are not.",
+        "operationId": "getPlatformDownloads",
+        "summary": "The staff app and Integr8 Forms for AI, newest release of each",
+        "description": "Read from the GitHub releases this deployment is set to (`APP_RELEASES=github`). Each is `found` with its files, `none` when nothing is published (or releases are not read here), or `unavailable` when GitHub could not be asked.",
         "tags": [
           "platform"
         ],
-        "parameters": [
-          {
-            "name": "days",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "default": 30,
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 365
-            }
-          }
-        ],
         "responses": {
           "200": {
-            "description": "The funnel and the recent signups behind it.",
+            "description": "What can be downloaded.",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "days": {
-                      "type": "integer",
-                      "minimum": -9007199254740991,
-                      "maximum": 9007199254740991
-                    },
-                    "steps": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "step": {
-                            "type": "string"
-                          },
-                          "count": {
-                            "type": "integer",
-                            "minimum": -9007199254740991,
-                            "maximum": 9007199254740991
-                          }
-                        },
-                        "required": [
-                          "step",
-                          "count"
-                        ],
-                        "additionalProperties": false
-                      }
-                    },
-                    "timeToFirstForm": {
-                      "type": "object",
-                      "properties": {
-                        "companies": {
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
-                        "medianSeconds": {
-                          "nullable": true,
-                          "type": "number"
-                        },
-                        "items": {
-                          "type": "array",
-                          "items": {
-                            "type": "object",
-                            "properties": {
-                              "tenantId": {
-                                "type": "string",
-                                "format": "uuid",
-                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                              },
-                              "seconds": {
-                                "type": "number"
-                              }
+                    "staff": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "found"
+                              ]
                             },
-                            "required": [
-                              "tenantId",
-                              "seconds"
-                            ],
-                            "additionalProperties": false
-                          }
-                        }
-                      },
-                      "required": [
-                        "companies",
-                        "medianSeconds",
-                        "items"
-                      ],
-                      "additionalProperties": false
-                    },
-                    "signups": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "id": {
-                            "type": "string",
-                            "format": "uuid",
-                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            "release": {
+                              "type": "object",
+                              "properties": {
+                                "tag": {
+                                  "type": "string"
+                                },
+                                "version": {
+                                  "type": "string"
+                                },
+                                "installers": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "name": {
+                                        "type": "string"
+                                      },
+                                      "url": {
+                                        "type": "string"
+                                      },
+                                      "platform": {
+                                        "type": "string",
+                                        "enum": [
+                                          "windows",
+                                          "macos",
+                                          "linux",
+                                          "android"
+                                        ]
+                                      },
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "exe",
+                                          "msi",
+                                          "dmg",
+                                          "appimage",
+                                          "deb",
+                                          "rpm",
+                                          "apk"
+                                        ]
+                                      },
+                                      "arch": {
+                                        "nullable": true,
+                                        "type": "string",
+                                        "enum": [
+                                          "x64",
+                                          "arm64",
+                                          "universal"
+                                        ]
+                                      },
+                                      "size": {
+                                        "nullable": true,
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      }
+                                    },
+                                    "required": [
+                                      "name",
+                                      "url",
+                                      "platform",
+                                      "kind",
+                                      "arch",
+                                      "size"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                }
+                              },
+                              "required": [
+                                "tag",
+                                "version",
+                                "installers"
+                              ],
+                              "additionalProperties": false
+                            }
                           },
-                          "email": {
-                            "type": "string"
-                          },
-                          "companyName": {
-                            "type": "string"
-                          },
-                          "status": {
-                            "type": "string",
-                            "enum": [
-                              "pending",
-                              "verifying",
-                              "verified",
-                              "expired",
-                              "abandoned"
-                            ]
-                          },
-                          "createdAt": {
-                            "type": "string",
-                            "format": "date-time",
-                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                          },
-                          "verifiedAt": {
-                            "nullable": true,
-                            "type": "string",
-                            "format": "date-time",
-                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                          },
-                          "tenantId": {
-                            "nullable": true,
-                            "type": "string",
-                            "format": "uuid",
-                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                          }
+                          "required": [
+                            "status",
+                            "release"
+                          ],
+                          "additionalProperties": false
                         },
-                        "required": [
-                          "id",
-                          "email",
-                          "companyName",
-                          "status",
-                          "createdAt",
-                          "verifiedAt",
-                          "tenantId"
-                        ],
-                        "additionalProperties": false
-                      }
+                        {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "none"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "status"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "unavailable"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "status"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "formsAi": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "found"
+                              ]
+                            },
+                            "release": {
+                              "type": "object",
+                              "properties": {
+                                "tag": {
+                                  "type": "string"
+                                },
+                                "version": {
+                                  "type": "string"
+                                },
+                                "downloads": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "name": {
+                                        "type": "string"
+                                      },
+                                      "url": {
+                                        "type": "string"
+                                      },
+                                      "platform": {
+                                        "type": "string",
+                                        "enum": [
+                                          "windows",
+                                          "macos",
+                                          "linux"
+                                        ]
+                                      },
+                                      "arch": {
+                                        "type": "string",
+                                        "enum": [
+                                          "x64",
+                                          "arm64"
+                                        ]
+                                      },
+                                      "size": {
+                                        "nullable": true,
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      }
+                                    },
+                                    "required": [
+                                      "name",
+                                      "url",
+                                      "platform",
+                                      "arch",
+                                      "size"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                }
+                              },
+                              "required": [
+                                "tag",
+                                "version",
+                                "downloads"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "status",
+                            "release"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "none"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "status"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "unavailable"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "status"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
                     }
                   },
                   "required": [
-                    "days",
-                    "steps",
-                    "timeToFirstForm",
-                    "signups"
+                    "staff",
+                    "formsAi"
                   ],
                   "additionalProperties": false
                 }

@@ -13,6 +13,20 @@ separate. A home test box (Ubuntu 24.04, Docker) checks out `staging`.
 to updates and recovery. Commands on the machine run as
 `docker compose -f deploy/compose.yml --env-file deploy/.env run --rm api node dist/…`.
 
+**The guide on GitHub Pages**, behind a username and password:
+`.github/workflows/guide-pages.yml` runs when the guide reaches `main` (or by
+hand) and publishes `scripts/guide/build-site.mjs`'s output. Pages has no
+sign-in, so the guide (its stylesheet and script inlined) is encrypted with
+AES-256-GCM under a key derived from the username and password (PBKDF2-SHA-256,
+600 000 rounds); the page holds only that and a sign-in form, and the browser
+decrypts it, keeping the key (not the password) for the tab. The credentials
+are the repository secrets `GUIDE_USERNAME` and `GUIDE_PASSWORD`, never in the
+repository; Pages' source must be "GitHub Actions". Anyone with the page can
+guess passwords offline, so a long password is what protects it, and the
+Markdown and HTML in the repository are as readable as the repository is.
+Locally: `GUIDE_USERNAME=… GUIDE_PASSWORD=… pnpm guide:site` writes
+`dist/guide-site/`.
+
 ## The services
 
 | Service     | Image                          | Does                                                                                                         | Memory |
@@ -57,7 +71,7 @@ unreadable without them: `HR_DATA_KEY` (and `HR_DATA_KEYS_PREVIOUS`),
 Caddy (`deploy/vps/Caddyfile.example`) sends HSTS for a year (no
 `includeSubDomains`, no preload), and on the API `nosniff`, `Referrer-Policy:
 no-referrer`, `X-Frame-Options: DENY`; it answers 404 for `/health*` on the
-public name. The web app sets its own (`apps/web/src/lib/content-security-policy.ts`):
+public name. The public site sets its own (`apps/web/src/lib/content-security-policy.ts`):
 an enforced `frame-ancestors 'none'` and a full Content Security Policy in
 **report-only** mode (to the API, R2 and Sentry), reported to Sentry when
 `NEXT_PUBLIC_SENTRY_DSN` is set, to be enforced once reports are quiet. The

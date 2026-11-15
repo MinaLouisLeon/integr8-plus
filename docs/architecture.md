@@ -3,8 +3,9 @@
 ## The shape
 
 ```
- browsers ──────────┐          ┌──── desktop apps (Tauri)        phones (Expo, offline)
-   apps/web (Next.js)│          │     apps/desktop                  apps/mobile
+ public site ───────┐          ┌──── desktop apps (Tauri):       phones (Expo, offline)
+   apps/web (Next.js)│          │     company and staff builds      apps/mobile
+   no sign-in        │          │     apps/desktop
                      ▼          ▼                                       │ queued changes,
                  ┌──────────────────────────────┐ ◀─────────────────────┘ pull by cursor
                  │ apps/api — Fastify, /v1 only │
@@ -36,8 +37,8 @@ ESLint flat config, Prettier. Every dependency is pinned to an exact version
 | Path                         | What                                                                                                           |
 | ---------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | `apps/api`                   | Fastify `/v1` service (port 3000), the worker, CLIs: `platform/admin-cli`, `demo/cli`, `transfer/cli`, storage |
-| `apps/web`                   | Next.js: public site, company workspace `(app)/…`, platform dashboard `platform/…` (port 3001)                 |
-| `apps/desktop`               | React + Vite SPA in Tauri v2, `staff` and `company` flavours (port 3002 in a browser)                          |
+| `apps/web`                   | Next.js: the public site only, nobody signs in there (P42) (port 3001)                                         |
+| `apps/desktop`               | React + Vite SPA in Tauri v2: the company's office app, and the staff app with the staff dashboard (port 3002) |
 | `apps/mobile`                | Expo Router, SQLCipher database, queued sync; one build per company                                            |
 | `apps/forms-ai`              | Integr8 Forms for AI: offline MCP server and installer for AI tools writing `.integr8form` files               |
 | `apps/dev-mcp`               | Developer MCP server: test companies on a running API, plus every Forms for AI tool                            |
@@ -55,6 +56,7 @@ ESLint flat config, Prettier. Every dependency is pinned to an exact version
 | `packages/tokens`            | Design tokens, themes, brand accent, self-hosted fonts                                                         |
 | `packages/document-render`   | Printable documents (PDF templates and business PDFs)                                                          |
 | `packages/eta`               | Egyptian Tax Authority e-invoicing: canonical form, documents, client                                          |
+| `packages/releases`          | The apps' GitHub releases: the desktop update feed and downloads, for the public site and the API (P42)        |
 
 Apps never import from each other, with one exception: `apps/dev-mcp` (never
 shipped) imports `@integr8/forms-ai/tools`. Shared domain types live only in
@@ -103,17 +105,17 @@ Each outside service sits behind an interface with a recording stand-in, chosen
 by a setting, and `apps/api/src/config.ts` refuses to start production on a
 stand-in or a half-configured switch.
 
-| Setting            | Values (default first)                                       | Real service                            |
-| ------------------ | ------------------------------------------------------------ | --------------------------------------- |
-| `MEDIA_STORAGE`    | `local`, `r2`                                                | Cloudflare R2, a bucket per company     |
-| `EMAIL_SENDER`     | `recording`, `resend`                                        | Resend                                  |
-| `PUSH_SENDER`      | `recording`, `expo`                                          | Expo push                               |
-| `GEOCODER`         | `fake`, `mapbox`                                             | Mapbox geocoding                        |
-| `BILLING_PROVIDER` | `recording`, `none`, `stripe`                                | Stripe (or invoiced only)               |
-| `PDF_RENDERER`     | `chromium`, `recording`                                      | Chromium in the API image               |
-| `AI_PROVIDER`      | `none`, `recording`, `groq`, `gemini`, `anthropic`, `openai` | The chosen model provider               |
-| `APP_BUILDS`       | `off`, `github`                                              | GitHub Actions company builds           |
-| Identity           | `FakeIdentityProvider` in tests only                         | The self-hosted Supabase Auth container |
+| Setting         | Values (default first)                                       | Real service                            |
+| --------------- | ------------------------------------------------------------ | --------------------------------------- |
+| `MEDIA_STORAGE` | `local`, `r2`                                                | Cloudflare R2, a bucket per company     |
+| `EMAIL_SENDER`  | `recording`, `resend`                                        | Resend                                  |
+| `PUSH_SENDER`   | `recording`, `expo`                                          | Expo push                               |
+| `GEOCODER`      | `fake`, `mapbox`                                             | Mapbox geocoding                        |
+| `APP_RELEASES`  | `off`, `github`                                              | GitHub releases of the apps             |
+| `PDF_RENDERER`  | `chromium`, `recording`                                      | Chromium in the API image               |
+| `AI_PROVIDER`   | `none`, `recording`, `groq`, `gemini`, `anthropic`, `openai` | The chosen model provider               |
+| `APP_BUILDS`    | `off`, `github`                                              | GitHub Actions company builds           |
+| Identity        | `FakeIdentityProvider` in tests only                         | The self-hosted Supabase Auth container |
 
 Test companies never reach the real mail or push service: their messages go to
 `test_outbox` whatever the setting says.

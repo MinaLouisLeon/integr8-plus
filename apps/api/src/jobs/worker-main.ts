@@ -5,9 +5,7 @@ import { createLogger } from '../http/logger.js';
 import { flushSentry, initialiseSentry } from '../observability/sentry.js';
 import { runMediaMaintenance } from '../media/maintenance.js';
 import { runMetering } from '../media/metering.js';
-import { runDunning } from '../billing/dunning.js';
 import { runAiReconciliation } from '../ai/reconcile.js';
-import { runSignupExpiry } from '../signup/expire.js';
 import { runQualificationExpiry } from '../qualifications/expiry.js';
 import {
   runDeadlineAlerts,
@@ -151,40 +149,6 @@ async function main(): Promise<void> {
                 failures: metered.failures.length,
               });
             }
-          },
-        },
-        {
-          // Dunning (P17). Same timer, same turn-claiming. It only ever refuses
-          // writes and posts banners — nothing in it deletes a customer's data.
-          name: 'Dunning',
-          run: async () => {
-            const dunned = await runDunning({
-              config,
-              logger,
-              workerId: worker.id,
-              email: services.email,
-            });
-            if (
-              dunned.trialsEnded > 0 ||
-              dunned.remindersPosted > 0 ||
-              dunned.madeReadOnly > 0 ||
-              dunned.failures.length > 0
-            ) {
-              logger.info('Dunning finished', {
-                trialsEnded: dunned.trialsEnded,
-                remindersPosted: dunned.remindersPosted,
-                madeReadOnly: dunned.madeReadOnly,
-                failures: dunned.failures.length,
-              });
-            }
-          },
-        },
-        {
-          // Signups nobody verified (P18). Nothing was created for them, so
-          // this only closes live tokens.
-          name: 'Signup expiry',
-          run: async () => {
-            await runSignupExpiry({ logger, workerId: worker.id });
           },
         },
         {

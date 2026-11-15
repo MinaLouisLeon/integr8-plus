@@ -68,6 +68,11 @@ jobs:
       - name: Build
         run: pnpm build
 
+      # A company's desktop build must carry none of the staff app (P42): the
+      # dashboard and staff sign-in load lazily behind the build's flavour.
+      - name: Company desktop builds carry no staff code
+        run: pnpm --filter @integr8/desktop check:company-bundle
+
       # The published contract is generated from the route registry and
       # committed, so a spec change is a diff in review. This fails if the two
       # have drifted — which is the only way three generated clients can quietly

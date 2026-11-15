@@ -11,15 +11,16 @@ removed in one commit, and `git log -- docs plan` brings any of it back.
 A multi-tenant field-operations and business platform that Integr8 sells to
 service companies (maintenance, installation, inspection), mainly in Egypt (EGP,
 Egyptian payroll, Egyptian Tax Authority e-invoicing), in English and Arabic
-(right to left). Integr8 staff onboard every company from the platform
-dashboard; there is no public sign-up unless `PUBLIC_SIGNUP` is switched on.
+(right to left). Integr8 staff onboard every company from the staff desktop app,
+and invoice it; there is no public sign-up. Since P42 there is no web workspace:
+the office works in its company's own desktop app.
 
-| Who                          | Uses                                                 | To                                                                    |
-| ---------------------------- | ---------------------------------------------------- | --------------------------------------------------------------------- |
-| Integr8 staff (super admins) | The web platform dashboard and the staff desktop app | Run companies, plans and billing; build each company's forms and look |
-| A company's office           | The web app, or the company's own desktop app        | Customers, jobs, dispatch, forms, and the business modules they have  |
-| A company's engineers        | The company's own phone app, which works offline     | Their jobs, forms, photos, parts, expenses and timesheets             |
-| A company's customers        | Links the company sends (quotes, shared documents)   | Accept a quote, open a certificate                                    |
+| Who                          | Uses                                             | To                                                                    |
+| ---------------------------- | ------------------------------------------------ | --------------------------------------------------------------------- |
+| Integr8 staff (super admins) | The staff desktop app                            | Run companies, plans and billing; build each company's forms and look |
+| A company's office           | The company's own desktop app                    | Customers, jobs, dispatch, forms, and the business modules they have  |
+| A company's engineers        | The company's own phone app, which works offline | Their jobs, forms, photos, parts, expenses and timesheets             |
+| A company's customers        | Links the company sends, on the public site      | Accept a quote, open a certificate                                    |
 
 ## The pages
 

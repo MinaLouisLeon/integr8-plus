@@ -59,7 +59,6 @@ export {
   TABBED_MODULES,
   tabChoice,
   type PhoneScreen,
-  type NavApp,
   type NavGroup,
   type NavIcon,
   type NavPath,

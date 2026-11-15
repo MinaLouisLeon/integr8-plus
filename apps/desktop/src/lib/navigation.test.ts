@@ -10,14 +10,9 @@ import { desktopNavigation, NAV_ROUTES, routeChrome, sectionPathFor } from './na
  */
 
 describe('mapping the shared menu onto hash routes', () => {
-  it('gives every desktop section a route and no web-only section one', () => {
+  it('gives every section a route (P42: there is no web workspace to send one to)', () => {
     for (const section of NAV_SECTIONS) {
-      const route = NAV_ROUTES[section.path];
-      if (section.webOnly === true) {
-        expect(route, section.key).toBeNull();
-      } else {
-        expect(route, section.key).toMatch(/^\/[a-z-/]+$/u);
-      }
+      expect(NAV_ROUTES[section.path], section.key).toMatch(/^\/[a-z-/]+$/u);
     }
   });
 
@@ -26,7 +21,8 @@ describe('mapping the shared menu onto hash routes', () => {
     const keys = everything.flatMap((group) => group.sections.map((section) => section.key));
     expect(keys).toContain('branding');
     expect(keys).toContain('forms');
-    expect(keys).not.toContain('billing');
+    expect(keys).toContain('billing');
+    expect(keys).toContain('people');
     // Integr8's e-invoicing switch is there whether or not the module is on:
     // it is how the module is turned on.
     expect(keys).toContain('eInvoicingSwitch');
@@ -34,7 +30,7 @@ describe('mapping the shared menu onto hash routes', () => {
 
     const bare = desktopNavigation([]);
     const bareKeys = bare.flatMap((group) => group.sections.map((section) => section.key));
-    expect(bareKeys).toEqual(['dashboard', 'workOrders', 'jobTypes']);
+    expect(bareKeys).toEqual(['dashboard', 'workOrders', 'jobTypes', 'getStarted']);
     expect(bare.find((group) => group.group === 'setup')?.sections.map((s) => s.to)).toEqual([
       '/settings/job-types',
     ]);

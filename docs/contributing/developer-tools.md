@@ -15,7 +15,7 @@ rules, PDF previews through the computer's Chrome, Edge or Chromium
 (`INTEGR8_FORMS_BROWSER` to name one), and a live preview window. It never makes a
 network request (`offline.test.ts` proves it).
 
-**For staff.** Download it from the dashboard's **Downloads** page (Windows,
+**For staff.** Download it from the staff desktop app's **Downloads** page (Windows,
 macOS Apple silicon or Intel, Linux; one Node single-executable of about 130 MB,
 unsigned: Windows "More info → Run anyway", macOS `chmod +x` then right-click →
 Open, Linux `chmod +x`). Double-clicked it opens a terminal installer that copies
@@ -72,7 +72,7 @@ companies there are made by the seeder on the machine.
 | Tools                                                                    | Do                                                                                                                               |
 | ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
 | `status`, `list_test_companies`, `create_test_company`, `use_company`    | Which API and session; pick or make a test company (local mode)                                                                  |
-| `find_route`, `get_route`, `call_api`, `get_trace`                       | Search the OpenAPI document (with who may call each route); call as a member; read the trace                                     |
+| `find_route`, `get_route`, `call_api`, `get_trace`                       | Search the OpenAPI document (with who may call each route); call as a member, or as a visitor for a public route; read the trace |
 | `get_audit`, `read_outbox`                                               | What a call changed; the mail and push the company would have sent                                                               |
 | `import_form_package`, `submit_form`                                     | Put a `.integr8form` into the company (publish optional; refuses anything but a `.integr8form` ZIP); fill and submit as a member |
 | `list_change_requests`, `get_change_request`, `hand_over_change_request` | Read `plan/requests/`; copy a recorded request there and add its row                                                             |

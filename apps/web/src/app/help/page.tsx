@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react';
 import { GetStartedLink, MarketingShell, PageIntro } from '~/components/marketing-shell';
 import { Magnetic } from '~/components/site/motion';
 import { helpArticlesFor, type HelpArticle } from '~/lib/help-articles';
-import { contactEmail } from '~/lib/signup';
+import { contactEmail } from '~/lib/contact';
 
 /**
  * The help centre (P18), in the Integr8 Media look (Low 3).

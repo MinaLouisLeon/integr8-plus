@@ -5,7 +5,7 @@ replaces the phase files written before 2.0.0 (P01–P41, in git history before
 the 2.0.0 docs commit). What is built is described in [`docs/`](../docs/README.md);
 this file holds only what is **not finished**: work in progress, the owner's
 open decisions and steps, and the phases not started. Phase numbers carry on
-from the old plan, so the next new phase is **P42**.
+from the old plan; P42 is the last used, so the next new phase is **P43**.
 
 ## What 2.0.0 is
 
@@ -18,6 +18,19 @@ servers (`transfer`). All data before 2.0.0 was test data, so a 1.x database is
 created again rather than upgraded.
 
 ## In progress
+
+### P42 Desktop only
+
+[P42](./2.1.0/P42-desktop-only.md): companies and staff work only in the desktop
+apps; `apps/web` is the public site. Built 2026-11-15 with the owner's six
+decisions (D1–D6), migration 0020 and setup guide Stage 11 part AL. Left:
+
+- [ ] The owner clicks through the staff app and a company's app in real Tauri
+      builds on Windows (and macOS), and signs a new person in through an
+      invitation.
+- [ ] On the machine: Stage 11 part AL (settings, `APP_RELEASES=github` with the
+      releases token, install the new staff app, build each company's app before
+      inviting).
 
 ### P40 Form actions
 
@@ -33,7 +46,7 @@ claim's submission for deciders.
 **Not built:**
 
 - [ ] The builder's Actions tab, and the screens that show a submission's
-      actions and next forms (web, desktop).
+      actions and next forms (desktop).
 - [ ] The phone's next-form button, and its "Update the app" gate (left out until
       a phone release reads follow-ups).
 - [ ] Forms for AI: the format guide, checks and examples for actions.
@@ -67,8 +80,8 @@ each is small to change.
 
 - [ ] The test-box run of the self-hosted Auth container end to end.
 - [ ] The demo seeder against the real Auth container (only the test fake so far).
-- [ ] Accepting an invitation inside the desktop or phone app (today the email
-      link opens the web page).
+- [ ] Accepting an invitation inside the desktop or phone app (the email link
+      opens the public site's page, which then sends the person to the apps).
 
 ## Owner steps
 
@@ -82,6 +95,9 @@ For 2.0.0, on each machine (setup guide Stage 11 part AJ):
 
 Still open from earlier releases:
 
+- [ ] The guide on GitHub Pages: Settings → Pages → Source "GitHub Actions"; the
+      `GUIDE_USERNAME` and `GUIDE_PASSWORD` secrets; once this reaches `main`, run
+      "Setup guide on Pages" ([deployment](../docs/deployment/README.md)).
 - [ ] Run `sh deploy/vps/check-env.sh` and replace every value it names.
 - [ ] `INTEGR8_PLATFORM_PASSWORD` and `DATABASE_URL_PLATFORM` in `deploy/.env`; the
       Caddyfile blocks; the heartbeat monitor and `HEALTH_PING_URL`, then delete
@@ -140,7 +156,7 @@ A phase is a file `plan/<version>/P<nn>-<slug>.md` with: **Goal**; **Scope** (in
 and out); **Where things stand** (with evidence); **Design** by area;
 **Decisions for the owner** (each a question with options and one
 recommendation); **Tasks** in commit order (`feat(db)` → `feat(api)` →
-`feat(web)`/`feat(desktop)` → `feat(mobile)` → `feat(forms-ai)` → `docs`);
+`feat(desktop)` (`feat(web)` only for the public site) → `feat(mobile)` → `feat(forms-ai)` → `docs`);
 **Exit criteria**, each testable; and a status: `PROPOSED — waiting for the
 owner`, `IN PROGRESS`, `BLOCKED` (with the reason) or `COMPLETED — YYYY-MM-DD`.
 Add it to this file. A phase is complete when every exit criterion is verifiably

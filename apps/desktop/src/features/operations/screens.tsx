@@ -67,6 +67,7 @@ import {
   DocumentScreen,
   AssistantScreen,
   AssetScreen,
+  AssetTagOpener,
   InvoiceListScreen,
   InvoiceScreen,
   PaymentListScreen,
@@ -107,7 +108,7 @@ import { desktopVoiceInput } from '~/lib/voice';
  * app. The screens are shared with the web app (`@integr8/operations-dom`); the
  * desktop app supplies its keychain-backed session client and hash routes.
  */
-function OperationsScreens({ children }: { children: ReactNode }) {
+export function OperationsScreens({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const { i18n } = useTranslation();
   const menu = useContextMenu();
@@ -118,11 +119,13 @@ function OperationsScreens({ children }: { children: ReactNode }) {
       navigate: (to, options) => void navigate(to, { replace: options?.replace === true }),
       paths: {
         // The assistant, and where its citations may point here (docs/ai;
-        // ADR-0001). People, company settings and billing are web-only, so a
-        // citation to them shows without a link.
+        // ADR-0001).
         assistant: '/assistant',
         submissions: '/submissions',
         forms: '/forms',
+        people: '/settings/people',
+        companySettings: '/settings/company',
+        billing: '/billing',
         workOrders: '/work-orders',
         newWorkOrder: (options) =>
           options?.customerId === undefined
@@ -800,6 +803,19 @@ export function AssetRoute() {
   return (
     <OperationsScreens>
       <AssetScreen key={assetId} assetId={assetId} />
+    </OperationsScreens>
+  );
+}
+
+/**
+ * An asset by its printed tag (P42, D5): a tag code typed, or a tag's address
+ * pasted from its QR code. The Assets list's search finds a tag code too.
+ */
+export function AssetTagRoute() {
+  const { code = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <AssetTagOpener key={code} code={code} />
     </OperationsScreens>
   );
 }

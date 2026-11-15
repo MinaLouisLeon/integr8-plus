@@ -175,7 +175,7 @@ async function main(argv: string[]): Promise<number> {
             `  Secret:    ${enrolment.secret}`,
             `  URI:       ${enrolment.uri}`,
             '',
-            `Sign in at ${config.WEB_APP_URL ?? '<WEB_APP_URL>'}/platform/sign-in.`,
+            'Sign in with them in the Integr8 Plus Staff desktop app (the Downloads list in it, or ask whoever runs the server for the installer).',
           ].join('\n'),
         );
         return 0;
@@ -259,8 +259,8 @@ async function main(argv: string[]): Promise<number> {
               ? `Created a sign-in for ${address}.`
               : `Set a new password for ${address}; ${String(signedOut)} device(s) signed out.`,
             '',
-            'Shown once. Send it privately; they sign in with it at',
-            `${config.WEB_APP_URL ?? '<WEB_APP_URL>'}/sign-in, then choose Change password.`,
+            "Shown once. Send it privately; they sign in with it in their company's desktop",
+            'or phone app, then choose Change password.',
             '',
             `  Password:  ${password}`,
             '',

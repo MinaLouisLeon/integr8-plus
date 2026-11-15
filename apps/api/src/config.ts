@@ -189,28 +189,6 @@ export const apiConfigSchema = z.object({
   // Billing (P17)
   // -------------------------------------------------------------------------
 
-  /**
-   * Who takes the money. `none` takes no card payments: Integr8 invoices every
-   * company directly and sets its plan from the dashboard, and no provider
-   * keys are needed (the production default in deploy/.env.example). `stripe`
-   * takes cards; `recording` keeps the requests in memory so every other part
-   * of billing — entitlements, dunning, read-only — works with no account
-   * anywhere. Production refuses `recording`, and `stripe` with test keys.
-   */
-  BILLING_PROVIDER: z.enum(['none', 'recording', 'stripe']).default('recording'),
-  /** Stripe's secret key. Server-side only; it can charge cards. */
-  STRIPE_SECRET_KEY: z.string().optional(),
-  /**
-   * The signing secret for this deployment's webhook endpoint.
-   *
-   * Per endpoint, not per account: a staging secret must not verify a
-   * production delivery, because the two would then be able to move each
-   * other's companies onto paid plans.
-   */
-  STRIPE_WEBHOOK_SECRET: z.string().optional(),
-  /** Where a finished checkout sends the browser back to. */
-  BILLING_RETURN_URL: z.url().optional(),
-
   // -------------------------------------------------------------------------
   // Email (P18)
   // -------------------------------------------------------------------------
@@ -220,35 +198,14 @@ export const apiConfigSchema = z.object({
    *
    * `recording` keeps what would have been sent, for development and tests;
    * `resend` sends it. Production refuses `recording`, because the features
-   * that depend on this — an invitation, a signup confirmation, a warning that
-   * an account is about to go read-only — fail silently without it rather than
-   * loudly.
+   * that depend on this — an invitation, a reminder — fail silently without it
+   * rather than loudly.
    */
   EMAIL_SENDER: z.enum(['recording', 'resend']).default('recording'),
   /** Resend's API key. A secret: it can send mail as this domain. */
   RESEND_API_KEY: z.string().optional(),
   /** `Name <address@domain>`. The domain has to be verified at the provider. */
   EMAIL_FROM: z.string().optional(),
-  /** How long a new company may use the product before paying. */
-  BILLING_TRIAL_DAYS: positiveInt(14),
-  /**
-   * How long a company whose payment failed keeps working before the account
-   * goes read-only. Long enough for somebody to come back from a week away and
-   * fix a card that expired while they were gone.
-   */
-  BILLING_GRACE_DAYS: positiveInt(14),
-
-  /**
-   * Whether a stranger may make their own company (P18's self-serve signup).
-   *
-   * `off`, the default: companies are set up by Integr8 from the platform
-   * dashboard, which builds their forms and job types with them, and
-   * `/v1/signup`, `/verify` and `/resend` answer 403 `signup_closed`. `open`
-   * turns the public flow back on. The web app has its own copy of this switch
-   * (`NEXT_PUBLIC_SIGNUP`), baked into its bundle, so the pages say the same.
-   */
-  PUBLIC_SIGNUP: z.enum(['off', 'open']).default('off'),
-
   /**
    * The bearer token the release pipeline presents to `GET /v1/build/companies`
    * to learn which companies' apps to build. Unset means the route answers
@@ -280,6 +237,27 @@ export const apiConfigSchema = z.object({
   ),
   /** The branch whose copy of the workflow runs. */
   GITHUB_BUILD_REF: blankIsUnset(z.string().min(1).default('main')),
+  /**
+   * Where the apps' releases are read from (P42): the staff app's Downloads
+   * list, and whether a company's own desktop app has been built, which an
+   * owner's invitation waits for. `off`, the default outside production: no
+   * releases are read, the Downloads list is empty and invitations do not
+   * wait. `github` reads them from `GITHUB_RELEASES_REPOSITORY`, as the public
+   * site's update feed does. Production refuses `off`.
+   */
+  APP_RELEASES: blankIsUnset(z.enum(['off', 'github']).default('off')),
+  /** `owner/name` of the repository whose releases hold the apps. */
+  GITHUB_RELEASES_REPOSITORY: blankIsUnset(
+    z
+      .string()
+      .regex(/^[\w.-]+\/[\w.-]+$/u)
+      .optional(),
+  ),
+  /**
+   * A fine-grained token with "Contents: read" on that repository, needed while
+   * it is private (it is). A secret. The public site holds the same value.
+   */
+  GITHUB_RELEASES_TOKEN: blankIsUnset(z.string().optional()),
 
   // -------------------------------------------------------------------------
   // The AI assistant (docs/ai; ADR-0001)
@@ -682,7 +660,7 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   }
   if (result.success) {
     const billing = [
-      ...billingProblems(result.data),
+      ...releaseProblems(result.data),
       ...emailProblems(result.data),
       ...appBuildProblems(result.data),
     ];
@@ -765,7 +743,6 @@ export function startupWarnings(config: ApiConfig, env: NodeJS.ProcessEnv = proc
  * silently rather than loudly — which is exactly the kind of thing that is
  * discovered during the incident it would have helped with.
  */
-/** Stripe needs both halves: a key to charge with and a secret to verify with. */
 /**
  * What is missing for the configured email sender, if anything.
  *
@@ -891,42 +868,17 @@ export function aiProblems(config: ApiConfig): string[] {
 }
 
 /**
- * Stripe test keys in production: checkouts would succeed against Stripe's
- * test mode, companies would be marked paid, and no money would move. A
- * restricted key (`rk_`) counts as well as a secret one; a publishable key
- * (`pk_`) cannot do the API's work at all. Webhook signing secrets look the
- * same in both modes, so they cannot be checked here.
+ * What is missing for reading the apps' releases, if anything (P42). Checked
+ * at load: an invitation gate that cannot see the releases would refuse every
+ * owner, or wave every one through.
  */
-export function stripeKeyProblems(config: ApiConfig): string[] {
-  if (config.BILLING_PROVIDER !== 'stripe' || config.STRIPE_SECRET_KEY === undefined) {
+export function releaseProblems(config: ApiConfig): string[] {
+  if (config.APP_RELEASES !== 'github') {
     return [];
   }
-  const key = config.STRIPE_SECRET_KEY;
-  if (/^(sk|rk)_test_/u.test(key)) {
-    return [
-      'STRIPE_SECRET_KEY is a test-mode key (sk_test_): no card would really be charged. Use the live key, or BILLING_PROVIDER=none.',
-    ];
-  }
-  if (key.startsWith('pk_')) {
-    return ['STRIPE_SECRET_KEY is a publishable key (pk_): use the secret key (sk_live_).'];
-  }
-  return [];
-}
-
-export function billingProblems(config: ApiConfig): string[] {
-  if (config.BILLING_PROVIDER !== 'stripe') {
-    return [];
-  }
-  const missing: string[] = [];
-  if (config.STRIPE_SECRET_KEY === undefined) {
-    missing.push('STRIPE_SECRET_KEY');
-  }
-  if (config.STRIPE_WEBHOOK_SECRET === undefined) {
-    missing.push('STRIPE_WEBHOOK_SECRET');
-  }
-  return missing.length === 0
-    ? []
-    : [`BILLING_PROVIDER is stripe but ${missing.join(' and ')} not set.`];
+  return config.GITHUB_RELEASES_REPOSITORY === undefined
+    ? ['APP_RELEASES is github but GITHUB_RELEASES_REPOSITORY is not set.']
+    : [];
 }
 
 /**
@@ -986,16 +938,13 @@ export function assertProductionReady(
   if (config.PUSH_SENDER === 'recording') {
     problems.push('PUSH_SENDER is recording: no engineer would be told about a new job.');
   }
-  if (config.BILLING_PROVIDER === 'recording') {
+  if (config.APP_RELEASES === 'off') {
     problems.push(
-      'BILLING_PROVIDER is recording: nobody could pay, and nothing would be charged. Use none if Integr8 invoices every company, or stripe.',
+      "APP_RELEASES is off: the staff app could not list its downloads, and an owner could be invited before their company's desktop app exists.",
     );
   }
-  problems.push(...stripeKeyProblems(config));
   if (config.EMAIL_SENDER === 'recording') {
-    problems.push(
-      'EMAIL_SENDER is recording: no invitation, signup confirmation or payment warning would leave the building.',
-    );
+    problems.push('EMAIL_SENDER is recording: no invitation or reminder would leave the building.');
   }
   if (config.WEB_APP_URL === undefined) {
     problems.push(

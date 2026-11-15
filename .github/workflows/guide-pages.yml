@@ -1,0 +1,65 @@
+# The setup guide on GitHub Pages, behind a username and password.
+#
+# GitHub Pages has no sign-in, so scripts/guide/build-site.mjs encrypts the
+# guide with the GUIDE_USERNAME and GUIDE_PASSWORD repository secrets and
+# publishes only the ciphertext and a sign-in form; the browser decrypts it.
+# The credentials never enter the repository. Runs when the guide reaches
+# main (the release path), or by hand from the Actions tab.
+#
+# Needs once, in the repository settings: Pages → Source "GitHub Actions", and
+# the two secrets under Secrets and variables → Actions.
+name: Setup guide on Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - docs/deployment/setup-checklist.html
+      - docs/deployment/setup-checklist.css
+      - docs/deployment/setup-checklist.js
+      - scripts/guide/build-site.mjs
+      - .github/workflows/guide-pages.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: guide-pages
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Build and publish the protected guide
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      - name: Check the guide
+        run: node scripts/guide/check.mjs
+
+      - name: Encrypt the guide
+        env:
+          GUIDE_USERNAME: ${{ secrets.GUIDE_USERNAME }}
+          GUIDE_PASSWORD: ${{ secrets.GUIDE_PASSWORD }}
+        run: node scripts/guide/build-site.mjs dist/guide-site
+
+      - name: Upload the site
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist/guide-site
+
+      - name: Publish
+        id: deploy
+        uses: actions/deploy-pages@v4

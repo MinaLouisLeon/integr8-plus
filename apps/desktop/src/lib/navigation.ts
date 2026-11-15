@@ -15,8 +15,8 @@ import {
  * row and the top bar can offer the way back from a detail screen.
  */
 
-/** Where each section lives in this app. Web-only sections have no home here. */
-export const NAV_ROUTES: Readonly<Record<NavPath, string | null>> = {
+/** Where each section lives in this app: every one, since the web workspace went (P42). */
+export const NAV_ROUTES: Readonly<Record<NavPath, string>> = {
   dashboard: '/dashboard',
   assistant: '/assistant',
   forms: '/forms',
@@ -34,13 +34,13 @@ export const NAV_ROUTES: Readonly<Record<NavPath, string | null>> = {
   jobTypes: '/settings/job-types',
   branding: '/settings/branding',
   eInvoicingSwitch: '/settings/e-invoicing',
-  getStarted: null,
-  people: null,
+  getStarted: '/get-started',
+  people: '/settings/people',
   companyRoles: '/settings/roles',
-  companySettings: null,
-  websiteAccess: null,
-  storage: null,
-  billing: null,
+  companySettings: '/settings/company',
+  websiteAccess: '/settings/website-access',
+  storage: '/storage',
+  billing: '/billing',
   crm: '/crm',
   leads: '/crm/leads',
   opportunities: '/crm/opportunities',
@@ -108,21 +108,16 @@ export function desktopNavigation(
    */
   options?: { assistant?: boolean | undefined; hidden?: readonly string[] | undefined },
 ): DesktopNavGroup[] {
-  return visibleNavigation('desktop', permissions, features, options)
-    .map(({ group, sections }) => ({
-      group,
-      sections: sections.flatMap((section) => {
-        const to = NAV_ROUTES[section.path];
-        return to === null ? [] : [{ ...section, to }];
-      }),
-    }))
-    .filter((entry) => entry.sections.length > 0);
+  return visibleNavigation(permissions, features, options).map(({ group, sections }) => ({
+    group,
+    sections: sections.map((section) => ({ ...section, to: NAV_ROUTES[section.path] })),
+  }));
 }
 
 const ROOTS: readonly { path: NavPath; root: string }[] = (
-  Object.entries(NAV_ROUTES) as [NavPath, string | null][]
+  Object.entries(NAV_ROUTES) as [NavPath, string][]
 )
-  .flatMap(([path, root]) => (root === null ? [] : [{ path, root }]))
+  .map(([path, root]) => ({ path, root }))
   // Longest first, so `/settings/job-types` is found before any shorter root
   // that might one day share its prefix.
   .sort((a, b) => b.root.length - a.root.length);
@@ -162,13 +157,13 @@ export function routeChrome(pathname: string): RouteChrome {
     if (clean.startsWith('/settings/')) {
       return {
         section: undefined,
-        back: { to: NAV_ROUTES.dashboard ?? '/', section: 'dashboard' },
+        back: { to: NAV_ROUTES.dashboard, section: 'dashboard' },
       };
     }
     return { section: undefined, back: undefined };
   }
   const root = NAV_ROUTES[section];
-  if (root === null || clean === root) {
+  if (clean === root) {
     return { section, back: undefined };
   }
   // The form builder and a published version carry their own way back, in

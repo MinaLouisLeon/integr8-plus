@@ -69,10 +69,18 @@ export function Spinner({ label }: { label: string }) {
 export interface FieldProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string;
   error?: string | undefined;
+  /** A line under the box saying what it takes. */
+  hint?: string | undefined;
 }
 
-export function Field({ label, error, ...rest }: FieldProps) {
+export function Field({ label, error, hint, ...rest }: FieldProps) {
   const id = useId();
+  const describedBy = [
+    error === undefined ? null : `${id}-error`,
+    hint === undefined ? null : `${id}-hint`,
+  ]
+    .filter((value): value is string => value !== null)
+    .join(' ');
 
   return (
     <div className="flex flex-col gap-1">
@@ -83,12 +91,18 @@ export function Field({ label, error, ...rest }: FieldProps) {
         id={id}
         {...rest}
         aria-invalid={error !== undefined}
-        aria-describedby={error === undefined ? undefined : `${id}-error`}
+        aria-describedby={describedBy === '' ? undefined : describedBy}
         className={[
           'rounded-md border bg-surface px-3 py-2 text-start text-sm text-content',
           error === undefined ? 'border-border-subtle' : 'border-danger',
+          rest.className ?? '',
         ].join(' ')}
       />
+      {hint === undefined ? null : (
+        <p id={`${id}-hint`} className="text-xs text-content-muted">
+          {hint}
+        </p>
+      )}
       {error === undefined ? null : (
         <p id={`${id}-error`} role="alert" className="text-xs text-danger">
           {error}

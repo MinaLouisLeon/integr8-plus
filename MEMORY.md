@@ -25,8 +25,8 @@ the end of any piece of work that changes one of them, and date each section.
   source: the phone (`app.config.ts`) and the web build (`next.config.ts`) read it, and
   `apps/api/src/app-info.ts` has a copy a test keeps equal. A version bump must also change
   every place listed under "Places that state the version".
-- **Migrations (2.0.0):** a new baseline, **0001_foundation … 0019_assistant**, one per module (P41); the
-  next one is **0020**. A 1.x database is refused (`before-baseline`) and is created again (setup guide
+- **Migrations (2.0.0):** a new baseline, **0001_foundation … 0019_assistant**, one per module (P41),
+  then **0020_desktop_only** (P42, unreleased, branch `ccr-982c2137-h4as2m`); the next one is **0021**. A 1.x database is refused (`before-baseline`) and is created again (setup guide
   Stage 11 part AJ). **Before 2.0.0** (history): `packages/db/migrations` reached **0079** (0079 `form_actions`, P40, unreleased,
   branch `ccr-916cc1b1-6sp5my`; 0078 `accountant_role`, unreleased, merged into `dev` in PR #188; 0077 `test_companies`, P38, unreleased, branch
   `ccr-56fb45d1-5mq6bt`). Before that it reached **0076** (0075 merged into `dev`, released
@@ -53,7 +53,7 @@ the end of any piece of work that changes one of them, and date each section.
 - **Plan (2026-11-15):** the phase files P01–P41 were removed with the old docs; `plan/README.md`
   now lists only what is unfinished: P40 (form actions; server side built, screens, phone, Forms
   for AI and the owner's six decisions open), the tooling and sign-in runs still to do, the owner's
-  steps, and the phases not started (P20, P21, P28–P31, P33–P35). The next new phase is P42.
+  steps, and the phases not started (P20, P21, P28–P31, P33–P35). P42 (desktop only) is in progress; the next new phase is P43.
 - **P36 self-hosted sign-in**: merged into
   `main` in PRs #130 and #135; CI's database job, real Auth included, is green. Auth container in
   `deploy/compose.yml` (`supabase/auth:v2.197.0`, private ports, memory caps), bootstrap's
@@ -88,7 +88,18 @@ the end of any piece of work that changes one of them, and date each section.
   republish it from `setup-checklist.html` whenever the guide changes. **2026-11-04:** the owner
   asked for a short steps-only checklist instead (no per-release sections), in the Integr8 Media
   look: https://claude.ai/artifact/KrY8XQBYC5ehzjG7DU4khX, a hand-written page (not generated
-  from the repository guide); update it when a setup or update step changes.
+  from the repository guide); update it when a setup or update step changes. **2026-11-15:** P42
+  changed the guide (staff app instead of `/platform`, no Stripe, Stage 11 part AL); neither
+  artifact has been republished yet.
+- **The guide on GitHub Pages (2026-11-15, branch `ccr-982c2137-h4as2m`), as the owner asked:**
+  `.github/workflows/guide-pages.yml` publishes `scripts/guide/build-site.mjs`'s output when the
+  guide reaches `main` or by hand: the guide encrypted (AES-GCM, PBKDF2 600 000 rounds) with the
+  `GUIDE_USERNAME`/`GUIDE_PASSWORD` repository secrets, decrypted in the browser. The owner chose
+  the credentials; they are not in the repository. To do once: Pages source "GitHub Actions", the
+  two secrets, then a run from `main`. GitHub's search API reported the repository **public** on
+  2026-11-15 (MEMORY said private since 2026-11-04), so the guide files are readable there anyway.
+- **Since P42** `app.integr8-media.com` is the public site only (no sign-in): `/download`, `/q`,
+  `/d`, `/a/<code>`, `/accept-invitation`, `/desktop-updates`, marketing, help, legal.
 
 ## Decisions
 
@@ -375,6 +386,28 @@ the end of any piece of work that changes one of them, and date each section.
   were, for the owner to decide: `full-description.md` (an Arabic business description of
   1.1.0), `new-idea.md`, `PROJECT_INDEX.md`/`.json`. The owner wants to discuss the desktop app
   against the phone app next.
+- **Desktop only, P42 (2026-11-15, unreleased, branch `ccr-982c2137-h4as2m`; migration 0020), as the
+  owner chose it (D1–D6 in the phase file):** no web workspace and no web dashboard. A company's
+  office works only in its own desktop app (Get started, People, Company roles, Company settings,
+  Website access, Storage and a read-only Billing came over; the desktop's separate assistant
+  settings screen folded into People and Company settings). Integr8 staff work only in the staff
+  desktop app, which now holds the whole dashboard (`apps/desktop/src/features/platform/`, loaded
+  lazily and left out of company builds, checked by `check:company-bundle` in CI): a memory-only
+  platform session (D2, sign in at every start), **Work inside this company** as the company or
+  **Act as this person** (D3), **Back to the dashboard** on the banner. `apps/web` is the public
+  site; a route-list test pins it. Self-serve sign-up, the funnel, Stripe, checkout, portal,
+  webhooks, dunning and the trial job are deleted with their tables and columns (D4). Reminder
+  emails name the screen instead of linking (D1). Printed asset tags lead to a public `/a/<code>`
+  page (D5, `GET /v1/public/asset-tags/:code`). **An invitation waits for the company's own desktop
+  app** (D6, not the recommendation): 409 `company_app_not_built` (503 `releases_unavailable`) from
+  the staff resend, onboarding's send, and the company's own invite and resend, unless it is a test
+  company or `APP_RELEASES=off`; `APP_RELEASES=github` reads `GITHUB_RELEASES_REPOSITORY` with
+  `GITHUB_RELEASES_TOKEN` through the new `@integr8/releases`, which also gives
+  `GET /v1/platform/downloads`. The AI channel `web` is gone (`ai_web_enabled` dropped); old `web`
+  sessions and staff count as desktop. Setup guide Stage 11 part AL. The developer MCP server's
+  `call_api` sends public routes (asset tags, quote and document links, accepting an invitation) as a
+  visitor with no sign-in; Forms for AI's guides name the staff and company desktop apps. Not checked: real Tauri
+  builds, and a real GitHub release lookup.
 - **The demo seeder goes through the API**, in-process with Fastify's `inject`, as the
   company's own people (plus a staff impersonation for staff-only setup). Direct inserts
   were rejected: they skip numbering, stock, ledger postings and audit, and produce data
@@ -396,6 +429,12 @@ Update them together at each release or new migration:
 - Released versions: `gh release list`. v1.2.1 (2026-10-27) carries migrations 0051–0053.
 
 ## Open items
+
+- **Owner steps for P42 (2026-11-15):** click through the staff app and a company's app in real
+  Tauri builds on Windows (and macOS) and sign a new person in through an invitation; on the
+  machine, setup guide Stage 11 part AL (delete the billing and sign-up settings, add
+  `APP_RELEASES=github` and the releases token, install the new staff app, build each company's
+  app before inviting); republish the two setup-guide artifacts.
 
 - **Owner steps for 2.0.0 (2026-11-14):** setup guide Stage 11 part AJ: `down -v`, `up -d --build`,
   create the super admins again, onboard or seed companies again, delete the old companies' R2
@@ -448,6 +487,11 @@ Update them together at each release or new migration:
 
 ## Gotchas
 
+- **Test companies' people can sign in only with the development desktop build** (P42): test
+  companies get no app builds, and the staff build has no company door. The developer MCP server
+  needs no sign-in. The staff dashboard in a browser: `VITE_APP_FLAVOR=staff pnpm --filter
+@integr8/desktop dev` (or no flavour for both doors), with the API's `API_CORS_ORIGINS`
+  including `http://localhost:3002`.
 - GitHub branch protection is **not** in force. The repository became **private** on
   2026-11-04 (rulesets on a private repository need a paid plan); none were ever applied. The `staging` branch exists again since
   2026-11-01, created on GitHub from `dev` at `812a550` (1.3.0 with the Dependabot updates);

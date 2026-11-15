@@ -583,7 +583,7 @@ function syncReport(
 }
 
 describe('what is failing quietly', () => {
-  it('shows a phone whose sync runs are in trouble, and the billing deliveries in the window', async () => {
+  it('shows a phone whose sync runs are in trouble', async () => {
     const engineer = await api.member('engineer', 'troubled-phone');
     await withTenant(api.tenantId, async (tx) => {
       // A clean run, then one that failed with work still waiting on the phone.
@@ -611,7 +611,6 @@ describe('what is failing quietly', () => {
     expect(response.statusCode, response.body).toBe(200);
     const body = JSON.parse(response.body) as {
       sync: { items: Record<string, unknown>[] };
-      webhooks: { received: number; applied: number; items: unknown[] };
       jobs: { deadLettered: number; retrying: number };
     };
 
@@ -625,7 +624,7 @@ describe('what is failing quietly', () => {
       lastOutcome: 'failed',
       appVersion: '1.2.0',
     });
-    expect(body.webhooks.received).toBeGreaterThanOrEqual(body.webhooks.applied);
+    expect(body).not.toHaveProperty('webhooks');
     expect(typeof body.jobs.deadLettered).toBe('number');
   });
 
@@ -657,8 +656,8 @@ async function bringPurgeForward(tenantId: string): Promise<void> {
   await platform.lifecycle.reschedule(tenantId, new Date(Date.now() - 1000));
 }
 
-describe('how a company pays', () => {
-  it('onboards an invoiced company active on its plan, with no trial', async () => {
+describe('how a company pays (P42: Integr8 invoices every company)', () => {
+  it('onboards a company active on its plan, with no trial', async () => {
     const name = slug();
     const response = await api.call(admin.accessToken, {
       method: 'POST',
@@ -668,15 +667,11 @@ describe('how a company pays', () => {
         name: 'Invoiced Ltd',
         plan: 'standard',
         seats: null,
-        billingMode: 'invoiced',
         ownerEmail: `owner@${name}.example`,
       },
     });
     expect(response.statusCode, response.body).toBe(201);
-    const { company } = JSON.parse(response.body) as {
-      company: { id: string; billingMode: string };
-    };
-    expect(company.billingMode).toBe('invoiced');
+    const { company } = JSON.parse(response.body) as { company: { id: string } };
 
     const detail = JSON.parse(
       (
@@ -689,60 +684,47 @@ describe('how a company pays', () => {
     expect(detail.billing).toMatchObject({ status: 'active', plan: 'standard', trialEndsAt: null });
   });
 
-  it('lets the dashboard switch a company to invoiced, which the company sees and the checkout honours', async () => {
+  it('lets staff change the plan, which the company sees on its billing screen', async () => {
     const owner = await api.member('owner', 'paying-owner');
     const token = await api.signIn(owner);
 
-    const switched = await api.call(admin.accessToken, {
+    const changed = await api.call(admin.accessToken, {
       method: 'PATCH',
       url: `/v1/platform/companies/${api.tenantId}/plan`,
-      payload: { plan: 'standard', seats: 40, billingMode: 'invoiced' },
+      payload: { plan: 'standard', seats: 40 },
     });
-    expect(switched.statusCode, switched.body).toBe(200);
-    expect((JSON.parse(switched.body) as { billingMode: string }).billingMode).toBe('invoiced');
+    expect(changed.statusCode, changed.body).toBe(200);
 
-    // The company's own billing screen reads the plan the dashboard set, not
-    // the one the provider last mentioned, and says who is billing them.
     const seen = JSON.parse(
       (await api.call(token, { method: 'GET', url: '/v1/billing/subscription' })).body,
-    ) as { billingMode: string; plan: string; status: string; trialEndsAt: string | null };
-    expect(seen).toMatchObject({
-      billingMode: 'invoiced',
-      plan: 'standard',
-      status: 'active',
-      trialEndsAt: null,
-    });
+    ) as { plan: string; status: string; trialEndsAt: string | null };
+    expect(seen).toMatchObject({ plan: 'standard', status: 'active', trialEndsAt: null });
+    expect(seen).not.toHaveProperty('billingMode');
 
-    // There is no card to take and no portal to open.
-    for (const url of ['/v1/billing/checkout', '/v1/billing/portal']) {
-      const refused = await api.call(token, {
-        method: 'POST',
-        url,
-        payload: url.endsWith('checkout') ? { plan: 'starter', interval: 'month' } : {},
-      });
-      expect(refused.statusCode, `${url}: ${refused.body}`).toBe(409);
-      expect((JSON.parse(refused.body) as { error: { code: string } }).error.code).toBe(
-        'billing_invoiced',
-      );
+    // Nothing in the app takes a card any more.
+    for (const url of ['/v1/billing/checkout', '/v1/billing/portal', '/v1/billing/webhook']) {
+      const gone = await api.call(token, { method: 'POST', url, payload: {} });
+      expect(gone.statusCode, `${url}: ${gone.body}`).toBe(404);
+    }
+  });
+});
+
+describe('plans (P42: no card provider)', () => {
+  it('lists the plans and changes one, with no provider price ids anywhere', async () => {
+    const listed = await api.call(admin.accessToken, { method: 'GET', url: '/v1/platform/plans' });
+    expect(listed.statusCode, listed.body).toBe(200);
+    const plans = (JSON.parse(listed.body) as { items: Record<string, unknown>[] }).items;
+    expect(plans.length).toBeGreaterThan(0);
+    for (const plan of plans) {
+      expect(plan).not.toHaveProperty('providerPriceMonthly');
     }
 
-    // And back: the checkout is theirs again (whatever else it may say about
-    // prices), and the mode is remembered on the directory row.
-    const back = await api.call(admin.accessToken, {
+    const changed = await api.call(admin.accessToken, {
       method: 'PATCH',
-      url: `/v1/platform/companies/${api.tenantId}/plan`,
-      payload: { plan: 'standard', seats: 40, billingMode: 'self_serve' },
+      url: '/v1/platform/plans/starter',
+      payload: { priceCents: 49_900, currency: 'EGP' },
     });
-    expect((JSON.parse(back.body) as { billingMode: string }).billingMode).toBe('self_serve');
-    const again = await api.call(token, {
-      method: 'POST',
-      url: '/v1/billing/checkout',
-      payload: { plan: 'starter', interval: 'month' },
-    });
-    expect(
-      again.statusCode === 409
-        ? (JSON.parse(again.body) as { error: { code: string } }).error.code
-        : 'allowed',
-    ).not.toBe('billing_invoiced');
+    expect(changed.statusCode, changed.body).toBe(200);
+    expect(JSON.parse(changed.body)).toMatchObject({ priceCents: 49_900, currency: 'EGP' });
   });
 });

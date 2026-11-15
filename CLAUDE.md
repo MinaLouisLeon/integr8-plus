@@ -14,20 +14,20 @@ recent decisions. Keep both up to date when you change something they describe.
 Integr8 sells to service companies (maintenance, installation, inspection),
 mainly in Egypt (EGP, Egyptian payroll, Egyptian Tax Authority e-invoicing),
 in English and Arabic (right-to-left). Every company is onboarded by Integr8
-staff from the platform dashboard; there is no public sign-up by default.
+staff from the staff desktop app; there is no public sign-up.
 
-| Who                          | Uses                                         |
-| ---------------------------- | -------------------------------------------- |
-| Integr8 staff (super admins) | Web `/platform` dashboard, staff desktop app |
-| A company's office           | Web app, or the company's own desktop app    |
-| A company's engineers        | The company's own phone app (works offline)  |
+| Who                          | Uses                                        |
+| ---------------------------- | ------------------------------------------- |
+| Integr8 staff (super admins) | The staff desktop app (the dashboard)       |
+| A company's office           | The company's own desktop app               |
+| A company's engineers        | The company's own phone app (works offline) |
 
 ## Repository layout (pnpm + Turborepo monorepo)
 
 | Path                   | What                                                                                                                                                            |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `apps/api`             | Fastify `/v1` API, route registry → OpenAPI, background worker, CLIs (`platform/admin-cli.ts`, `demo/cli.ts`, storage)                                          |
-| `apps/web`             | Next.js: marketing site, company workspace `(app)/…`, platform dashboard `platform/…`                                                                           |
+| `apps/web`             | Next.js: the public site only (marketing, help, legal, `/download`, quote/document/asset-tag links, invitations, update feed); nobody signs in (P42)            |
 | `apps/desktop`         | React + Tauri (staff app and per-company branded builds)                                                                                                        |
 | `apps/mobile`          | Expo / React Native, local SQLite, queued sync                                                                                                                  |
 | `apps/forms-ai`        | Integr8 Forms for AI: offline MCP server + terminal installer for AI coding tools writing `.integr8form` files (`docs/contributing/developer-tools.md`)         |

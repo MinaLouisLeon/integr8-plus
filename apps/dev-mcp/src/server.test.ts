@@ -134,6 +134,8 @@ async function handle(request: IncomingMessage, response: ServerResponse) {
       });
     case 'POST /v1/forms/import':
       return reply(response, 201, { formId: '66666666-6666-4666-8666-666666666666' });
+    case 'GET /v1/public/asset-tags/TAG-0001':
+      return reply(response, 200, { company: { name: 'Nile Test Co', slug: 'nile-test' } });
     case 'POST /v1/customers':
       return reply(response, 201, { id: 'c1', name: 'Acme', portalToken: GRANT_TOKEN });
     default:
@@ -335,6 +337,23 @@ describe('the developer tools', () => {
       (await call('import_form_package', { path: join(folder, 'missing.integr8form') })).text,
     ).toMatch(/There is no file/u);
     expect(seen.length).toBe(before);
+  });
+
+  it('sends a public route as a visitor, with no grant and no sign-in', async () => {
+    const grants = () => seen.filter((entry) => entry.path.endsWith('/impersonate')).length;
+    const before = grants();
+    const answer = await call('call_api', {
+      method: 'GET',
+      path: '/v1/public/asset-tags/TAG-0001',
+      as: 'engineer',
+      purpose: 'opening a printed asset tag',
+    });
+    expect(answer.text).toMatch(/^200 in \d+ ms .*as visitor \(no sign-in\)/u);
+    expect(answer.text).toMatch(/Sent as a visitor/u);
+    const sent = seen.find((entry) => entry.path === '/v1/public/asset-tags/TAG-0001');
+    expect(sent?.headers.authorization).toBeUndefined();
+    expect(sent?.headers['x-client-app']).toBe('api');
+    expect(grants()).toBe(before);
   });
 
   it('refuses staff routes through call_api', async () => {

@@ -20,11 +20,11 @@
     "@integr8/form-renderer-dom": "workspace:*",
     "@integr8/i18n": "workspace:*",
     "@integr8/operations-dom": "workspace:*",
+    "@integr8/releases": "workspace:*",
     "@integr8/tokens": "workspace:*",
     "@sentry/nextjs": "11.9.0",
     "@tanstack/react-query": "5.102.8",
     "next": "16.4.3",
-    "pdfjs-dist": "4.10.38",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },

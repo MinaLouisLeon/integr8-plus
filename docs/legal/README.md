@@ -53,8 +53,8 @@ in `@integr8/core`).
 Each claim must stay true of the code. When one changes, the texts change with
 it, `LEGAL_LAST_UPDATED` moves, and companies are told of a significant change
 thirty days ahead. Claims to recheck with the lawyer against 2.0.0: billing is
-now invoiced by Integr8 (`BILLING_PROVIDER=none`: no card trial or automatic
-read-only), files have no retention window by default, the assistant is off
+invoiced by Integr8 only (P42 removed card payments, trials and automatic
+read-only), the office works in desktop apps with no web workspace, files have no retention window by default, the assistant is off
 until switched on, and test companies send no mail.
 
 ## Before launch

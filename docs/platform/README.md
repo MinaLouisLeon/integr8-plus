@@ -1,18 +1,22 @@
-# The staff dashboard
+# The staff dashboard (the staff desktop app)
 
 Everything Integr8 staff do (onboard, support, suspend, close a company; plans,
-billing, flags, templates, releases) is a route under `/v1/platform` and a screen
-in the web app's `/platform` dashboard, which wears the Integr8 Media look. The
-staff desktop app has none of these screens: staff use it to work **inside** a
-company through impersonation, mainly to build forms and set branding.
+flags, templates, releases) is a route under `/v1/platform` and a screen in the
+**staff desktop app**, which wears the Integr8 Media look (P42: there is no web
+dashboard any more). Staff also work **inside** a company from it, through an
+audited impersonation grant, mainly to build forms and set branding; **Back to
+the dashboard** on the banner ends the grant. See
+[apps/](../apps/README.md#the-desktop-app-the-office-and-the-staff-app-p42).
 
 ```
-apps/api/src/routes/v1/platform   auth, companies, lifecycle, impersonation, audit, settings,
-                                  templates, template-packages, support, staff, storage, funnel,
-                                  health, ai, website-keys
-apps/api/src/platform             onboarding, app builds, export, purge, admin-cli
-apps/web/src/app/platform         companies, funnel, storage, plans, audit, flags, announcements,
-                                  templates, releases, health, staff, downloads
+apps/api/src/routes/v1/platform      auth, companies, lifecycle, impersonation, audit, settings,
+                                     templates, template-packages, support, staff, storage,
+                                     health, ai, website-keys, downloads
+apps/api/src/platform                onboarding, app builds, app releases, the invitation gate,
+                                     export, purge, admin-cli
+apps/desktop/src/features/platform   the staff session (memory only), frame, sign-in and screens:
+                                     companies, company, storage, plans, audit, flags,
+                                     announcements, templates, releases, health, staff, downloads
 ```
 
 ## Signing in
@@ -24,7 +28,8 @@ code, its secret sealed with `PLATFORM_SECRET_KEY`; rotating that key makes ever
 second factor unreadable). Access tokens last 5 minutes, sessions at most 8
 hours; lockout after 5 failures. A wrong password, a wrong code and an unknown
 address get the same answer. A platform token cannot reach a company route at
-all.
+all. The staff app keeps the session in memory only (the owner's decision D2):
+staff sign in each time it starts, and closing it ends the session.
 
 **A session limited to test companies.** `POST /v1/platform/auth/sign-in` with
 `scope: "test_companies"` (the developer MCP server's terminal login; the
@@ -56,13 +61,21 @@ Only staff managers manage website keys. Reserve the company slug `staff`.
 
 `POST /v1/platform/companies` makes a usable company in one action: the company
 (plan, optional seat count that replaces the plan's, modules, tabs, which apps
-show the assistant, test or not), starter job types, the owner's invitation
-(emailed only when "Email the owner's invitation now" is ticked, so Integr8 can
-set the company up first), and its R2 bucket. The first parts are one
-transaction; the bucket comes last and, if it fails, the media maintenance
-provisions it later. New companies start on `Africa/Cairo`, Sunday to Thursday,
-and are stored as invoiced. The company page can resend or copy a fresh
-invitation link (the old one stops working).
+— desktop, phone — show the assistant, test or not), starter job types, the
+owner's invitation and its R2 bucket. The first parts are one transaction; the
+bucket comes last and, if it fails, the media maintenance provisions it later.
+New companies start active on their plan, on `Africa/Cairo`, Sunday to Thursday.
+
+**An invitation waits for the company's own desktop app** (P42, D6): the office
+works in it and nowhere else. Until the company's apps are switched on and a
+desktop release exists for its slug, the owner's invitation is not emailed, no
+link is handed back, and resending it (from the company page, or from inside the
+company's People screen) is refused with 409 `company_app_not_built` (503
+`releases_unavailable` when GitHub cannot be asked). The company page says which
+it is (`companyApp`). A test company is never held, and neither is a deployment
+with `APP_RELEASES=off` (development only). So the order is: onboard, build the
+forms and the look, **Build apps**, wait for the release, then send. Resending
+makes a fresh link and the old one stops working.
 
 Also on the company page: modules and tabs, branding is set from the desktop app
 (staff, acting as the company), the document link pattern, "Show the company name
@@ -80,7 +93,7 @@ always make test companies; the onboarding form has a **Test company** switch.
 | --------------- | -------------------------------------------------------------------------------------------- |
 | Dashboard       | A **Test** badge; the list filters all, real or test (`?test=`)                              |
 | Billing         | Left out of billing, lapsed trials, dunning and storage overage                              |
-| Totals          | Left out of the sign-up funnel (still in the storage cost projection: Cloudflare bills it)   |
+| Totals          | Left out of the platform totals (still in the storage cost projection: Cloudflare bills it)  |
 | Email and push  | Never sent: kept in `test_outbox` for 7 days (`GET /v1/platform/companies/{id}/test-outbox`) |
 | Company apps    | Refused (409 `test_company_no_apps`)                                                         |
 | Everything else | Unchanged: limits, modules, export, close and purge work as for any company                  |
@@ -101,12 +114,11 @@ enforced by the API at the moment something is taken:
 | Submissions | starting and submitting (a correction never counts)      | 409 `submission_limit_reached` |
 | Storage     | requesting an upload, on a `block` plan                  | 409 `storage_quota_exceeded`   |
 
-`BILLING_PROVIDER=none` is the production setting: Integr8 invoices every company
-itself, every company reads as invoiced, card routes refuse (409
-`billing_invoiced`), dunning does nothing, and staff set the plan. `stripe` keeps
-self-serve checkout, the card portal, invoices read from Stripe and dunning
-(grace, then read-only; never deletion). A Paymob adapter may come later. The
-company's Billing page (web) shows its plan and how to reach Integr8.
+Integr8 invoices every company directly (P42: self-serve sign-up, Stripe,
+checkout, the card portal, webhooks and dunning were removed, with their tables,
+in migration 0020). Staff set the plan on the company page; the company's
+Billing screen in its desktop app shows the plan, its limits and usage, and how
+to reach Integr8. A Paymob adapter, if it comes, would be new work.
 
 ## Support
 
@@ -161,6 +173,9 @@ pictures. See [form-engine/](../form-engine/README.md#the-builder).
 
 ## Downloads
 
-**Downloads** (`/platform/downloads`) lists the staff desktop app and Integr8
-Forms for AI from the GitHub releases (`GITHUB_RELEASES_TOKEN`, the repository
-is private). The public `/download` page lists companies' apps only.
+**Downloads** in the staff app lists the staff desktop app and Integr8 Forms for
+AI from `GET /v1/platform/downloads`, which reads the GitHub releases
+(`APP_RELEASES=github`, `GITHUB_RELEASES_REPOSITORY`, and `GITHUB_RELEASES_TOKEN`
+since the repository is private) through `@integr8/releases`, the same lookup the
+public site's update feed uses. The public `/download` page lists companies'
+apps only.

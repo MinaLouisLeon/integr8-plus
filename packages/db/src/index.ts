@@ -81,22 +81,16 @@ export {
   type PlatformSessionScope,
   TEST_OUTBOX_CHANNELS,
   type TestOutboxChannel,
-  BILLING_INTERVALS,
   OVERAGE_POLICIES,
   RECONCILIATION_STATUSES,
-  SIGNUP_STATUSES,
-  type SignupStatus,
   SUBSCRIPTION_STATUSES,
   TENANT_EXPORT_STATUSES,
   TENANT_PLANS,
-  BILLING_MODES,
-  type BillingMode,
   COMPANY_THEMES,
   companyThemeSchema,
   type CompanyTheme,
   type AnnouncementSeverity,
   type PlatformSessionRevocationReason,
-  type BillingInterval,
   type OveragePolicy,
   type ReconciliationStatus,
   type SubscriptionStatus,
@@ -194,21 +188,13 @@ export type {
   PlatformInsightsRepository,
   RecentFailure,
   ReleaseInField,
-  TimeToFirstSubmission,
 } from './repositories/platform-insights.js';
 
 export {
   BillingRepository,
   TenantSubscriptionReader,
-  type BillingEvent,
   type Subscription,
 } from './repositories/billing.js';
-export {
-  type FunnelStep,
-  type SignupEvent,
-  type SignupRequest,
-  SignupRepository,
-} from './repositories/signup.js';
 export { type DemoCounts, DemoDataRepository } from './repositories/demo-data.js';
 export {
   DEFAULT_SETTINGS,

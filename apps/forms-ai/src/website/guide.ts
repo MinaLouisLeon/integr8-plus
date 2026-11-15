@@ -64,19 +64,19 @@ function setup(): string {
 
 ## From Integr8 (staff)
 
-- **The website key**, starting \`i8wk_\`. Only an Integr8 staff manager can create it, on the platform dashboard (company → Website keys). It is shown once; a company can have two live keys, so the website can move to a new one before the old is revoked.
+- **The website key**, starting \`i8wk_\`. Only an Integr8 staff manager can create it, in the staff desktop app (the company's page → Website keys). It is shown once; a company can have two live keys, so the website can move to a new one before the old is revoked.
 - **The API address**: \`${DEFAULT_API_URL}\` in production.
 - **Integr8's grant** \`website_files\` on the company's Features panel, and the company's **documents** module on.
 
 ## From the company (owner or admin)
 
-- **Settings → Website access**: switch on documents for the website.
+- **Website access** in the company's desktop app: switch on documents for the website.
 - **Share** each document the website may show: every document has a Sharing switch in the Documents register, and **new documents start not shared**. A not-shared, stopped, expired or deleted document is answered exactly like a number nobody issued.
 - **What the search finds**: an uploaded PDF by its reference number and by any **extra field** typed for it (Documents → Upload a PDF → Add field, or later on its page); a made document by its template's lookup field. Never by the customer's name.
 
 ## The document link address (Integr8 staff)
 
-On the company's page in the platform dashboard (Website and apps → **Document link address**), staff set where shared links and new QR codes open: \`https://<the registered website>/${DEFAULT_DOCUMENT_ROUTE}/{code}\` by default, on the company's registered website or a host under it. Set it **after** the document page is live: until then links keep opening Integr8's own page. QR codes printed before keep working at Integr8's address.
+On the company's page in the staff desktop app (Website and apps → **Document link address**), staff set where shared links and new QR codes open: \`https://<the registered website>/${DEFAULT_DOCUMENT_ROUTE}/{code}\` by default, on the company's registered website or a host under it. Set it **after** the document page is live: until then links keep opening Integr8's own page. QR codes printed before keep working at Integr8's address.
 
 ## The environment (server only)
 

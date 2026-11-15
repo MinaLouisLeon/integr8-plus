@@ -310,7 +310,7 @@ the home test box (Ubuntu with Docker), never on production.
    One distinct `tenant_id`, and a permission error on the second. Anything else
    means the restore lost its grants or policies and must not serve traffic.
 
-7. **Sign in** on the web app with a real account from the dump. That proves
+7. **Sign in** in a company's desktop app with a real account from the dump. That proves
    the `auth` schema came back with the rest.
 
 8. **Note the finish time**, record the result below, and delete the dump and

@@ -83,6 +83,9 @@ importers:
       '@integr8/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
+      '@integr8/releases':
+        specifier: workspace:*
+        version: link:../../packages/releases
       '@sentry/node':
         specifier: 10.74.0
         version: 10.74.0(@opentelemetry/core@2.11.0(@opentelemetry/api@1.9.1))
@@ -583,6 +586,9 @@ importers:
       '@integr8/operations-dom':
         specifier: workspace:*
         version: link:../../packages/operations-dom
+      '@integr8/releases':
+        specifier: workspace:*
+        version: link:../../packages/releases
       '@integr8/tokens':
         specifier: workspace:*
         version: link:../../packages/tokens
@@ -595,9 +601,6 @@ importers:
       next:
         specifier: 16.4.3
         version: 16.4.3(@opentelemetry/api@1.9.1)(@types/node@26.6.5)(babel-plugin-react-compiler@1.0.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      pdfjs-dist:
-        specifier: 4.10.38
-        version: 4.10.38
       react:
         specifier: 19.3.0
         version: 19.3.0
@@ -1162,6 +1165,27 @@ importers:
       react-dom:
         specifier: 19.3.0
         version: 19.3.0(react@19.3.0)
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 5.0.3
+        version: 5.0.3(@opentelemetry/api@1.9.1)(@types/node@26.6.5)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.2.2(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.1))
+
+  packages/releases:
+    devDependencies:
+      '@integr8/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@integr8/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@types/node':
+        specifier: 26.6.5
+        version: 26.6.5
+      eslint:
+        specifier: 10.12.0
+        version: 10.12.0(jiti@2.7.0)
       typescript:
         specifier: 6.0.3
         version: 6.0.3
@@ -10510,9 +10534,7 @@ snapshots:
       metro-runtime: 0.87.1
     transitivePeerDependencies:
       - '@babel/core'
-      - bufferutil
       - supports-color
-      - utf-8-validate
 
   '@react-native/normalize-colors@0.88.0': {}
 
