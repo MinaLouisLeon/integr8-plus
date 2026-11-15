@@ -25,8 +25,8 @@ created again rather than upgraded.
 apps. The web-only company screens and the whole platform dashboard move into
 the desktop, and `apps/web` becomes a small public site (marketing, help, legal,
 `/download`, quote and document links, the update feed, accepting an
-invitation). Self-serve sign-up and card checkout go. **PROPOSED — waiting for
-the owner** (six decisions, D1–D6).
+invitation). Self-serve sign-up and card checkout go. All six decisions are
+answered (2026-11-15); **PROPOSED — waiting for the owner's approval to build**.
 
 ## In progress
 

@@ -1,6 +1,6 @@
 # P42 — Desktop only: no web workspace, no web dashboard
 
-**Status:** PROPOSED — waiting for the owner
+**Status:** PROPOSED — waiting for the owner's approval to build (every decision is answered)
 
 ## Goal
 
@@ -38,6 +38,12 @@ browser.
 | How does a new person accept an invitation?           | Keep the web invitation page. Once the password is set, the page says it is set or updated and to carry on in the desktop or phone app. |
 | What happens to self-serve sign-up and card checkout? | Remove both. Companies are onboarded by staff and invoiced by Integr8.                                                                  |
 | How should the work proceed?                          | This plan first, then building it after approval.                                                                                       |
+
+**No company exists yet, and all data is test data that will be deleted, with
+no backup** (owner, 2026-11-15). So nothing has to stay compatible: no printed
+asset tags, no shipped installers, no customers' links, no stored rows to keep.
+Removed `/v1` routes break no shipped build, and a new migration may drop tables
+and values outright instead of expanding and contracting across two releases.
 
 ## Where things stand
 
@@ -115,6 +121,9 @@ it calls:
   People and Company settings. Fold it into those two pages and remove the
   separate screen and its dashboard card, so there is one place for each
   switch.
+- **Open by tag code** (D5). The desktop gets the shared `AssetTagOpener` on the
+  Assets screen: type or paste a tag code, or a scanned tag address, and the
+  asset opens.
 - **Shared screens.** The desktop passes `people`, `companySettings`, `billing`,
   `submissions` and `forms` to `OperationsConfig.routes`, so the assistant's
   answers link to them.
@@ -131,11 +140,25 @@ it calls:
   company's workspace, with the impersonation banner and a **Back to the
   dashboard** button. That button ends the grant and returns to the company's
   page.
-- **Platform session.** The platform refresh token is kept as decided in D2 and
-  rotated on every refresh, as the web did. The 8-hour session cap and the
-  limited `test_companies` scope still apply.
-- **Who to act as.** As decided in D3. Either way the grant's reason (10
-  characters at least) and audit entries are unchanged.
+- **Platform session** (D2). Kept in memory only, never written to disk. Staff
+  sign in with their password and authenticator code each time the app starts.
+  The refresh token is rotated on every refresh, as the web did. The 8-hour
+  session cap and the limited `test_companies` scope still apply. Closing the
+  app ends the platform session (`/v1/platform/auth/sign-out` on close, where
+  the window allows it).
+- **Who to act as** (D3). "Work inside this company" acts as the owner, with no
+  `targetUserId`, as today. Each person on the company page's people list also
+  has "Act as this person", which sends `targetUserId`. Both ask for the reason
+  (10 characters at least) and are audited as now.
+- **Onboarding waits for the company's own app** (D6). There is no generic
+  company app, so a company's people can work only once its branded desktop
+  build exists. On the company page, **Invite the owner** and **Resend** are
+  available only when the company's apps are switched on and a desktop release
+  for its slug exists. Otherwise they say why, and link to the Apps panel's
+  **Build apps** button. The API refuses an owner invitation for such a company
+  too (`409 company_app_not_built`), so the rule holds outside the screen.
+  Staff still work inside the company from the staff app meanwhile, to build its
+  forms and set its branding before the build runs.
 - **Screens moved.** Companies (list and onboarding), the company page with all
   its panels (plan, invitations, apps and builds, tabs, assistant, website keys,
   assistant shares, billing, people with unlock, activity, impersonations,
@@ -158,11 +181,17 @@ it calls:
 
 - **Kept:** `/`, `/features`, `/pricing`, `/contact`, `/help`, `/legal/*`,
   `/download`, `/q/[token]`, `/d/[code]`, `/desktop-updates/*`,
-  `/accept-invitation`, and a new public `/a/[code]` page (decision D5).
+  `/accept-invitation`, and a new public `/a/[code]` page.
+- **Asset tag page** (D5). The QR code keeps its address (`<site>/a/<code>`). The
+  public page says "This is an asset tag for <company>. Scan it with your
+  company's phone app", shows the code in large type for typing it in, and needs
+  no sign-in. It reveals nothing about the asset beyond the company's public name
+  and logo. The phone's scanner already reads the code from the address
+  (`tagCodeOf`).
 - **Invitation page.** After the password is set, the page shows "Your password
   is set" (or "updated" for an existing account), then "Carry on in your
-  company's desktop or phone app", with the download links for that company.
-  It creates no session, as today.
+  company's desktop or phone app", with that company's download links (which
+  exist, by D6). It creates no session, as today.
 - **Deleted:** `(app)/**`, `platform/**`, `/sign-in`, `/sign-up/**`,
   `app/api/auth/*`, `app/api/platform/*`, and the workspace, platform and session
   components and libraries listed above. The CSP and middleware are trimmed to
@@ -173,19 +202,30 @@ it calls:
 
 ### 5. API and email
 
-- **Workspace links in emails** (billing, qualifications, contracts, work order,
-  deadlines, people): as decided in D1.
+- **Workspace links in emails** (D1). Billing, qualifications, contracts, work
+  order, deadlines and people emails carry no link. Each names the screen in both
+  languages ("Open **Contracts** in your company's desktop app"; a job email also
+  gives the job's number). `billingUrl`, `qualificationsUrl`, `contractsUrl`,
+  `workOrderUrl`, `deadlinesUrl`, `peopleUrl` and `verifySignupUrl` are deleted
+  from `email/links.ts`; `acceptInvitationUrl` stays.
 - **`admin-cli` messages.** Staff are told to open the staff desktop app. A
   company person is told to sign in to their company's app.
-- **Sign-up and Stripe** (D4). Recommended: delete the `/v1/signup/*` routes, the
-  verify link, the Stripe adapter and its checkout and portal routes, the
-  funnel's sign-up steps, and `BILLING_PROVIDER=stripe`. `none` becomes the only
-  provider, keeping the `recording` stand-in for tests. Only the web app ever
-  called these routes, so no shipped desktop or phone build breaks. The release
-  notes still say they were removed from `/v1`.
-- **Assistant channel.** The API keeps accepting `'web'`, because old sessions
-  and recorded rows carry it. Screens stop showing a "web" switch. A request
-  with no recorded app is treated as `desktop`.
+- **Sign-up and Stripe** (D4). Delete the `/v1/signup/*` routes and the sign-up
+  emails, the Stripe adapter with its checkout, card portal and webhook routes,
+  dunning's card path, the funnel (routes, `apps/api/src/routes/v1/platform/funnel.ts`,
+  the dashboard's Funnel section), `PUBLIC_SIGNUP`, and the Stripe settings.
+  `BILLING_PROVIDER` keeps only `none`, plus the `recording` stand-in for tests,
+  and can then be removed as a setting. Migration **0020** drops what only
+  sign-up and Stripe use: `signup_requests` and `signup_events` (with its year
+  partitions, also removed from `ensure_year_partitions()`), plus any
+  Stripe-only billing columns found while building. The schema-invariant,
+  export and purge suites are updated on purpose. The release notes say these
+  routes left `/v1`.
+- **Assistant channel.** `'web'` is removed from `AI_CHANNELS`. The company's
+  per-app switch keeps `desktop` and `mobile`, and migration 0020 drops
+  `tenant_settings.ai_web_enabled`, since no stored row needs keeping. A request with no
+  recorded app is treated as `desktop`. `x-client-app: web` stays a valid
+  header, for the public site's calls (`/q`, `/d`, invitations, `/download`).
 - **CORS.** The default `API_CORS_ORIGINS` keeps the Tauri origins. The web
   origin stays only for the public pages that call the API (`/q`, `/d`,
   `/accept-invitation`, `/download`). `config.ts`'s check still applies.
@@ -206,37 +246,42 @@ it calls:
 
 ## Decisions for the owner
 
-| #   | Question                                                                                                                                     | Options                                                                                                                                                                                                                                                            | Recommended                                                                                                                          |
-| --- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
-| D1  | Emails that link to a workspace page (a job, contracts ending, deadlines, certificates expiring, billing, people): what do they link to now? | (a) No link: the email names the screen ("open Contracts in your company's app"). (b) A public "Open this in your app" page on the site, with download links. (c) A deep link that opens the installed app (`integr8-<slug>://`), registered in every build.       | **(a)**. It is simple and cannot break. (c) needs URL-scheme registration per branded build and fails when the app is not installed. |
-| D2  | Where is the staff app's platform session kept?                                                                                              | (a) In memory only: staff sign in (password + authenticator) each time the app starts, and the session lasts up to 8 hours while it stays open. (b) The refresh token in the OS credential store, like company sessions, surviving restarts within the 8-hour cap. | **(a)**. A platform token reaches every company, and signing in once per working day is a small price.                               |
-| D3  | When staff work inside a company, whom do they act as?                                                                                       | (a) Always the owner, as the desktop does today. (b) The owner by default, with "as this person" on the company page's people list for support cases.                                                                                                              | **(b)**. It keeps today's desktop flow and the web's ability to see what a particular person sees.                                   |
-| D4  | Remove the sign-up and Stripe code from the API too, or only from the screens?                                                               | (a) Delete the routes, the Stripe adapter, the sign-up funnel and the Funnel section. (b) Keep the API code switched off, for a later self-serve offer.                                                                                                            | **(a)**. Nothing else calls it, and dead code with secrets attached is a risk. Paymob, if it comes, would be a new adapter anyway.   |
-| D5  | Where does a printed asset tag's QR code lead?                                                                                               | (a) A public `/a/[code]` page that says "scan this with your company's phone app" (the phone's scanner reads the code from the address). (b) Print only the code, not an address.                                                                                  | **(a)**. Tags already printed keep working.                                                                                          |
-| D6  | A company whose own desktop app has not been built yet (just onboarded, or builds switched off): where do its people work?                   | (a) A generic **Integr8 Plus** company app on `/download` that signs in to any company by email (today's development build with only the company door). (b) Every company must have its own build before its owner is invited.                                     | **(a)**. Onboarding no longer waits on a build run, and the branded app replaces it later.                                           |
+All answered by the owner on 2026-11-15, one by one.
+
+| #   | Question                                                                                                                                     | Answer                                                                                                                                         |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1  | Emails that link to a workspace page (a job, contracts ending, deadlines, certificates expiring, billing, people): what do they link to now? | **No link.** The email names the screen to open in the company's app.                                                                          |
+| D2  | Where is the staff app's platform session kept?                                                                                              | **In memory only.** Staff sign in (password + authenticator) each time the app starts; up to 8 hours while it stays open.                      |
+| D3  | When staff work inside a company, whom do they act as?                                                                                       | **The owner by default**, plus "Act as this person" on the company page's people list.                                                         |
+| D4  | Remove the sign-up and Stripe code from the API too?                                                                                         | **Delete it all**: routes, emails, Stripe adapter, funnel and its dashboard section, settings, and their tables (migration 0020).              |
+| D5  | What does a printed asset tag's QR code hold?                                                                                                | **The public page's address** (`<site>/a/<code>`): a page saying to scan it with the company's phone app. The desktop gets "Open by tag code". |
+| D6  | Where do a company's people work before its branded desktop app exists?                                                                      | **Nowhere yet: a branded build is required** before the owner is invited. No generic company app.                                              |
 
 ## Tasks, in commit order
 
-1. `feat(core)`: remove `webOnly` and `NavApp` web, make billing read-only in
-   the menu, drop `funnel` (D4), give the assistant channel a desktop default.
-2. `feat(api)`: add `GET /v1/platform/downloads`; email links per D1;
-   `admin-cli` messages; asset-tag address per D5; regenerate the OpenAPI file
-   and the client.
-3. `feat(api)`: remove sign-up and Stripe (D4), with their config, tests and
-   `.env.example` lines.
-4. `feat(desktop)`: the company screens (get started, people, company settings,
+1. `feat(db)`: migration 0020 — drop `signup_requests`, `signup_events` and its
+   partitions, Stripe-only billing columns and `tenant_settings.ai_web_enabled`;
+   update the invariant, export and purge suites.
+2. `feat(core)`: remove `webOnly` and `NavApp` web, make billing read-only in
+   the menu, drop `funnel` (D4), remove `'web'` from `AI_CHANNELS`.
+3. `feat(api)`: add `GET /v1/platform/downloads`; emails without workspace links
+   (D1); `admin-cli` messages; refuse an owner invitation before the company's
+   desktop build exists (D6, `company_app_not_built`); regenerate the OpenAPI
+   file and the client.
+4. `feat(api)`: remove sign-up, Stripe and the funnel (D4), with their config,
+   tests and `.env.example` lines.
+5. `feat(desktop)`: the company screens (get started, people, company settings,
    website access, storage, read-only billing); fold assistant settings into
-   them; pass the extra routes to the shared screens.
-5. `feat(desktop)`: the staff platform session (D2) and shell, with the
-   dashboard and company switching (D3).
-6. `feat(desktop)`: the platform screens, one commit per group (companies and
+   them; "Open by tag code" on Assets (D5); pass the extra routes to the shared
+   screens.
+6. `feat(desktop)`: the staff platform session in memory (D2) and shell, with
+   the dashboard, company switching and "Act as this person" (D3).
+7. `feat(desktop)`: the platform screens, one commit per group (companies and
    company page; plans, flags, announcements, templates; audit, storage,
    releases, health, staff, downloads), plus the bundle test that keeps them
-   out of company builds.
-7. `feat(desktop)`: the generic company build (D6) and its release workflow
-   entry.
+   out of company builds; the company page's invitation gate (D6).
 8. `feat(web)`: cut down to the public site; the invitation page's "password set,
-   carry on in the app" step; the public `/a/[code]` page.
+   carry on in the app" step; the public `/a/[code]` page (D5).
 9. `chore(deploy)`: compose, Caddyfile, `deploy/.env.example`, the CSP.
 10. `docs`: the docs pages, the help library (both languages), the setup guide
     (Markdown and HTML), `MEMORY.md`, `plan/README.md`, and the root README
@@ -262,8 +307,16 @@ it calls:
       step for a new and for an existing account.
 - [ ] No email or CLI message links to a web workspace page (test over
       `email/links.ts` callers).
-- [ ] With D4 (a): no `/v1/signup` or Stripe route in `openapi.json`, and the API
-      starts with `BILLING_PROVIDER` unset.
+- [ ] No `/v1/signup`, funnel or Stripe route in `openapi.json`; the API starts
+      with no billing or sign-up setting; migration 0020 goes down and up again
+      in the test setup.
+- [ ] The staff app keeps no platform token on disk (test over the credential
+      store calls), and "Act as this person" creates a grant naming that person.
+- [ ] An owner invitation for a company with no desktop release is refused with
+      `company_app_not_built`, by the API and on the company page.
+- [ ] A scanned tag address opens the public asset-tag page without sign-in and
+      shows nothing beyond the company's public name and logo; the desktop opens
+      an asset by its tag code.
 - [ ] `pnpm lint`, `typecheck`, `test`, `format:check`, `guide:check` and
       `pins:check` pass. The integration suites pass against a disposable
       Postgres.
