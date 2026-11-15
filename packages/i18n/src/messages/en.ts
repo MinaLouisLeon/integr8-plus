@@ -667,8 +667,8 @@ export const en = {
         'Version {{version}} could not be installed. Try again, or install it from the download link.',
     },
 
-    // Banners Integr8 posts from the platform dashboard, payment reminders
-    // included (P15). The severity is a word as well as a colour.
+    // Banners Integr8 posts from the staff app's dashboard (P15). The
+    // severity is a word as well as a colour.
     announcement: {
       region: 'Announcements from Integr8',
       info: 'Notice',
