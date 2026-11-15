@@ -10,7 +10,7 @@ import {
   newestRelease,
   publicOrigin,
   tagPattern,
-} from './desktop-updates';
+} from './feed.js';
 
 /**
  * The desktop update feed (P20): which release each app is offered, read from

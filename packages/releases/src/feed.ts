@@ -1,5 +1,5 @@
 /**
- * The desktop apps' update feed (P20), served at `/desktop-updates/…`.
+ * The desktop apps' update feed (P20), served by the public site at `/desktop-updates/…`.
  *
  * Every desktop build asks its own address, stamped in at build time
  * (`apps/desktop/scripts/stamp.mjs`): `/desktop-updates/staff/…` for the staff
@@ -414,7 +414,7 @@ export class DesktopUpdateFeed {
 
   #headers(): Record<string, string> {
     return {
-      'user-agent': 'integr8-plus-web',
+      'user-agent': 'integr8-plus',
       'x-github-api-version': '2022-11-28',
       ...(this.#token === undefined ? {} : { authorization: `Bearer ${this.#token}` }),
     };

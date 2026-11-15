@@ -1,9 +1,9 @@
-import type { AppRelease, DesktopUpdateFeed, FormsAiRelease } from './desktop-updates';
+import type { AppRelease, DesktopUpdateFeed, FormsAiRelease } from './feed.js';
 
 /**
- * What the server found for one app's downloads, for a page to show. Shared
- * by the public `/download` page (a company's apps) and the dashboard's staff
- * Downloads page (the staff app and Integr8 Forms for AI). Never throws: a
+ * What the server found for one app's downloads, for a screen to show. Shared
+ * by the public `/download` page (a company's apps) and the staff app's
+ * Downloads screen (the staff app and Integr8 Forms for AI). Never throws: a
  * page shows what it can, and "cannot be listed right now" is an answer.
  */
 
@@ -18,13 +18,15 @@ export type FormsAiLookup =
 export async function lookupInstallers(
   feed: DesktopUpdateFeed | undefined,
   app: string,
+  /** Where a private repository's download links go through; relative when left out. */
+  origin = '',
 ): Promise<ReleaseLookup> {
   if (feed === undefined) {
     // No repository configured: nothing has been published from here.
     return { status: 'none' };
   }
   try {
-    const release = await feed.installers(app);
+    const release = await feed.installers(app, origin);
     return release === undefined ? { status: 'none' } : { status: 'found', release };
   } catch (error) {
     console.error('downloads', app, error);
@@ -33,12 +35,15 @@ export async function lookupInstallers(
 }
 
 /** Integr8 Forms for AI's program files, from the staff releases. */
-export async function lookupFormsAi(feed: DesktopUpdateFeed | undefined): Promise<FormsAiLookup> {
+export async function lookupFormsAi(
+  feed: DesktopUpdateFeed | undefined,
+  origin = '',
+): Promise<FormsAiLookup> {
   if (feed === undefined) {
     return { status: 'none' };
   }
   try {
-    const release = await feed.formsAi();
+    const release = await feed.formsAi(origin);
     return release === undefined ? { status: 'none' } : { status: 'found', release };
   } catch (error) {
     console.error('downloads', 'forms-ai', error);
