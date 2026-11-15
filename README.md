@@ -1,567 +1,114 @@
 # Integr8 Plus
 
-A multi-tenant field operations platform. Integr8 sells it to service companies
-(maintenance, installation, inspection) on subscription, and sets each company up
-with its own forms, job types, look and apps. The company's office plans and
-dispatches work; its engineers do the work on a phone that keeps working with no
-signal; the office sees the result the moment the phone reconnects.
+A multi-tenant field-operations and business platform. Integr8 sells it to
+service companies (maintenance, installation, inspection), mainly in Egypt, and
+sets each company up with its own forms, job types, look and apps. The company's
+office plans and dispatches work in its own desktop app; its engineers do the
+work on its own phone app, which keeps working with no signal; Integr8 staff run
+everything from the staff desktop app. The web app is the public site only.
+English and Arabic throughout.
 
-Current version: **1.4.0**. The build plan lives in [`plan/`](./plan/README.md);
-start with [`plan/ROADMAP.md`](./plan/ROADMAP.md).
+Current version: **2.0.0**. The documentation starts at
+[`docs/README.md`](./docs/README.md); what is not finished is in
+[`plan/README.md`](./plan/README.md).
 
----
+| Who                          | Uses                                        |
+| ---------------------------- | ------------------------------------------- |
+| Integr8 staff (super admins) | The staff desktop app                       |
+| A company's office           | The company's own desktop app               |
+| A company's engineers        | The company's own phone app (works offline) |
 
-## Contents
+**What it does:** customers and sites, work orders, dispatch and the schedule
+board, visits, timesheets, skills and certificates, contracts, maintenance plans
+and deadlines; forms built by Integr8 and filled on any device, with PDF
+documents; and, switched on per company, CRM, sales, finance, a general ledger,
+inventory, purchasing, assets, HR and expenses, Egyptian payroll, manufacturing,
+Egyptian Tax Authority e-invoicing (test only) and an AI assistant. See
+[`docs/modules/`](./docs/modules/README.md).
 
-1. [Who uses it, and with what](#who-uses-it-and-with-what)
-2. [What it does](#what-it-does)
-3. [Roles and permissions](#roles-and-permissions)
-4. [Apps built for each company](#apps-built-for-each-company)
-5. [Architecture](#architecture)
-6. [How the hard parts work](#how-the-hard-parts-work)
-7. [Getting started](#getting-started)
-8. [Configuration](#configuration)
-9. [Everyday commands and tests](#everyday-commands-and-tests)
-10. [Languages and right-to-left](#languages-and-right-to-left)
-11. [The API](#the-api)
-12. [The database](#the-database)
-13. [Branches, CI and releases](#branches-ci-and-releases)
-14. [Deploying](#deploying)
-15. [Documentation map](#documentation-map)
-16. [Contributing](#contributing)
+## The repository
 
----
-
-## Who uses it, and with what
-
-| Who                                                       | Uses                                      | To                                                                                                                                                                     |
-| --------------------------------------------------------- | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Integr8 staff** (super admins)                          | Web platform dashboard (`/platform`)      | Onboard, support, suspend and close companies; set plans and billing; feature flags; announcements; audit; health; staff (terminal accounts add and remove colleagues) |
-| **Integr8 staff**                                         | **Integr8 Plus Staff** desktop app        | Act as a company to build its forms and job types, and set its logo, icon, colours, theme and website                                                                  |
-| **A company's office** (owner, admin, dispatcher, viewer) | Web app, or the company's own desktop app | Customers and sites, work orders, dispatch, submissions, timesheets, imports, people, billing                                                                          |
-| **A company's engineers**                                 | The company's own phone app               | Their day: clock in, travel, arrive, work, fill forms, photos, signatures, complete. Works offline                                                                     |
-
-There is no public sign-up by default (`PUBLIC_SIGNUP=off`): every company is
-created by Integr8 from the platform dashboard, and the marketing site sends
-visitors to a contact page instead.
-
-## What it does
-
-**Customers, sites and work orders.** Customers with contacts, tags and an account
-status (active, on hold, closed); sites with addresses geocoded to a map pin and
-access notes (gate code, parking, hazards) shown first on every job; work orders
-with a state machine (scheduled → dispatched → travelling → on site → in progress
-→ awaiting parts → complete → reviewed, or cancelled), a crew with a lead, a
-checklist, comments, attachments, before and after photos, the customer's
-sign-off, and a full history. Bulk reassign, reschedule and cancel; saved views;
-CSV import of customers, sites and jobs. See [`docs/operations/`](./docs/operations/README.md).
-
-**Scheduling, skills and service contracts.** A job can take several visits, planned
-on a day or week schedule by engineer; the database refuses to book anyone on two jobs
-at once. Companies record the skills and certificates their people hold, say what each
-job type needs, and get expiry alerts. Service contracts set what a customer is
-covered for, maintenance plans create an asset's servicing jobs ahead of time, and
-response deadlines count down from when a job is created, with warnings before they
-are missed. See [`docs/operations/`](./docs/operations/README.md).
-
-**Job types and their forms.** A job type sets the checklist, instructions,
-expected duration and the forms a job of that type needs. A job's attached forms
-are its tasks: each shows its status and opens, or starts, its submission.
-
-**The form engine.** Forms are built in the desktop app's drag-and-drop builder
-from 18 field types (text, long text, number, decimal, date, time, date-time,
-dropdown, radio, multi-select, checkbox, yes/no, rating, signature, photo, file,
-GPS, barcode), in pages and sections, with repeatable sections ("one entry per
-appliance"), calculated fields, validation rules with custom messages, and three
-kinds of condition:
-
-- **Show when** — a field, section or page appears only when other answers call
-  for it. Every question card prints its rules in words ("Shown when Result is
-  Fail") and has a _Show when…_ button.
-- **Required only when** — a field is mandatory only when a rule is true.
-- **Dependent choices** — a choice question's options narrow with the answer to
-  another (Area → Room).
-
-Publishing freezes a version forever; a submission stays bound to the version it
-was filled against, and the publish screen names every breaking change before it
-happens. A library of templates gives a starting point. The same engine runs in
-the browser, the desktop app, on the phone (Hermes) and on the server, and a
-conformance suite proves they agree byte for byte. See
-[`docs/form-engine/`](./docs/form-engine/README.md).
-
-**Submissions.** Filled on the web, desktop or phone; autosaved; revalidated on the
-server; reopened and corrected only with a reason, with every version kept and
-nobody able to rewrite history. Reportable values, CSV export, filtering by form,
-customer, site, job and person. See [`docs/form-engine/submissions.md`](./docs/form-engine/submissions.md).
-
-**CRM and sales.** Track leads through configurable pipelines and opportunities,
-log activities and follow-ups, convert leads into customers, and view a combined
-customer history. Create quotes, share customer acceptance links, convert quotes
-to sales orders, reserve stock and record deliveries. See
-[`docs/crm-erp/README.md`](./docs/crm-erp/README.md).
-
-**Inventory, purchasing and assets.** Manage item catalogues, stock locations,
-counts, movements, serial and batch tracking, suppliers, purchase orders,
-receipts, returns, reorder drafts, van stock and parts used on jobs. Track
-customer equipment with asset tags, warranty and service history.
-
-**Company finance and people.** Record customer invoices, payments and credit
-notes; calculate job costs; and maintain a management ledger with journals,
-periods, automated postings and reports. Employee profiles, expense claims,
-payroll rules, pay runs and payslips are also available. Manufacturing covers
-versioned bills of materials, assembly/disassembly and material planning. The
-ledger and payroll are management tools; they do not claim statutory or legal
-compliance.
-
-**AI assistant.** A bilingual help library, permission-scoped business insights
-and a small set of actions that must be previewed and explicitly confirmed.
-Platform policy controls availability and usage; it is off by default. See
-[`docs/ai/`](./docs/ai/).
-
-**Documents and Egyptian e-invoicing.** Companies can prepare printable business
-documents from templates. An Egyptian Tax Authority (ETA) e-invoicing integration
-supports credential and mapping setup, document preparation, signing requests
-and a submission lifecycle. It is not production-ready: live PreProd submission
-and hardware-token signing remain to be validated. See
-[`docs/e-invoicing/`](./docs/e-invoicing/).
-
-**The engineer's phone.** Offline-first: the phone holds an encrypted copy of the
-engineer's work (SQLCipher) and every screen reads from it. Clock in and out,
-the next job and its one step forward, directions, access notes, the checklist,
-forms, photos, signatures, the customer's sign-off, completion. Everything is
-recorded on the phone first and synced when there is signal, exactly once and in
-order; conflicts come back with both versions. A signed offline grant lets the
-app open for seven days with no network. Push notifications for new and changed
-jobs; app lock with biometrics; over-the-air updates. See
-[`docs/mobile/`](./docs/mobile/README.md), [`docs/sync/`](./docs/sync/README.md) and
-[`docs/auth/offline-access.md`](./docs/auth/offline-access.md).
-
-**Timesheets.** Shifts, travel and time on each job, week by week, for the office.
-
-**Media.** Photos, signatures and files go straight from the device to the
-company's own Cloudflare R2 bucket (one bucket per company), compressed first,
-with thumbnails made by the worker and every byte recorded in a ledger the
-platform can bill from. See [`docs/media/`](./docs/media/README.md).
-
-**Billing.** Each company is either **invoiced by Integr8** (the plan is set from
-the dashboard; no trial, no card in the app) or **pays in the app** (a trial, then
-Stripe checkout and the customer portal, reminders, a grace period and finally
-read-only). Plan limits — seats, submissions a month, storage, retention — are
-enforced by the API, not by screens. See [`docs/billing/`](./docs/billing/README.md).
-
-**Company branding.** Logo, square app icon, accent colour, menu colour, default
-theme (light, dark or the device's) and website. Set by Integr8 staff from the
-desktop app's _Company branding_ screen with a live preview; the company's own
-people see it read-only and cannot change the theme. Every app wears it, and the
-sign-in screen remembers it on each device.
-
-**The dashboard.** The web app and the desktop app share one layout: a side menu
-grouped by Work, Operations, Set-up and Company, showing only what the person may
-use, that folds to icons (remembered) and becomes a drawer on narrow windows, and
-a top bar with the page title and a back link on nested screens. The platform
-dashboard uses the same layout.
-
-**The desktop app's right-click menu.** In the installed window the webview's own
-menu is replaced: a job, customer, site, job type, timesheet, submission or form
-row offers its own actions; text fields offer Cut, Copy, Paste and Select all.
-
-**Running the business.** The platform dashboard covers companies (onboard in one
-action: company, starter job types, owner invitation and storage bucket), plans
-and billing mode, impersonation with a reason and an audit entry, suspension,
-data export, scheduled deletion and purge, feature flags, announcements, the form
-template library, the sign-up funnel, storage metering, releases in the field,
-recent failures, unlocking accounts and unsticking sync. See
-[`docs/platform/`](./docs/platform/README.md).
-
-## Roles and permissions
-
-Five built-in base roles per company, with owner-defined custom roles and grants
-for more specific access. The built-in policy is in
-[`packages/core/src/permissions.ts`](./packages/core/src/permissions.ts); a test
-fails if a permission is added without deciding it for every role.
-
-| Role           | In short                                                                            |
-| -------------- | ----------------------------------------------------------------------------------- |
-| **owner**      | Everything in the company, including company settings and the subscription          |
-| **admin**      | Everything except company settings and changing the subscription (may read billing) |
-| **dispatcher** | Runs the day: customers, sites and work orders; reads every submission; fills forms |
-| **engineer**   | Does the work: their assigned jobs, filling forms, their own submissions            |
-| **viewer**     | Reads everything, changes nothing                                                   |
-
-Some setup capabilities, including form/job-type management, branding and
-selected module switches, are **Integr8 staff-only** and are performed through
-audited access. A company's own people cannot use those staff controls.
-
-## Apps built for each company
-
-One codebase produces three kinds of build, fixed when the build is made:
-
-| Build               | Installed by          | Sign-in shown | Name and identifier                            |
-| ------------------- | --------------------- | ------------- | ---------------------------------------------- |
-| Staff desktop       | Integr8's own people  | Staff only    | `Integr8 Plus Staff`, `com.integr8.plus.staff` |
-| A company's desktop | That company's people | Company only  | The company's name, `com.integr8.plus.<slug>`  |
-| A company's phone   | That company's people | Company only  | The company's name, `com.integr8.plus.<slug>`  |
-
-A company build sends its short name (slug) when signing in, and the API answers
-`403 wrong_company` to an account from any other company. Its phone app opens on
-the company's website with a **Login** button.
-
-Builds run on GitHub, never on a laptop:
-
-- **One company:** Actions → **Build company apps** → company short name.
-- **Every company, every release:** a merge into `main` with a new version builds
-  the staff app and then every company with _Build apps for this company_ ticked
-  on its page in the platform dashboard.
-- Each company gets its own GitHub release, `company-<slug>-v<version>`, with its
-  Windows, macOS and Linux installers, its Android app and links to the Expo builds.
-- Store submission (Google Play internal track, App Store Connect) runs only when
-  the `STORE_SUBMIT` variable is `enabled`.
-
-Full detail: [`docs/deployment/company-apps.md`](./docs/deployment/company-apps.md)
-and [`docs/mobile/company-builds.md`](./docs/mobile/company-builds.md).
-
-## Architecture
-
-```
-  browsers ─────────┐            ┌─────── desktop apps (Tauri)      phones (Expo, offline)
-                    ▼            ▼                                         │
-          apps/web (Next.js) ────┴──────────▶ apps/api (Fastify, /v1) ◀────┘  sync push/pull
-                                                   │        │
-                                     worker (same image)    │
-                                                   ▼        ▼
-                         Postgres (RLS, per-tenant)     Cloudflare R2 (a bucket per company)
-                         Supabase Auth (self-hosted) · Stripe · Resend · Mapbox · Expo push · Sentry
-```
-
-pnpm workspaces and Turborepo; Node 22 (22.22.1 or newer 22.x, 22.23.4 recommended); TypeScript everywhere; Vitest; ESLint
-with type-aware rules; Prettier.
-
-### Apps
-
-| App             | Package             | What it is                                                                                                                                                                   |
-| --------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `apps/api`      | `@integr8/api`      | Fastify service: versioned `/v1` routes, generated OpenAPI, idempotency, rate limits, the background worker, the CLI                                                         |
-| `apps/web`      | `@integr8/web`      | Next.js: marketing pages, the company's office app, billing, the platform dashboard. Port 3001                                                                               |
-| `apps/desktop`  | `@integr8/desktop`  | React SPA in Tauri v2: form builder, branding, operations, submissions. Staff and per-company flavours. Port 3002                                                            |
-| `apps/mobile`   | `@integr8/mobile`   | Expo Router, offline-first: the engineer's day; one build per company                                                                                                        |
-| `apps/forms-ai` | `@integr8/forms-ai` | Integr8 Forms for AI: offline MCP server and terminal installer that let AI coding tools build `.integr8form` files; one executable per OS ([docs](docs/forms-ai/README.md)) |
-
-### Shared packages
-
-| Package                      | Purpose                                                                                                       |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `@integr8/core`              | Domain types and zod schemas, the permission matrix, the navigation model. The only place a shared type lives |
-| `@integr8/db`                | Schema, migrations, repositories, tenant isolation, seeds. The only place SQL runs                            |
-| `@integr8/auth`              | Sign-in, sessions, refresh rotation, impersonation, offline grants, platform sessions, key generation         |
-| `@integr8/api-client`        | Typed client generated from the OpenAPI document, plus the session manager every app uses                     |
-| `@integr8/form-engine`       | The form definition, compiler, evaluator, validation, versioning diff and conformance suite. No UI, no I/O    |
-| `@integr8/form-package`      | The `.integr8form` file: a form, its PDF templates and pictures packed, read strictly and checked             |
-| `@integr8/form-input`        | Turning engine state into what a filler shows: navigation, entries, prefill, dependent choices                |
-| `@integr8/form-renderer-dom` | The form renderer and submission screens for web and desktop                                                  |
-| `@integr8/operations-dom`    | Customer, site, job type, work order, import and timesheet screens for web and desktop                        |
-| `@integr8/offline`           | The phone's SQLite schema, queries, eviction and the sync engine — no React Native inside                     |
-| `@integr8/i18n`              | English and Arabic catalogues, locale and direction helpers, formatting                                       |
-| `@integr8/tokens`            | Design tokens (colour, spacing, type), light and dark themes, brand accent and shell derivation               |
-| `@integr8/typescript-config` | `base` / `node` / `react` tsconfig presets                                                                    |
-| `@integr8/eslint-config`     | Flat ESLint config: type-aware rules, React, accessibility, and the right-to-left rule                        |
-
-Nothing outside `@integr8/db` may import `kysely` or `pg` — ESLint rejects it. Shared
-packages hold no app-specific widgets: the web and desktop draw the same screens
-with the same Tailwind classes.
-
-## How the hard parts work
-
-- **Tenant isolation.** Application code reaches the database only through
-  `getTenantDataSource(tenantId)` and its repositories, which set the tenant on the
-  connection; Postgres row-level security is the backstop underneath. Every
-  tenant-scoped table carries `tenant_id` and every key between two tenant tables
-  carries it too, checked by a schema-invariants suite. See [`docs/database/`](./docs/database/README.md).
-- **Authentication.** A self-hosted Supabase Auth container beside the API holds
-  passwords and makes one-time 6-digit sign-in codes, which the API emails (the way
-  back in after a forgotten password); Change password signs out every other
-  device. This service issues its own tokens (EdDSA over Ed25519): 15-minute access tokens, rotating
-  refresh tokens with reuse detection, a seven-day offline grant the phone verifies
-  itself, and impersonation tokens tied to an audited grant. Lockout, per-IP
-  limits and remote device revocation. Super admins sign in with a password and a
-  six-digit authenticator code. See [`docs/auth/`](./docs/auth/README.md).
-- **Offline sync.** Screens write the phone's copy and an outbox in one SQLite
-  transaction; the engine pushes changes in order with idempotency keys, uploads
-  files in parts, and pulls changes since a cursor. See [`docs/sync/`](./docs/sync/README.md).
-- **Forms that never change under a submission.** A published version is
-  immutable in the database; a submission is bound to its version by trigger; its
-  history is append-only. See [`docs/form-engine/`](./docs/form-engine/README.md).
-- **Storage you can bill.** One R2 bucket per company, every object recorded in a
-  ledger reconciled against Cloudflare's own figures. See [`docs/media/`](./docs/media/README.md).
-- **Entitlements in one place.** The API refuses what a plan does not allow; the
-  pricing page reads the same rows it enforces. See [`docs/billing/`](./docs/billing/README.md).
+A pnpm and Turborepo monorepo: `apps/api` (Fastify `/v1`, the worker, CLIs),
+`apps/web` (Next.js), `apps/desktop` (React in Tauri), `apps/mobile` (Expo),
+`apps/forms-ai` and `apps/dev-mcp` (MCP servers for AI tools), and shared
+packages under `packages/`. See [`docs/architecture.md`](./docs/architecture.md).
 
 ## Getting started
 
-### Requirements
-
-| Tool     | Version  | Notes                                                                |
-| -------- | -------- | -------------------------------------------------------------------- |
-| Node     | 22.22.1+ | 22.22.1 or newer 22.x (22.23.4 recommended, see `.nvmrc`; `nvm use`) |
-| pnpm     | 10.x     | `corepack enable` picks up the version in `package.json`             |
-| Postgres | 16       | Only for the API and the integration tests; local or Docker          |
-| Rust     | stable   | Only to run the desktop app as a native window (`tauri:dev`)         |
-
-### Install and build
+| Tool     | Version                                     | For                                         |
+| -------- | ------------------------------------------- | ------------------------------------------- |
+| Node     | 22.22.1 or newer 22.x (22.23.4 in `.nvmrc`) | Everything                                  |
+| pnpm     | 10.x (`corepack enable`)                    | Everything                                  |
+| Postgres | 16                                          | The API, the CLIs and the integration tests |
+| Rust     | stable                                      | Only the desktop app as a native window     |
 
 ```bash
-git clone https://github.com/MinaLouisLeon/integr8-plus.git
-cd integr8-plus
 corepack enable
 pnpm install          # also installs the git hooks
-pnpm build
-```
+pnpm build            # build, lint, typecheck and test need no database
 
-`pnpm build`, `pnpm lint`, `pnpm typecheck` and `pnpm test` all work without a
-database.
-
-### Environment files
-
-```bash
 for app in api desktop mobile; do cp "apps/$app/.env.example" "apps/$app/.env"; done
-cp apps/web/.env.example apps/web/.env.local   # Next reads .env.local
+cp apps/web/.env.example apps/web/.env.local
 cp packages/db/.env.example packages/db/.env
 cp packages/auth/.env.example packages/auth/.env
-pnpm --filter @integr8/auth keygen   # prints the signing-key variables
+pnpm --filter @integr8/auth keygen         # signing keys and the Auth container's secrets
+
+pnpm --filter @integr8/db db deploy        # create the database roles, apply the migrations
+pnpm --filter @integr8/db db:templates     # the form template library
+pnpm --filter @integr8/api demo-company --owner-email you@example.com   # optional: a full demo company
+
+pnpm --filter @integr8/api dev             # http://localhost:3000
+pnpm --filter @integr8/web dev             # the public site, http://localhost:3001
+pnpm --filter @integr8/desktop dev         # http://localhost:3002 (tauri:dev for a window)
+pnpm --filter @integr8/mobile dev          # Metro
 ```
 
-Every external service has a local stand-in, chosen by a variable, so a laptop
-needs none of them: `MEDIA_STORAGE=local`, `GEOCODER=fake`, `PUSH_SENDER=recording`,
-`BILLING_PROVIDER=recording`, `EMAIL_SENDER=recording`. Production refuses to
-start on any of the stand-ins.
-
-### A database
-
-Any Postgres 16: one installed locally, or `docker run -p 5432:5432 -e
-POSTGRES_PASSWORD=postgres postgres:16`. Point the three `DATABASE_URL*` variables
-at it, then:
-
-```bash
-pnpm --filter @integr8/db db bootstrap   # creates the two application roles
-pnpm --filter @integr8/db db up          # applies every migration
-pnpm --filter @integr8/db db:seed        # optional sample data
-pnpm --filter @integr8/db db:templates   # the global form template library
-```
-
-### Running the apps
-
-```bash
-pnpm dev                                   # every app, in parallel
-pnpm --filter @integr8/api dev             # the API on http://localhost:3000
-pnpm --filter @integr8/web dev             # http://localhost:3001
-pnpm --filter @integr8/desktop dev         # http://localhost:3002, as a browser page
-pnpm --filter @integr8/desktop tauri:dev   # the same bundle, as a native window
-pnpm --filter @integr8/mobile dev          # Metro; press i or a
-curl http://localhost:3000/health          # is the API up?
-```
-
-A desktop app with no `VITE_APP_FLAVOR` set is a development build and shows both
-the company and the staff sign-in. A phone app with no `apps/mobile/company.json`
-is the generic app and opens straight on its sign-in.
-
-## Configuration
-
-Every variable is documented where it is read; the templates are the reference.
-
-| Where                  | Template                     | Covers                                                                                                           |
-| ---------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| A deployment (compose) | `deploy/.env.example`        | Everything below for the API, worker and web image, in one file                                                  |
-| API and worker         | `apps/api/.env.example`      | Mode, ports, CORS, rate limits, media/R2, geocoder, push, billing, email, sign-up, `BUILD_TOKEN`, Sentry, worker |
-| Authentication         | `packages/auth/.env.example` | Issuer, signing keys, token lifetimes, lockout, sign-in codes, platform sessions, Supabase Auth                  |
-| Database               | `packages/db/.env.example`   | The three connection strings (app, admin, auth), pool sizes, timeouts                                            |
-| Web                    | `apps/web/.env.example`      | `API_BASE_URL`, `NEXT_PUBLIC_*` (API, environment, Sentry, sign-up mode, contact email, map tiles)               |
-| Desktop                | `apps/desktop/.env.example`  | `VITE_API_BASE_URL`, `VITE_APP_FLAVOR` (`staff` / `company`), `VITE_COMPANY_SLUG`, Sentry, updater keys          |
-| Phone                  | `apps/mobile/.env.example`   | `EXPO_PUBLIC_API_BASE_URL`, environment, Sentry; `company.json` for a company build                              |
-
-Notable switches:
-
-| Variable           | Effect                                                                                            |
-| ------------------ | ------------------------------------------------------------------------------------------------- |
-| `APP_ENV`          | `staging` tolerates stand-in services; `production` refuses to start without the real ones        |
-| `PUBLIC_SIGNUP`    | `off` (default): companies are created only by Integr8; `open` turns the public sign-up back on   |
-| `BUILD_TOKEN`      | Lets GitHub list the companies whose apps to build; must match the repository secret of that name |
-| `MEDIA_STORAGE`    | `local` disk or `r2`                                                                              |
-| `BILLING_PROVIDER` | `recording` or `stripe`                                                                           |
-
-## Everyday commands and tests
-
-| Command                 | Does                                                              |
-| ----------------------- | ----------------------------------------------------------------- |
-| `pnpm build`            | Builds every package in dependency order                          |
-| `pnpm lint`             | ESLint across the workspace                                       |
-| `pnpm typecheck`        | `tsc --noEmit` per package                                        |
-| `pnpm test`             | Vitest per package; needs no database                             |
-| `pnpm test:integration` | Database, auth and API suites against a real, disposable Postgres |
-| `pnpm format`           | Prettier, writing changes                                         |
-| `pnpm format:check`     | Prettier, failing on drift (what CI runs)                         |
-| `pnpm clean`            | Removes build output and caches                                   |
-
-Add `--filter @integr8/<name>` to scope any of them to one package. Also useful:
-
-| Command                                                 | Does                                                                  |
-| ------------------------------------------------------- | --------------------------------------------------------------------- |
-| `pnpm --filter @integr8/api openapi`                    | Writes `apps/api/openapi.json` from the route registry                |
-| `pnpm --filter @integr8/api-client generate`            | Regenerates the typed client from it (CI fails if either has drifted) |
-| `pnpm --filter @integr8/api storage provision --all`    | Creates any missing per-company R2 bucket                             |
-| `pnpm --filter @integr8/form-engine conformance:golden` | Regenerates the engine's conformance golden file                      |
-| `pnpm --filter @integr8/form-engine conformance:hermes` | Runs the conformance suite on Hermes, the phone's JavaScript engine   |
-
-Integration tests need `APP_ENV=test`, `INTEGR8_TEST_DATABASE=i-know-this-database-is-disposable`
-and the three test `DATABASE_URL*` variables; CI runs them against a Postgres
-service container on every pull request.
-
-## Languages and right-to-left
-
-English and Arabic (formal Modern Standard Arabic) are both complete. The catalogues
-are TypeScript (`packages/i18n/src/messages/en.ts` and `ar.ts`), so a wrong key is a
-compile error, and a parity test fails when the two drift apart in keys,
-placeholders or plural forms (Arabic carries all six). Text direction follows the
-language: Arabic reads right to left on every screen of every app. Every layout uses
-logical properties only (`ms-`, `pe-`, `start-`, `text-start`); ESLint rejects
-`ml-`, `left-`, `text-left` and their kind. The web reads the language from a
-cookie or the browser, the desktop from its own setting, the phone from the
-device. See [`docs/ui/`](./docs/ui/README.md).
-
-## The API
-
-One HTTP service in front of Postgres; clients never query the database or the
-Auth container directly. About 150 operations under `/v1`, each declared once with its
-zod schemas, security (public, authenticated or platform), permission,
-idempotency and responses; the OpenAPI document and the typed client are
-generated from those declarations. Requests pass through, in order: request id,
-client version check, per-IP rate limit, validation, authentication, suspension,
-permission, per-tenant rate limit, idempotency. Breaking changes go to `/v2`; old
-clients are told when they are too old (`min-supported-client`). See
-[`docs/api/`](./docs/api/README.md) and [`docs/api/versioning.md`](./docs/api/versioning.md).
-
-Public, unauthenticated routes include the plans (`/v1/plans`), the sign-up flow
-(off by default), invitation acceptance, the billing webhook, and a company's
-brand by short name (`/v1/public/companies/{slug}/brand`, with its logo and icon),
-which a freshly installed company app reads before anyone signs in.
+Every outside service has a local stand-in chosen by a setting
+(`MEDIA_STORAGE=local`, `GEOCODER=fake`, `PUSH_SENDER=recording`,
+`EMAIL_SENDER=recording`, `APP_RELEASES=off`); production refuses to
+start on any of them. The database settings are in
+[`docs/contributing/`](./docs/contributing/README.md#before-you-start).
 
 ## The database
 
-Postgres 16, migrated forward by numbered SQL files in `packages/db/migrations`,
-each with a down file, applied by `pnpm --filter @integr8/db db up` (or
-`migrator deploy` on a host's pre-deploy hook). Two runtime roles: `integr8_app`
-(row-level security applies) and `integr8_auth` (the sign-in path).
+Postgres 16, one schema shared by every company, each row keyed by `tenant_id`
+with row-level security as the backstop. 2.0.0 started the migrations again from
+one per module; 0020 removed sign-up and card billing (P42); a new feature adds
+the next number after `0020`.
 
-| Migration | Adds                                                                                                  |
-| --------- | ----------------------------------------------------------------------------------------------------- |
-| 0001–0005 | Tenants, members, row-level security, authentication, API infrastructure                              |
-| 0006–0008 | Forms, versions, the builder, submissions and their lifecycle                                         |
-| 0009      | The media ledger                                                                                      |
-| 0010      | Customers, sites, work orders and their state machine                                                 |
-| 0011–0013 | Offline sync, submit location, job execution (shifts, photos, sign-off)                               |
-| 0014      | Repeating groups                                                                                      |
-| 0015–0016 | The platform: sessions, audit, flags, exports, deletions; storage metering                            |
-| 0017      | Subscriptions and billing                                                                             |
-| 0018–0020 | Sign-up, company settings, sample data                                                                |
-| 0021      | Billing mode per company (invoiced or self-serve)                                                     |
-| 0022      | Company branding: menu colour, default theme, website, app icon, build switch                         |
-| 0023–0043 | CRM, sales, inventory, purchasing, assets, finance, ledger, HR, payroll, manufacturing and follow-ups |
-| 0044–0047 | AI assistant policies, conversations, actions, metering and retention                                 |
-| 0048      | Business documents and templates                                                                      |
-| 0049      | Egyptian ETA e-invoicing integration                                                                  |
-| 0050      | Company website data access: website keys and capability switches                                     |
-| 0051      | Work order visits and the schedule                                                                    |
-| 0052      | Skills and certificates (qualifications) and expiry warnings                                          |
-| 0053      | Service contracts, maintenance plans and response deadlines                                           |
-| 0054      | Self-hosted sign-in: how each session began, and sign-in accounts to delete after a purge             |
-| 0055      | Closing a company: the purge removes every row with triggers and foreign-key checks suspended         |
-| 0056      | No plan deletes a company's files on its own: the seeded retention windows are cleared                |
-| 0057      | New companies start on Cairo time with a Sunday-to-Thursday working week                              |
-| 0058      | A limited database role for the API and worker (`integr8_platform`)                                   |
-| 0060      | A form's "signature required" is enforced when a job is completed                                     |
-| 0061      | Forms submitted after their job closed are marked                                                     |
-| 0062      | Parts recorded after a job closed are marked; a cancelled job refuses parts                           |
-| 0063      | A failing maintenance plan is recorded and retried on its own                                         |
-| 0064      | Amounts rounded to the currency's smallest unit; payment receipts can be reversed                     |
-| 0065      | Nightly clean-up of ever-growing tables; old password fingerprints deleted                            |
-| 0066      | Each phone's language, for its notifications                                                          |
-| 0067      | Uploaded PDF documents and a sharing switch; new documents start not shared                           |
-| 0068      | An index of the files each submission uses, for safe file clean-up                                    |
-| 0069      | Staff-made library templates (retire, source form) and the PDF templates and pictures they carry      |
-| 0074      | Business PDFs in the Documents register: quotes, invoices, purchase orders and job reports            |
-| 0075      | Tabs staff switch per company, the name beside the logo, document links on the company's website      |
-| 0076      | A submission's own name, chosen at the submit step                                                    |
-| 0077      | Test companies (fixed at creation), staff sessions limited to them, and their outbox                  |
+| Migration | Module                                                                               |
+| --------- | ------------------------------------------------------------------------------------ |
+| 0001      | Foundation: tenants, platform staff, settings, feature flags, plans, the job queue   |
+| 0002      | Identity: people, roles, sign-in, sessions, devices, the audit log                   |
+| 0003      | Platform: staff sessions and audit, billing, sign-up, exports and deletions          |
+| 0004      | Files: stored files, uploads, storage metering                                       |
+| 0005      | Field work: customers, sites, job types, work orders, visits, shifts, qualifications |
+| 0006      | Forms: forms, versions, submissions, the template library, PDF documents             |
+| 0007      | Phone sync: the change log and sync reports                                          |
+| 0008      | CRM: leads, pipelines, opportunities, activities                                     |
+| 0009      | Ledger: chart of accounts, journals, periods, year-end closes, postings              |
+| 0010      | Inventory: items, locations, stock movements, counts, lots, materials on jobs        |
+| 0011      | Purchasing: suppliers, purchase orders, receipts, supplier prices, van requests      |
+| 0012      | Sales: quotes, sales orders, deliveries                                              |
+| 0013      | Finance: invoices, credit notes, payments                                            |
+| 0014      | Assets: customer assets and their history                                            |
+| 0015      | HR: employees, expense claims, payroll                                               |
+| 0016      | Manufacturing: bills of materials, assembly orders, material planning                |
+| 0017      | Contracts: service contracts, maintenance plans, deadlines                           |
+| 0018      | E-invoicing: the Egyptian Tax Authority                                              |
+| 0019      | The AI assistant: conversations, actions, usage and cost                             |
+| 0020      | Desktop only (P42): drops sign-up, card billing and the web assistant switch         |
 
-See [`docs/database/migrations.md`](./docs/database/migrations.md) and the
-[backup and restore runbook](./docs/database/runbook-backup-and-restore.md).
-
-## Branches, CI and releases
-
-```
-your branch ──▶ dev ──▶ staging ──▶ main
-                 │         │          │
-         CI on the PR   test box   version release
-```
-
-| Workflow                      | When                                       | Does                                                                                                   |
-| ----------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
-| `ci.yml`                      | Pull requests into `dev`                   | Format, lint, typecheck, unit tests, OpenAPI drift, integration suites on Postgres, secret scan        |
-| `branch-policy.yml`           | Pull requests and pushes to the 3 branches | Checks which branch may merge into which, and flags a push with no pull request                        |
-| `release-main.yml`            | Merge into `main`                          | Version release: checks, API and web archives, the staff desktop installers, then every company's apps |
-| `verify.yml`                  | Called by `release-main.yml`               | The same checks as `ci.yml`, on the merge result                                                       |
-| `build-release-artifacts.yml` | Called by `release-main.yml`               | The release's files: API and web archives, staff desktop installers, Forms for AI                      |
-| `build-company-apps.yml`      | By hand, or from a release                 | One company's (or every company's) desktop installers and phone app, as their own release              |
-
-No workflow builds Docker images: each server builds its own from the code.
-
-The version is the root `package.json` `version` and nothing else: bump it to
-release, and a release for a version that already exists is refused. Repository
-variables and secrets the workflows read (`PUBLIC_API_URL`, `EXPO_TOKEN`,
-`EAS_BUILDS`, `BUILD_TOKEN`, `STORE_SUBMIT`, the Tauri signing key and others) are
-listed in [`docs/contributing/branching.md`](./docs/contributing/branching.md).
+See [`docs/database/`](./docs/database/README.md).
 
 ## Deploying
 
-What ships is two container images (API, which is also the worker and the
-migrator; and web), a Postgres database and a Supabase Auth container, all in one
-compose stack; everything else is configuration.
-
-- [`docs/deployment/README.md`](./docs/deployment/README.md) — a first stack with
-  `deploy/compose.yml` (Postgres, bootstrap, migrate, Auth, API, worker, web)
-  behind Caddy on one machine, including Oracle Cloud's Always Free ARM instance;
-  sharing the machine with another product; nightly backups
-  (`deploy/vps/backup-postgres.sh`); releasing a new version.
-- [`docs/deployment/company-apps.md`](./docs/deployment/company-apps.md) — the
-  staff desktop app and each company's own apps.
-- `deploy/vps/setup.sh` prepares a fresh Ubuntu or Oracle Linux machine (firewall,
-  Docker, Caddy, security updates).
-
-## Documentation map
-
-| Area                   | Start at                                                                                                                                                                                                                                |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| API                    | [`docs/api/`](./docs/api/README.md)                                                                                                                                                                                                     |
-| Authentication         | [`docs/auth/`](./docs/auth/README.md)                                                                                                                                                                                                   |
-| Database               | [`docs/database/`](./docs/database/README.md)                                                                                                                                                                                           |
-| Form engine            | [`docs/form-engine/`](./docs/form-engine/README.md), [builder](./docs/form-engine/builder.md), [repeating groups](./docs/form-engine/repeating-groups.md), [submissions](./docs/form-engine/submissions.md)                             |
-| Operations             | [`docs/operations/`](./docs/operations/README.md)                                                                                                                                                                                       |
-| Mobile                 | [`docs/mobile/`](./docs/mobile/README.md), [forms](./docs/mobile/forms.md), [the working day](./docs/mobile/job-execution.md), [company builds](./docs/mobile/company-builds.md), [device checklist](./docs/mobile/device-checklist.md) |
-| Offline sync           | [`docs/sync/`](./docs/sync/README.md)                                                                                                                                                                                                   |
-| Media                  | [`docs/media/`](./docs/media/README.md)                                                                                                                                                                                                 |
-| Billing                | [`docs/billing/`](./docs/billing/README.md)                                                                                                                                                                                             |
-| CRM and ERP            | [`docs/crm-erp/README.md`](./docs/crm-erp/README.md)                                                                                                                                                                                    |
-| AI assistant           | [`docs/ai/IMPLEMENTATION_STATUS.md`](./docs/ai/IMPLEMENTATION_STATUS.md), [`docs/ai/RUNBOOK.md`](./docs/ai/RUNBOOK.md)                                                                                                                  |
-| Business documents     | [`docs/documents/`](./docs/documents/)                                                                                                                                                                                                  |
-| Egyptian e-invoicing   | [`docs/e-invoicing/PLAN.md`](./docs/e-invoicing/PLAN.md), [`docs/e-invoicing/RUNBOOK.md`](./docs/e-invoicing/RUNBOOK.md)                                                                                                                |
-| Sign-up and onboarding | [`docs/onboarding/`](./docs/onboarding/README.md)                                                                                                                                                                                       |
-| Platform dashboard     | [`docs/platform/`](./docs/platform/README.md)                                                                                                                                                                                           |
-| Interface, tokens, RTL | [`docs/ui/`](./docs/ui/README.md)                                                                                                                                                                                                       |
-| Deployment             | [`docs/deployment/`](./docs/deployment/README.md)                                                                                                                                                                                       |
-| Branches and CI        | [`docs/contributing/branching.md`](./docs/contributing/branching.md)                                                                                                                                                                    |
-| The plan               | [`plan/ROADMAP.md`](./plan/ROADMAP.md)                                                                                                                                                                                                  |
+One server running `deploy/compose.yml` behind Caddy; the operator's whole
+procedure is [`docs/deployment/setup-checklist.md`](./docs/deployment/setup-checklist.md)
+(also as an interactive HTML page). Overview: [`docs/deployment/`](./docs/deployment/README.md).
 
 ## Contributing
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for the repository layout, branch naming,
-the commit format (Conventional Commits with a scope), the git hooks (lint-staged
-on commit; typecheck and tests on push), how to add a package, and the checklists
-for changing the interface, the API or the database.
+Branches, commits, checks and the rules lint and tests enforce:
+[`docs/contributing/`](./docs/contributing/README.md). Coding agents start with
+[`CLAUDE.md`](./CLAUDE.md), [`AGENTS.md`](./AGENTS.md) and [`MEMORY.md`](./MEMORY.md).

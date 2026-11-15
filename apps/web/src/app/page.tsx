@@ -4,7 +4,7 @@ import { useTranslation } from '@integr8/i18n';
 import Link from 'next/link';
 import { GetStartedLink, MarketingShell, pillClass } from '~/components/marketing-shell';
 import { Eyebrow, Magnetic, RevealText, ScrambleText } from '~/components/site/motion';
-import { contactEmail, signupMode } from '~/lib/signup';
+import { contactEmail } from '~/lib/contact';
 import { HIGHLIGHTS } from '~/lib/site-content';
 
 /**
@@ -53,7 +53,7 @@ export default function HomePage() {
   const email = contactEmail();
 
   return (
-    <MarketingShell step="landing.viewed" width="full">
+    <MarketingShell width="full">
       {/* The opening */}
       <section className="relative isolate overflow-hidden px-4 pt-32 pb-20 sm:px-8 sm:pt-40 sm:pb-28">
         <div aria-hidden="true" className="site-grid absolute inset-0 -z-10" />
@@ -105,11 +105,7 @@ export default function HomePage() {
                   </Link>
                 </Magnetic>
               </div>
-              <p className="text-sm text-site-muted">
-                {signupMode() === 'open'
-                  ? t('marketing.hero.note')
-                  : t('marketing.hero.noteClosed')}
-              </p>
+              <p className="text-sm text-site-muted">{t('marketing.hero.noteClosed')}</p>
             </div>
           </div>
         </div>

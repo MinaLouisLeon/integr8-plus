@@ -240,6 +240,44 @@ describe('SupabaseIdentityProvider — creating an identity', () => {
   });
 });
 
+describe('SupabaseIdentityProvider — importing a moved identity (P41)', () => {
+  it('keeps the id and sends the old hash, so the password still works', async () => {
+    const { provider, calls } = supabase(() =>
+      jsonResponse({ id: USER_ID, email: 'moved@northwind.example' }),
+    );
+
+    await provider.importIdentity({
+      userId: USER_ID,
+      email: 'Moved@Northwind.example',
+      passwordHash: '$2a$10$abcdefghijklmnopqrstuv',
+    });
+
+    expect(calls[0]?.url).toBe('http://auth:9999/admin/users');
+    expect(calls[0]?.body).toEqual({
+      id: USER_ID,
+      email: 'moved@northwind.example',
+      password_hash: '$2a$10$abcdefghijklmnopqrstuv',
+      email_confirm: true,
+    });
+  });
+
+  it('sends no hash for someone who never chose a password', async () => {
+    const { provider, calls } = supabase(() => jsonResponse({ id: USER_ID }));
+
+    await provider.importIdentity({ userId: USER_ID, email: 'a@b.example', passwordHash: null });
+
+    expect(calls[0]?.body).not.toHaveProperty('password_hash');
+  });
+
+  it('refuses an id or address that is already there', async () => {
+    const { provider } = supabase(() => jsonResponse({ code: 422 }, 422));
+
+    await expect(
+      provider.importIdentity({ userId: USER_ID, email: 'a@b.example', passwordHash: null }),
+    ).rejects.toThrow(/already has an identity/u);
+  });
+});
+
 describe('SupabaseIdentityProvider — finding an identity', () => {
   /**
    * GoTrue's admin list has no exact-match parameter: `filter` is a substring

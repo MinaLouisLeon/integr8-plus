@@ -5,7 +5,6 @@ import {
   loadAuthConfig,
   loadSigningKey,
   loadVerificationKeys,
-  type PasswordPolicy,
   PasswordService,
   PlatformSessionService,
   SessionService,
@@ -23,13 +22,8 @@ import {
 } from './config.js';
 import { LocalDiskStorage } from './media/local-disk.js';
 import { FakeGeocoder, type Geocoder, MapboxGeocoder } from './geo/geocoder.js';
-import {
-  type BillingProvider,
-  NoBillingProvider,
-  RecordingBillingProvider,
-  StripeBillingProvider,
-} from './billing/provider.js';
 import { assertSeatAvailable } from './billing/entitlements.js';
+import { type AppReleases, GitHubAppReleases, NoAppReleases } from './platform/app-releases.js';
 import { planFor } from './http/suspension.js';
 import { ExpoPushSender, type PushSender, RecordingPushSender } from './push/sender.js';
 import { type EmailSender, RecordingEmailSender, ResendEmailSender } from './email/sender.js';
@@ -73,26 +67,17 @@ export interface Services {
   /** Super admins signed in to the dashboard (P15). No company; see the platform routes. */
   platform: PlatformSessionService;
   identity: IdentityProvider;
-  /**
-   * What a password has to be, for the one place outside `@integr8/auth` that
-   * takes one: self-serve signup (P18). The same policy invitation acceptance
-   * applies, so a company's owner is held to what its engineers are.
-   */
-  passwordPolicy: PasswordPolicy;
   /** Company buckets: R2, or local disk in development. Reach one through `getStorage`. */
   media: MediaStorage;
   /** Site addresses to coordinates. Used by the worker, never in a request. */
   geocoder: Geocoder;
   /** Push notifications to engineers' phones. Used by the worker, never in a request. */
   push: PushSender;
-  /** Who takes the money (P17). Stripe in production, a recording fake elsewhere. */
-  billing: BillingProvider;
   /**
    * Who carries the mail (P18).
    *
    * The dependency several finished features were waiting on: an invitation
-   * that nothing delivered, and dunning reminders that could only be shown
-   * in-app.
+   * that nothing delivered.
    */
   email: EmailSender;
   /**
@@ -118,6 +103,11 @@ export interface Services {
    * A recording stand-in unless APP_BUILDS is `github`.
    */
   appBuilds: AppBuildTrigger;
+  /**
+   * The apps' releases on GitHub (P42): the staff app's downloads, and whether
+   * a company's own desktop app exists before its owner is invited.
+   */
+  appReleases: AppReleases;
   /**
    * What idempotency fingerprints are keyed with (http/idempotency.ts), so a
    * stored fingerprint cannot be checked against guesses without the server.
@@ -176,12 +166,10 @@ export async function buildServices(options: BuildServicesOptions): Promise<Serv
         assertSeatAvailable({ tenantId, plan: await planFor(tenantId) }),
     }),
     impersonation: new ImpersonationService({ sessions, config: authConfig }),
-    passwordPolicy: { minLength: authConfig.AUTH_MIN_PASSWORD_LENGTH },
     platform: new PlatformSessionService({ tokens, config: authConfig }),
     media: buildMediaStorage(options.config),
     geocoder: buildGeocoder(options.config),
     push: buildPushSender(options.config),
-    billing: buildBillingProvider(options.config),
     email: buildEmailSender(options.config),
     ai: {
       provider: buildAiProvider(options.config),
@@ -192,6 +180,7 @@ export async function buildServices(options: BuildServicesOptions): Promise<Serv
     pdf: buildPdfPrinter(options.config),
     eta: buildEtaServices(options.config),
     appBuilds: buildAppBuildTrigger(options.config),
+    appReleases: buildAppReleases(options.config),
     requestFingerprintKey: fingerprintKeyFrom(authConfig.PLATFORM_SECRET_KEY),
   };
 }
@@ -212,36 +201,9 @@ export function buildAppBuildTrigger(config: ApiConfig): AppBuildTrigger {
 }
 
 /**
- * The billing provider.
- *
- * Unlike the geocoder, a missing key is not a silent fallback to the fake: a
- * deployment that meant to charge cards and quietly did not is worse than one
- * that refuses to start. `loadApiConfig` throws before this is reached, and
- * this repeats the check because the two could drift.
- */
-export function buildBillingProvider(config: ApiConfig): BillingProvider {
-  if (config.BILLING_PROVIDER === 'none') {
-    return new NoBillingProvider();
-  }
-  if (config.BILLING_PROVIDER !== 'stripe') {
-    return new RecordingBillingProvider();
-  }
-
-  const secretKey = config.STRIPE_SECRET_KEY;
-  const webhookSecret = config.STRIPE_WEBHOOK_SECRET;
-  if (secretKey === undefined || webhookSecret === undefined) {
-    throw new Error(
-      'BILLING_PROVIDER is stripe but STRIPE_SECRET_KEY or STRIPE_WEBHOOK_SECRET is not set.',
-    );
-  }
-
-  return new StripeBillingProvider({ secretKey, webhookSecret });
-}
-
-/**
  * The email sender.
  *
- * Like billing and unlike the geocoder, a missing key is not a silent fallback
+ * Unlike the geocoder, a missing key is not a silent fallback
  * to the fake. Mail that quietly goes nowhere is worse than mail that fails
  * loudly: nobody notices until a customer says they never got their invitation.
  */
@@ -295,7 +257,7 @@ export function buildMediaStorage(config: ApiConfig): MediaStorage {
  * password when a variable is missing is a service that will do so in
  * production on the day somebody mistypes a secret name.
  */
-function buildIdentityProvider(config: ApiConfig, env: NodeJS.ProcessEnv): IdentityProvider {
+export function buildIdentityProvider(config: ApiConfig, env: NodeJS.ProcessEnv): IdentityProvider {
   const auth = supabaseAuthSettings(env);
   if ('problems' in auth) {
     throw new Error(
@@ -304,10 +266,26 @@ function buildIdentityProvider(config: ApiConfig, env: NodeJS.ProcessEnv): Ident
         ...auth.problems.map((problem) => `  ${problem}`),
         '',
         `APP_ENV is "${config.APP_ENV}".`,
-        'See docs/auth/self-hosted-auth.md.',
+        'See docs/auth/README.md.',
       ].join('\n'),
     );
   }
 
   return new SupabaseIdentityProvider(auth.settings);
+}
+
+/** `github` with no repository refuses to start (see `releaseProblems`). */
+export function buildAppReleases(config: ApiConfig): AppReleases {
+  if (config.APP_RELEASES !== 'github') {
+    return new NoAppReleases();
+  }
+  const repository = config.GITHUB_RELEASES_REPOSITORY;
+  if (repository === undefined) {
+    throw new Error('APP_RELEASES is github but GITHUB_RELEASES_REPOSITORY is not set.');
+  }
+  return new GitHubAppReleases({
+    repository,
+    token: config.GITHUB_RELEASES_TOKEN,
+    origin: config.WEB_APP_URL === undefined ? '' : new URL(config.WEB_APP_URL).origin,
+  });
 }

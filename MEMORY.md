@@ -7,7 +7,7 @@ the end of any piece of work that changes one of them, and date each section.
 
 ## Snapshot (2026-11-01, after the form builder and PDF builder round)
 
-- **Version:** root `package.json` is **1.4.0** (2026-11-10, branch `ccr-56fb45d1-5mq6bt`: carries the AI tooling stage P37–P39 and migration 0077; history below starts at 1.3.1). 1.3.0 reached `main` (PR #148) but its
+- **Version:** root `package.json` is **2.0.0** (2026-11-14, branch `ccr-c6dc87d8-3hlhaw` from `dev`: P41's clean database restart, see Decisions). Before it, **1.4.0** (2026-11-10, branch `ccr-56fb45d1-5mq6bt`: carries the AI tooling stage P37–P39 and migration 0077; history below starts at 1.3.1). 1.3.0 reached `main` (PR #148) but its
   release never published: the publish job attached the secret scan's report folder
   (`dist/work`) and failed, so there is no v1.3.0 tag. The owner bumped `main` to 1.3.1 on
   GitHub (PR #151, `package.json` only, which failed `app-info.test.ts`); branch
@@ -25,11 +25,14 @@ the end of any piece of work that changes one of them, and date each section.
   source: the phone (`app.config.ts`) and the web build (`next.config.ts`) read it, and
   `apps/api/src/app-info.ts` has a copy a test keeps equal. A version bump must also change
   every place listed under "Places that state the version".
-- **Migrations:** `packages/db/migrations` reaches **0077** (0077 `test_companies`, P38,
-  unreleased, branch `ccr-56fb45d1-5mq6bt`). Before that it reached **0076** (0075 merged into `dev`, released
+- **Migrations (2.0.0):** a new baseline, **0001_foundation … 0019_assistant**, one per module (P41),
+  then **0020_desktop_only** (P42, unreleased, branch `ccr-982c2137-h4as2m`); the next one is **0021**. A 1.x database is refused (`before-baseline`) and is created again (setup guide
+  Stage 11 part AJ). **Before 2.0.0** (history): `packages/db/migrations` reached **0079** (0079 `form_actions`, P40, unreleased,
+  branch `ccr-916cc1b1-6sp5my`; 0078 `accountant_role`, unreleased, merged into `dev` in PR #188; 0077 `test_companies`, P38, unreleased, branch
+  `ccr-56fb45d1-5mq6bt`). Before that it reached **0076** (0075 merged into `dev`, released
   with 1.3.4; **0076** `submissions.title` is unreleased, on branch
   `fix/submission-names-pdf-links-pickers`). **0059 was never used** (workers had reserved ranges) and the migrator
-  does not need contiguous numbers; the next one is **0078**. 1.2.2 carries 0054–0057;
+  does not need contiguous numbers; the next one is **0080**. 1.2.2 carries 0054–0057;
   1.2.3 adds 0058 and 0060–0066; 1.2.4 adds 0067–0068; 1.3.0 adds 0069 and 0074 (0070–0073 were reserved by workers and never used).
 - **Pre-production audit (2026-10-31):** plans, docs and code compared area by area; the
   report is the claude.ai artifact https://claude.ai/artifact/FB7vANrUc691VfMXkR5h2U. Its
@@ -47,13 +50,11 @@ the end of any piece of work that changes one of them, and date each section.
   maintenance plans + deadlines (0053), the AI assistant (help library or a model), ETA
   e-invoicing (test-only, not certified), company website data API, the demo company
   seeder.
-- **Plan:** P01, P04, P08 and P22 are complete. P25–P27 (scheduling), P23, P24 and P32
-  (Arabic, mostly built) are `IN PROGRESS`; v1.3 (P28–P31) and P33–P35 are `NOT STARTED`,
-  though parts exist (see the notes in `plan/README.md`). Modules planned outside the phase
-  list are indexed in `plan/README.md` ("Module plans outside the phase list").
-  P37–P39 (v1.4 AI tooling, planned 2026-11-10) are built (`IN PROGRESS`, see Decisions). P40
-  (form actions, from CR-0001) is proposed and waits for the owner's decisions.
-- **P36 self-hosted sign-in** (`plan/v1.0-launch/P36-self-hosted-sign-in.md`): merged into
+- **Plan (2026-11-15):** the phase files P01–P41 were removed with the old docs; `plan/README.md`
+  now lists only what is unfinished: P40 (form actions; server side built, screens, phone, Forms
+  for AI and the owner's six decisions open), the tooling and sign-in runs still to do, the owner's
+  steps, and the phases not started (P20, P21, P28–P31, P33–P35). P42 (desktop only) is in progress; the next new phase is P43.
+- **P36 self-hosted sign-in**: merged into
   `main` in PRs #130 and #135; CI's database job, real Auth included, is green. Auth container in
   `deploy/compose.yml` (`supabase/auth:v2.197.0`, private ports, memory caps), bootstrap's
   `supabase_auth_admin` role, migration 0054, emailed 6-digit sign-in codes and Change
@@ -87,7 +88,18 @@ the end of any piece of work that changes one of them, and date each section.
   republish it from `setup-checklist.html` whenever the guide changes. **2026-11-04:** the owner
   asked for a short steps-only checklist instead (no per-release sections), in the Integr8 Media
   look: https://claude.ai/artifact/KrY8XQBYC5ehzjG7DU4khX, a hand-written page (not generated
-  from the repository guide); update it when a setup or update step changes.
+  from the repository guide); update it when a setup or update step changes. **2026-11-15:** P42
+  changed the guide (staff app instead of `/platform`, no Stripe, Stage 11 part AL); neither
+  artifact has been republished yet.
+- **The guide on GitHub Pages (2026-11-15, branch `ccr-982c2137-h4as2m`), as the owner asked:**
+  `.github/workflows/guide-pages.yml` publishes `scripts/guide/build-site.mjs`'s output when the
+  guide reaches `main` or by hand: the guide encrypted (AES-GCM, PBKDF2 600 000 rounds) with the
+  `GUIDE_USERNAME`/`GUIDE_PASSWORD` repository secrets, decrypted in the browser. The owner chose
+  the credentials; they are not in the repository. To do once: Pages source "GitHub Actions", the
+  two secrets, then a run from `main`. GitHub's search API reported the repository **public** on
+  2026-11-15 (MEMORY said private since 2026-11-04), so the guide files are readable there anyway.
+- **Since P42** `app.integr8-media.com` is the public site only (no sign-in): `/download`, `/q`,
+  `/d`, `/a/<code>`, `/accept-invitation`, `/desktop-updates`, marketing, help, legal.
 
 ## Decisions
 
@@ -131,7 +143,7 @@ the end of any piece of work that changes one of them, and date each section.
 - **Low fixes (2026-11-01, 1.2.4), as the owner chose them:** the public pages, `/download`
   and the staff dashboard (and the staff desktop frame) wear the Integr8 Media website's look
   (source: MinaLouisLeon/integr8-media-website; tokens and self-hosted fonts in
-  `packages/tokens`, `docs/brand/`), always English unless Arabic is chosen (no browser
+  `packages/tokens`, `packages/tokens`), always English unless Arabic is chosen (no browser
   negotiation); the company workspace keeps company branding. Uploaded PDF documents and a
   per-document sharing switch (new ones start not shared, older ones stay shared; 0067);
   files follow their owning record (`media-access.ts`, refusals are 404); a file-use index
@@ -245,7 +257,7 @@ the end of any piece of work that changes one of them, and date each section.
   `cargo check` could not run on this Windows machine (MinGW `windres` fails in the build
   script), so the desktop shell is untested in a real build.
 - **AI tooling stage planned (2026-11-10, plan only, nothing built), as the owner chose it:**
-  `plan/v1.4-ai-tooling/` holds P37 (a live preview window in Forms for AI: the web filler and
+  `plan/README.md` holds P37 (a live preview window in Forms for AI: the web filler and
   the printed PDFs on a loopback page that refreshes as the AI edits; still offline), P38 (a
   developer MCP server run from the repository, `apps/dev-mcp`, signed in from a terminal with a
   staff account; migration 0077 adds `tenants.is_test`, unchangeable after creation, and a
@@ -289,7 +301,113 @@ the end of any piece of work that changes one of them, and date each section.
   into `plan/requests/` (README there); planned with `docs/contributing/planning-a-change-request.md`
   (`/plan-change-request`); the developer MCP server lists and reads them. `offline.test.ts` now
   proves no Forms for AI tool makes a network request. CR-0001 became **P40 — Form actions**
-  (`plan/v1.5-form-actions/`, proposed; its test-company evidence step is still to run).
+  (`plan/README.md`, proposed; its test-company evidence step is still to run).
+- **One MCP server for developers (2026-11-14, unreleased, branch `ccr-712995a6-da3hqy` from
+  `main`), as the owner asked:** the developer MCP server (`apps/dev-mcp`) carries every Forms for
+  AI tool beside its own (37 tools), through `registerFormsTools` from `@integr8/forms-ai/tools`
+  (the one app-to-app import allowed). Forms for AI's two change-request read tools are renamed
+  there `list_draft_change_requests` / `get_draft_change_request`. The Forms tools need no
+  sign-in; the preview page needs `pnpm --filter @integr8/forms-ai build`. Forms for AI's own
+  program is unchanged and still what staff install.
+- **Review of the two MCP servers (2026-11-14, unreleased, branch `ccr-11ad0982-coofjh` from
+  `dev`):** the developer server now has 38 tools (`hand_over_change_request` copies a recorded
+  request into `plan/requests/` and adds its README row). A grant is reused only for the same
+  purpose, so each call's purpose reaches the audit log; the trace folder is `0700` and refuses a
+  link or another user's folder; the handshake version comes from its `package.json`;
+  `import_form_package` refuses anything but a `.integr8form` ZIP before sending; the tool-answer
+  helpers live once in `apps/forms-ai/src/mcp/results.ts`. (The P38 phase file with its addenda is in git history.)
+- **The accountant role and company roles on the desktop (2026-11-14, unreleased, branch
+  `ccr-56130823-gs6hbv`; migration 0078), as the owner asked:** an eighth built-in role,
+  `accountant`, ranked between `inventory_manager` and `dispatcher`: finance (manage + issue),
+  ledger (post + manage), `expense.approve`, ETA prepare/sign/submit, and read-only customers,
+  sales, purchasing, stock, assets, contracts, documents. Not `ledger.unlock`,
+  `purchasing.approve`, `eta.configure`, payroll or HR (Claude's proposed default, for the owner
+  to review; `permissions.table.md` has it). Not a grant; left out of work-order crews; the demo
+  seeder adds Hana Mostafa as accountant, who drafts the manual journals. The desktop app has a
+  **Company roles** tab (`/settings/roles`, nav key `companyRoles`, desktop-only, shown with
+  `member.update_role`) using the shared `CompanyRolesScreen` (`peopleOnWeb`); roles are still
+  given to people on the web. Older phones reject an accountant's offline grant (strict
+  `roleSchema`).
+- **Form actions, server side (2026-11-14, unreleased, branch `ccr-916cc1b1-6sp5my` from `dev`;
+  migration 0079), as the owner asked ("start implementing P40", decisions to discuss later):**
+  built on P40's recommended answers, not yet confirmed by the owner (claims wait for approval;
+  the km rate lives in the form's calculation; a required follow-up holds the job; categories
+  matched by name; the approved amount applies to every claim; a claim that cannot be made never
+  refuses the submission). Actions sit beside the definition in `form_versions.actions`; their
+  schema, checks and the plan of a submit are in `@integr8/form-engine` (`actions.ts`), not
+  `form-package` (Node-only, and the web builder needs them). `apps/api/src/forms/actions.ts`
+  runs them in the submit's transaction from both submit paths, each in a savepoint; a claim's
+  `client_action_id` is a UUID v5 of submission + action, so it is made once. Outcomes are kept in
+  `submission_action_results` (Make it now: `POST /v1/submissions/{id}/actions/retry`).
+  Follow-ups are drafts linked in `submission_links`, and the form joins the job's forms (the
+  database refuses a job submission for a form not on the job), so a required one blocks completing
+  through the existing `completion_blocked`. Approving takes `approvedAmount` + `amountNote`; the
+  ledger, direct payment and payroll use `payableAmount` (`coalesce(approved_amount, amount)`).
+  Claim deciders read the claim's submission at `GET /v1/expenses/{id}/submission`. Not built: the
+  builder's Actions tab and the other screens, the phone's next-form button and its "Update the
+  app" gate (left out on purpose until a phone release reads follow-ups), Forms for AI, form-file
+  import of actions, the demo seeder's trip form. Doc: `docs/form-engine/README.md`.
+- **Database restructure, P41 (2026-11-14, unreleased, branch `ccr-c6dc87d8-3hlhaw` from `dev`), as
+  the owner chose it:** all data so far is test data, so no backup and a clean restart (2.0.0).
+  **Shared tables** stay (every row keyed by `tenant_id`, RLS the backstop); per-company tables were
+  discussed and not chosen. Migrations 0001–0079 were replaced by a baseline of 19 module migrations,
+  generated from the 0079 schema and compared object by object. The tables that grow forever and
+  that nothing points at are **split by UTC year** (`<table>_y<year>` + `_default`): `audit_log`,
+  `platform_audit_log`, `work_order_events`, `submission_values`, `erp_journal_lines` (gained
+  `entry_date`, kept by an `on update cascade` key), the three AI logs, `login_attempts`,
+  `signup_events`, `eta_attempts`, `sync_touches`. Partitions carry no grants; `ensure_year_partitions()`
+  (security definer) runs in migrations, daily in the worker (`partitions.ensure`) and after an
+  import. `impersonation_grants` carries `audit_log_occurred_at`. Not partitioned on purpose (keys
+  unique for all time): stock movements, submission events, asset events, sync reports.
+  **Query audit:** `db:volume` (made-up test companies from SQL) and `db:plans` (EXPLAIN GENERIC_PLAN of
+  every `pg_stat_statements` statement as the runtime role); compose's Postgres runs
+  `pg_stat_statements` and `auto_explain` (500 ms). Findings fixed: ledger reports by line date with
+  bounds only when given; login-attempt clean-up by key not `ctid`. **Transfer:** staff-only
+  `transfer export|import|inspect` (`apps/api/src/transfer/`, compose service `transfer`, profile
+  `tools`, the only one with both the owner's URL and the API's settings): a tar.gz with a manifest
+  (format 1, release, schema, modules), rows as Postgres JSON text, sign-in accounts **with password
+  hashes** (owner's choice; the archive is a credential; `IdentityProvider.importIdentity` sends GoTrue
+  `id` + `password_hash`) and the files. Import: one transaction, triggers off, every foreign key
+  checked, same ids, refuses an existing company or a newer archive; `--continue` finishes files and
+  accounts. Untested here: the real GoTrue `password_hash` import (CI's real-Auth suite does not
+  cover it) and the compose `transfer` service on a real machine.
+- **Documentation rewritten for 2.0.0 (2026-11-15, branch `ccr-8527348b-k9tfyv`), as the owner
+  asked:** every old page under `docs/` and every phase file under `plan/` was deleted (in git
+  history before that commit; `version2.md` and `PROJECT_IMPROVEMENTS.md` too) and replaced by a
+  smaller set written from the code: `docs/README.md` (index and glossary), `architecture.md`,
+  `apps/` (web, desktop and phone, with the desktop-only and web-only screen lists) and
+  `apps/mobile.md`, `api/`, `auth/` (+ `offline-access.md`), `database/` (+ `migrations.md` with
+  the map from 1.x migration numbers, the backup runbook kept), `modules/`, `form-engine/`
+  (+ `package-format.md`), `documents/`, `media/`, `ai/`, `e-invoicing/` (its
+  `official-public/` fixtures folder kept), `platform/`, `deployment/` (the setup guide kept),
+  `contributing/` (+ `developer-tools.md`, `planning-a-change-request.md`), `legal/`. Folder names
+  were kept where code comments point (`docs/ai`, `docs/documents`, …); comments naming removed
+  files were repointed. `README.md` and `CONTRIBUTING.md` are short front pages. Kept as they
+  were, for the owner to decide: `full-description.md` (an Arabic business description of
+  1.1.0), `new-idea.md`, `PROJECT_INDEX.md`/`.json`. The owner wants to discuss the desktop app
+  against the phone app next.
+- **Desktop only, P42 (2026-11-15, unreleased, branch `ccr-982c2137-h4as2m`; migration 0020), as the
+  owner chose it (D1–D6 in the phase file):** no web workspace and no web dashboard. A company's
+  office works only in its own desktop app (Get started, People, Company roles, Company settings,
+  Website access, Storage and a read-only Billing came over; the desktop's separate assistant
+  settings screen folded into People and Company settings). Integr8 staff work only in the staff
+  desktop app, which now holds the whole dashboard (`apps/desktop/src/features/platform/`, loaded
+  lazily and left out of company builds, checked by `check:company-bundle` in CI): a memory-only
+  platform session (D2, sign in at every start), **Work inside this company** as the company or
+  **Act as this person** (D3), **Back to the dashboard** on the banner. `apps/web` is the public
+  site; a route-list test pins it. Self-serve sign-up, the funnel, Stripe, checkout, portal,
+  webhooks, dunning and the trial job are deleted with their tables and columns (D4). Reminder
+  emails name the screen instead of linking (D1). Printed asset tags lead to a public `/a/<code>`
+  page (D5, `GET /v1/public/asset-tags/:code`). **An invitation waits for the company's own desktop
+  app** (D6, not the recommendation): 409 `company_app_not_built` (503 `releases_unavailable`) from
+  the staff resend, onboarding's send, and the company's own invite and resend, unless it is a test
+  company or `APP_RELEASES=off`; `APP_RELEASES=github` reads `GITHUB_RELEASES_REPOSITORY` with
+  `GITHUB_RELEASES_TOKEN` through the new `@integr8/releases`, which also gives
+  `GET /v1/platform/downloads`. The AI channel `web` is gone (`ai_web_enabled` dropped); old `web`
+  sessions and staff count as desktop. Setup guide Stage 11 part AL. The developer MCP server's
+  `call_api` sends public routes (asset tags, quote and document links, accepting an invitation) as a
+  visitor with no sign-in; Forms for AI's guides name the staff and company desktop apps. Not checked: real Tauri
+  builds, and a real GitHub release lookup.
 - **The demo seeder goes through the API**, in-process with Fastify's `inject`, as the
   company's own people (plus a staff impersonation for staff-only setup). Direct inserts
   were rejected: they skip numbering, stock, ledger postings and audit, and produce data
@@ -311,6 +429,21 @@ Update them together at each release or new migration:
 - Released versions: `gh release list`. v1.2.1 (2026-10-27) carries migrations 0051–0053.
 
 ## Open items
+
+- **Owner steps for P42 (2026-11-15):** click through the staff app and a company's app in real
+  Tauri builds on Windows (and macOS) and sign a new person in through an invitation; on the
+  machine, setup guide Stage 11 part AL (delete the billing and sign-up settings, add
+  `APP_RELEASES=github` and the releases token, install the new staff app, build each company's
+  app before inviting); republish the two setup-guide artifacts.
+
+- **Owner steps for 2.0.0 (2026-11-14):** setup guide Stage 11 part AJ: `down -v`, `up -d --build`,
+  create the super admins again, onboard or seed companies again, delete the old companies' R2
+  buckets. Then the Proxmox test machine run: `db:volume` at scale 1, the app clicked through,
+  `db:plans`, and one `transfer export`/`import` between two machines (checks the real Auth import of
+  password hashes).
+
+- **P40 decisions (2026-11-14):** the owner still has to go through P40's six decisions; the server
+  follows the recommendations. Setup guide Stage 11 part AI covers migration 0079.
 
 - **Owner steps for 1.3.0 (2026-11-01):** Stage 11 parts AC and AD (migrations 0069 and
   0074; the api container's 1 GB cap; wait a day after updating before publishing forms
@@ -344,7 +477,7 @@ Update them together at each release or new migration:
   `EXPO_PUBLIC_AUTH_VERIFICATION_KEYS` per environment; a lawyer reviews `/legal/*` and fills
   `LEGAL_OPERATOR`; an accountant signs off the payroll figures and the year rule; decide
   whether the repository stays public, then apply the rulesets
-  (`docs/contributing/branching.md`); check existing companies' timezone and working days.
+  (`docs/contributing/README.md`); check existing companies' timezone and working days.
 
 - **The demo seeder against the real Auth container** has not been run (only the test
   fake). **Removing a demo company** is the normal close flow (suspend, export, close,
@@ -354,6 +487,11 @@ Update them together at each release or new migration:
 
 ## Gotchas
 
+- **Test companies' people can sign in only with the development desktop build** (P42): test
+  companies get no app builds, and the staff build has no company door. The developer MCP server
+  needs no sign-in. The staff dashboard in a browser: `VITE_APP_FLAVOR=staff pnpm --filter
+@integr8/desktop dev` (or no flavour for both doors), with the API's `API_CORS_ORIGINS`
+  including `http://localhost:3002`.
 - GitHub branch protection is **not** in force. The repository became **private** on
   2026-11-04 (rulesets on a private repository need a paid plan); none were ever applied. The `staging` branch exists again since
   2026-11-01, created on GitHub from `dev` at `812a550` (1.3.0 with the Dependabot updates);

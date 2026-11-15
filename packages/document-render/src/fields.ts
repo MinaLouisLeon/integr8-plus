@@ -5,7 +5,7 @@ import { formatAnswer, isBlank, say } from './format.js';
 import { type DocumentLocale, wordsFor } from './words.js';
 
 /**
- * A document's fields (docs/documents/ADR-0001 D6): typed by the person making
+ * A document's fields (docs/documents/README.md D6): typed by the person making
  * the PDF, or taken from the submission when it is made. The values are what
  * the register searches, what the website lookup compares, and what the page
  * may print.

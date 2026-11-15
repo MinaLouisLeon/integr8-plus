@@ -1,6 +1,6 @@
 import { createI18n, I18nextProvider, type Locale } from '@integr8/i18n';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState, type ReactNode } from 'react';
 import { HashRouter, Navigate, Outlet, Route, Routes, useNavigate } from 'react-router';
 import { AppFrame } from '~/components/app-frame';
 import { ClientTooOldBanner } from '~/components/client-too-old-banner';
@@ -14,7 +14,9 @@ import {
   writePreferences,
   type Preferences,
 } from '~/lib/preferences';
+import { APP_FLAVOR } from '~/lib/env';
 import { session, whenSignedOut } from '~/lib/session';
+import { afterCompanySignOut } from '~/lib/staff-bridge';
 import { FormBuilderRoute } from '~/features/forms/routes/form-builder';
 import { ChangePasswordRoute } from '~/routes/change-password';
 import { FormVersionRoute } from '~/features/forms/routes/form-version';
@@ -76,6 +78,7 @@ import {
   PayrollRulesRoute,
   MyPayslipsRoute,
   AssetRoute,
+  AssetTagRoute,
   AssetsRoute,
   DocumentRoute,
   DocumentsRoute,
@@ -98,6 +101,7 @@ import {
   LeadsRoute,
   CustomerRoute,
   CustomersRoute,
+  CompanyRolesRoute,
   ImportsRoute,
   JobTypesRoute,
   NewWorkOrderRoute,
@@ -113,7 +117,12 @@ import {
   WorkOrdersRoute,
 } from '~/features/operations/screens';
 import { FillRoute, SubmissionRoute, SubmissionsRoute } from '~/features/submissions/screens';
-import { AssistantSettingsRoute } from '~/routes/assistant-settings';
+import { BillingRoute } from '~/features/company/billing';
+import { CompanySettingsRoute } from '~/features/company/company-settings';
+import { GetStartedRoute } from '~/features/company/get-started';
+import { PeopleRoute } from '~/features/company/people';
+import { StorageRoute } from '~/features/company/storage';
+import { WebsiteAccessRoute } from '~/features/company/website-access';
 import { BrandingRoute } from '~/routes/branding';
 import { DashboardRoute } from '~/routes/dashboard';
 import { EInvoicingSwitchRoute } from '~/routes/e-invoicing-switch';
@@ -133,6 +142,20 @@ import { SignInRoute } from '~/routes/sign-in';
  * between sections redraws the screen and not the menu. The sign-in screen
  * stands alone.
  */
+
+/**
+ * The staff dashboard (P42), for the staff build and the development build
+ * only. Vite inlines the flavour, so in a company's build this is `null` and
+ * the dashboard's module is left out of the bundle altogether
+ * (`scripts/check-company-bundle.mjs` checks).
+ */
+const PlatformApp =
+  import.meta.env.VITE_APP_FLAVOR === 'company'
+    ? null
+    : lazy(() => import('~/features/platform/routes'));
+
+/** Where the app opens: the staff dashboard in the staff build, the company's elsewhere. */
+const HOME = APP_FLAVOR === 'staff' ? '/platform' : '/dashboard';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -238,14 +261,21 @@ const SIGNED_IN_ROUTES: readonly { path: string; element: ReactNode }[] = [
   { path: '/e-invoicing/signing', element: <EtaSigningRoute /> },
   { path: '/e-invoicing/documents/:documentId', element: <EtaDocumentRoute /> },
   { path: '/assets/:assetId', element: <AssetRoute /> },
+  { path: '/assets/tag/:code', element: <AssetTagRoute /> },
   { path: '/customers', element: <CustomersRoute /> },
   { path: '/customers/:customerId', element: <CustomerRoute /> },
   { path: '/sites/:siteId', element: <SiteRoute /> },
   { path: '/settings/job-types', element: <JobTypesRoute /> },
   { path: '/settings/branding', element: <BrandingRoute /> },
   { path: '/settings/e-invoicing', element: <EInvoicingSwitchRoute /> },
-  { path: '/settings/assistant', element: <AssistantSettingsRoute /> },
+  { path: '/get-started', element: <GetStartedRoute /> },
+  { path: '/settings/people', element: <PeopleRoute /> },
+  { path: '/settings/company', element: <CompanySettingsRoute /> },
+  { path: '/settings/website-access', element: <WebsiteAccessRoute /> },
+  { path: '/storage', element: <StorageRoute /> },
+  { path: '/billing', element: <BillingRoute /> },
   { path: '/settings/password', element: <ChangePasswordRoute /> },
+  { path: '/settings/roles', element: <CompanyRolesRoute /> },
   { path: '/imports', element: <ImportsRoute /> },
   { path: '/timesheets', element: <TimesheetsRoute /> },
   { path: '/schedule', element: <ScheduleRoute /> },
@@ -278,6 +308,16 @@ export function App() {
           <ContextMenuProvider>
             <Routes>
               <Route path="/sign-in" element={<SignInRoute />} />
+              {PlatformApp === null ? null : (
+                <Route
+                  path="/platform/*"
+                  element={
+                    <Suspense fallback={<LoadingState />}>
+                      <PlatformApp locale={preferences.locale} onLocaleChange={changeLocale} />
+                    </Suspense>
+                  }
+                />
+              )}
               <Route
                 element={
                   <RequireSession locale={preferences.locale} onLocaleChange={changeLocale} />
@@ -287,7 +327,7 @@ export function App() {
                   <Route key={path} path={path} element={element} />
                 ))}
               </Route>
-              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+              <Route path="*" element={<Navigate to={HOME} replace />} />
             </Routes>
           </ContextMenuProvider>
         </HashRouter>
@@ -321,11 +361,20 @@ function RequireSession({
     whenSignedOut(() => {
       // Whoever signs in next starts from nothing of this session's.
       queries.clear();
-      void navigate('/sign-in', { replace: true });
+      // Staff working inside a company go back to the dashboard (P42).
+      void navigate(afterCompanySignOut(), { replace: true });
     });
 
     void (async () => {
-      const allowed = await session().isSignedIn();
+      let allowed = await session().isSignedIn();
+      // A company session in the staff app exists only beside a staff
+      // session, which is held in memory (P42, D2). After a restart there is
+      // none, so a company session left in the credential store is ended
+      // rather than let in without the staff sign-in.
+      if (allowed && APP_FLAVOR === 'staff' && afterCompanySignOut() === '/sign-in') {
+        await session().signOut();
+        allowed = false;
+      }
       if (cancelled) {
         return;
       }

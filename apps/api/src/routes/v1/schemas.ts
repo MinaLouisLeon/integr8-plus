@@ -222,6 +222,11 @@ export const acceptedSchema = z.object({
   existingAccount: z.boolean(),
   /** Always true since 1.2.4: accepting signs nobody in, so sign in next. */
   signInRequired: z.boolean(),
+  /**
+   * The company joined (P42): its name, and its short name for the download
+   * page, since its people sign in in its own desktop or phone app.
+   */
+  company: z.object({ name: z.string(), slug: z.string() }).nullable(),
 });
 
 /** What an invitation link's page may know before accepting it (1.2.4). */

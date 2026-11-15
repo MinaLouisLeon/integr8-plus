@@ -180,10 +180,23 @@ describe('who can do what', () => {
     ]);
   });
 
-  it('keeps the ledger to owners and admins, read by viewers, and its reopening to owners', () => {
-    expect(ROLES.filter((role) => can(role, 'ledger.read'))).toEqual(['owner', 'admin', 'viewer']);
-    expect(ROLES.filter((role) => can(role, 'ledger.post'))).toEqual(['owner', 'admin']);
-    expect(ROLES.filter((role) => can(role, 'ledger.manage'))).toEqual(['owner', 'admin']);
+  it('keeps the ledger to owners, admins and accountants, read by viewers, and its reopening to owners', () => {
+    expect(ROLES.filter((role) => can(role, 'ledger.read'))).toEqual([
+      'owner',
+      'admin',
+      'accountant',
+      'viewer',
+    ]);
+    expect(ROLES.filter((role) => can(role, 'ledger.post'))).toEqual([
+      'owner',
+      'admin',
+      'accountant',
+    ]);
+    expect(ROLES.filter((role) => can(role, 'ledger.manage'))).toEqual([
+      'owner',
+      'admin',
+      'accountant',
+    ]);
     expect(ROLES.filter((role) => can(role, 'ledger.unlock'))).toEqual(['owner']);
   });
 
@@ -356,12 +369,13 @@ describe('HR, payroll and the store (ADR-0010, ADR-0011)', () => {
   const holders = (permission: Parameters<typeof can>[1]) =>
     ROLES.filter((role) => can(role, permission));
 
-  it('ranks the two new roles between admin and dispatcher', () => {
+  it('ranks the specialist roles between admin and dispatcher', () => {
     expect(ROLES).toEqual([
       'owner',
       'admin',
       'hr_manager',
       'inventory_manager',
+      'accountant',
       'dispatcher',
       'engineer',
       'viewer',
@@ -374,7 +388,7 @@ describe('HR, payroll and the store (ADR-0010, ADR-0011)', () => {
     expect(holders('payroll.run')).toEqual(['owner', 'hr_manager']);
     expect(holders('payroll.approve')).toEqual(['owner', 'hr_manager']);
     expect(holders('hr.read')).toEqual(['owner', 'admin', 'hr_manager']);
-    expect(holders('expense.approve')).toEqual(['owner', 'admin', 'hr_manager']);
+    expect(holders('expense.approve')).toEqual(['owner', 'admin', 'hr_manager', 'accountant']);
     expect(holders('expense.submit')).toEqual([...ROLES]);
   });
 
@@ -501,11 +515,73 @@ describe('service contracts (P27)', () => {
 
   it('lets owners, admins and dispatchers manage them, and viewers read them', () => {
     expect(holders('contract.manage')).toEqual(['owner', 'admin', 'dispatcher']);
-    expect(holders('contract.read')).toEqual(['owner', 'admin', 'dispatcher', 'viewer']);
+    expect(holders('contract.read')).toEqual([
+      'owner',
+      'admin',
+      'accountant',
+      'dispatcher',
+      'viewer',
+    ]);
   });
 
   it('lets owners and admins set the deadlines, which no staff-only rule holds back', () => {
     expect(holders('deadline.manage')).toEqual(['owner', 'admin']);
     expect(holds({ role: 'admin', grants: [] }, 'deadline.manage')).toBe(true);
+  });
+});
+
+describe('the accountant', () => {
+  it('keeps the books: issues invoices, records money, posts the ledger and sends e-invoices', () => {
+    for (const permission of [
+      'finance.manage',
+      'finance.issue',
+      'ledger.post',
+      'ledger.manage',
+      'expense.approve',
+      'eta.prepare',
+      'eta.sign',
+      'eta.submit',
+    ] as const) {
+      expect(can('accountant', permission)).toBe(true);
+    }
+  });
+
+  it('reads what the books are built from and changes none of it', () => {
+    for (const permission of [
+      'customer.read',
+      'sales.read',
+      'purchasing.read',
+      'inventory.read',
+      'asset.read',
+    ] as const) {
+      expect(can('accountant', permission)).toBe(true);
+    }
+    for (const permission of [
+      'customer.manage',
+      'sales.manage',
+      'sales.issue',
+      'purchasing.manage',
+      'purchasing.approve',
+      'inventory.manage',
+      'work_order.read_all',
+      'submission.fill',
+    ] as const) {
+      expect(can('accountant', permission)).toBe(false);
+    }
+  });
+
+  it('leaves the reopening of a period, e-invoicing setup, people and payroll to others', () => {
+    for (const permission of [
+      'ledger.unlock',
+      'eta.configure',
+      'eta.switch',
+      'member.invite',
+      'hr.read',
+      'hr.sensitive',
+      'payroll.run',
+      'billing.read',
+    ] as const) {
+      expect(can('accountant', permission)).toBe(false);
+    }
   });
 });

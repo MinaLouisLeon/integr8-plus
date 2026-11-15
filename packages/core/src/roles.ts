@@ -13,6 +13,9 @@ export const ROLES = [
   // keeps the store, purchasing and manufacturing — each nothing else.
   'hr_manager',
   'inventory_manager',
+  // A person who keeps the books: invoices and payments, the general ledger,
+  // expense claims and e-invoicing, and nothing of the operation or of HR.
+  'accountant',
   'dispatcher',
   'engineer',
   'viewer',

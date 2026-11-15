@@ -332,6 +332,30 @@ describe('the register', () => {
     expect((await call(viewer, 'GET', '/v1/assets/by-tag/not-a-code')).statusCode).toBe(404);
   });
 
+  it('tells a stranger whose tag it is, and nothing about the asset (P42, D5)', async () => {
+    const created = await register();
+    const { tagCode } = created.asset;
+    const stranger = await api.app.inject({
+      method: 'GET',
+      url: `/v1/public/asset-tags/${tagCode.slice(0, 4).toLowerCase()}-${tagCode.slice(4)}`,
+      headers: { 'x-client-version': '1.0.0', 'x-client-app': 'web' },
+    });
+    expect(stranger.statusCode, stranger.body).toBe(200);
+    const body = json<Record<string, unknown>>(stranger);
+    expect(body).toEqual({
+      company: { name: expect.any(String) as string, slug: expect.any(String) as string },
+      code: tagCode,
+    });
+    expect(stranger.body).not.toContain(created.asset.id);
+
+    const unknown = await api.app.inject({
+      method: 'GET',
+      url: '/v1/public/asset-tags/0000-00000000',
+      headers: { 'x-client-version': '1.0.0', 'x-client-app': 'web' },
+    });
+    expect(unknown.statusCode).toBe(404);
+  });
+
   it('finds by words, serial and reference, and pages newest first', async () => {
     const serial = `FIND-${tag()}`;
     const created = await register({ name: 'Rooftop condenser', serialNumber: serial });

@@ -315,6 +315,7 @@ describe('the publish check', () => {
     diff: { titleChanged: false, changes: [], breaking: [] },
     documentTemplates: [],
     warnings,
+    actionIssues: [],
   });
   const missing = (path: string) => ({
     code: 'missing_translation',

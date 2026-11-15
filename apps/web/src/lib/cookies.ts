@@ -20,4 +20,3 @@ export function forgetCookie(name: string): void {
 /** The preference cookies, named once so the server layouts and the controls agree. */
 export const LOCALE_COOKIE = 'integr8_locale';
 export const THEME_COOKIE = 'integr8_theme';
-export const SIDEBAR_COOKIE = 'integr8_sidebar';

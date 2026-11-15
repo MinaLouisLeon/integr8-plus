@@ -61,7 +61,7 @@ import { type CSSProperties, type ReactNode, useState } from 'react';
  * which questions, their words, required marks and errors at every step — is
  * held to the phone app's own screens by the behaviour check
  * (`phone-preview.behaviour.test.tsx` here, `behaviour.test.tsx` in the
- * mobile app; docs/form-engine/builder.md).
+ * mobile app; docs/form-engine/README.md).
  *
  * Text that is not a question (form format 2) is drawn as the phone draws it
  * (`apps/mobile/src/forms/information.tsx`): descriptions under page and

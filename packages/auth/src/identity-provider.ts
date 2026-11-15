@@ -23,6 +23,13 @@ export interface VerifiedIdentity {
   emailVerified: boolean;
 }
 
+export interface ImportedIdentity {
+  userId: string;
+  email: string;
+  /** The old server's bcrypt hash, or null for none. */
+  passwordHash: string | null;
+}
+
 export interface IdentityProvider {
   /** Throws {@link InvalidCredentialsError} for a wrong password or unknown address. */
   signInWithPassword: (email: string, password: string) => Promise<VerifiedIdentity>;
@@ -61,6 +68,15 @@ export interface IdentityProvider {
   findByEmail: (email: string) => Promise<VerifiedIdentity | undefined>;
   /** Replaces a password. The caller has already checked the proof and the policy. */
   setPassword: (userId: string, password: string) => Promise<void>;
+  /**
+   * Recreates an identity moved from another server (P41): the same id, the
+   * same address, and the password hash as the old server kept it, so the
+   * person signs in with the password they already have. A null hash makes an
+   * identity that signs in with an emailed code until a password is chosen.
+   * Staff-only, from the transfer command. Throws {@link IdentityProviderError}
+   * for an id or address that already has an identity.
+   */
+  importIdentity: (identity: ImportedIdentity) => Promise<void>;
   /**
    * Deletes an identity, for a purge. An identity that is already gone counts
    * as deleted, so a retry after a half-finished run is harmless.
@@ -197,6 +213,24 @@ export class SupabaseIdentityProvider implements IdentityProvider {
     }
 
     return toIdentity(gotrueUserSchema.parse(await this.#json(response)));
+  }
+
+  async importIdentity(identity: ImportedIdentity): Promise<void> {
+    // GoTrue takes the id and a bcrypt hash on the admin create, for exactly
+    // this: moving users without making them choose a new password.
+    const response = await this.#send('POST', '/admin/users', {
+      id: identity.userId,
+      email: identity.email.trim().toLowerCase(),
+      ...(identity.passwordHash === null ? {} : { password_hash: identity.passwordHash }),
+      email_confirm: true,
+    });
+    if (!response.ok) {
+      throw new IdentityProviderError(
+        response.status === 422
+          ? `Importing ${identity.email} failed with 422: the id or address already has an identity`
+          : `Importing an identity failed with ${String(response.status)}`,
+      );
+    }
   }
 
   async findByEmail(email: string): Promise<VerifiedIdentity | undefined> {
@@ -385,6 +419,25 @@ export class FakeIdentityProvider implements IdentityProvider {
     };
     this.#byEmail.set(address, identity);
     return Promise.resolve(this.#toVerified(identity));
+  }
+
+  importIdentity(identity: ImportedIdentity): Promise<void> {
+    const address = identity.email.trim().toLowerCase();
+    if (this.#byEmail.has(address) || this.#byId(identity.userId) !== undefined) {
+      return Promise.reject(
+        new IdentityProviderError(
+          `Importing ${address} failed with 422: the id or address already has an identity`,
+        ),
+      );
+    }
+    // The fake keeps the hash where a password would be: a suite checks it arrived.
+    this.#byEmail.set(address, {
+      userId: identity.userId,
+      email: address,
+      password: identity.passwordHash ?? '',
+      emailVerified: true,
+    });
+    return Promise.resolve();
   }
 
   findByEmail(email: string): Promise<VerifiedIdentity | undefined> {

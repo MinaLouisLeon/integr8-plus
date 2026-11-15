@@ -115,3 +115,63 @@ export async function refuseJobsTitled(marker: string): Promise<() => Promise<vo
     }
   };
 }
+
+/**
+ * A made-up company with every main table filled, for a suite that moves one
+ * between servers (P41). Returns its id.
+ */
+export async function makeVolumeCompany(scale = 0.005): Promise<string> {
+  const { adminUrl } = requireDisposableDatabase();
+  const { generateVolume } = await import('../volume/generate.js');
+  const [report] = await generateVolume(adminUrl, { companies: 1, years: 1, scale });
+  const client = await connectAsOwner();
+  try {
+    const row = await client.query<{ id: string }>('select id from tenants where slug = $1', [
+      report?.slug,
+    ]);
+    return row.rows[0]?.id ?? '';
+  } finally {
+    await client.end();
+  }
+}
+
+/** One fingerprint per company table: equal fingerprints mean byte-identical rows. */
+export async function companyFingerprints(tenantId: string): Promise<Record<string, string>> {
+  const client = await connectAsOwner();
+  try {
+    const { transferTables } = await import('../transfer/tables.js');
+    const out: Record<string, string> = {};
+    for (const table of await transferTables(client)) {
+      const column = table.name === 'tenants' ? 'id' : 'tenant_id';
+      const result = await client.query<{ sum: string }>(
+        `select md5(coalesce(string_agg(to_jsonb(x)::text, '' order by to_jsonb(x)::text), '')) as sum
+           from "${table.name}" x where "${column}" = $1`,
+        [tenantId],
+      );
+      out[table.name] = result.rows[0]?.sum ?? '';
+    }
+    return out;
+  } finally {
+    await client.end();
+  }
+}
+
+/** Purges a company at once, as the scheduled purge would after its cooling-off. */
+export async function purgeCompanyNow(tenantId: string): Promise<void> {
+  const client = await connectAsOwner();
+  try {
+    const exported = await client.query<{ id: string }>(
+      `insert into tenant_exports (tenant_id, tenant_slug, status, object_key)
+       values ($1, 'purged-by-suite', 'ready', 'exports/suite.tar.gz') returning id`,
+      [tenantId],
+    );
+    await client.query(
+      `insert into tenant_deletions (tenant_id, tenant_slug, export_id, reason, purge_after)
+       values ($1, 'purged-by-suite', $2, 'Purged by a suite', now() - interval '1 minute')`,
+      [tenantId, exported.rows[0]?.id],
+    );
+    await client.query('select purge_tenant($1)', [tenantId]);
+  } finally {
+    await client.end();
+  }
+}

@@ -12,7 +12,7 @@ import {
  * matches) with its Server Action, and the document page that every shared
  * link and new QR code opens (`/documents/<code>`), in English and Arabic.
  *
- * The code follows docs/documents/WEBSITE-LOOKUP.md: the key is read only on
+ * The code follows docs/documents/README.md: the key is read only on
  * the server, the visitor sees one "not found" whatever went wrong, the
  * five-minute links are used at once and never stored. `nextjs.test.ts`
  * compiles every variant and runs `check_website_integration` over it, so

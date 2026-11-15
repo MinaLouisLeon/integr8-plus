@@ -13,7 +13,9 @@ import {
   type DefinitionIssue,
   diffDefinitions,
   emptyDefinition,
+  formActionsSchema,
   type FormDefinition,
+  MAX_FORM_ACTIONS,
   missingTranslations,
   validateSubmission,
   withRequiredSchemaVersion,
@@ -25,6 +27,7 @@ import {
   libraryTemplatesFor,
 } from '../../documents/template-copies.js';
 import { type AffectedTemplate, templatesAffected } from '../../documents/attention.js';
+import { actionIssueDetails, actionIssues } from '../../forms/action-checks.js';
 import { conflict, type ErrorDetail, notFound, unprocessable } from '../../http/errors.js';
 import { defineRoute, noSchema, type RequestContext } from '../../http/routes.js';
 import { iso, isoOrNull, listSchema } from './schemas.js';
@@ -97,7 +100,11 @@ const versionSummarySchema = z.object({
   publishedBy: z.uuid().nullable(),
 });
 
-const versionSchema = versionSummarySchema.extend({ definition: definitionSchema });
+const versionSchema = versionSummarySchema.extend({
+  definition: definitionSchema,
+  /** What a submit does (P40): expense claims and follow-up forms. Empty for most forms. */
+  actions: z.array(z.record(z.string(), z.unknown())),
+});
 
 const formListItemSchema = formSchema.extend({
   latestVersionNumber: z.number().int().nullable(),
@@ -190,6 +197,15 @@ const checkSchema = z.object({
   documentTemplates: z.array(affectedTemplateSchema),
   /** Never refuses publishing; listed so the builder can say what is left to do. */
   warnings: z.array(warningSchema),
+  /** What refuses the draft's actions (P40), each named by where it is; empty when they publish. */
+  actionIssues: z.array(
+    z.object({
+      code: z.string(),
+      message: z.string(),
+      path: z.string(),
+      action: z.string().nullable(),
+    }),
+  ),
 });
 
 /** The form's PDF templates the draft would leave needing attention. */
@@ -268,7 +284,11 @@ function summaryBody(version: FormVersionSummary) {
 }
 
 function versionBody(version: FormVersion) {
-  return { ...summaryBody(version), definition: version.definition };
+  return {
+    ...summaryBody(version),
+    definition: version.definition,
+    actions: version.actions as Record<string, unknown>[],
+  };
 }
 
 /** Questions only: an Information block (schema version 2) is not one. */
@@ -627,6 +647,57 @@ export const saveDraftRoute = defineRoute({
   },
 });
 
+export const saveDraftActionsRoute = defineRoute({
+  method: 'put',
+  path: '/v1/forms/:formId/draft/actions',
+  operationId: 'saveFormDraftActions',
+  summary: 'Save what the draft does when a submission is submitted',
+  description:
+    'Form actions (P40): up to ten expense claims made from the answers and follow-up forms opened for the same job. Stored when they have the right shape (422 `invalid_actions` otherwise); whether they publish — questions, categories, next forms, the HR module — is for `draft/check` and `draft/publish` to say. On `expectedRevision`, as the definition is (409 `draft_conflict`). A new draft starts with the live version’s actions.',
+  tags: TAGS,
+  security: 'authenticated',
+  permission: 'form.manage',
+  params: formParams,
+  query: noSchema,
+  body: z.object({
+    actions: z.array(z.record(z.string(), z.unknown())).max(MAX_FORM_ACTIONS),
+    expectedRevision: z.number().int().min(1),
+  }),
+  responses: {
+    200: { description: 'The saved draft.', schema: versionSchema },
+    404: { description: 'No such form, or no draft.' },
+    409: { description: 'Somebody saved first. Reload the draft and reapply.' },
+    422: { description: 'An action of the wrong shape. Details name it.' },
+  },
+  handler: async ({ params, body }, context) => {
+    const shaped = formActionsSchema.safeParse(body.actions);
+    if (!shaped.success) {
+      throw unprocessable(
+        'invalid_actions',
+        'These actions are not in the right shape.',
+        shaped.error.issues.map((issue) => ({
+          field: `body.actions.${issue.path.map(String).join('.')}`,
+          code: 'invalid_actions',
+          message: issue.message,
+        })),
+      );
+    }
+    const result = await withTenant(context.principal.tenantId, async (tx) => {
+      await requireForm(tx, params.formId);
+      return tx.forms.saveDraftActions(params.formId, shaped.data, body.expectedRevision);
+    });
+    if (result.outcome === 'conflict') {
+      throw conflict(
+        'draft_conflict',
+        result.current === undefined
+          ? 'This form has no draft to save actions on.'
+          : `This draft was saved elsewhere (revision ${String(result.current.revision)}) since you last loaded it.`,
+      );
+    }
+    return { status: 200, body: versionBody(result.version) };
+  },
+});
+
 async function draftAndLive(context: RequestContext, formId: string) {
   return withTenant(context.principal.tenantId, async (tx) => {
     await requireForm(tx, formId);
@@ -668,23 +739,36 @@ export const checkDraftRoute = defineRoute({
   handler: async ({ params }, context) => {
     const { draft, live } = await draftAndLive(context, params.formId);
     const compiled = compileDefinition(draft.definition);
-    const documentTemplates = compiled.ok
-      ? await withTenant(context.principal.tenantId, (tx) =>
-          affectedTemplates(tx, params.formId, live, compiled.form),
-        )
-      : [];
+    const [documentTemplates, actionProblems] = compiled.ok
+      ? await withTenant(context.principal.tenantId, async (tx) => [
+          await affectedTemplates(tx, params.formId, live, compiled.form),
+          await actionIssues(
+            tx,
+            context.principal.tenantId,
+            params.formId,
+            draft.actions,
+            compiled.form,
+          ),
+        ])
+      : [[], []];
 
     return {
       status: 200,
       body: {
         revision: draft.revision,
-        valid: compiled.ok,
+        valid: compiled.ok && actionProblems.length === 0,
         issues: compiled.ok ? [] : compiled.issues,
         diff: compiled.ok
           ? diffDefinitions(liveDefinition(live), compiled.form.definition)
           : { titleChanged: false, changes: [], breaking: [] },
         documentTemplates,
         warnings: translationWarnings(draft.definition),
+        actionIssues: actionProblems.map((issue) => ({
+          code: issue.code,
+          message: issue.message,
+          path: issue.path,
+          action: issue.action ?? null,
+        })),
       },
     };
   },
@@ -735,7 +819,10 @@ export const publishDraftRoute = defineRoute({
       description:
         'The draft changed since it was reviewed, breaking changes were not acknowledged, or PDF templates would need attention and that was not acknowledged (`document_templates_affected`).',
     },
-    422: { description: 'The definition does not compile. Details name the fields.' },
+    422: {
+      description:
+        'The definition does not compile (`invalid_definition`), its actions do not check (`invalid_actions`), or it makes claims while the HR module is off (`form_action_needs_module`). Details name each problem.',
+    },
   },
   handler: async ({ params, body }, context) => {
     const version = await withTenant(context.principal.tenantId, async (tx) => {
@@ -757,6 +844,24 @@ export const publishDraftRoute = defineRoute({
           'invalid_definition',
           `This form cannot be published: ${String(compiled.issues.length)} problem${compiled.issues.length === 1 ? '' : 's'} to fix.`,
           issueDetails(compiled.issues),
+        );
+      }
+
+      const problems = await actionIssues(
+        tx,
+        context.principal.tenantId,
+        params.formId,
+        draft.actions,
+        compiled.form,
+      );
+      if (problems.length > 0) {
+        const needsModule = problems.some((issue) => issue.code === 'needs_module');
+        throw unprocessable(
+          needsModule ? 'form_action_needs_module' : 'invalid_actions',
+          needsModule
+            ? 'This form makes expense claims, which need the company’s HR module.'
+            : `This form’s actions cannot be published: ${String(problems.length)} problem${problems.length === 1 ? '' : 's'} to fix.`,
+          actionIssueDetails(problems),
         );
       }
 
@@ -1114,6 +1219,7 @@ export const formRoutes = [
   updateFormRoute,
   cloneFormRoute,
   saveDraftRoute,
+  saveDraftActionsRoute,
   checkDraftRoute,
   publishDraftRoute,
   testSubmissionRoute,

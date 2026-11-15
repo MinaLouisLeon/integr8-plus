@@ -27,9 +27,9 @@ The API is the application boundary for clients. Postgres tenant isolation is en
 ## Useful starting points
 
 - Product and setup: `README.md`, `CONTRIBUTING.md`, `docs/`
-- CRM/ERP status and scope: `docs/crm-erp/README.md`
+- CRM/ERP status and scope: `docs/modules/README.md`
 - AI behavior and operations: `docs/ai/`
 - ETA integration notes: `docs/e-invoicing/`
 - Core source: `apps/api/src/routes/v1/`, `apps/web/src/app/`, `apps/mobile/app/`, `packages/operations-dom/src/`, `packages/db/migrations/`
 
-**Read carefully:** root README/roadmap summaries lag some code. Root package version is 1.4.0 and migrations currently reach 0077. Feature visibility is gated by tenant modules, plan entitlements and permissions. ETA credentials and live end-to-end validation are environment-dependent; code presence does not imply legal certification.
+**Read carefully:** root README/roadmap summaries lag some code. Root package version is 2.0.0 and migrations are the 2.0.0 baseline, 0001–0019 (one per module; P41). Feature visibility is gated by tenant modules, plan entitlements and permissions. ETA credentials and live end-to-end validation are environment-dependent; code presence does not imply legal certification.

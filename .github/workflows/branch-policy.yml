@@ -179,7 +179,7 @@ jobs:
             echo
             echo "> This run is a **detector**, not a gate. Refusing the push server-side needs the"
             echo "> rulesets in \`.github/rulesets/\`, which need a plan that allows branch protection"
-            echo "> on a private repository. See \`docs/contributing/branching.md\`."
+            echo "> on a private repository. See \`docs/contributing/README.md\`."
           } >> "$GITHUB_STEP_SUMMARY"
 
           echo "::error title=Direct push to $BRANCH::This commit did not arrive through a pull request."

@@ -98,16 +98,16 @@ Every screen is available in English and Arabic, and the Dashboard shows where y
     en: {
       title: 'Roles, permissions and the People screen',
       summary:
-        'The seven built-in roles, what each may do, the HR and inventory grants, company roles of your own, and inviting or removing people.',
-      body: `Everybody in a company holds one role. Owner does everything, including company settings, billing, defining company roles and unlocking closed months. Admin does everything an owner does except change the company itself and its subscription. Dispatcher runs the day: customers, work orders, dispatching, filling forms, and the day-to-day CRM, stock, purchasing drafts, quotes and draft invoices. Engineer works the jobs assigned to them, fills forms, records parts from their van and registers assets on site. Viewer reads everything and changes nothing. HR manager keeps employees, expense claims and payroll. Inventory manager keeps items, stock, vans, suppliers, purchase orders and manufacturing.
+        'The eight built-in roles, what each may do, the HR and inventory grants, company roles of your own, and inviting or removing people.',
+      body: `Everybody in a company holds one role. Owner does everything, including company settings, billing, defining company roles and unlocking closed months. Admin does everything an owner does except change the company itself and its subscription. Dispatcher runs the day: customers, work orders, dispatching, filling forms, and the day-to-day CRM, stock, purchasing drafts, quotes and draft invoices. Engineer works the jobs assigned to them, fills forms, records parts from their van and registers assets on site. Viewer reads everything and changes nothing. HR manager keeps employees, expense claims and payroll. Inventory manager keeps items, stock, vans, suppliers, purchase orders and manufacturing. Accountant keeps the books: issues invoices and credit notes, records payments, posts the ledger, approves and pays expense claims and sends e-invoices; it reads sales, purchases and stock without changing them, and has no HR, payroll or job work.
 
 Three things are never done by the company: building forms, setting up job types and company branding. Those are done by Integr8 staff.
 
-Open People under Company in the web app. Invite somebody with their email address and role; they receive a link to join. You cannot invite somebody at a role above your own. From a person’s row you can Change role, Suspend, Let back in, Remove, or Send again and Withdraw a pending invitation. Suspending or removing stops them signing in straight away, and a device they are already signed in on stops within thirty seconds. Every active person takes a seat: once your plan’s seats, or the number Integr8 set for your company, are used up, inviting somebody and letting a suspended person back in are refused until a seat is free. A suspended person holds no seat.
+Open People under Company in the desktop app. Invite somebody with their email address and role; they receive a link to join. You cannot invite somebody at a role above your own. From a person’s row you can Change role, Suspend, Let back in, Remove, or Send again and Withdraw a pending invitation. Suspending or removing stops them signing in straight away, and a device they are already signed in on stops within thirty seconds. Every active person takes a seat: once your plan’s seats, or the number Integr8 set for your company, are used up, inviting somebody and letting a suspended person back in are refused until a seat is free. A suspended person holds no seat.
 
 HR and inventory work can also be given on top of a role: Also make HR manager or Also make Inventory manager. Only the owner makes somebody an HR manager.
 
-The owner can define Company roles: a role of your own, built on a built-in role, with permissions ticked on or off. A company role can never hold what only the owner or Integr8 does. A new role takes effect when the person next signs in, within fifteen minutes.`,
+The owner can define Company roles: a role of your own, built on a built-in role, with permissions ticked on or off. A company role can never hold what only the owner or Integr8 does. A new role takes effect when the person next signs in, within fifteen minutes. Owners and admins find them under Company roles in the desktop app; they are given to people on the People screen.`,
       keywords: [
         'roles',
         'permissions',
@@ -118,6 +118,7 @@ The owner can define Company roles: a role of your own, built on a built-in role
         'viewer',
         'hr manager',
         'inventory manager',
+        'accountant',
         'invite',
         'people',
         'suspend',
@@ -129,16 +130,16 @@ The owner can define Company roles: a role of your own, built on a built-in role
     ar: {
       title: 'الأدوار والصلاحيات وشاشة الأشخاص',
       summary:
-        'الأدوار السبعة المضمّنة وما يستطيعه كل منها، وصلاحيات الموارد البشرية والمخزون الإضافية، وأدوار الشركة الخاصة، ودعوة الأشخاص أو إزالتهم.',
-      body: `لكل شخص في الشركة دور واحد. المالك يفعل كل شيء، بما فيه إعدادات الشركة والفوترة وتعريف أدوار الشركة وفتح الأشهر المقفلة. المسؤول يفعل كل ما يفعله المالك عدا تغيير الشركة نفسها واشتراكها. المنسّق يدير اليوم: العملاء وأوامر العمل والتوجيه وتعبئة النماذج، والعمل اليومي في إدارة علاقات العملاء والمخزون ومسودات الشراء وعروض الأسعار ومسودات الفواتير. المهندس ينفّذ المهام المسندة إليه ويعبّئ النماذج ويسجّل القطع من سيارته ويسجّل الأصول في الموقع. المشاهد يقرأ كل شيء ولا يغيّر شيئًا. مدير الموارد البشرية يتولى الموظفين ومطالبات المصروفات والرواتب. مدير المخزون يتولى الأصناف والمخزون والسيارات والموردين وأوامر الشراء والتصنيع.
+        'الأدوار الثمانية المضمّنة وما يستطيعه كل منها، وصلاحيات الموارد البشرية والمخزون الإضافية، وأدوار الشركة الخاصة، ودعوة الأشخاص أو إزالتهم.',
+      body: `لكل شخص في الشركة دور واحد. المالك يفعل كل شيء، بما فيه إعدادات الشركة والفوترة وتعريف أدوار الشركة وفتح الأشهر المقفلة. المسؤول يفعل كل ما يفعله المالك عدا تغيير الشركة نفسها واشتراكها. المنسّق يدير اليوم: العملاء وأوامر العمل والتوجيه وتعبئة النماذج، والعمل اليومي في إدارة علاقات العملاء والمخزون ومسودات الشراء وعروض الأسعار ومسودات الفواتير. المهندس ينفّذ المهام المسندة إليه ويعبّئ النماذج ويسجّل القطع من سيارته ويسجّل الأصول في الموقع. المشاهد يقرأ كل شيء ولا يغيّر شيئًا. مدير الموارد البشرية يتولى الموظفين ومطالبات المصروفات والرواتب. مدير المخزون يتولى الأصناف والمخزون والسيارات والموردين وأوامر الشراء والتصنيع. المحاسب يتولى الحسابات: يصدر الفواتير وإشعارات الدائن، ويسجّل المدفوعات، ويرحّل القيود في دفتر الأستاذ، ويوافق على مطالبات المصروفات ويصرفها، ويرسل الفواتير الإلكترونية؛ ويطّلع على المبيعات والمشتريات والمخزون دون تغييرها، ولا علاقة له بالموارد البشرية أو الرواتب أو المهام.
 
 ثلاثة أمور لا تقوم بها الشركة أبدًا: بناء النماذج، وإعداد أنواع المهام، وهوية الشركة. يقوم بها موظفو Integr8.
 
-افتح «الأشخاص» تحت مجموعة الشركة في تطبيق الويب. ادعُ شخصًا ببريده الإلكتروني ودوره، فيصله رابط للانضمام. لا يمكنك دعوة شخص بدور أعلى من دورك. ومن صف الشخص يمكنك تغيير الدور، أو الإيقاف، أو السماح بالعودة، أو الإزالة، أو إعادة إرسال الدعوة المعلّقة أو سحبها. الإيقاف أو الإزالة يمنعان تسجيل الدخول فورًا، ويتوقف أي جهاز مسجّل الدخول بالفعل خلال ثلاثين ثانية. ويشغل كل شخص نشط مقعدًا: فعند استنفاد مقاعد خطتك، أو العدد الذي حددته Integr8 لشركتك، تُرفض دعوة شخص جديد والسماح بعودة شخص موقوف حتى يتحرر مقعد. ولا يشغل الشخص الموقوف مقعدًا.
+افتح «الأشخاص» تحت مجموعة الشركة في تطبيق سطح المكتب. ادعُ شخصًا ببريده الإلكتروني ودوره، فيصله رابط للانضمام. لا يمكنك دعوة شخص بدور أعلى من دورك. ومن صف الشخص يمكنك تغيير الدور، أو الإيقاف، أو السماح بالعودة، أو الإزالة، أو إعادة إرسال الدعوة المعلّقة أو سحبها. الإيقاف أو الإزالة يمنعان تسجيل الدخول فورًا، ويتوقف أي جهاز مسجّل الدخول بالفعل خلال ثلاثين ثانية. ويشغل كل شخص نشط مقعدًا: فعند استنفاد مقاعد خطتك، أو العدد الذي حددته Integr8 لشركتك، تُرفض دعوة شخص جديد والسماح بعودة شخص موقوف حتى يتحرر مقعد. ولا يشغل الشخص الموقوف مقعدًا.
 
 يمكن أيضًا منح عمل الموارد البشرية أو المخزون فوق الدور الأصلي: «جعله أيضًا مدير الموارد البشرية» أو «جعله أيضًا مدير المخزون». المالك وحده يجعل شخصًا مدير موارد بشرية.
 
-ويستطيع المالك تعريف «أدوار الشركة»: دور خاص بكم مبني على دور مضمّن، مع تفعيل صلاحيات أو إلغائها. لا يمكن لدور الشركة أن يحمل ما يختص به المالك أو Integr8. يسري الدور الجديد عند تسجيل الدخول التالي للشخص، خلال خمس عشرة دقيقة.`,
+ويستطيع المالك تعريف «أدوار الشركة»: دور خاص بكم مبني على دور مضمّن، مع تفعيل صلاحيات أو إلغائها. لا يمكن لدور الشركة أن يحمل ما يختص به المالك أو Integr8. يسري الدور الجديد عند تسجيل الدخول التالي للشخص، خلال خمس عشرة دقيقة. ويجدها المالك والمسؤول تحت «أدوار الشركة» في تطبيق سطح المكتب، وتُمنح للأشخاص من شاشة الأشخاص.`,
       keywords: [
         'الأدوار',
         'الصلاحيات',
@@ -149,6 +150,7 @@ The owner can define Company roles: a role of your own, built on a built-in role
         'مشاهد',
         'مدير الموارد البشرية',
         'مدير المخزون',
+        'محاسب',
         'دعوة',
         'الأشخاص',
         'إيقاف',
@@ -1516,7 +1518,7 @@ Everybody has My profile, which shows what the company holds about them as an em
     en: {
       title: 'Expense claims: claiming and approving',
       summary:
-        'Claiming back what you spent for the company with the receipts, on the web or the phone, and how claims are approved, rejected and paid back.',
+        'Claiming back what you spent for the company with the receipts, on the desktop or the phone, and how claims are approved, rejected and paid back.',
       body: `With the HR module on, everybody can claim expenses. My expenses, under HR, lists your claims; Claim an expense asks for the category, the date spent (today or earlier), the amount in the company’s currency, what it was for, optionally the job it was for, and a photo or PDF of each receipt. Submit claim sends it; the receipts follow, and the claim tells you if one did not arrive so you can send it again. A claim you no longer want is withdrawn; to claim a corrected amount, withdraw it and make a new claim.
 
 On the phone, My expenses works without signal: the claim and its receipt photos are sent when the phone next can. Your recent claims and their answers show when the phone has signal. A part you bought from a merchant for a job is recorded on the job as Bought from a merchant, and claimed back here as an expense.
@@ -1544,7 +1546,7 @@ Expense categories, kept by the same people, say what expenses may be claimed fo
     ar: {
       title: 'مطالبات المصروفات: المطالبة والموافقة',
       summary:
-        'استرداد ما أنفقته لصالح الشركة مع الإيصالات، من الويب أو الهاتف، وكيف تُقبل المطالبات أو تُرفض وتُسدَّد.',
+        'استرداد ما أنفقته لصالح الشركة مع الإيصالات، من سطح المكتب أو الهاتف، وكيف تُقبل المطالبات أو تُرفض وتُسدَّد.',
       body: `مع تفعيل وحدة الموارد البشرية، يستطيع الجميع المطالبة بالمصروفات. تعرض «مصروفاتي»، تحت الموارد البشرية، مطالباتك؛ ويطلب «مطالبة بمصروف» الفئة وتاريخ الإنفاق (اليوم أو قبله) والمبلغ بعملة الشركة والغرض منه، واختياريًا المهمة التي أُنفق لأجلها، وصورة أو ملف PDF لكل إيصال. ويرسله «تقديم المطالبة»؛ وتتبعه الإيصالات، وتخبرك المطالبة إن لم يصل أحدها لتعيد إرساله. والمطالبة التي لم تعد تريدها تُسحب؛ وللمطالبة بمبلغ مصحَّح، اسحبها وقدّم مطالبة جديدة.
 
 على الهاتف، تعمل «مصروفاتي» دون شبكة: تُرسل المطالبة وصور إيصالاتها عندما يتمكن الهاتف من ذلك. وتظهر مطالباتك الأخيرة وردودها عند توفر الشبكة. والقطعة التي اشتريتها من تاجر لمهمة تُسجَّل في المهمة تحت «شراء من تاجر»، ويُطالَب بها هنا كمصروف.
@@ -1593,7 +1595,7 @@ Each employee’s pay terms live on their profile under Pay: basic pay, allowanc
 
 Prepare a run for this month or next proposes a line for everyone employed in the month who has pay terms: basic and allowances, overtime from clocked hours beyond the standard, and the approved expense claims to be paid back with the pay run. Edit a line to type overtime hours, a bonus, a deduction or unpaid days, and Recalculate after changing terms. Set the pay date, which is printed on the payslips. Approve, by the owner or an HR manager other than the person who prepared it, is final: the run never changes afterwards, its claims are paid back, and it posts to the ledger when the ledger is set up.
 
-Payslips and files offers Print payslips in English or Arabic, the insurance report and the bank file; each download is recorded, and the last two need the HR data key, which Integr8 sets on the server. Everybody reads their own under My payslips, on the web and on the phone with a connection. Integr8 calculates pay from the confirmed rule set; the figures must be checked by your accountant, and nothing is filed with the Tax Authority or NOSI.`,
+Payslips and files offers Print payslips in English or Arabic, the insurance report and the bank file; each download is recorded, and the last two need the HR data key, which Integr8 sets on the server. Everybody reads their own under My payslips, on the desktop and on the phone with a connection. Integr8 calculates pay from the confirmed rule set; the figures must be checked by your accountant, and nothing is filed with the Tax Authority or NOSI.`,
       keywords: [
         'payroll',
         'salary',
@@ -1622,7 +1624,7 @@ Payslips and files offers Print payslips in English or Arabic, the insurance rep
 
 يقترح «إعداد مسير» لهذا الشهر أو التالي سطرًا لكل من يعمل في الشهر وله شروط أجر: الأساسي والبدلات، والأجر الإضافي من الساعات المسجلة فوق القياسية، ومطالبات المصروفات المقبولة التي تُسدَّد مع المسير. عدّل السطر لكتابة ساعات إضافية أو مكافأة أو خصم أو أيام غير مدفوعة، و«إعادة الحساب» بعد تغيير الشروط. وحدد تاريخ الدفع الذي يُطبع على القسائم. و«اعتماد»، من المالك أو مدير موارد بشرية غير من أعدّ المسير، نهائي: لا يتغير المسير بعده، وتُسدَّد مطالباته، ويُرحَّل إلى دفتر الأستاذ عند إعداده. ويمكن حذف المسودة.
 
-تقدّم «قسائم الرواتب والملفات» طباعة القسائم بالعربية أو الإنجليزية، وتقرير التأمينات، وملف البنك؛ ويُسجَّل كل تنزيل، ويحتاج الأخيران إلى مفتاح بيانات الموارد البشرية الذي تضبطه Integr8 على الخادم. ويقرأ كل شخص قسائمه تحت «قسائم راتبي»، على الويب وعلى الهاتف مع وجود اتصال. وتحسب Integr8 الأجر من مجموعة القواعد المؤكدة؛ ويجب أن يراجع محاسبك الأرقام، ولا يُقدَّم شيء إلى مصلحة الضرائب أو هيئة التأمينات.`,
+تقدّم «قسائم الرواتب والملفات» طباعة القسائم بالعربية أو الإنجليزية، وتقرير التأمينات، وملف البنك؛ ويُسجَّل كل تنزيل، ويحتاج الأخيران إلى مفتاح بيانات الموارد البشرية الذي تضبطه Integr8 على الخادم. ويقرأ كل شخص قسائمه تحت «قسائم راتبي»، على سطح المكتب وعلى الهاتف مع وجود اتصال. وتحسب Integr8 الأجر من مجموعة القواعد المؤكدة؛ ويجب أن يراجع محاسبك الأرقام، ولا يُقدَّم شيء إلى مصلحة الضرائب أو هيئة التأمينات.`,
       keywords: [
         'رواتب',
         'مرتبات',
@@ -1724,7 +1726,7 @@ Material planning answers what to build and buy. Run a plan for a number of days
       title: 'Your subscription: plans, limits, billing and read-only',
       summary:
         'The four plans, what the Billing screen shows, invoicing by Integr8 (there are no card payments in the app), the seat, submission and storage limits, and storage over the plan.',
-      body: `Every company is on one of four plans: Trial, Starter, Standard or Enterprise. Each plan allows a number of people (seats), a number of submissions a month and an amount of storage. Integr8 sets what each plan allows, and can give your company its own number of seats in place of the plan’s. Billing, under Company in the web app, shows your plan, its limits and your usage against them; owners and admins can read it.
+      body: `Every company is on one of four plans: Trial, Starter, Standard or Enterprise. Each plan allows a number of people (seats), a number of submissions a month and an amount of storage. Integr8 sets what each plan allows, and can give your company its own number of seats in place of the plan’s. Billing, under Company in the desktop app, shows your plan, its limits and your usage against them; owners and admins can read it.
 
 Integr8 invoices every company directly. The Billing screen says Invoiced by Integr8: there is no card to add and nothing to pay in the app. To change your plan, add seats or ask about an invoice, contact Integr8, who make plan changes from their dashboard.
 
@@ -1759,7 +1761,7 @@ Modules such as CRM, inventory or finance, and the AI assistant, are enabled by 
       title: 'اشتراكك: الخطط والحدود والفوترة ووضع القراءة فقط',
       summary:
         'الخطط الأربع، وما تعرضه شاشة الفوترة، والفوترة من Integr8 (لا مدفوعات بالبطاقة في التطبيق)، وحدود المقاعد والإرسالات والتخزين، وتجاوز مساحة الخطة.',
-      body: `كل شركة على إحدى أربع خطط: التجريبية، أو المبتدئة، أو القياسية، أو المؤسسات. وتسمح كل خطة بعدد من الأشخاص (المقاعد) وعدد من الإرسالات شهريًا ومساحة تخزين. وتحدد Integr8 ما تسمح به كل خطة، ويمكنها أن تمنح شركتك عددًا خاصًا من المقاعد بدل عدد الخطة. وتعرض «الفوترة»، تحت مجموعة الشركة في تطبيق الويب، خطتك وحدودها واستخدامك منها؛ ويقرؤها المالكون والمسؤولون.
+      body: `كل شركة على إحدى أربع خطط: التجريبية، أو المبتدئة، أو القياسية، أو المؤسسات. وتسمح كل خطة بعدد من الأشخاص (المقاعد) وعدد من الإرسالات شهريًا ومساحة تخزين. وتحدد Integr8 ما تسمح به كل خطة، ويمكنها أن تمنح شركتك عددًا خاصًا من المقاعد بدل عدد الخطة. وتعرض «الفوترة»، تحت مجموعة الشركة في تطبيق سطح المكتب، خطتك وحدودها واستخدامك منها؛ ويقرؤها المالكون والمسؤولون.
 
 تُصدر Integr8 فواتير كل شركة مباشرةً. وتقول شاشة الفوترة «بفاتورة من Integr8»: لا بطاقة تُضاف ولا شيء يُدفع في التطبيق. ولتغيير خطتك أو إضافة مقاعد أو الاستفسار عن فاتورة، تواصل مع Integr8، فهي التي تغيّر الخطط من لوحة التحكم الخاصة بها.
 
@@ -1888,30 +1890,28 @@ If Integr8 has made the company’s account read-only, signing in works but savi
     public: {
       category: 'getting-started',
       question: {
-        en: 'Which app should I use: web, desktop or phone?',
-        ar: 'أي تطبيق أستخدم: الويب أم سطح المكتب أم الهاتف؟',
+        en: 'Which app should I use: desktop or phone?',
+        ar: 'أي تطبيق أستخدم: سطح المكتب أم الهاتف؟',
       },
     },
     en: {
-      title: 'The web, desktop and mobile apps: which to use for what',
+      title: 'The desktop and mobile apps: which to use for what',
       summary:
-        'What each of the three apps is for, which screens exist only in one of them, and how the apps are built and branded for your company.',
-      body: `Integr8 Plus comes as three apps that share one account and the same data.
+        'What each of your company’s two apps is for, how they are built and branded for your company, and where to get them.',
+      body: `Integr8 Plus comes as two apps, both built for your company by Integr8, that share one account and the same data.
 
-The web app runs in a browser and is where the office works: the Dashboard, Work orders, Customers, Submissions, Timesheets, imports, assets and every module your company has. Some screens exist only on the web: Get set up, People, Company settings, Storage and Billing, all under Company. Signing in needs a connection, and the web app has no offline mode.
+The desktop app, for Windows and macOS, is where the office works: the Dashboard, Work orders and the Schedule, Customers, Submissions, Timesheets, imports, assets, every module your company has, and under Company: Get set up, People, Company roles, Company settings, Website access, Storage and Billing. It carries your company’s name, logo and colours, and refuses an account from another company. It has native menus and a right-click menu on rows. Signing in needs a connection; the desktop app has no offline mode.
 
-The desktop app, for Windows and macOS, has the same office screens with native menus and a right-click menu on rows. Two screens exist only there, under Set-up: Forms, where forms are built, previewed, tested and published, and Company branding. Both are used by Integr8 staff, who sign in through the Integr8 staff tab, choose your company and say why they are opening it, which the company can read. Owners and admins can look at the forms but not change them; branding is not shown to the company at all.
+The mobile app is for engineers. It holds their jobs, customers, sites, forms and files on the phone, works without signal and sends work when there is one. It is where jobs are travelled to, worked, photographed, signed off and completed, parts are used, assets are scanned and expenses are claimed. It carries your logo, colours and app icon. Owners, admins and dispatchers normally do not need it; they do everything in the desktop app.
 
-The mobile app is for engineers. It holds their jobs, customers, sites, forms and files on the phone, works without signal and sends work when there is one. It is where jobs are travelled to, worked, photographed, signed off and completed, parts are used, assets are scanned and expenses are claimed. It is built for your company by Integr8, carries your logo, colours and app icon, and refuses an account from another company. Owners, admins and dispatchers normally do not need it; they do everything in the browser.
+Forms and Company branding, under Set-up, are worked on by Integr8 staff from their own staff app, after saying why they are opening your company, which your company can read. Owners and admins can look at the forms but not change them; branding is not shown to the company at all.
 
-The desktop apps update themselves when Integr8 releases a new version. When a desktop or phone app is too old for the server, it says so and offers Update, which opens your company’s download page with the latest installers and the phone app.
+Both apps are on your company’s download page, which Integr8 gives you, and the invitation page links to it once you have set your password. The desktop app updates itself when Integr8 releases a new version. When a desktop or phone app is too old for the server, it says so and offers Update, which opens the download page.
 
-All three apps are in English and Arabic, with a right-to-left layout in Arabic, and open in a light or dark theme or follow the device. Every screen in the web and desktop apps is reached from the side menu, grouped under Overview, Work, CRM, Sales, Finance, Accounting, HR, Inventory, Operations, Set-up and Company; a group you cannot see is one your role or your company’s modules do not include.`,
+Both apps are in English and Arabic, with a right-to-left layout in Arabic, and open in a light or dark theme or follow the device. Every screen in the desktop app is reached from the side menu, grouped under Overview, Work, CRM, Sales, Finance, Accounting, HR, Inventory, Operations, Set-up and Company; a group you cannot see is one your role or your company’s modules do not include.`,
       keywords: [
-        'web app',
         'desktop app',
         'mobile app',
-        'browser',
         'windows',
         'mac',
         'android',
@@ -1925,26 +1925,24 @@ All three apps are in English and Arabic, with a right-to-left layout in Arabic,
       ],
     },
     ar: {
-      title: 'تطبيقات الويب وسطح المكتب والهاتف: أيها تستخدم ولماذا',
+      title: 'تطبيقا سطح المكتب والهاتف: أيهما تستخدم ولماذا',
       summary:
-        'الغرض من كل تطبيق من التطبيقات الثلاثة، والشاشات الموجودة في أحدها فقط، وكيف تُبنى التطبيقات وتحمل هوية شركتك.',
-      body: `يأتي Integr8 Plus في ثلاثة تطبيقات تتشارك حسابًا واحدًا والبيانات نفسها.
+        'الغرض من كل تطبيق من تطبيقَي شركتك، وكيف تبنيهما Integr8 ويحملان هوية شركتك، ومن أين تحصل عليهما.',
+      body: `يأتي Integr8 Plus في تطبيقين تبنيهما Integr8 لشركتك، ويتشاركان حسابًا واحدًا والبيانات نفسها.
 
-يعمل تطبيق الويب في المتصفح وهو حيث يعمل المكتب: لوحة التحكم، وأوامر العمل، والعملاء، والإرسالات، وسجلات الدوام، والاستيراد، والأصول، وكل وحدة لدى شركتك. وبعض الشاشات موجودة على الويب فقط: ابدأ الإعداد، والأشخاص، وإعدادات الشركة، والتخزين، والفوترة، وكلها تحت مجموعة الشركة. ويحتاج تسجيل الدخول إلى اتصال، ولا يوجد في تطبيق الويب وضع دون اتصال.
+تطبيق سطح المكتب، لنظامي Windows وmacOS، هو حيث يعمل المكتب: لوحة التحكم، وأوامر العمل والجدول، والعملاء، والإرسالات، وسجلات الدوام، والاستيراد، والأصول، وكل وحدة لدى شركتك، وتحت مجموعة الشركة: ابدأ الإعداد، والأشخاص، وأدوار الشركة، وإعدادات الشركة، والوصول من الموقع الإلكتروني، والتخزين، والفوترة. ويحمل اسم شركتك وشعارها وألوانها، ويرفض حسابًا من شركة أخرى. وفيه قوائم أصلية وقائمة بالنقر الأيمن على الصفوف. ويحتاج تسجيل الدخول إلى اتصال، ولا يوجد فيه وضع دون اتصال.
 
-ولتطبيق سطح المكتب، لنظامي Windows وmacOS، شاشات المكتب نفسها مع قوائم أصلية وقائمة بالنقر الأيمن على الصفوف. وهناك شاشتان موجودتان فيه فقط، تحت مجموعة الإعداد: «النماذج»، حيث تُبنى النماذج وتُعاين وتُختبر وتُنشر، و«هوية الشركة». ويستخدمهما موظفو Integr8 الذين يسجّلون الدخول من تبويب «موظفو Integr8» ويختارون شركتك ويذكرون سبب فتحها، ويمكن للشركة قراءته. ويستطيع المالكون والمسؤولون الاطلاع على النماذج دون تغييرها؛ أما هوية الشركة فلا تُعرض للشركة أصلًا.
+وتطبيق الهاتف للمهندسين. يحمل مهامهم وعملاءهم ومواقعهم ونماذجهم وملفاتهم على الهاتف، ويعمل دون شبكة ويرسل العمل عند توفرها. وفيه يُنطلق إلى المهام وتُنفَّذ وتُصوَّر ويعتمدها العميل وتُتم، وتُستخدم القطع، وتُمسح الأصول، ويُطالَب بالمصروفات. ويحمل شعارك وألوانك وأيقونة تطبيقك. ولا يحتاج إليه المالكون والمسؤولون والمنسّقون عادةً؛ فهم يفعلون كل شيء في تطبيق سطح المكتب.
 
-وتطبيق الهاتف للمهندسين. يحمل مهامهم وعملاءهم ومواقعهم ونماذجهم وملفاتهم على الهاتف، ويعمل دون شبكة ويرسل العمل عند توفرها. وفيه يُنطلق إلى المهام وتُنفَّذ وتُصوَّر ويعتمدها العميل وتُتم، وتُستخدم القطع، وتُمسح الأصول، ويُطالَب بالمصروفات. وتبنيه Integr8 لشركتك، فيحمل شعارك وألوانك وأيقونة تطبيقك، ويرفض حسابًا من شركة أخرى. ولا يحتاج إليه المالكون والمسؤولون والمنسّقون عادةً؛ فهم يفعلون كل شيء في المتصفح.
+أما «النماذج» و«هوية الشركة»، تحت مجموعة الإعداد، فيعمل عليهما موظفو Integr8 من تطبيق الموظفين الخاص بهم، بعد أن يذكروا سبب فتح شركتك، ويمكن لشركتك قراءته. ويستطيع المالكون والمسؤولون الاطلاع على النماذج دون تغييرها؛ أما هوية الشركة فلا تُعرض للشركة أصلًا.
 
-وتحدّث تطبيقات سطح المكتب نفسها عندما تُصدر Integr8 نسخة جديدة. وعندما يصبح تطبيق سطح المكتب أو الهاتف أقدم مما يقبله الخادم، يخبرك بذلك ويعرض «تحديث» الذي يفتح صفحة التنزيل الخاصة بشركتك مع أحدث برامج التثبيت وتطبيق الهاتف.
+والتطبيقان على صفحة التنزيل الخاصة بشركتك التي تعطيك إياها Integr8، وتربط إليها صفحة الدعوة بعد أن تعيّن كلمة المرور. ويحدّث تطبيق سطح المكتب نفسه عندما تُصدر Integr8 نسخة جديدة. وعندما يصبح تطبيق سطح المكتب أو الهاتف أقدم مما يقبله الخادم، يخبرك بذلك ويعرض «تحديث» الذي يفتح صفحة التنزيل.
 
-والتطبيقات الثلاثة بالعربية والإنجليزية، مع تخطيط من اليمين إلى اليسار بالعربية، وتُفتح بسمة فاتحة أو داكنة أو تتبع الجهاز. وكل شاشة في تطبيقي الويب وسطح المكتب تُفتح من القائمة الجانبية المقسّمة إلى: نظرة عامة، والعمل، وإدارة علاقات العملاء، والمبيعات، والمالية، والمحاسبة، والموارد البشرية، والمخزون، والعمليات، والإعداد، والشركة؛ والمجموعة التي لا تراها هي مجموعة لا يشملها دورك أو وحدات شركتك.`,
+والتطبيقان بالعربية والإنجليزية، مع تخطيط من اليمين إلى اليسار بالعربية، ويُفتحان بسمة فاتحة أو داكنة أو تتبع الجهاز. وكل شاشة في تطبيق سطح المكتب تُفتح من القائمة الجانبية المقسّمة إلى: نظرة عامة، والعمل، وإدارة علاقات العملاء، والمبيعات، والمالية، والمحاسبة، والموارد البشرية، والمخزون، والعمليات، والإعداد، والشركة؛ والمجموعة التي لا تراها هي مجموعة لا يشملها دورك أو وحدات شركتك.`,
       keywords: [
-        'تطبيق الويب',
         'تطبيق سطح المكتب',
         'تطبيق الهاتف',
         'الموبايل',
-        'المتصفح',
         'ويندوز',
         'ماك',
         'اندرويد',
@@ -1974,7 +1972,7 @@ All three apps are in English and Arabic, with a right-to-left layout in Arabic,
       title: 'Company settings: timezone, currency, language, working hours and branding',
       summary:
         'What the owner sets under Company settings, what each setting affects, and which parts of the company’s look are set by Integr8.',
-      body: `Company settings, under Company in the web app, is for the owner and applies to everybody in the company.
+      body: `Company settings, under Company in the desktop app, is for the owner and applies to everybody in the company.
 
 Where you are holds three settings. Timezone decides what a working day means for the company: due windows, timesheets, the dates on reports and the dates in a CSV import without a time zone are all read in it. Currency is the company’s currency: item costs, quotes and invoices, expense claims, pay and the ledger are kept in it, and a quote or lead in another currency says so. The currency can be changed only until the company has its first money record, such as an item cost, a quote, an invoice, a payment, an expense or a pay run; after that it is fixed. Default language is the language the apps use for the company, English or Arabic; each reader still sees the screens in their own language where the app offers it. Phone notifications arrive in the phone’s own language, or the company’s default language when the phone has not said.
 
@@ -2005,7 +2003,7 @@ Other settings live with their modules and are kept by owners and admins: Invoic
       title: 'إعدادات الشركة: المنطقة الزمنية والعملة واللغة وساعات العمل والهوية',
       summary:
         'ما يضبطه المالك تحت إعدادات الشركة، وما يؤثر فيه كل إعداد، وأي أجزاء مظهر الشركة تضبطها Integr8.',
-      body: `«إعدادات الشركة»، تحت مجموعة الشركة في تطبيق الويب، للمالك وتسري على الجميع في الشركة.
+      body: `«إعدادات الشركة»، تحت مجموعة الشركة في تطبيق سطح المكتب، للمالك وتسري على الجميع في الشركة.
 
 يحمل قسم «أين أنتم» ثلاثة إعدادات. المنطقة الزمنية تحدد معنى يوم العمل للشركة: نوافذ الاستحقاق، وسجلات الدوام، وتواريخ التقارير، وتواريخ الاستيراد من CSV التي بلا منطقة زمنية تُقرأ كلها بها. والعملة هي عملة الشركة: تكاليف الأصناف، وعروض الأسعار والفواتير، ومطالبات المصروفات، والأجور، ودفتر الأستاذ تُحفظ بها، ويُذكر ذلك على عرض سعر أو عميل محتمل بعملة أخرى. ولا يمكن تغيير العملة إلا قبل أول سجل مالي للشركة، مثل تكلفة صنف أو عرض سعر أو فاتورة أو دفعة أو مصروف أو مسيرة رواتب؛ وبعدها تثبت. واللغة الافتراضية هي اللغة التي تستخدمها التطبيقات للشركة، العربية أو الإنجليزية؛ ويبقى كل قارئ يرى الشاشات بلغته حيث يتيح التطبيق ذلك. وتصل إشعارات الهاتف بلغة الهاتف نفسه، أو باللغة الافتراضية للشركة إن لم يحدد الهاتف لغته.
 
@@ -2596,11 +2594,11 @@ Amounts are rounded to the currency’s smallest unit, piastres for the Egyptian
       title: 'Installing and updating the apps',
       summary:
         'Where to download the desktop and phone apps, how the desktop apps update themselves, and what to do when an app says it is too old.',
-      body: `The web app is always the current version: reload the page after an update. The desktop and phone apps are installed, so they have to be updated.
+      body: `Your company’s desktop and phone apps are installed, so they have to be updated.
 
 The desktop apps, both the Integr8 staff app and your company’s own, update themselves when Integr8 publishes a new release. Nothing you have saved is lost by updating.
 
-Every installer is on the download page of the web app, at /download, for example app.integr8-media.com/download. With your company’s short name added, as in /download?company=your-company, the page lists your company’s latest desktop installers and its phone app. Integr8 gives you the exact link.
+Every installer is on the download page, at /download on Integr8’s site, for example app.integr8-media.com/download. With your company’s short name added, as in /download?company=your-company, the page lists your company’s latest desktop installers and its phone app. Integr8 gives you the exact link.
 
 When a desktop or phone app is too old for the server, it says so instead of failing, and Update opens that download page with your company already filled in. Install the new version over the app you have: do not uninstall the phone app first, because uninstalling it removes any work on the phone that has not been sent yet.`,
       keywords: [
@@ -2621,11 +2619,11 @@ When a desktop or phone app is too old for the server, it says so instead of fai
       title: 'تثبيت التطبيقات وتحديثها',
       summary:
         'من أين تنزّل تطبيقات سطح المكتب والهاتف، وكيف تحدّث تطبيقات سطح المكتب نفسها، وماذا تفعل عندما يقول التطبيق إنه قديم.',
-      body: `تطبيق الويب هو دائمًا النسخة الحالية: أعد تحميل الصفحة بعد التحديث. أما تطبيقات سطح المكتب والهاتف فهي مثبّتة، ولذلك تحتاج إلى تحديث.
+      body: `تطبيقا سطح المكتب والهاتف الخاصّان بشركتك مثبّتان، ولذلك يحتاجان إلى تحديث.
 
 تحدّث تطبيقات سطح المكتب نفسها، تطبيق موظفي Integr8 وتطبيق شركتك الخاص، عندما تنشر Integr8 إصدارًا جديدًا. ولا يضيع شيء مما حفظته بسبب التحديث.
 
-وكل برامج التثبيت موجودة في صفحة التنزيل في تطبيق الويب، على /download، مثل app.integr8-media.com/download. ومع إضافة الاسم المختصر لشركتك، كما في /download?company=your-company، تعرض الصفحة أحدث برامج تثبيت سطح المكتب الخاصة بشركتك وتطبيق الهاتف. وتعطيك Integr8 الرابط الدقيق.
+وكل برامج التثبيت موجودة في صفحة التنزيل، على /download في موقع Integr8، مثل app.integr8-media.com/download. ومع إضافة الاسم المختصر لشركتك، كما في /download?company=your-company، تعرض الصفحة أحدث برامج تثبيت سطح المكتب الخاصة بشركتك وتطبيق الهاتف. وتعطيك Integr8 الرابط الدقيق.
 
 وعندما يصبح تطبيق سطح المكتب أو الهاتف أقدم مما يقبله الخادم، يخبرك بذلك بدل أن يتعطل، ويفتح «تحديث» صفحة التنزيل تلك مع اسم شركتك معبّأً. ثبّت النسخة الجديدة فوق التطبيق الموجود: لا تحذف تطبيق الهاتف أولًا، لأن حذفه يزيل أي عمل على الهاتف لم يُرسل بعد.`,
       keywords: [

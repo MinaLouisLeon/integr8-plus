@@ -1,13 +1,26 @@
-import { readFileSync, statSync } from 'node:fs';
-import { isAbsolute } from 'node:path';
+import { randomUUID } from 'node:crypto';
+import { closeSync, openSync, readFileSync, readSync, statSync } from 'node:fs';
+import { extname, isAbsolute } from 'node:path';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import {
+  currentHost,
+  failure,
+  FORMS_INSTRUCTIONS,
+  type FormsToolOptions,
+  handOverRequest,
+  outputFolder,
+  registerFormsTools,
+  requestsFolder,
+  text,
+} from '@integr8/forms-ai/tools';
 import { z } from 'zod';
 import { type ApiAnswer, type Connection, NotSignedInError, type Person } from './connection.js';
 import type { SeededCompany } from './local.js';
 import { checkRequest, type RouteIndex, routeLine } from './openapi.js';
+import { serverVersion } from './paths.js';
 import { redact } from './redact.js';
-import { getRepoRequest, listRepoRequests } from './requests.js';
+import { addReadmeRow, getRepoRequest, listRepoRequests, REQUESTS_DIR } from './requests.js';
 import type { Trace } from './trace.js';
 
 /**
@@ -16,6 +29,11 @@ import type { Trace } from './trace.js';
  * lines, the outbox). It has no tool that signs in and none that returns a
  * token: the person signs in in a terminal, and every answer passes through
  * `redact` before the AI sees it.
+ *
+ * It also carries every Integr8 Forms for AI tool (building `.integr8form`
+ * files, the preview window, website integration, change requests on this
+ * computer), so a developer needs this one server. Those tools are offline
+ * and work without a session.
  */
 
 export interface DevContext {
@@ -36,17 +54,27 @@ export interface DevServerOptions {
   trace: Trace;
   /** Where handed-over change requests are (P39); the repository's plan/requests/ by default. */
   requestsFolder?: string;
+  /** Options for the Forms for AI tools; tests pass a browser that finds none and an opener that opens nothing. */
+  forms?: Omit<FormsToolOptions, 'requestToolNames'>;
 }
 
-const INSTRUCTIONS = `Integr8 developer tools: try features of this repository on a running Integr8 Plus API, as the people of a TEST company. You never sign in and never see a password, an authenticator code or a token: the person signs in in a terminal (pnpm dev-mcp login --api <address>); if a tool says the session is missing or over, ask them to do that, and never ask them for a password or code.
-Rules: test companies only (the API refuses anything else). On production (status says the environment), say what you are about to do before any write, and start with read-only calls. Everything you do is audited under the person's staff account and appears in the company's audit log with your stated purpose.
-Workflow: status → list_test_companies (create_test_company in local mode) → use_company → find_route / get_route → call_api as a role, a person or "company" → get_trace, get_audit, read_outbox to see what it did. import_form_package and submit_form cover the form flow in one call each.`;
+/**
+ * Forms for AI's change-request tools for this computer, renamed: this
+ * server's list_change_requests and get_change_request read the repository.
+ */
+export const DRAFT_REQUEST_TOOLS = {
+  list: 'list_draft_change_requests',
+  get: 'get_draft_change_request',
+} as const;
 
-const text = (value: string): CallToolResult => ({ content: [{ type: 'text', text: value }] });
-const failure = (value: string): CallToolResult => ({
-  content: [{ type: 'text', text: value }],
-  isError: true,
-});
+const DEV_INSTRUCTIONS = `Integr8 developer tools: try features of this repository on a running Integr8 Plus API, as the people of a TEST company. You never sign in and never see a password, an authenticator code or a token: the person signs in in a terminal (pnpm dev-mcp login --api <address>); if a tool says the session is missing or over, ask them to do that, and never ask them for a password or code.
+Rules: test companies only (the API refuses anything else). On production (status says the environment), say what you are about to do before any write, and start with read-only calls. Everything you do is audited under the person's staff account and appears in the company's audit log under an impersonation grant whose reason is your stated purpose (a call with a new purpose starts a new grant), so give each call a purpose that says what it tests.
+Workflow: status → list_test_companies (create_test_company in local mode) → use_company → find_route / get_route → call_api as a role, a person or "company" (public routes go as a visitor with no sign-in) → get_trace, get_audit, read_outbox to see what it did. import_form_package and submit_form cover the form flow in one call each.`;
+
+const BRIDGE = `This server also has every Integr8 Forms for AI tool, below. They are offline and need no sign-in, so use them even when the session is missing. In this server two of them are renamed: the change requests recorded on this computer are listed with ${DRAFT_REQUEST_TOOLS.list} and read with ${DRAFT_REQUEST_TOOLS.get}; list_change_requests and get_change_request read the repository's plan/requests/, and hand_over_change_request copies a recorded request there. To try a form you built on a running API: save_package, then use_company, import_form_package (publish: true) with the saved path, and submit_form as an engineer.`;
+
+const INSTRUCTIONS = `${DEV_INSTRUCTIONS}\n\n${BRIDGE}\n\n${FORMS_INSTRUCTIONS}`;
+
 const show = (value: unknown) => JSON.stringify(redact(value), null, 2);
 
 interface Company {
@@ -65,6 +93,48 @@ interface Member {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 
+const FORM_FILE_LIMIT = 50 * 1024 * 1024;
+/** Every .integr8form file is a ZIP, whose first bytes are a local file header. */
+const ZIP_START = Buffer.from([0x50, 0x4b, 0x03, 0x04]);
+
+/**
+ * Why a path is not sent as a form file, or undefined when it may be. Checked
+ * before anything is read in full or leaves the computer, so the tool cannot
+ * be used to send some other local file to the API.
+ */
+export function formFileProblem(path: string): string | undefined {
+  if (!isAbsolute(path)) {
+    return 'Give the absolute path of the .integr8form file.';
+  }
+  if (extname(path).toLowerCase() !== '.integr8form') {
+    return 'Only a .integr8form file is imported (save_package writes one).';
+  }
+  let size: number;
+  try {
+    const found = statSync(path);
+    if (!found.isFile()) {
+      return `${path} is not a file.`;
+    }
+    size = found.size;
+  } catch {
+    return `There is no file at ${path}.`;
+  }
+  if (size > FORM_FILE_LIMIT) {
+    return 'That file is larger than a form file can be.';
+  }
+  const start = Buffer.alloc(ZIP_START.length);
+  const handle = openSync(path, 'r');
+  try {
+    readSync(handle, start, 0, start.length, 0);
+  } finally {
+    closeSync(handle);
+  }
+  if (!start.equals(ZIP_START)) {
+    return 'That is not a .integr8form file: it does not start like one (a ZIP file).';
+  }
+  return undefined;
+}
+
 function describeAnswer(answer: ApiAnswer, extra: string[] = []): string {
   return [
     `${String(answer.status)} in ${String(answer.trace.durationMs)} ms (trace #${String(answer.trace.id)}${answer.trace.requestId === null ? '' : `, request ${answer.trace.requestId}`}, as ${answer.trace.as})`,
@@ -80,9 +150,19 @@ export function createDevServer(options: DevServerOptions): McpServer {
   let people: Member[] = [];
 
   const server = new McpServer(
-    { name: 'integr8-dev', title: 'Integr8 developer tools', version: '1.0.0' },
+    { name: 'integr8-dev', title: 'Integr8 developer tools', version: serverVersion() },
     { instructions: INSTRUCTIONS },
   );
+
+  const forms = registerFormsTools(server, {
+    ...options.forms,
+    requestToolNames: DRAFT_REQUEST_TOOLS,
+  });
+  // The preview window's page server stops with the MCP server; a caller that
+  // sets its own onclose keeps this one by calling the previous handler.
+  server.server.onclose = () => {
+    void forms.close();
+  };
 
   const guarded = async (work: (context: DevContext) => Promise<CallToolResult>) => {
     try {
@@ -363,7 +443,7 @@ export function createDevServer(options: DevServerOptions): McpServer {
     {
       title: 'Call the API as one of the company’s people',
       description:
-        'Sends one request to the chosen test company as "company", a role (the first active member with it), an email or a user id. Checks the request against the route’s schema first, adds the client headers and an Idempotency-Key where the route takes one, and starts an audited impersonation grant (reason "Developer MCP: <purpose>") when that person has none. Returns the status, body, timing, request id and the audit lines the call wrote. Platform (staff) routes are not called this way.',
+        'Sends one request to the chosen test company as "company", a role (the first active member with it), an email or a user id. Checks the request against the route’s schema first, adds the client headers and an Idempotency-Key where the route takes one, and acts through an audited impersonation grant whose reason is "Developer MCP: <purpose>": the same person’s grant is reused only while the purpose stays the same, so the audit log states why each call was made. A public route (the public site’s quote, document and asset-tag links, accepting an invitation) is sent as a visitor with no sign-in, whatever "as" says. Returns the status, body, timing, request id and the audit lines the call wrote. Platform (staff) routes are not called this way.',
       inputSchema: {
         method: z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']),
         path: z.string().min(1).max(500).describe('A concrete path, e.g. /v1/work-orders/<id>.'),
@@ -405,8 +485,34 @@ export function createDevServer(options: DevServerOptions): McpServer {
             );
           }
         }
-        const person = personFor(input.as);
         const since = new Date(Date.now() - 2000).toISOString();
+        if (route.security === 'public') {
+          // A public route (the public site's quote, document and asset-tag
+          // links, accepting an invitation) is what a visitor with no sign-in
+          // sends, so it goes without a grant and "as" does not apply.
+          const visit = await context.connection.request({
+            as: 'visitor (no sign-in)',
+            method: input.method,
+            path,
+            query,
+            ...(input.body === undefined ? {} : { body: input.body }),
+            ...(input.idempotencyKey !== undefined
+              ? { idempotencyKey: input.idempotencyKey }
+              : route.idempotency !== null && input.method !== 'GET'
+                ? { idempotencyKey: randomUUID() }
+                : {}),
+          });
+          const audit = await auditLines(context, chosen.id, since, visit.trace.requestId);
+          return text(
+            describeAnswer(visit, [
+              'Sent as a visitor with no sign-in: this is a public route.',
+              audit.length === 0
+                ? 'Audit lines from this call: none.'
+                : `Audit lines from this call:\n${audit.map((line) => `- ${line}`).join('\n')}`,
+            ]),
+          );
+        }
+        const person = personFor(input.as);
         const answer = await context.connection.as({
           tenantId: chosen.id,
           person,
@@ -562,7 +668,7 @@ export function createDevServer(options: DevServerOptions): McpServer {
     {
       title: 'Import a .integr8form file into the company',
       description:
-        'Imports a .integr8form file (from Forms for AI or its preview window) into the chosen test company as a new draft form, acting as the company (forms are staff-only), and publishes it if asked: the step between building a form and testing it.',
+        "Imports a .integr8form file (written by save_package, the preview window's Save, or Forms for AI) into the chosen test company as a new draft form, acting as the company (forms are staff-only), and publishes it if asked: the step between building a form and testing it.",
       inputSchema: {
         path: z.string().min(1).max(1000).describe('Absolute path of the .integr8form file.'),
         publish: z.boolean().optional(),
@@ -573,11 +679,9 @@ export function createDevServer(options: DevServerOptions): McpServer {
     (input) =>
       guarded(async (context) => {
         const chosen = needCompany();
-        if (!isAbsolute(input.path)) {
-          return failure('Give the absolute path of the .integr8form file.');
-        }
-        if (statSync(input.path).size > 50 * 1024 * 1024) {
-          return failure('That file is larger than a form file can be.');
+        const refused = formFileProblem(input.path);
+        if (refused !== undefined) {
+          return failure(refused);
         }
         const purpose = input.purpose ?? 'importing a form file to test it';
         const company: Person = { key: 'company', label: 'company' };
@@ -671,8 +775,7 @@ export function createDevServer(options: DevServerOptions): McpServer {
     'list_change_requests',
     {
       title: 'List the change requests handed to the repository',
-      description:
-        'The change requests in plan/requests/ (copied there from Integr8 Forms for AI, or written by hand): code, title, kind and status. Start planning one with docs/contributing/planning-a-change-request.md.',
+      description: `The change requests handed to the repository, in plan/requests/ (copied there from a recorded request, or written by hand; the ones recorded on this computer are in ${DRAFT_REQUEST_TOOLS.list}): code, title, kind and status. Start planning one with docs/contributing/planning-a-change-request.md.`,
       inputSchema: {},
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
@@ -698,7 +801,7 @@ export function createDevServer(options: DevServerOptions): McpServer {
     {
       title: 'Read one change request from the repository',
       description:
-        'One change request from plan/requests/ in full, by its code (CR-0001) or number, with the files beside it (its example .integr8form opens with Forms for AI’s open_package; import it with import_form_package).',
+        'One change request from plan/requests/ in full, by its code (CR-0001) or number, with the files beside it (its example .integr8form opens with open_package; import it with import_form_package).',
       inputSchema: {
         request: z.union([z.string().regex(/^CR-\d{4}$/iu), z.number().int().min(1).max(9999)]),
       },
@@ -719,6 +822,52 @@ export function createDevServer(options: DevServerOptions): McpServer {
             ),
       );
     },
+  );
+
+  server.registerTool(
+    'hand_over_change_request',
+    {
+      title: 'Hand a recorded change request over to the repository',
+      description: `Copies a change request recorded on this computer (see ${DRAFT_REQUEST_TOOLS.list}) into the repository's plan/requests/, as plan/requests/README.md describes: it keeps its number when that is free there and takes the next free one otherwise (its request.md keeps the number it has on this computer), adds its row to the README as "received", and marks it handed over on this computer. Only an open request is handed over; nothing in plan/requests/ is overwritten. Afterwards, run Prettier on the README so its table lines up, and plan it with list_change_requests and docs/contributing/planning-a-change-request.md.`,
+      inputSchema: {
+        number: z.number().int().min(1).max(9999).describe('Its number on this computer.'),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    },
+    ({ number }) =>
+      Promise.resolve().then(() => {
+        try {
+          const target = options.requestsFolder ?? REQUESTS_DIR;
+          const drafts = requestsFolder(outputFolder(options.forms?.host ?? currentHost()));
+          const handed = handOverRequest(drafts, number, target);
+          const request = listRepoRequests(target).find((entry) => entry.code === handed.code);
+          const row = addReadmeRow(
+            {
+              code: handed.code,
+              folder: handed.folder,
+              title: request?.title ?? handed.code,
+              kind: request?.kind ?? 'unknown',
+            },
+            target,
+          );
+          return text(
+            [
+              `Handed over as ${handed.code}: ${handed.folder}`,
+              handed.code === handed.draftCode
+                ? ''
+                : `Its number was taken in the repository, so it is ${handed.code} there; its request.md and this computer keep ${handed.draftCode}.`,
+              row
+                ? 'Row added to plan/requests/README.md as received. Run: pnpm exec prettier --write plan/requests/README.md'
+                : 'plan/requests/README.md has no Requests table here: add its row by hand.',
+              `Marked handed over on this computer.`,
+            ]
+              .filter((line) => line !== '')
+              .join('\n'),
+          );
+        } catch (error) {
+          return failure(error instanceof Error ? error.message : String(error));
+        }
+      }),
   );
 
   return server;

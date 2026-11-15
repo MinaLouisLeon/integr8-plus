@@ -13,7 +13,7 @@ import { z } from 'zod';
  *
  * The header is a Markdown table so a person reads it as easily as the tools
  * do; `parseRequest` reads it back and `requestHeaderSchema` checks it. The
- * format is written down in docs/forms-ai/change-requests.md.
+ * format is written down in docs/contributing/developer-tools.md.
  */
 
 export const REQUEST_KINDS = [

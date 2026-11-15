@@ -3,12 +3,12 @@ import { platformAiRoutes } from './ai.js';
 import { platformAuditRoutes } from './audit.js';
 import { platformAuthRoutes } from './auth.js';
 import { platformCompanyRoutes } from './companies.js';
+import { platformDownloadsRoutes } from './downloads.js';
 import { platformImpersonationRoutes } from './impersonation.js';
 import { platformLifecycleRoutes } from './lifecycle.js';
 import { platformSettingsRoutes } from './settings.js';
 import { platformStaffRoutes } from './staff.js';
 import { platformStorageRoutes } from './storage.js';
-import { funnelRoutes } from './funnel.js';
 import { platformHealthRoutes } from './health.js';
 import { platformSupportRoutes } from './support.js';
 import { platformTemplatePackageRoutes } from './template-packages.js';
@@ -17,7 +17,7 @@ import { platformTestCompanyRoutes } from './test-companies.js';
 import { platformWebsiteKeyRoutes } from './website-keys.js';
 
 /**
- * The super admin dashboard's API (P15).
+ * The staff app's API (P15; the staff desktop app since P42).
  *
  * Every route here is `security: 'platform'` except the three that mint a
  * platform session in the first place. None of them takes a tenant token, and
@@ -41,5 +41,5 @@ export const platformRoutes: AnyRoute[] = [
   ...platformStorageRoutes,
   ...platformWebsiteKeyRoutes,
   ...platformHealthRoutes,
-  ...funnelRoutes,
+  ...platformDownloadsRoutes,
 ];

@@ -31,13 +31,6 @@ export interface RecentFailure {
   deadLettered: boolean;
 }
 
-/** How long one company took from existing to its first submitted form (P18). */
-export interface TimeToFirstSubmission {
-  tenantId: string;
-  /** From the company being provisioned to `submissions.submitted_at` of its first form. */
-  seconds: number;
-}
-
 export class PlatformInsightsRepository {
   constructor(private readonly db: Kysely<Database>) {}
 
@@ -100,68 +93,6 @@ export class PlatformInsightsRepository {
       lastError: row.last_error,
       failedAt: row.dead_lettered_at ?? row.updated_at,
       deadLettered: row.dead_lettered_at !== null,
-    }));
-  }
-
-  /**
-   * From a company existing to its first submitted form, for every self-serve
-   * company created since a moment that has submitted anything (P18).
-   *
-   * The second P18 exit criterion — *time from landing page to first submitted
-   * form* — measured from the earliest moment that can honestly be tied to a
-   * company. Page views carry no id and cannot be; the signup request can, and
-   * `signup.provisioned` is when the company came to exist. If that event was
-   * lost (funnel writes are allowed to fail), `signup.started` on the same
-   * request stands in: a few minutes earlier, and still that company's own.
-   *
-   * Cross-tenant on purpose, which is why it is here and not on a tenant
-   * repository: `submissions` is read for every company at once, on the owner
-   * connection where RLS does not apply. It returns company ids and seconds —
-   * nothing that identifies a person — because that is the funnel table's
-   * promise and this query must not be the place it is broken.
-   */
-  async timeToFirstSubmission(input: {
-    since: Date;
-    /** The funnel step names, owned by the API's signup service. */
-    provisionedStep: string;
-    startedStep: string;
-    limit?: number;
-  }): Promise<TimeToFirstSubmission[]> {
-    const rows = await sql<{ tenant_id: string; seconds: string | number }>`
-      with started as (
-        select
-          r.tenant_id,
-          coalesce(
-            min(e.occurred_at) filter (where e.step = ${input.provisionedStep}),
-            min(e.occurred_at) filter (where e.step = ${input.startedStep})
-          ) as started_at
-        from signup_requests r
-        join signup_events e on e.signup_id = r.id
-        where r.tenant_id is not null
-          and e.step in (${input.provisionedStep}, ${input.startedStep})
-        group by r.tenant_id
-      ),
-      first_form as (
-        select tenant_id, min(submitted_at) as submitted_at
-        from submissions
-        where submitted_at is not null
-        group by tenant_id
-      )
-      select
-        s.tenant_id,
-        extract(epoch from (f.submitted_at - s.started_at)) as seconds
-      from started s
-      join first_form f on f.tenant_id = s.tenant_id
-      join tenants t on t.id = s.tenant_id and not t.is_test
-      where s.started_at >= ${input.since}
-        and f.submitted_at >= s.started_at
-      order by s.started_at desc
-      limit ${Math.min(Math.max(input.limit ?? 500, 1), 5000)}
-    `.execute(this.db);
-
-    return rows.rows.map((row) => ({
-      tenantId: row.tenant_id,
-      seconds: Math.round(Number(row.seconds)),
     }));
   }
 }

@@ -119,7 +119,7 @@ beforeAll(async () => {
   forgetAiPolicy();
   // The company's own switches: desktop on, the rest off.
   await withTenant(api.tenantId, (tx) =>
-    tx.settings.update({ aiDesktopEnabled: true, aiWebEnabled: false, aiMobileEnabled: false }),
+    tx.settings.update({ aiDesktopEnabled: true, aiMobileEnabled: false }),
   );
   // Each member's share of the company's allowance (ADR-0002 D6).
   await withTenant(api.tenantId, async (tx) => {
@@ -143,26 +143,32 @@ afterAll(async () => {
 });
 
 describe('the switches between the plan and the screen', () => {
-  it('serve help on the desktop, and say which switch is off elsewhere', async () => {
+  it('serve help on the desktop, and say which switch is off on the phone', async () => {
     const token = await api.signIn(owner, 'desktop');
     expect(await capabilities(token, 'desktop')).toMatchObject({ level: 'help', blockedBy: null });
-    for (const app of ['web', 'mobile'] as const) {
-      const elsewhere = await api.signIn(owner, app);
-      expect(await capabilities(elsewhere, app)).toMatchObject({
-        level: 'off',
-        blockedBy: 'channel_off',
-      });
-    }
+    const phone = await api.signIn(owner, 'mobile');
+    expect(await capabilities(phone, 'mobile')).toMatchObject({
+      level: 'off',
+      blockedBy: 'channel_off',
+    });
 
-    const web = await api.signIn(owner, 'web');
-    const conversation = await api.call(web, {
+    const conversation = await api.call(phone, {
       method: 'POST',
       url: '/v1/ai/conversations',
-      headers: { 'idempotency-key': randomUUID(), 'x-client-app': 'web' },
+      headers: { 'idempotency-key': randomUUID(), 'x-client-app': 'mobile' },
       payload: { locale: 'en' },
     });
     expect(conversation.statusCode).toBe(403);
     expect(code(conversation)).toBe('ai_disabled');
+  });
+
+  it('hold a session from the old web app to the desktop switch (P42)', async () => {
+    const web = await api.signIn(owner, 'web');
+    expect(await capabilities(web, 'web')).toMatchObject({
+      level: 'help',
+      blockedBy: null,
+      channel: 'desktop',
+    });
   });
 
   it('follow the app the session signed in with, not the header (Low 11)', async () => {
@@ -176,23 +182,23 @@ describe('the switches between the plan and the screen', () => {
     const asked = await ask(phone, randomUUID(), 'How do I add a site?', { app: 'desktop' });
     expect(asked.statusCode).toBe(403);
 
-    // And a desktop session is not shut out by a header naming the web.
+    // And a desktop session is not shut out by a header naming the phone.
     const desktop = await api.signIn(owner, 'desktop');
-    expect(await capabilities(desktop, 'web')).toMatchObject({
+    expect(await capabilities(desktop, 'mobile')).toMatchObject({
       level: 'help',
       blockedBy: null,
       channel: 'desktop',
     });
   });
 
-  it('hold Integr8 staff acting as the company to the web switch', async () => {
-    // Staff work in the company's web workspace, whatever app they used to
-    // sign in to the dashboard; the web switch is off here.
+  it('hold Integr8 staff acting as the company to the desktop switch', async () => {
+    // Staff work in the company's workspace from the staff desktop app (P42),
+    // whatever their request says it is.
     const staff = await api.staff(owner);
-    expect(await capabilities(staff, 'desktop')).toMatchObject({
-      level: 'off',
-      blockedBy: 'channel_off',
-      channel: 'web',
+    expect(await capabilities(staff, 'mobile')).toMatchObject({
+      level: 'help',
+      blockedBy: null,
+      channel: 'desktop',
     });
   });
 

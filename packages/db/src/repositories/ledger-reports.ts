@@ -72,13 +72,16 @@ export class LedgerReportsRepository extends TenantScopedRepository {
         from erp_journal_lines l
         join erp_journals j on j.tenant_id = l.tenant_id and j.id = l.journal_id
        where l.tenant_id = ${this.tenantId} and j.status = 'posted'
-         and (${range.from ?? null}::date is null or j.entry_date >= ${range.from ?? null}::date)
-         and (${range.to ?? null}::date is null or j.entry_date <= ${range.to ?? null}::date)
-         and (not ${range.excludeClosing === true} or not (
-               j.kind = 'closing'
-               or (j.kind = 'reversal' and exists (
-                     select 1 from erp_journals c
-                      where c.tenant_id = j.tenant_id and c.id = j.reversal_of and c.kind = 'closing'))))
+         ${sinceLine(range.from)} ${untilLine(range.to)}
+         ${
+           range.excludeClosing === true
+             ? sql`and not (
+                 j.kind = 'closing'
+                 or (j.kind = 'reversal' and exists (
+                       select 1 from erp_journals c
+                        where c.tenant_id = j.tenant_id and c.id = j.reversal_of and c.kind = 'closing')))`
+             : sql``
+         }
        group by l.account_id
     `.execute(this.db);
     return rows.map((row) => ({
@@ -111,8 +114,8 @@ export class LedgerReportsRepository extends TenantScopedRepository {
         from erp_journal_lines l
         join erp_journals j on j.tenant_id = l.tenant_id and j.id = l.journal_id
        where l.tenant_id = ${this.tenantId} and l.account_id = ${accountId}::uuid
-         and j.status = 'posted' and j.entry_date between ${from}::date and ${to}::date
-       order by j.entry_date, j.reference, l.line_no
+         and j.status = 'posted' ${sinceLine(from)} ${untilLine(to)}
+       order by l.entry_date, j.reference, l.line_no
        limit ${limit + 1}
     `.execute(this.db);
     return {
@@ -141,7 +144,7 @@ export class LedgerReportsRepository extends TenantScopedRepository {
         from erp_journal_lines l
         join erp_journals j on j.tenant_id = l.tenant_id and j.id = l.journal_id
        where l.tenant_id = ${this.tenantId} and l.account_id = ${accountId}::uuid
-         and j.status = 'posted' and j.entry_date <= ${asOf}::date
+         and j.status = 'posted' ${untilLine(asOf)}
        group by l.customer_id
       having sum(l.debit) <> sum(l.credit)
     `.execute(this.db);
@@ -201,11 +204,11 @@ export class LedgerReportsRepository extends TenantScopedRepository {
       select
         (select count(*)::int from erp_journals j
           where j.tenant_id = ${this.tenantId} and j.status = 'draft'
-            and (${from ?? null}::date is null or j.entry_date >= ${from ?? null}::date)
+            ${from === undefined ? sql`` : sql`and j.entry_date >= ${from}::date`}
             and j.entry_date <= ${to}::date) as drafts,
         (select count(*)::int from erp_ledger_postings p
           where p.tenant_id = ${this.tenantId} and p.status = 'pending'
-            and (${from ?? null}::date is null or p.document_date >= ${from ?? null}::date)
+            ${from === undefined ? sql`` : sql`and p.document_date >= ${from}::date`}
             and p.document_date <= ${to}::date) as waiting
     `.execute(this.db);
     return { drafts: rows[0]?.drafts ?? 0, waiting: rows[0]?.waiting ?? 0 };
@@ -303,4 +306,18 @@ function toYearClose(row: {
     reopenReason: row.reopen_reason,
     reopeningJournalId: row.reopening_journal_id,
   };
+}
+
+/*
+ * Date bounds on journal lines. The line's own date (its journal's, kept equal
+ * by the foreign key) rather than the journal's, so Postgres reads only the
+ * year partitions in the range (P41); and a bound is written only when there is
+ * one, because `($1 is null or date >= $1)` stops the planner using either.
+ */
+function sinceLine(from: string | undefined) {
+  return from === undefined ? sql`` : sql`and l.entry_date >= ${from}::date`;
+}
+
+function untilLine(to: string | undefined) {
+  return to === undefined ? sql`` : sql`and l.entry_date <= ${to}::date`;
 }

@@ -19,6 +19,7 @@ export type Actor =
   | 'admin'
   | 'hr'
   | 'store'
+  | 'accounts'
   | 'dispatcher'
   | 'engineer1'
   | 'engineer2'

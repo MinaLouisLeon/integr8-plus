@@ -15,7 +15,7 @@ import { ChromiumPrinter } from './printer.js';
 
 /**
  * Prints one sample of each business PDF, in English and Arabic, through the
- * real printer (docs/screenshots/1.3.0/business-pdfs). Made-up company and
+ * real printer (a folder of your choice). Made-up company and
  * pictures; nothing is read from a database or a bucket.
  *
  *   pnpm --filter @integr8/api exec tsx src/documents/business-samples-cli.ts <out-dir>

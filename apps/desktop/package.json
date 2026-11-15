@@ -14,7 +14,8 @@
     "clean": "rm -rf dist .turbo src-tauri/target *.tsbuildinfo",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "check:company-bundle": "node scripts/check-company-bundle.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "6.3.1",

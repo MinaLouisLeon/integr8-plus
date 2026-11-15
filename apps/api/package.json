@@ -19,6 +19,7 @@
     "demo-company": "tsx --env-file-if-exists=.env src/demo/cli.ts",
     "dev-mcp-local": "tsx --env-file-if-exists=.env src/demo/local-api.ts",
     "storage": "tsx --env-file-if-exists=.env src/media/storage-cli.ts",
+    "transfer": "tsx --env-file-if-exists=.env src/transfer/cli.ts",
     "test:integration": "vitest run --project integration"
   },
   "dependencies": {
@@ -37,6 +38,7 @@
     "@integr8/form-input": "workspace:*",
     "@integr8/form-package": "workspace:*",
     "@integr8/i18n": "workspace:*",
+    "@integr8/releases": "workspace:*",
     "@sentry/node": "10.74.0",
     "fastify": "5.12.3",
     "pdf-lib": "1.17.1",

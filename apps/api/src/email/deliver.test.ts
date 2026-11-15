@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { createLogger } from '../http/logger.js';
 import { deliver } from './deliver.js';
-import { signupVerificationEmail } from './messages.js';
+import { invitationEmail } from './messages.js';
 import { RecordingEmailSender, type EmailMessage, type EmailResult } from './sender.js';
 
 /**
  * What the delivery log carries (P18).
  *
  * A staging deployment runs with the recording sender and no mailbox, so the
- * confirmation and invitation links have to be readable in its log or signing
- * up cannot be tested at all. A real provider's log must never carry them.
+ * invitation link has to be readable in its log or joining a company cannot be
+ * tested at all. A real provider's log must never carry it.
  */
 
 function capture() {
@@ -20,10 +20,11 @@ function capture() {
   return { logger, lines };
 }
 
-const message = signupVerificationEmail({
+const message = invitationEmail({
   to: 'owner@example.com',
   companyName: 'Acme Field',
-  verifyUrl: 'https://app.example.com/sign-up/verify?token=abc123',
+  invitedBy: 'Integr8',
+  acceptUrl: 'https://app.example.com/accept-invitation?token=abc123',
   expiresAt: new Date('2026-03-02T12:00:00Z'),
 });
 
@@ -32,15 +33,15 @@ describe('the delivery log', () => {
     const { logger, lines } = capture();
     const sender = new RecordingEmailSender();
 
-    const outcome = await deliver(sender, logger, message, { kind: 'signup' });
+    const outcome = await deliver(sender, logger, message, { kind: 'invitation' });
 
     expect(outcome.sent).toBe(true);
     expect(lines).toHaveLength(1);
     expect(lines[0]).toMatchObject({
       message: 'Email sent',
-      kind: 'signup',
+      kind: 'invitation',
       provider: 'recording',
-      actionUrl: 'https://app.example.com/sign-up/verify?token=abc123',
+      actionUrl: 'https://app.example.com/accept-invitation?token=abc123',
     });
     expect(JSON.stringify(lines[0])).not.toContain('owner@example.com');
   });
@@ -53,7 +54,7 @@ describe('the delivery log', () => {
         Promise.resolve({ status: 'sent', id: 'msg_1' }),
     };
 
-    await deliver(realish, logger, message, { kind: 'signup' });
+    await deliver(realish, logger, message, { kind: 'invitation' });
 
     expect(lines[0]).toMatchObject({ message: 'Email sent', provider: 'resend' });
     expect(lines[0]).not.toHaveProperty('actionUrl');

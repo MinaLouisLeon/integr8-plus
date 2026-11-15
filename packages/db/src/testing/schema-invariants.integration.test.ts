@@ -99,7 +99,7 @@ async function publicTables(): Promise<string[]> {
     select c.relname::text as table_name
     from pg_class c
     join pg_namespace n on n.oid = c.relnamespace
-    where n.nspname = 'public' and c.relkind = 'r'
+    where n.nspname = 'public' and c.relkind in ('r', 'p') and not c.relispartition
     order by c.relname
   `);
   return result.rows.map((row) => row.table_name);
@@ -111,7 +111,8 @@ describe('the shape of every table', () => {
       select c.relname::text as table_name
       from pg_class c
       join pg_namespace n on n.oid = c.relnamespace
-      where n.nspname = 'public' and c.relkind = 'r' and c.relrowsecurity = false
+      where n.nspname = 'public' and c.relkind in ('r', 'p') and not c.relispartition
+        and c.relrowsecurity = false
       order by c.relname
     `);
 
@@ -180,6 +181,44 @@ describe('the shape of every table', () => {
     );
 
     expect(await publicTables()).toEqual(expected);
+  });
+});
+
+describe('year partitions (P41)', () => {
+  it('gives every partitioned table this year, next year and a default partition', async () => {
+    const result = await owner.query<{ parent: string; partitions: string[] }>(`
+      select p.relname::text as parent, array_agg(c.relname::text order by c.relname) as partitions
+        from pg_inherits i
+        join pg_class p on p.oid = i.inhparent
+        join pg_class c on c.oid = i.inhrelid
+       where p.relkind = 'p' and p.relnamespace = 'public'::regnamespace
+       group by p.relname
+    `);
+    const year = new Date().getUTCFullYear();
+
+    expect(result.rows.length).toBeGreaterThan(0);
+    for (const row of result.rows) {
+      expect(row.partitions, row.parent).toEqual(
+        expect.arrayContaining([
+          `${row.parent}_default`,
+          `${row.parent}_y${String(year)}`,
+          `${row.parent}_y${String(year + 1)}`,
+        ]),
+      );
+    }
+  });
+
+  it('grants nothing on a partition, so rows are reached only through the parent and its policy', async () => {
+    const result = await owner.query<{ partition: string; grantee: string }>(`
+      select c.relname::text as partition, g.grantee::text as grantee
+        from pg_class c
+        join information_schema.role_table_grants g
+          on g.table_schema = 'public' and g.table_name = c.relname
+       where c.relispartition and c.relnamespace = 'public'::regnamespace
+         and g.grantee in ('integr8_app', 'integr8_auth', 'integr8_platform', 'PUBLIC')
+    `);
+
+    expect(result.rows).toEqual([]);
   });
 });
 
@@ -326,7 +365,7 @@ describe('the pre-authentication role', () => {
     const owned = await owner.query(
       `select 1 from pg_class c
        join pg_namespace n on n.oid = c.relnamespace
-       where n.nspname = 'public' and c.relkind = 'r'
+       where n.nspname = 'public' and c.relkind in ('r', 'p')
          and pg_get_userbyid(c.relowner) = 'integr8_auth'`,
     );
 
@@ -549,7 +588,7 @@ describe('what the runtime role may do', () => {
     const owned = await owner.query(
       `select 1 from pg_class c
        join pg_namespace n on n.oid = c.relnamespace
-       where n.nspname = 'public' and c.relkind = 'r'
+       where n.nspname = 'public' and c.relkind in ('r', 'p')
          and pg_get_userbyid(c.relowner) = 'integr8_app'`,
     );
 

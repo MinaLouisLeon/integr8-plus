@@ -1,5 +1,5 @@
 {
-  "$comment": "Copy to company.json (git-ignored) to build one company's app. CI writes it from GET /v1/public/companies/{slug}/brand before `eas build`, and downloads the app icon to company/icon.png. Every field but slug and name may be null. See docs/mobile/company-builds.md.",
+  "$comment": "Copy to company.json (git-ignored) to build one company's app. CI writes it from GET /v1/public/companies/{slug}/brand before `eas build`, and downloads the app icon to company/icon.png. Every field but slug and name may be null. See docs/apps/mobile.md.",
   "slug": "northwind",
   "name": "Northwind Facilities",
   "websiteUrl": "https://northwind.example",

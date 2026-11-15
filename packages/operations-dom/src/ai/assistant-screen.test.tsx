@@ -23,7 +23,7 @@ function capabilities(overrides: Partial<AiCapabilities> = {}): AiCapabilities {
   return {
     level: 'help',
     blockedBy: null,
-    channel: 'web',
+    channel: 'desktop',
     answerSource: 'model',
     tools: [],
     companyDataToProvider: false,

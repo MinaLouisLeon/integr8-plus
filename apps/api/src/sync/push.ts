@@ -44,6 +44,7 @@ import {
   submitLocationSchema,
 } from '../routes/v1/submissions.js';
 import { audit as auditWorkOrder, completionBlockedMessage } from '../routes/v1/work-orders.js';
+import { runFormActions } from '../forms/actions.js';
 import { mergeAnswers, sameValue } from './merge.js';
 
 /**
@@ -1697,6 +1698,16 @@ async function submit(
     },
   );
   if (result.outcome === 'written') {
+    if (submission.status !== 'reopened') {
+      // P40: claims and follow-up forms, in this transaction. A resent submit
+      // never gets here (it is replayed, or found submitted above), and each
+      // claim's id is derived from the submission and action, so they are made
+      // once however the phone retries.
+      await runFormActions(tx, result.submission, principal.userId, {
+        today,
+        now: recordedAt(mutation).toISOString(),
+      });
+    }
     return applied(result.submission.revision, false, result.submission.answers);
   }
   return {

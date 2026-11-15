@@ -17,7 +17,7 @@ that matters.
 `pg_dump`, as plain SQL compressed with gzip:
 
 - every company's data, in the `public` schema;
-- the sign-in accounts of the self-hosted Supabase Auth (P36), in the `auth`
+- the sign-in accounts of the self-hosted Supabase Auth, in the `auth`
   schema. Passwords are stored there as bcrypt hashes. No separate backup of
   Auth is needed, and none exists.
 
@@ -310,7 +310,7 @@ the home test box (Ubuntu with Docker), never on production.
    One distinct `tenant_id`, and a permission error on the second. Anything else
    means the restore lost its grants or policies and must not serve traffic.
 
-7. **Sign in** on the web app with a real account from the dump. That proves
+7. **Sign in** in a company's desktop app with a real account from the dump. That proves
    the `auth` schema came back with the rest.
 
 8. **Note the finish time**, record the result below, and delete the dump and
@@ -379,6 +379,6 @@ table below.
 `restore-drill.sh` prints a row in this shape; the full rehearsal is written by
 hand.
 
-| Date                                                                    | Performed by | Source | Restore time | Data verified | Notes |
-| ----------------------------------------------------------------------- | ------------ | ------ | ------------ | ------------- | ----- |
-| _(not yet rehearsed — run `deploy/vps/restore-drill.sh --remote`; P19)_ |              |        |              |               |       |
+| Date                                                               | Performed by | Source | Restore time | Data verified | Notes |
+| ------------------------------------------------------------------ | ------------ | ------ | ------------ | ------------- | ----- |
+| _(not yet rehearsed — run `deploy/vps/restore-drill.sh --remote`)_ |              |        |              |               |       |

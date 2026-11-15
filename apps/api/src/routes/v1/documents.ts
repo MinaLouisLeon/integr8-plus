@@ -55,7 +55,7 @@ import { compiledVersion, readable } from './submissions.js';
 import { iso, isoOrNull } from './schemas.js';
 
 /**
- * PDF documents made from submissions (docs/documents/ADR-0001).
+ * PDF documents made from submissions (docs/documents/README.md).
  *
  * Templates are designed by Integr8 staff in the company's seat
  * (`document.design`, staff only, D1). A member with `document.create` who may

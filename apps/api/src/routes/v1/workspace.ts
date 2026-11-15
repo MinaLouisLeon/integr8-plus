@@ -20,6 +20,7 @@ import {
   sessionSchema,
 } from './schemas.js';
 import { customRoleBody, customRoleNames, customRoleOf } from './roles.js';
+import { assertCompanyAppReadyFor } from '../../platform/company-app-gate.js';
 
 /**
  * Who I am, my devices, and the people in this company.
@@ -322,7 +323,10 @@ export const inviteMemberRoute = defineRoute({
   }),
   responses: {
     201: { description: 'The invitation was created.', schema: invitationSchema },
-    409: { description: 'Every seat on this plan is taken (`seat_limit_reached`).' },
+    409: {
+      description:
+        'Every seat on this plan is taken (`seat_limit_reached`), or the company’s own desktop app is not built yet (`company_app_not_built`).',
+    },
     422: { description: 'Already a member, or a role above the inviter’s own.' },
   },
   handler: async ({ body }, context) => {
@@ -335,6 +339,8 @@ export const inviteMemberRoute = defineRoute({
       tenantId: context.principal.tenantId,
       plan: await planFor(context.principal.tenantId),
     });
+    // Nobody is invited before the company's own desktop app exists (P42, D6).
+    await assertCompanyAppReadyFor(context.principal.tenantId, context.services.appReleases);
 
     const { invitation, token } = await context.services.invitations.invite(context.principal, {
       email: body.email,
@@ -458,7 +464,7 @@ export const acceptInvitationRoute = defineRoute({
   operationId: 'acceptInvitation',
   summary: 'Accept an invitation',
   description:
-    'Public, because the invitee has no session yet. The company comes from the token: there is no parameter in which to name a different one. Makes the membership and signs nobody in: the person signs in afterwards with the address returned. An address with no sign-in yet must send a `password` meeting the password policy (422 `auth.invitation_password_required` without one, `auth.weak_password` for one refused); an address that already signs in needs none, and one sent is not applied (`existingAccount`).',
+    'Public, because the invitee has no session yet. The company comes from the token: there is no parameter in which to name a different one. Makes the membership and signs nobody in: the person signs in afterwards with the address returned, in the company’s own app (`company` names it). An address with no sign-in yet must send a `password` meeting the password policy (422 `auth.invitation_password_required` without one, `auth.weak_password` for one refused); an address that already signs in needs none, and one sent is not applied (`existingAccount`).',
   tags: ['authentication'],
   security: 'public',
   params: noSchema,
@@ -486,7 +492,9 @@ export const acceptInvitationRoute = defineRoute({
 
     // No tokens, and no session: the invitation token travels by email and
     // may sit in a mailbox, a proxy log or a screenshot, so it buys a
-    // membership and nothing more. The client sends the person to sign in.
+    // membership and nothing more. The page sends the person to their
+    // company's app (P42), which it links to by the company's short name.
+    const company = await getPlatformDataSource().tenants.findById(accepted.tenantId);
     return {
       status: 200,
       body: {
@@ -494,6 +502,7 @@ export const acceptInvitationRoute = defineRoute({
         email: accepted.email,
         existingAccount: accepted.existingAccount,
         signInRequired: true,
+        company: company === undefined ? null : { name: company.name, slug: company.slug },
       },
     };
   },

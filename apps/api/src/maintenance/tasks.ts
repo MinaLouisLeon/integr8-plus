@@ -27,7 +27,6 @@ import {
 } from '@integr8/db';
 import type { ApiConfig } from '../config.js';
 import { deliver } from '../email/deliver.js';
-import { contractsUrl, deadlinesUrl, workOrderUrl } from '../email/links.js';
 import {
   contractRenewalEmail,
   type DeadlineItem,
@@ -603,7 +602,6 @@ async function renewalReminders(
     return 0;
   }
   if (options.email !== undefined) {
-    const url = contractsUrl(options.config.WEB_APP_URL);
     for (const manager of prepared.managers) {
       await deliver(
         options.email,
@@ -612,7 +610,6 @@ async function renewalReminders(
           to: manager.email,
           companyName: tenant.name,
           items: prepared.items,
-          url,
           locale: prepared.locale,
         }),
         { kind: 'contract_renewal', tenantId: tenant.id },
@@ -705,7 +702,6 @@ async function deadlineAlertsFor(
       kind: notice.kind,
       dueAt: when.format(notice.dueAt),
       stage: notice.stage,
-      url: workOrderUrl(options.config.WEB_APP_URL, job.id),
     };
   };
 
@@ -723,7 +719,6 @@ async function deadlineAlertsFor(
         }
       }
     }
-    const url = deadlinesUrl(options.config.WEB_APP_URL);
     for (const [userId, list] of byPerson) {
       const member = memberById.get(userId);
       const items = list.map(itemOf).filter((item): item is DeadlineItem => item !== undefined);
@@ -733,7 +728,7 @@ async function deadlineAlertsFor(
       await deliver(
         options.email,
         options.logger,
-        deadlineAlertEmail({ to: member.email, companyName: tenant.name, items, url, locale }),
+        deadlineAlertEmail({ to: member.email, companyName: tenant.name, items, locale }),
         { kind: 'deadline_alert', tenantId: tenant.id },
       );
     }

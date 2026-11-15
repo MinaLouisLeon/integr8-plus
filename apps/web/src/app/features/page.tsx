@@ -17,7 +17,7 @@ export default function FeaturesPage() {
   const { t } = useTranslation();
 
   return (
-    <MarketingShell step="features.viewed">
+    <MarketingShell>
       <PageIntro
         eyebrow={t('site.features.eyebrow')}
         title={t('site.features.title')}

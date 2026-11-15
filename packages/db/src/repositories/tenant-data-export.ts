@@ -70,6 +70,9 @@ export const EXPORTED_TABLES = [
   'submissions',
   'submission_events',
   'submission_values',
+  // Form actions (0079): follow-ups opened and what each action did.
+  'submission_links',
+  'submission_action_results',
   'files',
   'attachments',
   // How the company works: timezone, currency, working hours, branding (0018).
@@ -211,10 +214,7 @@ export const WITHHELD_COLUMNS: Readonly<Partial<Record<ExportedTable, readonly s
  * Platform tables that carry a company's id, and so are a company's rows as
  * far as the catalogue is concerned, though the company never reads them.
  */
-type PlatformTableWithCompany = Extract<
-  PlatformTable,
-  'announcements' | 'billing_events' | 'signup_events' | 'signup_requests' | 'website_keys'
->;
+type PlatformTableWithCompany = Extract<PlatformTable, 'announcements' | 'website_keys'>;
 
 /**
  * Every company table that is not in {@link EXPORTED_TABLES}, and why.
@@ -269,13 +269,10 @@ export const NOT_EXPORTED_TABLES: Readonly<
   impersonation_grants:
     'Integr8 staff access grants; each one is recorded in audit_log, which is exported.',
   subscriptions: "The company's plan with Integr8: our billing record.",
-  billing_events: "The billing provider's notices to Integr8.",
   tenant_storage: 'Which bucket holds the files: our infrastructure.',
   tenant_storage_usage: 'Storage metering, kept by trigger from files.',
   tenant_storage_samples: 'Daily storage metering for billing.',
   storage_reconciliations: "Comparisons of our ledger with Cloudflare's bill.",
-  signup_requests: 'A sign-up before the company existed, with a token hash.',
-  signup_events: 'The anonymous sign-up funnel.',
   announcements: 'Banners Integr8 wrote; the runtime role cannot read them.',
   eta_schemas:
     "A cached copy of the Tax Authority's published JSON Schema, fetched again when needed.",
