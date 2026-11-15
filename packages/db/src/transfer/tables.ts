@@ -31,7 +31,6 @@ export const NOT_TRANSFERRED: Readonly<Record<string, string>> = {
   upload_intents: 'Uploads begun on the old server and never finished.',
   ai_message_reservations: 'Assistant replies in flight on the old server.',
   test_outbox: 'What a test company would have sent, kept a week on the old server.',
-  billing_events: "The billing provider's notices to the old server.",
   tenant_storage: 'Which bucket the old server keeps the files in; the import provisions its own.',
   tenant_storage_usage: 'Recounted by the new server from the files it receives.',
   tenant_storage_samples: "The old server's daily storage readings.",

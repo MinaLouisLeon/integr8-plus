@@ -103,7 +103,6 @@ import { AiConversationsRepository } from './repositories/ai-conversations.js';
 import { AiActionsRepository } from './repositories/ai-actions.js';
 import { AiMemberLimitsRepository } from './repositories/ai-member-limits.js';
 import { AiPlatformRepository } from './repositories/ai-platform.js';
-import { SignupRepository } from './repositories/signup.js';
 import { TenantSettingsRepository, TenantSettingsWriter } from './repositories/tenant-settings.js';
 import {
   StorageMeteringRepository,
@@ -308,8 +307,6 @@ export interface PlatformDataSource {
   readonly metering: StorageMeteringRepository;
   /** Subscriptions, and what the billing provider has told us (P17). */
   readonly billing: BillingRepository;
-  /** People asking for a company, and the funnel they move through (P18). */
-  readonly signup: SignupRepository;
   /** Creates a company's settings row when the company is made (P18). */
   readonly tenantSettings: TenantSettingsWriter;
   /** Which company a quote's customer link belongs to (CRM/ERP plan, S1; ADR-0006). */
@@ -598,7 +595,6 @@ export function getPlatformDataSource(): PlatformDataSource {
     health: new PlatformHealthRepository(db),
     metering: new StorageMeteringRepository(db),
     billing: new BillingRepository(db),
-    signup: new SignupRepository(db),
     tenantSettings: new TenantSettingsWriter(db),
     publicQuotes: new PublicQuotesLookup(db),
     publicDocuments: new PublicDocumentsLookup(db),
