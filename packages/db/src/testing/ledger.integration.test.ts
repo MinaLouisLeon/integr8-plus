@@ -224,8 +224,8 @@ describe('journals', () => {
       ).rejects.toMatchObject({ constraint: 'erp_journal_lines_frozen' });
       await expect(
         attempt(
-          `insert into erp_journal_lines (tenant_id, journal_id, line_no, account_id, debit)
-           values ($1, $2, 9, $3, 1)`,
+          `insert into erp_journal_lines (tenant_id, journal_id, entry_date, line_no, account_id, debit)
+           values ($1, $2, (select entry_date from erp_journals where id = $2), 9, $3, 1)`,
           [northwind.id, journal.id, settings.accounts.cash],
         ),
       ).rejects.toMatchObject({ constraint: 'erp_journal_lines_frozen' });

@@ -6,7 +6,7 @@ with its own forms, job types, look and apps. The company's office plans and
 dispatches work; its engineers do the work on a phone that keeps working with no
 signal; the office sees the result the moment the phone reconnects.
 
-Current version: **1.4.0**. The build plan lives in [`plan/`](./plan/README.md);
+Current version: **2.0.0**. The build plan lives in [`plan/`](./plan/README.md);
 start with [`plan/ROADMAP.md`](./plan/ROADMAP.md).
 
 ---
@@ -447,51 +447,35 @@ which a freshly installed company app reads before anyone signs in.
 
 Postgres 16, migrated forward by numbered SQL files in `packages/db/migrations`,
 each with a down file, applied by `pnpm --filter @integr8/db db up` (or
-`migrator deploy` on a host's pre-deploy hook). Two runtime roles: `integr8_app`
-(row-level security applies) and `integr8_auth` (the sign-in path).
+`migrator deploy` on a host's pre-deploy hook). Every company shares the same
+tables, each row keyed by `tenant_id` with row-level security as the backstop;
+the tables that grow every year are split into one partition per year (P41).
 
-| Migration | Adds                                                                                                  |
-| --------- | ----------------------------------------------------------------------------------------------------- |
-| 0001–0005 | Tenants, members, row-level security, authentication, API infrastructure                              |
-| 0006–0008 | Forms, versions, the builder, submissions and their lifecycle                                         |
-| 0009      | The media ledger                                                                                      |
-| 0010      | Customers, sites, work orders and their state machine                                                 |
-| 0011–0013 | Offline sync, submit location, job execution (shifts, photos, sign-off)                               |
-| 0014      | Repeating groups                                                                                      |
-| 0015–0016 | The platform: sessions, audit, flags, exports, deletions; storage metering                            |
-| 0017      | Subscriptions and billing                                                                             |
-| 0018–0020 | Sign-up, company settings, sample data                                                                |
-| 0021      | Billing mode per company (invoiced or self-serve)                                                     |
-| 0022      | Company branding: menu colour, default theme, website, app icon, build switch                         |
-| 0023–0043 | CRM, sales, inventory, purchasing, assets, finance, ledger, HR, payroll, manufacturing and follow-ups |
-| 0044–0047 | AI assistant policies, conversations, actions, metering and retention                                 |
-| 0048      | Business documents and templates                                                                      |
-| 0049      | Egyptian ETA e-invoicing integration                                                                  |
-| 0050      | Company website data access: website keys and capability switches                                     |
-| 0051      | Work order visits and the schedule                                                                    |
-| 0052      | Skills and certificates (qualifications) and expiry warnings                                          |
-| 0053      | Service contracts, maintenance plans and response deadlines                                           |
-| 0054      | Self-hosted sign-in: how each session began, and sign-in accounts to delete after a purge             |
-| 0055      | Closing a company: the purge removes every row with triggers and foreign-key checks suspended         |
-| 0056      | No plan deletes a company's files on its own: the seeded retention windows are cleared                |
-| 0057      | New companies start on Cairo time with a Sunday-to-Thursday working week                              |
-| 0058      | A limited database role for the API and worker (`integr8_platform`)                                   |
-| 0060      | A form's "signature required" is enforced when a job is completed                                     |
-| 0061      | Forms submitted after their job closed are marked                                                     |
-| 0062      | Parts recorded after a job closed are marked; a cancelled job refuses parts                           |
-| 0063      | A failing maintenance plan is recorded and retried on its own                                         |
-| 0064      | Amounts rounded to the currency's smallest unit; payment receipts can be reversed                     |
-| 0065      | Nightly clean-up of ever-growing tables; old password fingerprints deleted                            |
-| 0066      | Each phone's language, for its notifications                                                          |
-| 0067      | Uploaded PDF documents and a sharing switch; new documents start not shared                           |
-| 0068      | An index of the files each submission uses, for safe file clean-up                                    |
-| 0069      | Staff-made library templates (retire, source form) and the PDF templates and pictures they carry      |
-| 0074      | Business PDFs in the Documents register: quotes, invoices, purchase orders and job reports            |
-| 0075      | Tabs staff switch per company, the name beside the logo, document links on the company's website      |
-| 0076      | A submission's own name, chosen at the submit step                                                    |
-| 0077      | Test companies (fixed at creation), staff sessions limited to them, and their outbox                  |
-| 0078      | The accountant, a built-in role that keeps the books                                                  |
-| 0079      | Form actions: claims and follow-up forms from a submitted form, and an approved amount on claims      |
+2.0.0 started the migrations again from a baseline, one migration per module,
+generated from the schema 1.4.0's 79 migrations built (their history is in git
+before 2.0.0). A new feature adds the next number after `0019`.
+
+| Migration | Module                                                                               |
+| --------- | ------------------------------------------------------------------------------------ |
+| 0001      | Foundation: tenants, platform staff, settings, feature flags, plans, the job queue   |
+| 0002      | Identity: people, roles, sign-in, sessions, devices, the audit log                   |
+| 0003      | Platform: staff sessions and audit, billing, sign-up, exports and deletions          |
+| 0004      | Files: stored files, uploads, storage metering                                       |
+| 0005      | Field work: customers, sites, job types, work orders, visits, shifts, qualifications |
+| 0006      | Forms: forms, versions, submissions, the template library, PDF documents             |
+| 0007      | Phone sync: the change log and sync reports                                          |
+| 0008      | CRM: leads, pipelines, opportunities, activities                                     |
+| 0009      | Ledger: chart of accounts, journals, periods, year-end closes, postings              |
+| 0010      | Inventory: items, locations, stock movements, counts, lots, materials on jobs        |
+| 0011      | Purchasing: suppliers, purchase orders, receipts, supplier prices, van requests      |
+| 0012      | Sales: quotes, sales orders, deliveries                                              |
+| 0013      | Finance: invoices, credit notes, payments                                            |
+| 0014      | Assets: customer assets and their history                                            |
+| 0015      | HR: employees, expense claims, payroll                                               |
+| 0016      | Manufacturing: bills of materials, assembly orders, material planning                |
+| 0017      | Contracts: service contracts, maintenance plans, deadlines                           |
+| 0018      | E-invoicing: the Egyptian Tax Authority                                              |
+| 0019      | The AI assistant: conversations, actions, usage and cost                             |
 
 See [`docs/database/migrations.md`](./docs/database/migrations.md) and the
 [backup and restore runbook](./docs/database/runbook-backup-and-restore.md).

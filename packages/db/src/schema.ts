@@ -416,6 +416,8 @@ export interface ImpersonationGrantsTable {
   target_user_id: string;
   reason: string;
   audit_log_id: string;
+  /** With `audit_log_id`, names the line in the year-partitioned audit log (P41). */
+  audit_log_occurred_at: Date;
   created_at: CreatedAt;
   expires_at: Date;
   ended_at: Date | null;
@@ -1361,6 +1363,7 @@ export interface ErpStockCountsTable {
 }
 
 export interface ErpStockCountLinesTable {
+  id: Generated<string>;
   tenant_id: string;
   count_id: string;
   item_id: string;
@@ -2006,6 +2009,8 @@ export interface ErpJournalLinesTable {
   id: Generated<string>;
   tenant_id: string;
   journal_id: string;
+  /** The journal's entry date, kept equal by the foreign key; places the line in its year partition (P41). */
+  entry_date: string;
   line_no: number;
   account_id: string;
   /** Decimal string. */
@@ -4060,6 +4065,10 @@ export const SECURITY_DEFINER_FUNCTIONS = [
   'assign_expense_reference',
   'assign_assembly_reference',
   'erp_ledger_backfill_more',
+  // Make year partitions (P41), which only the migration owner may create; the
+  // worker calls the second as the platform role.
+  'create_year_partition',
+  'ensure_year_partitions',
 ] as const;
 export type SecurityDefinerFunction = (typeof SECURITY_DEFINER_FUNCTIONS)[number];
 

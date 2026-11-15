@@ -29,7 +29,9 @@
     "test:integration": "vitest run --project integration",
     "db": "tsx --env-file-if-exists=.env src/migrator/cli.ts",
     "db:seed": "tsx --env-file-if-exists=.env src/seed/cli.ts",
-    "db:templates": "tsx --env-file-if-exists=.env src/seed/templates-cli.ts"
+    "db:templates": "tsx --env-file-if-exists=.env src/seed/templates-cli.ts",
+    "db:volume": "tsx --env-file-if-exists=.env src/volume/cli.ts",
+    "db:plans": "tsx --env-file-if-exists=.env src/volume/plans-cli.ts"
   },
   "dependencies": {
     "@integr8/core": "workspace:*",

@@ -295,7 +295,7 @@ export function buildMediaStorage(config: ApiConfig): MediaStorage {
  * password when a variable is missing is a service that will do so in
  * production on the day somebody mistypes a secret name.
  */
-function buildIdentityProvider(config: ApiConfig, env: NodeJS.ProcessEnv): IdentityProvider {
+export function buildIdentityProvider(config: ApiConfig, env: NodeJS.ProcessEnv): IdentityProvider {
   const auth = supabaseAuthSettings(env);
   if ('problems' in auth) {
     throw new Error(

@@ -159,6 +159,84 @@ role password or `SUPABASE_AUTH_JWT_SECRET`. A setting the API reads has to be
 named in compose's `x-api-env` list; `apps/api/src/compose-env.test.ts` fails
 until it is.
 
+## Tables split by year (P41)
+
+The tables that grow forever and that no other table points at are
+partitioned by range on their date, one partition per UTC year
+(`audit_log_y2026`), plus `<table>_default` for anything outside the years
+made: `audit_log`, `platform_audit_log`, `work_order_events`,
+`submission_values`, `erp_journal_lines` (by `entry_date`, which a foreign key
+with `on update cascade` keeps equal to its journal's), `ai_messages`,
+`ai_action_events`, `ai_provider_calls`, `login_attempts`, `signup_events`,
+`eta_attempts` and `sync_touches`. A query with a date range reads only the
+years in it, and an old year can one day be detached and archived as a whole.
+
+To the code a partitioned table is one table. What differs:
+
+- **Keys include the date.** A primary or unique key must name the partition
+  column, so these tables' keys are `(tenant_id, id, <date>)`, and a foreign key
+  into one carries the date too (`impersonation_grants.audit_log_occurred_at`).
+  A table whose key must be unique across all time (`erp_stock_movements`'
+  `source_key`, `submission_events`' sequence) is **not** partitioned for that
+  reason.
+- **Nobody names a partition.** Partitions carry no grants, so every role
+  reaches the rows through the parent and its policy, and cannot write past
+  the parent's append-only trigger by naming a year. The schema-invariant suite
+  checks it.
+- **Years are made ahead.** `ensure_year_partitions()` (security definer,
+  callable by the platform role) makes this year's and next year's partitions
+  of every partitioned table, and gives its own year to any row already in a
+  default partition. Migrations call it, the worker runs it daily
+  (`partitions.ensure`), and an import calls it.
+- **Delete by key, never by `ctid`**: a `ctid` is only unique within one
+  partition.
+
+A new partitioned table: `partition by range (<date column>)` on the parent,
+keys that include the column, then `select ensure_year_partitions();` at the end
+of the migration. Nothing else is needed.
+
+## Seeing query plans at real sizes (P41)
+
+A development database is empty, so a slow query hides until production.
+
+```bash
+pnpm --filter @integr8/db db:volume --companies 20 --years 5 --scale 1   # ~10 million made-up rows
+pnpm --filter @integr8/db db:plans --source '*'                          # plan every statement recorded
+```
+
+`db:volume` writes test companies (`is_test`, slugs `volume-…`) straight from
+SQL with triggers off, in minutes. `db:plans` reads the statements
+`pg_stat_statements` recorded (run the suites or use the app first), plans each
+with `EXPLAIN (GENERIC_PLAN)` as the runtime role acting for the largest
+company, and lists every plan that reads a large table whole. Postgres must be
+started with `shared_preload_libraries=pg_stat_statements`; the compose
+`postgres` service is, and also logs the plan of any statement slower than
+500 ms (`auto_explain`).
+
+The rules the plans hold the code to: indexes on tenant tables lead with
+`tenant_id`; lists page by cursor and always have a limit; history tables are
+read with a date range on their partition column; optional filters are added
+only when given, never written as `($1 is null or col >= $1)`.
+
+## Moving a company between servers (P41)
+
+`apps/api/src/transfer/` (staff only, the `transfer` service in compose; the
+setup guide, Stage 11 part AK, has the commands) writes one company to a
+`.tar.gz` and reads it into another server. The rows come from
+`@integr8/db`'s `transfer/`: every table whose `tenant_id` points at `tenants`,
+worked out from the catalogue, minus `NOT_TRANSFERRED` (sessions, queues and
+other things bound to the old server), paged by primary key and carried as JSON
+text that Postgres writes and reads, so nothing is rounded on the way. The
+import writes everything in one transaction with triggers off, checks every
+foreign key itself, then calls `ensure_year_partitions()`. Files and the
+people's sign-in accounts (with their password hashes) follow. Every company
+table therefore needs a primary key.
+
+An archive records its format and schema. A newer server reads an older
+archive: columns are matched by name, so a column added since takes its
+default and one dropped is reported. That holds only while migrations follow
+the expand/contract rule in [migrations.md](./migrations.md).
+
 ## The P35 seam
 
 `getTenantDataSource(tenantId)` returns a handle onto the one shared pool for

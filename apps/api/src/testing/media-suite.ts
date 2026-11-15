@@ -210,7 +210,13 @@ export function defineMediaSuite(storage: 'local' | 'r2'): void {
 
       const unsigned = await fetchBytes(link.url.split('?')[0]!);
       expect(unsigned.status).toBeGreaterThanOrEqual(400);
-      const tampered = await fetchBytes(link.url.replace(/ignature=./u, 'ignature=0'));
+      // Always a different first character: a signature that already starts
+      // with "0" (one in 64) would otherwise come back untouched and valid.
+      const tampered = await fetchBytes(
+        link.url.replace(/ignature=(.)/u, (_, first: string) =>
+          first === '0' ? 'ignature=1' : 'ignature=0',
+        ),
+      );
       expect(tampered.status).toBeGreaterThanOrEqual(400);
     });
 

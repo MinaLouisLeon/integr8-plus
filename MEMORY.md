@@ -7,7 +7,7 @@ the end of any piece of work that changes one of them, and date each section.
 
 ## Snapshot (2026-11-01, after the form builder and PDF builder round)
 
-- **Version:** root `package.json` is **1.4.0** (2026-11-10, branch `ccr-56fb45d1-5mq6bt`: carries the AI tooling stage P37–P39 and migration 0077; history below starts at 1.3.1). 1.3.0 reached `main` (PR #148) but its
+- **Version:** root `package.json` is **2.0.0** (2026-11-14, branch `ccr-c6dc87d8-3hlhaw` from `dev`: P41's clean database restart, see Decisions). Before it, **1.4.0** (2026-11-10, branch `ccr-56fb45d1-5mq6bt`: carries the AI tooling stage P37–P39 and migration 0077; history below starts at 1.3.1). 1.3.0 reached `main` (PR #148) but its
   release never published: the publish job attached the secret scan's report folder
   (`dist/work`) and failed, so there is no v1.3.0 tag. The owner bumped `main` to 1.3.1 on
   GitHub (PR #151, `package.json` only, which failed `app-info.test.ts`); branch
@@ -25,7 +25,9 @@ the end of any piece of work that changes one of them, and date each section.
   source: the phone (`app.config.ts`) and the web build (`next.config.ts`) read it, and
   `apps/api/src/app-info.ts` has a copy a test keeps equal. A version bump must also change
   every place listed under "Places that state the version".
-- **Migrations:** `packages/db/migrations` reaches **0079** (0079 `form_actions`, P40, unreleased,
+- **Migrations (2.0.0):** a new baseline, **0001_foundation … 0019_assistant**, one per module (P41); the
+  next one is **0020**. A 1.x database is refused (`before-baseline`) and is created again (setup guide
+  Stage 11 part AJ). **Before 2.0.0** (history): `packages/db/migrations` reached **0079** (0079 `form_actions`, P40, unreleased,
   branch `ccr-916cc1b1-6sp5my`; 0078 `accountant_role`, unreleased, merged into `dev` in PR #188; 0077 `test_companies`, P38, unreleased, branch
   `ccr-56fb45d1-5mq6bt`). Before that it reached **0076** (0075 merged into `dev`, released
   with 1.3.4; **0076** `submissions.title` is unreleased, on branch
@@ -337,6 +339,30 @@ the end of any piece of work that changes one of them, and date each section.
   builder's Actions tab and the other screens, the phone's next-form button and its "Update the
   app" gate (left out on purpose until a phone release reads follow-ups), Forms for AI, form-file
   import of actions, the demo seeder's trip form. Doc: `docs/form-engine/form-actions.md`.
+- **Database restructure, P41 (2026-11-14, unreleased, branch `ccr-c6dc87d8-3hlhaw` from `dev`), as
+  the owner chose it:** all data so far is test data, so no backup and a clean restart (2.0.0).
+  **Shared tables** stay (every row keyed by `tenant_id`, RLS the backstop); per-company tables were
+  discussed and not chosen. Migrations 0001–0079 were replaced by a baseline of 19 module migrations,
+  generated from the 0079 schema and compared object by object. The tables that grow forever and
+  that nothing points at are **split by UTC year** (`<table>_y<year>` + `_default`): `audit_log`,
+  `platform_audit_log`, `work_order_events`, `submission_values`, `erp_journal_lines` (gained
+  `entry_date`, kept by an `on update cascade` key), the three AI logs, `login_attempts`,
+  `signup_events`, `eta_attempts`, `sync_touches`. Partitions carry no grants; `ensure_year_partitions()`
+  (security definer) runs in migrations, daily in the worker (`partitions.ensure`) and after an
+  import. `impersonation_grants` carries `audit_log_occurred_at`. Not partitioned on purpose (keys
+  unique for all time): stock movements, submission events, asset events, sync reports.
+  **Query audit:** `db:volume` (made-up test companies from SQL) and `db:plans` (EXPLAIN GENERIC_PLAN of
+  every `pg_stat_statements` statement as the runtime role); compose's Postgres runs
+  `pg_stat_statements` and `auto_explain` (500 ms). Findings fixed: ledger reports by line date with
+  bounds only when given; login-attempt clean-up by key not `ctid`. **Transfer:** staff-only
+  `transfer export|import|inspect` (`apps/api/src/transfer/`, compose service `transfer`, profile
+  `tools`, the only one with both the owner's URL and the API's settings): a tar.gz with a manifest
+  (format 1, release, schema, modules), rows as Postgres JSON text, sign-in accounts **with password
+  hashes** (owner's choice; the archive is a credential; `IdentityProvider.importIdentity` sends GoTrue
+  `id` + `password_hash`) and the files. Import: one transaction, triggers off, every foreign key
+  checked, same ids, refuses an existing company or a newer archive; `--continue` finishes files and
+  accounts. Untested here: the real GoTrue `password_hash` import (CI's real-Auth suite does not
+  cover it) and the compose `transfer` service on a real machine.
 - **The demo seeder goes through the API**, in-process with Fastify's `inject`, as the
   company's own people (plus a staff impersonation for staff-only setup). Direct inserts
   were rejected: they skip numbering, stock, ledger postings and audit, and produce data
@@ -358,6 +384,12 @@ Update them together at each release or new migration:
 - Released versions: `gh release list`. v1.2.1 (2026-10-27) carries migrations 0051–0053.
 
 ## Open items
+
+- **Owner steps for 2.0.0 (2026-11-14):** setup guide Stage 11 part AJ: `down -v`, `up -d --build`,
+  create the super admins again, onboard or seed companies again, delete the old companies' R2
+  buckets. Then the Proxmox test machine run: `db:volume` at scale 1, the app clicked through,
+  `db:plans`, and one `transfer export`/`import` between two machines (checks the real Auth import of
+  password hashes).
 
 - **P40 decisions (2026-11-14):** the owner still has to go through P40's six decisions; the server
   follows the recommendations. Setup guide Stage 11 part AI covers migration 0079.
