@@ -53,7 +53,7 @@ the end of any piece of work that changes one of them, and date each section.
 - **Plan (2026-11-15):** the phase files P01–P41 were removed with the old docs; `plan/README.md`
   now lists only what is unfinished: P40 (form actions; server side built, screens, phone, Forms
   for AI and the owner's six decisions open), the tooling and sign-in runs still to do, the owner's
-  steps, and the phases not started (P20, P21, P28–P31, P33–P35). The next new phase is P42.
+  steps, and the phases not started (P20, P21, P28–P31, P33–P35). P42 (desktop only) is in progress; the next new phase is P43.
 - **P36 self-hosted sign-in**: merged into
   `main` in PRs #130 and #135; CI's database job, real Auth included, is green. Auth container in
   `deploy/compose.yml` (`supabase/auth:v2.197.0`, private ports, memory caps), bootstrap's
@@ -397,7 +397,9 @@ the end of any piece of work that changes one of them, and date each section.
   company or `APP_RELEASES=off`; `APP_RELEASES=github` reads `GITHUB_RELEASES_REPOSITORY` with
   `GITHUB_RELEASES_TOKEN` through the new `@integr8/releases`, which also gives
   `GET /v1/platform/downloads`. The AI channel `web` is gone (`ai_web_enabled` dropped); old `web`
-  sessions and staff count as desktop. Setup guide Stage 11 part AL. Not checked: real Tauri
+  sessions and staff count as desktop. Setup guide Stage 11 part AL. The developer MCP server's
+  `call_api` sends public routes (asset tags, quote and document links, accepting an invitation) as a
+  visitor with no sign-in; Forms for AI's guides name the staff and company desktop apps. Not checked: real Tauri
   builds, and a real GitHub release lookup.
 - **The demo seeder goes through the API**, in-process with Fastify's `inject`, as the
   company's own people (plus a staff impersonation for staff-only setup). Direct inserts

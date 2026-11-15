@@ -5,7 +5,7 @@ replaces the phase files written before 2.0.0 (P01–P41, in git history before
 the 2.0.0 docs commit). What is built is described in [`docs/`](../docs/README.md);
 this file holds only what is **not finished**: work in progress, the owner's
 open decisions and steps, and the phases not started. Phase numbers carry on
-from the old plan, so the next new phase is **P42**.
+from the old plan; P42 is the last used, so the next new phase is **P43**.
 
 ## What 2.0.0 is
 
@@ -153,7 +153,7 @@ A phase is a file `plan/<version>/P<nn>-<slug>.md` with: **Goal**; **Scope** (in
 and out); **Where things stand** (with evidence); **Design** by area;
 **Decisions for the owner** (each a question with options and one
 recommendation); **Tasks** in commit order (`feat(db)` → `feat(api)` →
-`feat(web)`/`feat(desktop)` → `feat(mobile)` → `feat(forms-ai)` → `docs`);
+`feat(desktop)` (`feat(web)` only for the public site) → `feat(mobile)` → `feat(forms-ai)` → `docs`);
 **Exit criteria**, each testable; and a status: `PROPOSED — waiting for the
 owner`, `IN PROGRESS`, `BLOCKED` (with the reason) or `COMPLETED — YYYY-MM-DD`.
 Add it to this file. A phase is complete when every exit criterion is verifiably
