@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState, type FormEvent } from 'react';
 import { Button, Field, LoadingState } from '~/components/ui';
 import { messageForError } from '~/lib/errors';
-import { apiClient } from '~/lib/session';
+import { apiClient } from '~/lib/api-client';
 
 /**
  * Accepting an invitation (P18; Low 5, 1.2.4).
@@ -23,11 +23,12 @@ import { apiClient } from '~/lib/session';
  *
  * It first asks the API what accepting will need: an address with no sign-in
  * yet chooses a password here, and one that already signs in (another
- * company's member) does not. Accepting signs nobody in. The page ends on
- * "Done — now sign in", and the button takes the person to sign-in with their
- * address filled in. This is the one acceptance screen: the email link opens
- * it on any device, and the same address and password then work in the
- * desktop and phone apps.
+ * company's member) does not. Accepting signs nobody in. The page ends by
+ * saying the password is set (or that they have joined, for an existing
+ * sign-in) and sends the person to their company's desktop or phone app, with
+ * its download links (P42): there is no web workspace to sign in to. An owner
+ * is invited only once the company's desktop app exists (D6), so the links
+ * always lead somewhere.
  */
 export default function AcceptInvitationPage() {
   return (
@@ -51,9 +52,14 @@ function AcceptInvitationForm() {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>(undefined);
-  const [done, setDone] = useState<{ email: string; existingAccount: boolean } | undefined>(
-    undefined,
-  );
+  const [done, setDone] = useState<
+    | {
+        email: string;
+        existingAccount: boolean;
+        company: { name: string; slug: string } | null;
+      }
+    | undefined
+  >(undefined);
 
   useEffect(() => {
     if (token === '') {
@@ -100,7 +106,11 @@ function AcceptInvitationForm() {
           },
         });
         if (data !== undefined) {
-          setDone({ email: data.email, existingAccount: data.existingAccount });
+          setDone({
+            email: data.email,
+            existingAccount: data.existingAccount,
+            company: data.company,
+          });
         }
       } catch (failure) {
         setError(messageForError(failure, t));
@@ -126,22 +136,29 @@ function AcceptInvitationForm() {
   }
 
   if (done !== undefined) {
+    const company = done.company?.name ?? '';
     return (
       <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-6 px-6">
         <div className="flex flex-col gap-1" role="status">
-          <h1 className="text-2xl font-semibold text-content">{t('auth.accept.doneTitle')}</h1>
+          <h1 className="text-2xl font-semibold text-content">
+            {done.existingAccount ? t('auth.accept.doneTitleExisting') : t('auth.accept.doneTitle')}
+          </h1>
           <p className="text-sm text-content-muted">
             {done.existingAccount
-              ? t('auth.accept.doneExisting', { email: done.email })
-              : t('auth.accept.doneNew', { email: done.email })}
+              ? t('auth.accept.doneExisting', { email: done.email, company })
+              : t('auth.accept.doneNew', { email: done.email, company })}
           </p>
-          <p className="text-sm text-content-muted">{t('auth.accept.doneApps')}</p>
+          <p className="text-sm text-content-muted">{t('auth.accept.doneApps', { company })}</p>
         </div>
         <Link
-          href={`/sign-in?email=${encodeURIComponent(done.email)}`}
+          href={
+            done.company === null
+              ? '/download'
+              : `/download?company=${encodeURIComponent(done.company.slug)}`
+          }
           className="inline-flex items-center justify-center rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-hover"
         >
-          {t('auth.accept.goToSignIn')}
+          {t('auth.accept.getTheApps', { company })}
         </Link>
       </main>
     );

@@ -125,6 +125,8 @@ describe('inviting somebody', () => {
       email: to,
       existingAccount: false,
       signInRequired: true,
+      // The page sends them to this company's app (P42).
+      company: { name: expect.any(String) as string, slug: expect.any(String) as string },
     });
     expect(accepted.body).not.toContain('accessToken');
 

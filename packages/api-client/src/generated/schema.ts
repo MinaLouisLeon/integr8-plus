@@ -819,7 +819,7 @@ export interface paths {
         put?: never;
         /**
          * Accept an invitation
-         * @description Public, because the invitee has no session yet. The company comes from the token: there is no parameter in which to name a different one. Makes the membership and signs nobody in: the person signs in afterwards with the address returned. An address with no sign-in yet must send a `password` meeting the password policy (422 `auth.invitation_password_required` without one, `auth.weak_password` for one refused); an address that already signs in needs none, and one sent is not applied (`existingAccount`).
+         * @description Public, because the invitee has no session yet. The company comes from the token: there is no parameter in which to name a different one. Makes the membership and signs nobody in: the person signs in afterwards with the address returned, in the company’s own app (`company` names it). An address with no sign-in yet must send a `password` meeting the password policy (422 `auth.invitation_password_required` without one, `auth.weak_password` for one refused); an address that already signs in needs none, and one sent is not applied (`existingAccount`).
          */
         post: operations["acceptInvitation"];
         delete?: never;
@@ -1775,6 +1775,26 @@ export interface paths {
          * @description For a company’s website server, never a browser: `Authorization: Bearer <website key>`. The page a document’s QR code and shared link open when the company’s links point at its own website (0075), such as `https://example.com/documents/<code>`, asks this with the code from its address. Found only when the code is one of this company’s documents, shared, and its link has not expired or been stopped; every other case answers `found: false` alike, so the page learns nothing it should not. Same switches and rate limit as the lookup.
          */
         get: operations["getWebsiteDocumentByCode"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/public/asset-tags/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Whose a printed asset tag is
+         * @description Public. The company a tag code belongs to, for the page its QR code opens; nothing about the asset. 404 for a code that is unknown, malformed, or belongs to a company without the assets module.
+         */
+        get: operations["getPublicAssetTag"];
         put?: never;
         post?: never;
         delete?: never;
@@ -11063,6 +11083,13 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description `company_app_not_built`: the company has no desktop app to sign in to yet. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description The request failed validation. */
             422: {
                 headers: {
@@ -13270,7 +13297,7 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description Every seat on this plan is taken (`seat_limit_reached`). */
+            /** @description Every seat on this plan is taken (`seat_limit_reached`), or the company’s own desktop app is not built yet (`company_app_not_built`). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -13487,6 +13514,10 @@ export interface operations {
                         email: string;
                         existingAccount: boolean;
                         signInRequired: boolean;
+                        company: {
+                            name: string;
+                            slug: string;
+                        } | null;
                     };
                 };
             };
@@ -20863,6 +20894,77 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getPublicAssetTag: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The company. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        company: {
+                            name: string;
+                            slug: string;
+                        };
+                        code: string;
+                    };
+                };
+            };
+            /** @description No company has this tag. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
             };
             /** @description Something went wrong on our side. */
             500: {

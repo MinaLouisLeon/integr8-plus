@@ -1,3 +1,4 @@
+import { PublicAssetTagsLookup } from './repositories/public-asset-tags.js';
 import { type TenantId, toTenantId } from '@integr8/core';
 import { Kysely, PostgresDialect, sql, type Transaction } from 'kysely';
 import pg from 'pg';
@@ -313,6 +314,8 @@ export interface PlatformDataSource {
   readonly publicQuotes: PublicQuotesLookup;
   /** Which company a document's QR code belongs to (documents ADR-0001 D7). */
   readonly publicDocuments: PublicDocumentsLookup;
+  /** Which company a printed asset tag belongs to (P42), for its public page. */
+  readonly publicAssetTags: PublicAssetTagsLookup;
   /** Company websites' keys for the document lookup (D10, D11). */
   readonly websiteKeys: WebsiteKeysRepository;
   /** The worker's nightly delete of spent rate-limit counters, idempotency records and old login attempts. */
@@ -598,6 +601,7 @@ export function getPlatformDataSource(): PlatformDataSource {
     tenantSettings: new TenantSettingsWriter(db),
     publicQuotes: new PublicQuotesLookup(db),
     publicDocuments: new PublicDocumentsLookup(db),
+    publicAssetTags: new PublicAssetTagsLookup(db),
     websiteKeys: new WebsiteKeysRepository(db),
     housekeeping: new HousekeepingRepository(db),
     ai: new AiPlatformRepository(db),

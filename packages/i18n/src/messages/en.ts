@@ -160,12 +160,15 @@ export const en = {
       invitedAs: 'Invited as {{email}}',
       passwordHint:
         'Long and not easy to guess. It must not contain the first part of your email address.',
-      doneTitle: 'Done \u2014 now sign in',
-      doneNew: 'You are a member now. Sign in with {{email}} and the password you just chose.',
+      // P42: the page ends here, and the person carries on in the company's app.
+      doneTitle: 'Your password is set',
+      doneTitleExisting: 'You have joined',
+      doneNew: 'You are a member of {{company}} now. Your password is set for {{email}}.',
       doneExisting:
-        'You are a member now. Sign in with {{email}} and the password you already use.',
-      doneApps: 'The same address and password work in the desktop and phone apps.',
-      goToSignIn: 'Go to sign in',
+        'You are a member of {{company}} now. Sign in with {{email}} and the password you already use.',
+      doneApps:
+        'Carry on in {{company}}’s desktop app, or its phone app if you work in the field: sign in there with the same address and password.',
+      getTheApps: 'Get {{company}}’s apps',
     },
   },
 
@@ -4951,6 +4954,14 @@ export const en = {
 
   // Assets (CRM/ERP plan, phase E3): the register, tags and service history.
   assets: {
+    // P42 (D5): the public page a printed tag's QR code opens, for whoever scans it.
+    publicTag: {
+      title: 'An asset tag',
+      titleFor: 'An asset tag of {{company}}',
+      scan: 'Scan this tag with {{company}}’s phone app to open the equipment it is on. If you have the app open, you can also type the code below.',
+      unknown: 'This tag is not one we know. Ask the company whose equipment it is on.',
+      code: 'Tag code',
+    },
     title: 'Assets',
     new: 'New asset',
     register: 'Register',

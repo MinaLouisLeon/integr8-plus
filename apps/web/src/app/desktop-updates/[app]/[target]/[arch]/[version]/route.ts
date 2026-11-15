@@ -1,4 +1,4 @@
-import { desktopUpdateFeed, isAppName, publicOrigin } from '~/lib/desktop-updates';
+import { desktopUpdateFeed, isAppName, publicOrigin } from '@integr8/releases';
 
 /**
  * The desktop updater's question: is there something newer for this app?

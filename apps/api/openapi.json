@@ -4125,6 +4125,9 @@
           "404": {
             "description": "No such invitation, or it has been accepted or withdrawn."
           },
+          "409": {
+            "description": "`company_app_not_built`: the company has no desktop app to sign in to yet."
+          },
           "422": {
             "description": "The request failed validation.",
             "content": {
@@ -7880,7 +7883,7 @@
             }
           },
           "409": {
-            "description": "Every seat on this plan is taken (`seat_limit_reached`)."
+            "description": "Every seat on this plan is taken (`seat_limit_reached`), or the company’s own desktop app is not built yet (`company_app_not_built`)."
           },
           "422": {
             "description": "Already a member, or a role above the inviter’s own."
@@ -8269,7 +8272,7 @@
       "post": {
         "operationId": "acceptInvitation",
         "summary": "Accept an invitation",
-        "description": "Public, because the invitee has no session yet. The company comes from the token: there is no parameter in which to name a different one. Makes the membership and signs nobody in: the person signs in afterwards with the address returned. An address with no sign-in yet must send a `password` meeting the password policy (422 `auth.invitation_password_required` without one, `auth.weak_password` for one refused); an address that already signs in needs none, and one sent is not applied (`existingAccount`).",
+        "description": "Public, because the invitee has no session yet. The company comes from the token: there is no parameter in which to name a different one. Makes the membership and signs nobody in: the person signs in afterwards with the address returned, in the company’s own app (`company` names it). An address with no sign-in yet must send a `password` meeting the password policy (422 `auth.invitation_password_required` without one, `auth.weak_password` for one refused); an address that already signs in needs none, and one sent is not applied (`existingAccount`).",
         "tags": [
           "authentication"
         ],
@@ -8332,13 +8335,31 @@
                     },
                     "signInRequired": {
                       "type": "boolean"
+                    },
+                    "company": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "slug": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "slug"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [
                     "accepted",
                     "email",
                     "existingAccount",
-                    "signInRequired"
+                    "signInRequired",
+                    "company"
                   ],
                   "additionalProperties": false
                 }
@@ -25060,6 +25081,109 @@
             "websiteKeyAuth": []
           }
         ]
+      }
+    },
+    "/v1/public/asset-tags/{code}": {
+      "get": {
+        "operationId": "getPublicAssetTag",
+        "summary": "Whose a printed asset tag is",
+        "description": "Public. The company a tag code belongs to, for the page its QR code opens; nothing about the asset. 404 for a code that is unknown, malformed, or belongs to a company without the assets module.",
+        "tags": [
+          "assets"
+        ],
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The company.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "company": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "slug": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "slug"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "code": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "company",
+                    "code"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No company has this tag."
+          },
+          "422": {
+            "description": "The request failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/v1/website/jobs/{workOrderId}": {

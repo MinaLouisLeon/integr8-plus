@@ -6,11 +6,10 @@ import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { MarketingShell, PageIntro, pillClass } from '~/components/marketing-shell';
 import { Magnetic } from '~/components/site/motion';
-import { getStartedHref, signupMode } from '~/lib/signup';
 import { ErrorState, LoadingState } from '~/components/ui';
 import { formatBytes } from '~/lib/platform-format';
 import { planLabel } from '~/lib/plans';
-import { apiClient } from '~/lib/session';
+import { apiClient } from '~/lib/api-client';
 
 /**
  * Pricing (P18).
@@ -51,7 +50,7 @@ export default function PricingPage() {
   });
 
   return (
-    <MarketingShell step="pricing.viewed">
+    <MarketingShell>
       <PageIntro
         eyebrow={t('site.pricing.eyebrow')}
         title={t('site.pricing.title')}
@@ -129,25 +128,12 @@ export default function PricingPage() {
                 </li>
               </ul>
 
-              {plan.purchasable ? (
-                <Magnetic className="relative">
-                  <Link
-                    href={getStartedHref()}
-                    className={pillClass(index === 1 ? 'lime' : 'outline', 'sm')}
-                  >
-                    {signupMode() === 'open'
-                      ? t('marketing.pricing.choose', { plan: plan.plan })
-                      : t('marketing.pricing.contact')}
-                  </Link>
-                </Magnetic>
-              ) : (
-                // Not hidden and not offered. Hiding it would make the page lie
-                // about what exists; offering it would send somebody to a
-                // checkout that refuses them.
-                <span className="relative text-sm text-site-muted">
-                  {t('marketing.pricing.notPurchasable')}
-                </span>
-              )}
+              {/* Integr8 sets every company up and invoices it (P42): each plan leads to a conversation. */}
+              <Magnetic className="relative">
+                <Link href="/contact" className={pillClass(index === 1 ? 'lime' : 'outline', 'sm')}>
+                  {t('marketing.pricing.contact')}
+                </Link>
+              </Magnetic>
             </article>
           ))}
         </div>
