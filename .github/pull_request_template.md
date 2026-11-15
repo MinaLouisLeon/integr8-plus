@@ -6,7 +6,7 @@ Where this can go:
     staging      ->  main       publishes a version
 
 A pull request into staging or main from anywhere else is refused by the
-"PR source is allowed" check. See docs/contributing/branching.md.
+"PR source is allowed" check. See docs/contributing/README.md.
 -->
 
 ## What this changes

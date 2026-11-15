@@ -37,7 +37,7 @@ import { FormFiller } from './form-filler';
  * camera, files, location, signature pad, media storage — by empty ones. So
  * this proves which questions, words, required marks and errors the phone's
  * components produce; it cannot prove how they look on a real screen (pixels,
- * fonts, native pickers). See docs/form-engine/builder.md, "Behaviour check".
+ * fonts, native pickers). See docs/form-engine/README.md, "Behaviour check".
  */
 
 vi.mock('react-native', () => import('../testing/react-native'));

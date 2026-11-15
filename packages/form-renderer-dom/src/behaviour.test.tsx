@@ -26,7 +26,7 @@ import { memoryMedia } from './testing/render.js';
  * engine says (`expectedScreen`). The builder's preview and the phone app run
  * the same cases against the same expectation in their own packages, so the
  * three agree with each other by agreeing with it. See
- * docs/form-engine/builder.md, "Behaviour check".
+ * docs/form-engine/README.md, "Behaviour check".
  */
 
 const LOCALES = ['en', 'ar'] as const;

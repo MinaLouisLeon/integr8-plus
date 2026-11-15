@@ -15,14 +15,14 @@ A multi-tenant field-operations platform sold to service companies on subscripti
 Office staff use the web app or their company's desktop app; engineers use an
 offline-first phone app; Integr8 staff run tenants from the platform dashboard.
 
-Longer references: `README.md` (product + setup), `CONTRIBUTING.md` (rules and
-checklists), `docs/` (one folder per area), `plan/README.md` (what is built and next).
+Longer references: `docs/README.md` (the documentation index, written for 2.0.0),
+`docs/contributing/README.md` (rules and checklists), `plan/README.md` (what is not finished).
 Current project state and known gotchas: `MEMORY.md`.
 
 ## Workspace
 
 pnpm 10 workspaces + Turborepo, Node 22.22.1 or newer 22.x (22.23.4 recommended, see `.nvmrc`), TypeScript 6.0.3 (pinned on purpose —
-see `CONTRIBUTING.md`), Vitest, ESLint (type-aware, flat config), Prettier. Every dependency
+see `docs/contributing/README.md`), Vitest, ESLint (type-aware, flat config), Prettier. Every dependency
 is pinned to an exact version.
 
 | Path                         | Package                      | What                                                                            |
@@ -52,7 +52,7 @@ is pinned to an exact version.
 
 ```bash
 pnpm build | lint | typecheck | test     # whole workspace; none need a database
-pnpm test:integration                    # needs a disposable Postgres (see README "Everyday commands")
+pnpm test:integration                    # needs a disposable Postgres (see `docs/contributing/README.md`)
 pnpm format:check                        # what CI runs; `pnpm format` writes
 pnpm guide:check                         # setup checklist MD/HTML parity (see below)
 pnpm pins:check                          # exact dependency versions; one Node release everywhere
@@ -80,7 +80,7 @@ refuses pushes to `main`/`staging`/`dev`, then runs `pnpm typecheck` and `pnpm t
   permission, idempotency) and registered in `routes/index.ts`. Regenerate and commit
   `openapi.json` and the client after any change; CI fails on drift.
 - **Nothing breaking inside `/v1`.** Shipped desktop and phone builds cannot be
-  force-updated. Read `docs/api/versioning.md` before changing an endpoint's shape.
+  force-updated. Read `docs/api/README.md` before changing an endpoint's shape.
 - **Every user-facing string goes through `@integr8/i18n`**, in both `en.ts` and `ar.ts`
   (a parity test checks keys, placeholders and Arabic's six plural forms).
 - **Logical directions only** for RTL: `ms-`/`pe-`/`start-`/`text-start`, never
@@ -107,7 +107,7 @@ refuses pushes to `main`/`staging`/`dev`, then runs `pnpm typecheck` and `pnpm t
   `deploy/compose.yml`, no Supabase cloud project. Auth only holds passwords and
   makes sign-in codes; it is reached through `IdentityProvider`
   (`packages/auth/src/identity-provider.ts`), whose `FakeIdentityProvider` is the
-  stand-in for tests only. See `docs/auth/self-hosted-auth.md`.
+  stand-in for tests only. See `docs/auth/README.md`.
 - Config vars are documented where they are read (zod schema comments) and in the
   matching `.env.example`; `deploy/.env.example` covers a whole deployment.
 - Code comments explain _why_, in plain prose — match the existing style.
@@ -117,18 +117,17 @@ refuses pushes to `main`/`staging`/`dev`, then runs `pnpm typecheck` and `pnpm t
 ## Change requests and planning
 
 Wishes for the platform found while building forms arrive as change requests in
-`plan/requests/` (P39). To plan one, follow `docs/contributing/planning-a-change-request.md`
+`plan/requests/`. To plan one, follow `docs/contributing/planning-a-change-request.md`
 (Claude Code: `/plan-change-request <number>`): it ends with a phase file for the owner to
 approve, and writes no product code. The developer MCP server (`.mcp.json`,
-`docs/contributing/developer-mcp.md`) lists and reads them and gives the test company to try
+`docs/contributing/developer-tools.md`) lists and reads them and gives the test company to try
 things on.
 
 ## Commits, branches, releases
 
 - Conventional Commits, `type(scope): subject`, header ≤ 100 chars. Allowed scopes are the
-  `scope-enum` in `commitlint.config.js` (authoritative; the list in `CONTRIBUTING.md` is
-  older). `docs:` with no scope is also used.
-- Work branches: `feat/<slug>`, `fix/<slug>`. Flow per `docs/contributing/branching.md`:
+  `scope-enum` in `commitlint.config.js` (authoritative). `docs:` with no scope is also used.
+- Work branches: `feat/<slug>`, `fix/<slug>`. Flow per `docs/contributing/README.md`:
   branch → `dev` → `staging` → `main`. Never push directly to `main`, `staging` or `dev`.
 - The version is the root `package.json` `version` only; a merge to `main` releases it and
   refuses a version already released.

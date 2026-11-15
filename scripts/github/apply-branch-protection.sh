@@ -66,7 +66,7 @@ Two ways forward, and they are both yours to choose:
     authentication layer in it, so that is almost certainly the wrong trade.
 
 Until then, what is actually in force is documented in
-docs/contributing/branching.md: a pre-push hook on each machine, and a workflow
+docs/contributing/README.md: a pre-push hook on each machine, and a workflow
 that turns a direct push red after the fact. Neither refuses the push.
 BLOCKED
     exit 2

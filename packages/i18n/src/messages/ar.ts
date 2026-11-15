@@ -7396,7 +7396,7 @@ export const ar: Catalogue<Messages> = {
     },
   },
 
-  // مستندات PDF المُنشأة من الإرساليات (docs/documents/ADR-0001).
+  // مستندات PDF المُنشأة من الإرساليات (docs/documents/README.md).
   eta: {
     title: 'الفاتورة الإلكترونية',
     switch: {

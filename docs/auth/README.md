@@ -1,166 +1,132 @@
-# Authentication
+# Sign-in, sessions and permissions
 
-A self-hosted Supabase Auth container holds passwords and makes one-time
-sign-in codes. Everything after a credential is accepted belongs to this
-service.
+**Supabase Auth authenticates; the API authorises.** A self-hosted Supabase Auth
+container (GoTrue) keeps company people's passwords and makes one-time sign-in
+codes. As soon as it accepts a password or a code, the API takes over and issues
+its own tokens. Sessions, rotation, revocation, impersonation and offline grants
+are rows in our schema, where they can be queried, audited and revoked. Clients
+never talk to Auth. Everything goes through `IdentityProvider`
+(`packages/auth/src/identity-provider.ts`); the suites use
+`FakeIdentityProvider`. Integr8 staff do not use Auth at all: their passwords and
+authenticator secrets are in `platform_users`.
 
-| Document                                     | When you need it                                                |
-| -------------------------------------------- | --------------------------------------------------------------- |
-| [self-hosted-auth.md](./self-hosted-auth.md) | The Auth container, its secrets, sign-in codes, Change password |
-| [offline-access.md](./offline-access.md)     | The seven-day window and what it costs                          |
-| [`docs/database/`](../database/README.md)    | How tenant isolation works underneath all this                  |
+```
+  web · desktop · phone ──▶ api ──▶ auth (http://auth:9999, no published port)
+                             │         │
+                             └──▶ postgres: public schema (ours) · auth schema (Auth's)
+```
 
----
+## Tokens
 
-## Why we are the session authority
+One algorithm throughout, **EdDSA over Ed25519**: the key built into the phone
+can check a token but never make one.
 
-The locked decision is "Supabase Auth, tenant claims in the JWT". P03 then asks
-for five things Supabase's own sessions cannot provide:
+| Token   | Lifetime (setting)                         | Shape                                     | Does                                                                      |
+| ------- | ------------------------------------------ | ----------------------------------------- | ------------------------------------------------------------------------- |
+| access  | 15 min (`AUTH_ACCESS_TOKEN_TTL_SECONDS`)   | Signed JWT with `tid` and `role`          | Sent on every request                                                     |
+| refresh | 30 days (`AUTH_REFRESH_TOKEN_TTL_SECONDS`) | Opaque `i8r1.` + 256 bits, hashed at rest | Exchanged once for a new pair                                             |
+| offline | 7 days (`AUTH_OFFLINE_GRANT_TTL_SECONDS`)  | Signed JWT, checked on the phone          | Opens the phone with no signal ([offline-access.md](./offline-access.md)) |
 
-- switching companies without signing in again,
-- per-device session listing and remote revocation,
-- impersonation with a reason, a time limit and an audit entry written first,
-- a multi-day offline grant a phone can verify with no network,
-- lockout with an admin unlock.
+A session lasts at most 90 days (`AUTH_SESSION_MAX_TTL_SECONDS`). Every refresh
+issues a new token and marks the old one spent; presenting a spent token revokes
+the whole session (theft and a client racing itself look the same, and the safe
+reading is theft). Every request also checks the session is still live (not
+revoked, not past its maximum, the person still an active member), cached 30 s
+per session, so signing out everywhere, Change password, suspending or removing
+somebody stops a device within thirty seconds.
 
-So the division is: **Supabase Auth authenticates, we authorise.** A client
-never talks to Auth: it sends its password or emailed code to the API, the API
-checks it with the Auth container, and we issue our own tokens carrying
-`tenant_id` and `role`. Sessions, rotation, revocation and impersonation are
-rows in our schema, where they can be queried, audited and revoked.
+| Client  | Tokens live in                                                                                  |
+| ------- | ----------------------------------------------------------------------------------------------- |
+| web     | The refresh token in an httpOnly cookie set by a Next route handler; the access token in memory |
+| desktop | The OS credential store, through a Rust command                                                 |
+| phone   | Expo SecureStore                                                                                |
 
-## Three token types, one key
+Never `localStorage`. `TokenStore` (`packages/core/src/token-store.ts`) is the
+contract.
 
-One algorithm throughout: **EdDSA over Ed25519**. Asymmetric, so the key
-embedded in the mobile app can verify a token but never mint one; small and
-fast, so verifying an offline grant on app launch on a cheap phone is
-unremarkable.
+## Signing in
 
-| Token       | Lifetime | Shape                        | What it does                                    |
-| ----------- | -------- | ---------------------------- | ----------------------------------------------- |
-| **access**  | 15 min   | Signed JWT                   | Sent on every request; carries `tid` and `role` |
-| **refresh** | 30 days  | Opaque, hashed at rest       | Exchanged for a new pair; single-use            |
-| **offline** | 7 days   | Signed JWT, verified locally | Lets the mobile app open with no network        |
+- **Password.** `POST /v1/auth/sign-in`. Lockout after 10 failures in an hour
+  for 15 minutes (`AUTH_LOCKOUT_*`), unlocked by an admin or staff; per-address
+  and per-network limits count failures only. The same answer is returned
+  whatever went wrong.
+- **Emailed code.** `POST /v1/auth/magic-link` then `/magic-link/complete`: a
+  6-digit code, valid 15 minutes, and no link, so the desktop and phone need no
+  deep links. Limits: one per address a minute, five an hour; the answer is the
+  same whether or not the address exists, and the lookup happens after the
+  answer has gone. Auth makes the code (`generate_link`, which sends nothing);
+  the API emails it in English or Arabic.
+- **No company yet.** At sign-in there is no tenant, so lockout, limits and
+  "which companies is this person in" run as a third database role,
+  `integr8_auth`, which reaches two tables and one view and nothing else.
+- **Switching company** needs no new sign-in.
+- **Accepting an invitation** happens only on the web page
+  `/accept-invitation`. A new address chooses its password there; an existing
+  account needs none. Accepting makes the membership and **no session**: the
+  person then signs in. Nobody may invite at a role above their own.
+- **Change password** (`POST /v1/me/password`, web, desktop and phone) needs the
+  current password, or a session that began with an emailed code in the last 15
+  minutes, and signs out every other device. Passwords must not contain the
+  address's local part (`password-policy.ts`).
+- **Staff** sign in to the platform with their own password and an authenticator
+  code (`/v1/platform/auth/sign-in`, lockout after 5 failures).
 
-Refresh tokens are deliberately **not** JWTs. One that announced which company
-it unlocked would tell an attacker what they had found before they spent it. It
-is 256 random bits behind a `i8r1.` prefix — greppable, so a secret scanner can
-be taught to recognise one in a commit or a support ticket — and only its
-SHA-256 hash is stored.
+## Roles and permissions
 
-## Ending a session ends its access token
+Eight built-in roles (`packages/core/src/roles.ts`), ranked: `owner`, `admin`,
+`hr_manager`, `inventory_manager`, `accountant`, `dispatcher`, `engineer`,
+`viewer`. Companies may add their own roles on top (`tenant_roles`, the desktop's
+Company roles tab).
 
-An access token is checked by its signature, so on its own it would keep working
-for its full fifteen minutes after the session behind it ended. It does not:
-every authenticated request also asks whether the token's session is still live
-— not revoked, not past its maximum lifetime, and the person still an active
-member of the company (`SessionService.assertLive`, called from `authenticate`
-in `apps/api/src/server.ts`). A session that is not live gets the same `401` as
-an expired token, and the client refreshes, which is refused, and signs out.
+The matrix is `packages/core/src/permissions.ts`: 82 permissions, every role
+listing every permission it holds in full (no inheritance). The same decisions
+are a table, `packages/core/src/permissions.table.md`, one `yes`/`no` per role
+and a **Staff only** column; `permissions.test.ts` fails when the two disagree.
+A new permission is decided for every role in both places.
 
-The answer is cached in memory per session for **30 seconds**
-(`SESSION_LIVENESS_TTL_MS`, at most 10,000 sessions remembered), so a busy device
-costs one query per half minute rather than one per request. Signing out
-everywhere, Change password, suspending or removing somebody, and staff ending a
-session therefore stop the device within thirty seconds; when the revocation is
-made by the same API process that serves the device (the usual case with one API
-container), at once, because revoking forgets the cached answer.
-
-## Rotation, and how theft is detected
-
-Every refresh issues a new token and marks the old one spent, naming its
-replacement. Presenting a spent token is unambiguous: the legitimate holder
-moved on to the replacement, so whoever is holding this one is not them.
-
-The whole session is then revoked — which logs the real person out too. That is
-the right outcome. If the token really was stolen, they need to know.
-
-The claim is made with `where used_at is null`, so two simultaneous refreshes
-have exactly one winner and the loser is treated as reuse. A client racing
-itself is indistinguishable from a thief racing the client, and the safe reading
-is the second one.
-
-## Roles
-
-Seven built-in roles, one matrix, in `packages/core/src/permissions.ts`. Every
-role lists every permission it holds in full — no inheritance, because widening
-`admin` should not silently widen everything built on top of it.
-
-The same decisions are checked in as a table, `packages/core/src/permissions.table.md`:
-every permission against every role, `yes` or `no` in every cell, plus a
-**Staff only** column for `STAFF_ONLY_PERMISSIONS`. `permissions.test.ts` fails
-when the table and the matrix disagree in any cell, or when a permission or role
-is missing from either, so a new permission is decided for all seven roles in
-code and once more where it can be read across. That is the point of having a matrix at all: the alternative is a
-`role === 'admin'` check in three hundred files, where a missing one looks
-exactly like code nobody wrote.
-
-Two rules live outside the matrix because they are relationships rather than
-capabilities:
-
-- **Nobody invites somebody at a role above their own.** Without it,
-  `member.invite` is `member.promote_self`. Accepting an invitation makes the
-  membership and no session; a new address chooses its password then
-  (`docs/auth/self-hosted-auth.md`, "Accepting an invitation").
-- **A super admin holds no membership in any company.** Enforced by a trigger
-  in migration 0001, so P03's exit criterion confirms an invariant rather than a
-  habit.
+`STAFF_ONLY_PERMISSIONS` (forms, job types, branding, document design, the ETA
+switch, …) are never held by a company's own people, owner included: staff do
+that work as the company through impersonation. Two rules are relationships,
+not permissions: nobody invites above their own role, and a super admin holds no
+membership in any company (a trigger enforces it). Only the owner changes,
+re-activates or removes somebody with HR access; an admin may suspend them.
 
 ## Impersonation
 
-The ordering is the whole design:
+The order is the design: write the audit entry, create a grant with a non-null
+foreign key to it, then mint a token. The grant cannot exist without its entry,
+and `audit_log` refuses updates and deletes for every role. Every request under
+an impersonation token re-checks the grant, not just the token's expiry; grants
+last at most an hour (`AUTH_IMPERSONATION_TTL_SECONDS`). A grant is reused only
+for the same purpose, so each purpose reaches the log. Staff sessions limited to
+test companies may impersonate test companies only
+([platform/](../platform/README.md#test-companies)).
 
-1. Write the audit entry.
-2. Create a grant carrying a non-null foreign key to that entry.
-3. Mint a token.
+## The Auth container
 
-There is no sequence in which the grant exists and the entry does not, because
-the insert would fail. `audit_log` then rejects updates and deletes for every
-role including the schema owner, so the entry cannot be removed afterwards
-either.
+`supabase/auth:v2.197.0`, pinned, in `deploy/compose.yml` with no published
+port and a 256 MB cap. Its tables are in the same database, schema `auth`, owned
+by `supabase_auth_admin`; none of our roles holds anything there, and one
+backup covers both. Sign-up through Auth is disabled (the API creates every
+account through the admin API) and Auth sends no mail. Its own rate limits are
+off because every request comes from the API's one address; the API limits.
 
-Every request made under an impersonation token re-checks the grant rather than
-trusting the token's expiry — fifteen minutes of a super admin inside a
-customer's account after they asked you to stop is fifteen minutes too many.
+| Secret                      | What                                                                | Read by             |
+| --------------------------- | ------------------------------------------------------------------- | ------------------- |
+| `SUPABASE_AUTH_JWT_SECRET`  | 48 random bytes                                                     | `auth`              |
+| `SUPABASE_SERVICE_ROLE_KEY` | HS256 token signed with that secret; can do anything to any account | `api`, `worker`     |
+| `SUPABASE_AUTH_DB_PASSWORD` | The `supabase_auth_admin` password                                  | `bootstrap`, `auth` |
 
-## Where the tokens live on each client
+`pnpm --filter @integr8/auth keygen` prints them after the API's signing keys
+(`AUTH_SIGNING_KEY`, `AUTH_VERIFICATION_KEYS`). The API reads
+`SUPABASE_AUTH_URL` (`http://auth:9999`) and refuses to start while the old
+`SUPABASE_URL` is set. Rotating the JWT secret signs nobody out: put the new
+secret and key in `deploy/.env` and restart `auth`, `api` and `worker`. Load
+keygen's output line by line (`while IFS= read -r l; do export "$l"; done`), not
+with `source`, which strips the quotes from the signing key's JSON.
 
-| Client  | Storage                                              |
-| ------- | ---------------------------------------------------- |
-| desktop | Tauri's OS keychain plugin (Keychain / DPAPI)        |
-| mobile  | Expo SecureStore (Keychain / EncryptedSharedPrefs)   |
-| web     | An httpOnly cookie set by the API; never JS-readable |
-
-**Never `localStorage`, on any client.** Any script on the page can read it,
-which turns one XSS bug into every customer's data.
-
-The `TokenStore` interface and the refresh-timing helpers are in
-`packages/core/src/token-store.ts`. P05 implements them per client against a
-contract that already has tests.
-
-## Sign-in has no tenant
-
-At the moment a sign-in arrives there is no company, and for an unknown address
-there cannot be one. Lockout, rate limiting and "which companies does this
-person belong to" therefore run over a third database role, `integr8_auth`,
-which reaches two tables and one view and nothing else.
-
-That role exists so the tenant runtime role never needs a cross-tenant
-privilege. The schema-invariant suite fails the build if it gains one.
-
-## Setting up
-
-```bash
-cp packages/auth/.env.example packages/auth/.env
-pnpm --filter @integr8/auth keygen        # the key variables, and the Auth container's secrets
-pnpm --filter @integr8/db db bootstrap    # creates integr8_app and integr8_auth
-```
-
-[The database README](../database/README.md) explains the roles;
-[self-hosted-auth.md](./self-hosted-auth.md) the Auth container.
-
-```bash
-pnpm test                  # unit: keys, tokens, secrets, password policy, matrix
-pnpm test:integration      # needs a disposable Postgres
-pnpm test:auth-server      # the provider against a real Auth container (CI starts one)
-```
+When a company is purged, its people's Auth accounts that belong to no other
+company are deleted. `node dist/platform/admin-cli.js user-password <email>`
+(in the API container) gives somebody a new password in Auth, prints it once and
+signs out their devices. A company moved with `transfer` keeps its people's
+password hashes ([database/](../database/README.md#moving-a-company-between-servers)).

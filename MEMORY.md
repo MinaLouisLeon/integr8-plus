@@ -50,14 +50,11 @@ the end of any piece of work that changes one of them, and date each section.
   maintenance plans + deadlines (0053), the AI assistant (help library or a model), ETA
   e-invoicing (test-only, not certified), company website data API, the demo company
   seeder.
-- **Plan:** P01, P04, P08 and P22 are complete. P25–P27 (scheduling), P23, P24 and P32
-  (Arabic, mostly built) are `IN PROGRESS`; v1.3 (P28–P31) and P33–P35 are `NOT STARTED`,
-  though parts exist (see the notes in `plan/README.md`). Modules planned outside the phase
-  list are indexed in `plan/README.md` ("Module plans outside the phase list").
-  P37–P39 (v1.4 AI tooling, planned 2026-11-10) are built (`IN PROGRESS`, see Decisions). P40
-  (form actions, from CR-0001) is `IN PROGRESS`: its server side is built (see Decisions); screens,
-  phone and Forms for AI are next.
-- **P36 self-hosted sign-in** (`plan/v1.0-launch/P36-self-hosted-sign-in.md`): merged into
+- **Plan (2026-11-15):** the phase files P01–P41 were removed with the old docs; `plan/README.md`
+  now lists only what is unfinished: P40 (form actions; server side built, screens, phone, Forms
+  for AI and the owner's six decisions open), the tooling and sign-in runs still to do, the owner's
+  steps, and the phases not started (P20, P21, P28–P31, P33–P35). The next new phase is P42.
+- **P36 self-hosted sign-in**: merged into
   `main` in PRs #130 and #135; CI's database job, real Auth included, is green. Auth container in
   `deploy/compose.yml` (`supabase/auth:v2.197.0`, private ports, memory caps), bootstrap's
   `supabase_auth_admin` role, migration 0054, emailed 6-digit sign-in codes and Change
@@ -135,7 +132,7 @@ the end of any piece of work that changes one of them, and date each section.
 - **Low fixes (2026-11-01, 1.2.4), as the owner chose them:** the public pages, `/download`
   and the staff dashboard (and the staff desktop frame) wear the Integr8 Media website's look
   (source: MinaLouisLeon/integr8-media-website; tokens and self-hosted fonts in
-  `packages/tokens`, `docs/brand/`), always English unless Arabic is chosen (no browser
+  `packages/tokens`, `packages/tokens`), always English unless Arabic is chosen (no browser
   negotiation); the company workspace keeps company branding. Uploaded PDF documents and a
   per-document sharing switch (new ones start not shared, older ones stay shared; 0067);
   files follow their owning record (`media-access.ts`, refusals are 404); a file-use index
@@ -249,7 +246,7 @@ the end of any piece of work that changes one of them, and date each section.
   `cargo check` could not run on this Windows machine (MinGW `windres` fails in the build
   script), so the desktop shell is untested in a real build.
 - **AI tooling stage planned (2026-11-10, plan only, nothing built), as the owner chose it:**
-  `plan/v1.4-ai-tooling/` holds P37 (a live preview window in Forms for AI: the web filler and
+  `plan/README.md` holds P37 (a live preview window in Forms for AI: the web filler and
   the printed PDFs on a loopback page that refreshes as the AI edits; still offline), P38 (a
   developer MCP server run from the repository, `apps/dev-mcp`, signed in from a terminal with a
   staff account; migration 0077 adds `tenants.is_test`, unchangeable after creation, and a
@@ -293,7 +290,7 @@ the end of any piece of work that changes one of them, and date each section.
   into `plan/requests/` (README there); planned with `docs/contributing/planning-a-change-request.md`
   (`/plan-change-request`); the developer MCP server lists and reads them. `offline.test.ts` now
   proves no Forms for AI tool makes a network request. CR-0001 became **P40 — Form actions**
-  (`plan/v1.5-form-actions/`, proposed; its test-company evidence step is still to run).
+  (`plan/README.md`, proposed; its test-company evidence step is still to run).
 - **One MCP server for developers (2026-11-14, unreleased, branch `ccr-712995a6-da3hqy` from
   `main`), as the owner asked:** the developer MCP server (`apps/dev-mcp`) carries every Forms for
   AI tool beside its own (37 tools), through `registerFormsTools` from `@integr8/forms-ai/tools`
@@ -307,7 +304,7 @@ the end of any piece of work that changes one of them, and date each section.
   purpose, so each call's purpose reaches the audit log; the trace folder is `0700` and refuses a
   link or another user's folder; the handshake version comes from its `package.json`;
   `import_form_package` refuses anything but a `.integr8form` ZIP before sending; the tool-answer
-  helpers live once in `apps/forms-ai/src/mcp/results.ts`. Details: P38's second addendum.
+  helpers live once in `apps/forms-ai/src/mcp/results.ts`. (The P38 phase file with its addenda is in git history.)
 - **The accountant role and company roles on the desktop (2026-11-14, unreleased, branch
   `ccr-56130823-gs6hbv`; migration 0078), as the owner asked:** an eighth built-in role,
   `accountant`, ranked between `inventory_manager` and `dispatcher`: finance (manage + issue),
@@ -338,7 +335,7 @@ the end of any piece of work that changes one of them, and date each section.
   Claim deciders read the claim's submission at `GET /v1/expenses/{id}/submission`. Not built: the
   builder's Actions tab and the other screens, the phone's next-form button and its "Update the
   app" gate (left out on purpose until a phone release reads follow-ups), Forms for AI, form-file
-  import of actions, the demo seeder's trip form. Doc: `docs/form-engine/form-actions.md`.
+  import of actions, the demo seeder's trip form. Doc: `docs/form-engine/README.md`.
 - **Database restructure, P41 (2026-11-14, unreleased, branch `ccr-c6dc87d8-3hlhaw` from `dev`), as
   the owner chose it:** all data so far is test data, so no backup and a clean restart (2.0.0).
   **Shared tables** stay (every row keyed by `tenant_id`, RLS the backstop); per-company tables were
@@ -363,6 +360,21 @@ the end of any piece of work that changes one of them, and date each section.
   checked, same ids, refuses an existing company or a newer archive; `--continue` finishes files and
   accounts. Untested here: the real GoTrue `password_hash` import (CI's real-Auth suite does not
   cover it) and the compose `transfer` service on a real machine.
+- **Documentation rewritten for 2.0.0 (2026-11-15, branch `ccr-8527348b-k9tfyv`), as the owner
+  asked:** every old page under `docs/` and every phase file under `plan/` was deleted (in git
+  history before that commit; `version2.md` and `PROJECT_IMPROVEMENTS.md` too) and replaced by a
+  smaller set written from the code: `docs/README.md` (index and glossary), `architecture.md`,
+  `apps/` (web, desktop and phone, with the desktop-only and web-only screen lists) and
+  `apps/mobile.md`, `api/`, `auth/` (+ `offline-access.md`), `database/` (+ `migrations.md` with
+  the map from 1.x migration numbers, the backup runbook kept), `modules/`, `form-engine/`
+  (+ `package-format.md`), `documents/`, `media/`, `ai/`, `e-invoicing/` (its
+  `official-public/` fixtures folder kept), `platform/`, `deployment/` (the setup guide kept),
+  `contributing/` (+ `developer-tools.md`, `planning-a-change-request.md`), `legal/`. Folder names
+  were kept where code comments point (`docs/ai`, `docs/documents`, …); comments naming removed
+  files were repointed. `README.md` and `CONTRIBUTING.md` are short front pages. Kept as they
+  were, for the owner to decide: `full-description.md` (an Arabic business description of
+  1.1.0), `new-idea.md`, `PROJECT_INDEX.md`/`.json`. The owner wants to discuss the desktop app
+  against the phone app next.
 - **The demo seeder goes through the API**, in-process with Fastify's `inject`, as the
   company's own people (plus a staff impersonation for staff-only setup). Direct inserts
   were rejected: they skip numbering, stock, ledger postings and audit, and produce data
@@ -426,7 +438,7 @@ Update them together at each release or new migration:
   `EXPO_PUBLIC_AUTH_VERIFICATION_KEYS` per environment; a lawyer reviews `/legal/*` and fills
   `LEGAL_OPERATOR`; an accountant signs off the payroll figures and the year rule; decide
   whether the repository stays public, then apply the rulesets
-  (`docs/contributing/branching.md`); check existing companies' timezone and working days.
+  (`docs/contributing/README.md`); check existing companies' timezone and working days.
 
 - **The demo seeder against the real Auth container** has not been run (only the test
   fake). **Removing a demo company** is the normal close flow (suspend, export, close,

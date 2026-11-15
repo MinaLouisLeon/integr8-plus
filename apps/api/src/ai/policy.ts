@@ -36,7 +36,7 @@ import { planFor } from '../http/suspension.js';
  * The highest level this build serves, whatever is configured.
  *
  * Raised phase by phase as each level's authorization and isolation tests
- * pass (docs/ai/IMPLEMENTATION_STATUS.md). A plan or company set above it is
+ * pass (docs/ai/README.md). A plan or company set above it is
  * capped here, so an operator cannot switch on code that has not shipped.
  */
 export const AI_MAX_LEVEL_SERVED: AiLevel = 'agent';

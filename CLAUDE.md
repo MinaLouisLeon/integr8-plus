@@ -24,22 +24,22 @@ staff from the platform dashboard; there is no public sign-up by default.
 
 ## Repository layout (pnpm + Turborepo monorepo)
 
-| Path                   | What                                                                                                                                                          |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `apps/api`             | Fastify `/v1` API, route registry → OpenAPI, background worker, CLIs (`platform/admin-cli.ts`, `demo/cli.ts`, storage)                                        |
-| `apps/web`             | Next.js: marketing site, company workspace `(app)/…`, platform dashboard `platform/…`                                                                         |
-| `apps/desktop`         | React + Tauri (staff app and per-company branded builds)                                                                                                      |
-| `apps/mobile`          | Expo / React Native, local SQLite, queued sync                                                                                                                |
-| `apps/forms-ai`        | Integr8 Forms for AI: offline MCP server + terminal installer for AI coding tools writing `.integr8form` files (`docs/forms-ai/`)                             |
-| `apps/dev-mcp`         | Developer MCP server: an AI tool in this repo acts in test companies on a running API, and has every Forms for AI tool (`docs/contributing/developer-mcp.md`) |
-| `packages/core`        | Domain rules: roles, permissions matrix, state machines, money, payroll, etc.                                                                                 |
-| `packages/db`          | Postgres via Kysely: `migrations/NNNN_name.{up,down}.sql`, `schema.ts`, repositories, migrator, RLS                                                           |
-| `packages/auth`        | Tokens, sessions, impersonation, invitations, the identity provider (self-hosted Supabase Auth)                                                               |
-| `packages/form-engine` | Form definitions, validation, evaluation, template library                                                                                                    |
-| `packages/*` (others)  | `api-client` (generated), `i18n`, `offline`, `operations-dom`, `form-renderer-dom`, `form-input`, `document-render`, `eta`, `tokens`                          |
-| `docs/`                | Per-area docs; `docs/deployment/setup-checklist.{md,html}` is the operator's guide                                                                            |
-| `deploy/`              | `compose.yml` (with the self-hosted Auth container), `.env.example`, `vps/` (setup script, Caddyfile, backups)                                                |
-| `plan/`                | The build plan and roadmap                                                                                                                                    |
+| Path                   | What                                                                                                                                                            |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/api`             | Fastify `/v1` API, route registry → OpenAPI, background worker, CLIs (`platform/admin-cli.ts`, `demo/cli.ts`, storage)                                          |
+| `apps/web`             | Next.js: marketing site, company workspace `(app)/…`, platform dashboard `platform/…`                                                                           |
+| `apps/desktop`         | React + Tauri (staff app and per-company branded builds)                                                                                                        |
+| `apps/mobile`          | Expo / React Native, local SQLite, queued sync                                                                                                                  |
+| `apps/forms-ai`        | Integr8 Forms for AI: offline MCP server + terminal installer for AI coding tools writing `.integr8form` files (`docs/contributing/developer-tools.md`)         |
+| `apps/dev-mcp`         | Developer MCP server: an AI tool in this repo acts in test companies on a running API, and has every Forms for AI tool (`docs/contributing/developer-tools.md`) |
+| `packages/core`        | Domain rules: roles, permissions matrix, state machines, money, payroll, etc.                                                                                   |
+| `packages/db`          | Postgres via Kysely: `migrations/NNNN_name.{up,down}.sql`, `schema.ts`, repositories, migrator, RLS                                                             |
+| `packages/auth`        | Tokens, sessions, impersonation, invitations, the identity provider (self-hosted Supabase Auth)                                                                 |
+| `packages/form-engine` | Form definitions, validation, evaluation, template library                                                                                                      |
+| `packages/*` (others)  | `api-client` (generated), `i18n`, `offline`, `operations-dom`, `form-renderer-dom`, `form-input`, `document-render`, `eta`, `tokens`                            |
+| `docs/`                | The documentation, rewritten for 2.0.0: start at `docs/README.md`; `docs/deployment/setup-checklist.{md,html}` is the operator's guide                          |
+| `deploy/`              | `compose.yml` (with the self-hosted Auth container), `.env.example`, `vps/` (setup script, Caddyfile, backups)                                                  |
+| `plan/`                | `plan/README.md`: what is in progress, the owner's decisions and steps, phases not started; `plan/requests/` change requests                                    |
 
 ## Commands
 
@@ -140,7 +140,7 @@ API refuses to start if the old `SUPABASE_URL` is set. Everything goes through
 `IdentityProvider` (`packages/auth/src/identity-provider.ts`); the suites use
 `FakeIdentityProvider`. Emailed 6-digit codes (`/v1/auth/magic-link`) and
 Change password (`/v1/me/password`) are described in
-`docs/auth/self-hosted-auth.md`. Staff accounts always use their own password
+`docs/auth/README.md`. Staff accounts always use their own password
 
 - authenticator code in `platform_users`. Details: `docs/auth/README.md`.
 
@@ -184,7 +184,7 @@ The whole operator procedure is `docs/deployment/setup-checklist.md`.
 - **Deployment-affecting changes** (new env var, migration, rollout or recovery step):
   update `docs/deployment/setup-checklist.md` **and** `.html` together, the relevant
   `.env.example`, then run `pnpm guide:check`.
-- **Docs and plan:** a feature also updates its `docs/<area>/` page and its phase file in
-  `plan/`. Keep `MEMORY.md` current when the project state it describes changes.
+- **Docs and plan:** a feature also updates its `docs/<area>/` page and its entry (or phase
+  file) in `plan/`. Keep `MEMORY.md` current when the project state it describes changes.
 - **Turborepo:** check the installed version's bundled docs before touching `turbo.json`
   (see the managed block in `AGENTS.md`).

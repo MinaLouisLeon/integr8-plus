@@ -16,7 +16,7 @@ import {
 } from './look.js';
 
 /**
- * A PDF template's design (docs/documents/ADR-0001 D1-D3, D6).
+ * A PDF template's design (docs/documents/README.md D1-D3, D6).
  *
  * A template is a column of blocks on A4 pages, portrait or landscape, one
  * under another, with a row block for two or three side by side, a header

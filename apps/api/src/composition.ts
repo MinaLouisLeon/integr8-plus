@@ -304,7 +304,7 @@ export function buildIdentityProvider(config: ApiConfig, env: NodeJS.ProcessEnv)
         ...auth.problems.map((problem) => `  ${problem}`),
         '',
         `APP_ENV is "${config.APP_ENV}".`,
-        'See docs/auth/self-hosted-auth.md.',
+        'See docs/auth/README.md.',
       ].join('\n'),
     );
   }

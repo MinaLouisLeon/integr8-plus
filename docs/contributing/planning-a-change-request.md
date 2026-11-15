@@ -1,13 +1,13 @@
 # Planning a change request
 
 How an AI coding tool working in this repository turns a change request in `plan/requests/`
-into a phase plan the owner approves (P39). **It writes a plan and stops. It changes no product
+into a phase plan the owner approves. **It writes a plan and stops. It changes no product
 code.** Claude Code runs it with the project command `/plan-change-request <number>`
 (`.claude/commands/plan-change-request.md`); any other tool follows this page.
 
 The tools it uses:
 
-- the **developer MCP server** ([developer-mcp.md](developer-mcp.md)): `list_change_requests`,
+- the **developer MCP server** ([developer-tools.md](developer-tools.md)): `list_change_requests`,
   `get_change_request`, and a test company to try today's behaviour on;
 - **Integr8 Forms for AI**, when the request has an example form: `open_package`, `check_package`,
   `preview_pdf`.
@@ -38,8 +38,8 @@ The tools it uses:
    - a permission for every role, and staff-only ones;
    - English and Arabic for every new string; logical directions;
    - plan limits and modules enforced by the API.
-5. **Write the plan** as `plan/<version>/P<nn>-<slug>.md`, the next free phase number, in the
-   house format (see the files in `plan/v1.4-ai-tooling/`):
+5. **Write the plan** as `plan/<version>/P<nn>-<slug>.md`, the next free phase number (the
+   last used is listed in `plan/README.md`), in this format:
    - **Goal**; **Scope** (what is in, what is out);
    - **Where things stand**, a table, with the evidence from step 2 (trace numbers, statuses,
      what the screens show);

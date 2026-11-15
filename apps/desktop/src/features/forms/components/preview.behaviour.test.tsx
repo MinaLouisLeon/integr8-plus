@@ -38,7 +38,7 @@ import { PhonePreview } from './phone-preview';
  * Both must show what the engine says (`expectedScreen`): the same questions,
  * words, required marks and errors that the phone app's own screens and the
  * web filler are held to in their packages, for the six library forms and the
- * every-type form, in English and in Arabic. See docs/form-engine/builder.md.
+ * every-type form, in English and in Arabic. See docs/form-engine/README.md.
  */
 
 afterEach(() => {
