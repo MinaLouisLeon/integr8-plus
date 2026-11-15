@@ -76,16 +76,6 @@ export interface BuildServerOptions {
  */
 const WRITES = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
-/**
- * Where a third party's signed deliveries arrive.
- *
- * Exempt from the client-version check for the same reason a signed media link
- * is: the caller is not one of our clients and has no version to send. It is
- * still rate limited by address, which is the one protection that makes sense
- * against somebody posting rubbish at it.
- */
-const WEBHOOK_PREFIX = '/v1/billing/webhook';
-
 export function buildServer(options: BuildServerOptions): FastifyInstance {
   const { config, services, routes } = options;
   const logger =
@@ -108,39 +98,6 @@ export function buildServer(options: BuildServerOptions): FastifyInstance {
   });
 
   const limiter = createRateLimiter();
-
-  /**
-   * The bytes of a webhook body, kept as they arrived.
-   *
-   * A signature covers what was sent; parsing JSON and re-serialising it
-   * changes the bytes, so a genuine delivery would look forged. Fastify is
-   * told to hand this content type over untouched, and the route reads the
-   * string. Only routes that declared `rawBody` look at it — everything else
-   * gets the parsed object as before.
-   */
-  const rawBodyRoutes = new Set(
-    routes.filter((route) => route.rawBody === true).map((route) => route.path),
-  );
-  if (rawBodyRoutes.size > 0) {
-    app.addContentTypeParser(
-      'application/json',
-      { parseAs: 'string' },
-      (request, body: string, done) => {
-        if (rawBodyRoutes.has(request.routeOptions.url ?? '')) {
-          request.integr8.rawBody = body;
-          // The handler gets the string; the route's own schema is what reads
-          // it, which for a webhook is `noSchema`.
-          done(null, {});
-          return;
-        }
-        try {
-          done(null, body === '' ? {} : (JSON.parse(body) as unknown));
-        } catch (error) {
-          done(error as Error, undefined);
-        }
-      },
-    );
-  }
 
   /**
    * Files sent as a whole body (a `.integr8form` package, 1.3.0), as bytes.
@@ -199,10 +156,6 @@ export function buildServer(options: BuildServerOptions): FastifyInstance {
       acceptLanguage: header(request, 'accept-language'),
       idempotencyKey: header(request, 'idempotency-key'),
       bearerToken: bearer(header(request, 'authorization')),
-      // Whichever provider signed it. One header per provider, and only a
-      // route that asked for the raw body ever reads it (P17).
-      signatureHeader:
-        header(request, 'stripe-signature') ?? header(request, 'x-webhook-signature') ?? undefined,
       clientApp: readClientApp(header(request, 'x-client-app')),
       clientVersion: header(request, 'x-client-version') ?? undefined,
       startedAt: process.hrtime.bigint(),
@@ -222,13 +175,10 @@ export function buildServer(options: BuildServerOptions): FastifyInstance {
     // header policy is a bad afternoon.
     // Signed media links are followed by whatever fetched them — in production
     // they point at R2 and never reach this server — so they carry no client
-    // headers and are authorised by their signature instead. A billing
-    // provider's webhook is the same case: it is somebody else's server, it
-    // sends no client version, and it is authorised by its signature (P17).
+    // headers and are authorised by their signature instead.
     if (
       request.url.startsWith('/health') ||
       request.url.startsWith('/openapi') ||
-      request.url.startsWith(WEBHOOK_PREFIX) ||
       request.url.startsWith(LOCAL_MEDIA_PREFIX)
     ) {
       done();

@@ -1,7 +1,5 @@
 import {
   ANNOUNCEMENT_SEVERITIES,
-  BILLING_INTERVALS,
-  BILLING_MODES,
   companyThemeSchema,
   SUBSCRIPTION_STATUSES,
   TENANT_EXPORT_STATUSES,
@@ -61,12 +59,6 @@ export const platformSignInResponseSchema = z.object({
 
 export const planSchema = z.enum(TENANT_PLANS);
 export const statusSchema = z.enum(TENANT_STATUSES);
-/**
- * How a company pays. `self_serve`: it subscribes in the app and the provider
- * takes the money. `invoiced`: Integr8 invoices it directly and sets its plan
- * here; the app shows it no checkout, no card portal and no provider invoices.
- */
-export const billingModeSchema = z.enum(BILLING_MODES);
 
 /** One row of the company directory. */
 export const companySummarySchema = z.object({
@@ -77,7 +69,6 @@ export const companySummarySchema = z.object({
   plan: planSchema,
   /** How many seats the plan allows; null means uncapped. */
   seats: z.number().int().nullable(),
-  billingMode: billingModeSchema,
   members: z.number().int(),
   activeMembers: z.number().int(),
   storageBytes: z.number().int(),
@@ -113,29 +104,16 @@ export const companyActivitySchema = z.object({
 });
 
 /**
- * What a company is paying, as the platform sees it (P17).
- *
- * Null when a company has no subscription row at all — companies onboarded
- * before P17, which are on a plan somebody set by hand and are charged by
- * nobody. Saying null is the honest answer; inventing a trial would hide them.
+ * Where a company stands with Integr8 (P17; P42: invoiced only). Null when a
+ * company has no subscription row at all; saying null is the honest answer.
  */
 export const companyBillingSchema = z.object({
-  provider: z.string(),
   status: z.enum(SUBSCRIPTION_STATUSES),
   plan: planSchema,
-  interval: z.enum(BILLING_INTERVALS).nullable(),
-  currentPeriodEnd: timestamp.nullable(),
-  cancelAtPeriodEnd: z.boolean(),
   trialEndsAt: timestamp.nullable(),
-  pastDueSince: timestamp.nullable(),
-  graceEndsAt: timestamp.nullable(),
-  remindersSent: z.number().int(),
   /** Whether writes are refused right now, and the words the customer is shown. */
   readOnlySince: timestamp.nullable(),
   readOnlyReason: z.string().nullable(),
-  /** The provider's own ids, for looking the customer up in their dashboard. */
-  providerCustomerId: z.string().nullable(),
-  providerSubscriptionId: z.string().nullable(),
 });
 
 /** The brand facts the dashboard shows (and two it edits) for one company (0022). */
@@ -149,7 +127,6 @@ export const companySettingsSchema = z.object({
   /** Whether the release pipeline builds this company's own desktop and phone apps. */
   appsEnabled: z.boolean(),
   /** Which of the company's apps show the assistant (ADR-0001). */
-  aiWebEnabled: z.boolean(),
   aiDesktopEnabled: z.boolean(),
   aiMobileEnabled: z.boolean(),
   /** Whether the apps print the name beside the logo; set on the branding screen (0075). */
@@ -203,6 +180,12 @@ export const companyDetailSchema = companySummarySchema.extend({
   invitations: z.array(companyInvitationSchema),
   activity: z.array(companyActivitySchema),
   billing: companyBillingSchema.nullable(),
+  /**
+   * Whether the company's people have an app to sign in to (P42): `ready`, or
+   * why an invitation would be refused — its apps are switched off, its
+   * desktop app is not built yet, or the releases could not be read.
+   */
+  companyApp: z.enum(['ready', 'apps_off', 'not_built', 'unavailable']),
   featureFlags: z.record(z.string(), z.boolean()),
   members: z.number().int(),
   owners: z.array(
@@ -217,7 +200,10 @@ export const onboardResponseSchema = z.object({
     id: z.uuid(),
     email: z.string(),
     expiresAt: timestamp,
-    /** Present only when the API is configured to return it; never logged. */
+    /**
+     * The link to send by hand; never logged. Null until the company's desktop
+     * app exists (P42): an invitation waits for it.
+     */
     acceptUrl: z.string().nullable(),
     /** Whether it was emailed now. False by default: it is sent once the company is set up. */
     emailed: z.boolean(),

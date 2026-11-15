@@ -50,7 +50,6 @@ const settingsSchema = z.object({
   /** ISO weekday numbers; 1 is Monday. Empty means the company is closed. */
   workingDays: z.array(z.number().int().min(1).max(7)),
   /** Which of the company's apps show the assistant (ADR-0001). Each only narrows what the plan grants. */
-  aiWebEnabled: z.boolean(),
   aiDesktopEnabled: z.boolean(),
   aiMobileEnabled: z.boolean(),
   /** Whether the apps print the company name beside its logo; ignored without a logo (0075). */
@@ -117,7 +116,6 @@ export const updateSettingsRoute = defineRoute({
     workDayStarts: z.number().int().min(0).max(1440).optional(),
     workDayEnds: z.number().int().min(0).max(1440).optional(),
     workingDays: z.array(z.number().int().min(1).max(7)).max(7).optional(),
-    aiWebEnabled: z.boolean().optional(),
     aiDesktopEnabled: z.boolean().optional(),
     aiMobileEnabled: z.boolean().optional(),
     /** Integr8's to set, with the rest of the look (0075). */
@@ -309,8 +307,8 @@ export const updateWebsiteAccessSettingsRoute = defineRoute({
  * What each plan costs and allows, for anybody at all.
  *
  * Public because the pricing page is public and has no session. It exposes only
- * what a pricing page shows — no provider price ids, no internal flags — and it
- * is the same row the entitlement service reads, which is the point.
+ * what a pricing page shows — no internal flags — and it is the same row the
+ * entitlement service reads, which is the point.
  */
 export const publicPlansRoute = defineRoute({
   method: 'get',
@@ -319,7 +317,7 @@ export const publicPlansRoute = defineRoute({
   summary: 'What each plan costs and allows',
   description:
     'The same rows the API enforces its limits from. A pricing page that reads this cannot disagree with a refusal, which is exactly what it would do if the numbers were written into the copy.',
-  tags: ['signup'],
+  tags: ['billing'],
   security: 'public',
   params: noSchema,
   query: noSchema,
@@ -337,8 +335,6 @@ export const publicPlansRoute = defineRoute({
             submissionsPerMonth: z.number().int().nullable(),
             storageBytes: z.number().int().nullable(),
             retentionDays: z.number().int().nullable(),
-            /** Whether somebody could actually buy it today. */
-            purchasable: z.boolean(),
           }),
         ),
       }),
@@ -359,11 +355,6 @@ export const publicPlansRoute = defineRoute({
           submissionsPerMonth: allowance.submissionsPerMonth,
           storageBytes: allowance.storageBytes,
           retentionDays: allowance.retentionDays,
-          // Said plainly rather than hidden: a plan with no price at the
-          // provider cannot be bought, and the checkout refuses it. A pricing
-          // page that offered it anyway would send somebody to a dead end.
-          purchasable:
-            allowance.providerPriceMonthly !== null || allowance.providerPriceYearly !== null,
         })),
       },
     };
@@ -419,7 +410,6 @@ function toBody(settings: {
   workDayStarts: number;
   workDayEnds: number;
   workingDays: number[];
-  aiWebEnabled: boolean;
   aiDesktopEnabled: boolean;
   aiMobileEnabled: boolean;
   showCompanyName: boolean;
@@ -438,7 +428,6 @@ function toBody(settings: {
     workDayStarts: settings.workDayStarts,
     workDayEnds: settings.workDayEnds,
     workingDays: settings.workingDays,
-    aiWebEnabled: settings.aiWebEnabled,
     aiDesktopEnabled: settings.aiDesktopEnabled,
     aiMobileEnabled: settings.aiMobileEnabled,
     showCompanyName: settings.showCompanyName,

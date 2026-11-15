@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { deliverInvitation } from '../../../email/deliver.js';
 import { acceptInvitationUrl } from '../../../email/links.js';
 import { notFound } from '../../../http/errors.js';
+import { assertCompanyAppReady } from '../../../platform/company-app-gate.js';
 import { defineRoute, noSchema } from '../../../http/routes.js';
 import { iso } from '../schemas.js';
 import { recordPlatformAction } from './audit.js';
@@ -207,7 +208,7 @@ export const resendInvitationRoute = defineRoute({
   operationId: 'resendInvitation',
   summary: 'Send somebody their invitation, or a fresh link to it',
   description:
-    'Withdraws the old invitation and issues a new one to the same address and role, valid for seven days from now, then emails it unless `sendEmail` is false (the link is returned either way, to send by hand). A new token rather than the old one: the old link may be sitting in a mailbox somebody else can read. Works on an expired invitation too, which is how a company set up weeks ago gets its owner in once its forms are ready.',
+    'Withdraws the old invitation and issues a new one to the same address and role, valid for seven days from now, then emails it unless `sendEmail` is false (the link is returned either way, to send by hand). A new token rather than the old one: the old link may be sitting in a mailbox somebody else can read. Works on an expired invitation too, which is how a company set up weeks ago gets its owner in once its forms are ready. Refused with 409 `company_app_not_built` until the company’s own desktop app exists (P42), and 503 `releases_unavailable` when that cannot be checked.',
   tags: ['platform'],
   security: 'platform',
   params: z.object({ tenantId: z.uuid(), invitationId: z.uuid() }),
@@ -219,10 +220,24 @@ export const resendInvitationRoute = defineRoute({
   responses: {
     200: { description: 'A new invitation.', schema: resentSchema },
     404: { description: 'No such invitation, or it has been accepted already.' },
+    409: {
+      description: '`company_app_not_built`: the company has no desktop app to sign in to yet.',
+    },
+    503: { description: '`releases_unavailable`: the app releases could not be read.' },
   },
   handler: async ({ params, body }, context) => {
     const tenantId = toTenantId(params.tenantId);
     const platformUserId = context.platform.platformUserId;
+
+    const tenant = await getPlatformDataSource().tenants.findById(params.tenantId);
+    if (tenant === undefined) {
+      throw notFound(`No company with id ${params.tenantId}`);
+    }
+    const settings = await withTenant(tenantId, (tx) => tx.settings.get());
+    await assertCompanyAppReady(
+      { slug: tenant.slug, isTest: tenant.isTest, appsEnabled: settings.appsEnabled },
+      context.services.appReleases,
+    );
 
     const reissued = await withTenant(tenantId, async (tx) => {
       const pending = (await tx.invitations.listPending()).find(

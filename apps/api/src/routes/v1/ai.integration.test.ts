@@ -309,13 +309,13 @@ describe('the company’s own switches', () => {
         plan: 'trial',
         seats: null,
         ownerEmail: `owner@${name}.example`,
-        aiChannels: { web: true, desktop: false, mobile: true },
+        aiChannels: { desktop: false, mobile: true },
       },
     });
     expect(onboarded.statusCode, onboarded.body).toBe(201);
     const { company } = json<{ company: { id: string } }>(onboarded);
     const detail = json<{
-      settings: { aiWebEnabled: boolean; aiDesktopEnabled: boolean; aiMobileEnabled: boolean };
+      settings: { aiDesktopEnabled: boolean; aiMobileEnabled: boolean };
     }>(
       await api.call(admin.accessToken, {
         method: 'GET',
@@ -323,7 +323,6 @@ describe('the company’s own switches', () => {
       }),
     );
     expect(detail.settings).toMatchObject({
-      aiWebEnabled: true,
       aiDesktopEnabled: false,
       aiMobileEnabled: true,
     });
@@ -343,11 +342,11 @@ describe('the company’s own switches', () => {
     const changed = await api.call(ownerToken, {
       method: 'PATCH',
       url: '/v1/settings',
-      payload: { aiWebEnabled: true, aiDesktopEnabled: true },
+      payload: { aiDesktopEnabled: true },
     });
     expect(changed.statusCode, changed.body).toBe(200);
-    expect(json<{ aiWebEnabled: boolean; aiMobileEnabled: boolean }>(changed)).toMatchObject({
-      aiWebEnabled: true,
+    expect(json<{ aiDesktopEnabled: boolean; aiMobileEnabled: boolean }>(changed)).toMatchObject({
+      aiDesktopEnabled: true,
       aiMobileEnabled: false,
     });
 

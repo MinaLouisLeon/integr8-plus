@@ -348,92 +348,12 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * What this company is paying for, and what it is allowed
-         * @description The plan, where the subscription stands, and the limits with the usage against them — the same numbers the API enforces, so a screen can warn before a refusal rather than explain one afterwards.
+         * What this company is on, and what it is allowed
+         * @description The plan, where it stands, and the limits with the usage against them — the same numbers the API enforces, so a screen can warn before a refusal rather than explain one afterwards. Integr8 invoices every company directly; nothing here is paid in the app.
          */
         get: operations["getSubscription"];
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/billing/invoices": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * The invoices this company has been sent
-         * @description Newest first, read from the billing provider on each call so a payment made on the provider's page shows here straight away. Each links to the provider's hosted copy and its PDF. Empty for a company that has never subscribed.
-         */
-        get: operations["listInvoices"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/billing/checkout": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Begin paying for a plan
-         * @description Returns a link to the provider's hosted page. Card details never touch this API — the browser goes to the provider and comes back, and the subscription becomes real when the provider's webhook says so, not when the browser returns.
-         */
-        post: operations["startCheckout"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/billing/portal": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Open the provider’s billing portal
-         * @description Where a card is updated and a subscription is cancelled. All of it is the provider’s hosted page, so this API never holds a card number. Invoices are listed by `GET /v1/billing/invoices` as well, and each links back here.
-         */
-        post: operations["openBillingPortal"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/billing/webhook": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * What the billing provider says happened
-         * @description Verified by signature over the exact bytes sent, and deduplicated on the provider's own event id. Not for clients: it is called by the provider.
-         */
-        post: operations["billingWebhook"];
         delete?: never;
         options?: never;
         head?: never;
@@ -559,86 +479,6 @@ export interface paths {
          * @description Only the owner takes the HR grant back; the owner or an admin the inventory one. Their sessions end, so the next token they get no longer carries it.
          */
         delete: operations["removeMemberGrant"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/signup": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Ask for a company
-         * @description Sends a link to prove the address. Nothing is created until that link is followed: no company, no storage, no trial. Answers the same way whether or not the address already has an account.
-         */
-        post: operations["startSignup"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/signup/verify": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Prove the address, and get the company
-         * @description Creates the account, the company, its job types, its storage and its trial — in that order, so a failure part-way leaves nothing orphaned. The caller signs in normally afterwards.
-         */
-        post: operations["verifySignup"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/signup/resend": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Send the verification link again
-         * @description Rotates the link, so the previous one stops working. Answers the same way whether or not there was anything to send.
-         */
-        post: operations["resendSignupVerification"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/signup/step": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Record a step of the signup funnel
-         * @description Called by the public pages. Anonymous by construction: a step name and an optional plan, nothing that identifies a person.
-         */
-        post: operations["recordSignupStep"];
-        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -8017,8 +7857,8 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * Change a company’s plan, seat count or billing mode
-         * @description Sets the plan the API enforces and, for a company Integr8 invoices, the plan its people see on the billing screen. Switching a company to `invoiced` makes its subscription active with no trial and lifts a read-only state that non-payment caused: Integr8 is taking the money now. Switching back to `self_serve` leaves the subscription as the provider last described it. On a deployment that takes no card payments (`BILLING_PROVIDER=none`) every company is invoiced, and `self_serve` is stored as `invoiced`.
+         * Change a company’s plan or seat count
+         * @description Sets the plan the API enforces and the plan the company’s people see on its billing screen. Integr8 invoices every company directly (P42), so the subscription becomes active on that plan with no trial.
          */
         patch: operations["setCompanyPlan"];
         trace?: never;
@@ -8698,7 +8538,7 @@ export interface paths {
         put?: never;
         /**
          * Send somebody their invitation, or a fresh link to it
-         * @description Withdraws the old invitation and issues a new one to the same address and role, valid for seven days from now, then emails it unless `sendEmail` is false (the link is returned either way, to send by hand). A new token rather than the old one: the old link may be sitting in a mailbox somebody else can read. Works on an expired invitation too, which is how a company set up weeks ago gets its owner in once its forms are ready.
+         * @description Withdraws the old invitation and issues a new one to the same address and role, valid for seven days from now, then emails it unless `sendEmail` is false (the link is returned either way, to send by hand). A new token rather than the old one: the old link may be sitting in a mailbox somebody else can read. Works on an expired invitation too, which is how a company set up weeks ago gets its owner in once its forms are ready. Refused with 409 `company_app_not_built` until the company’s own desktop app exists (P42), and 503 `releases_unavailable` when that cannot be checked.
          */
         post: operations["resendInvitation"];
         delete?: never;
@@ -8985,7 +8825,7 @@ export interface paths {
         };
         /**
          * What is failing quietly
-         * @description Phones whose sync runs show trouble, billing deliveries that were recorded but not applied, background work that gave up — over the last few days, across every company — and maintenance plans the worker currently cannot make jobs for. The things that look fine from the office until a customer rings.
+         * @description Phones whose sync runs show trouble, background work that gave up — over the last few days, across every company — and maintenance plans the worker currently cannot make jobs for. The things that look fine from the office until a customer rings.
          */
         get: operations["getPlatformHealth"];
         put?: never;
@@ -8996,7 +8836,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/platform/funnel": {
+    "/v1/platform/downloads": {
         parameters: {
             query?: never;
             header?: never;
@@ -9004,10 +8844,10 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * The signup funnel, and where it leaks
-         * @description Steps with how many attempts reached each, over a window. The page steps count visits and the rest count attempts; they cannot be combined into one number honestly, so they are not.
+         * The staff app and Integr8 Forms for AI, newest release of each
+         * @description Read from the GitHub releases this deployment is set to (`APP_RELEASES=github`). Each is `found` with its files, `none` when nothing is published (or releases are not read here), or `unavailable` when GitHub could not be asked.
          */
-        get: operations["getSignupFunnel"];
+        get: operations["getPlatformDownloads"];
         put?: never;
         post?: never;
         delete?: never;
@@ -10119,7 +9959,7 @@ export interface operations {
                         /** @enum {string|null} */
                         blockedBy: "global_off" | "plan_off" | "custom_off" | "not_served" | "provider_unconfigured" | "channel_off" | "member_off" | "no_share" | null;
                         /** @enum {string} */
-                        channel: "web" | "desktop" | "mobile";
+                        channel: "desktop" | "mobile";
                         /** @enum {string} */
                         answerSource: "model" | "library";
                         tools: string[];
@@ -11091,22 +10931,11 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        /** @enum {string} */
-                        billingMode: "self_serve" | "invoiced";
                         plan: string;
                         /** @enum {string} */
                         status: "trialing" | "active" | "past_due" | "canceled" | "incomplete";
-                        /** @enum {string|null} */
-                        interval: "month" | "year" | null;
-                        /** Format: date-time */
-                        currentPeriodEnd: string | null;
-                        cancelAtPeriodEnd: boolean;
                         /** Format: date-time */
                         trialEndsAt: string | null;
-                        /** Format: date-time */
-                        pastDueSince: string | null;
-                        /** Format: date-time */
-                        graceEndsAt: string | null;
                         readOnly: boolean;
                         readOnlyReason: string | null;
                         entitlements: {
@@ -11138,345 +10967,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Error"];
                 };
-            };
-            /** @description The request failed validation. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Rate limit exceeded. */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Something went wrong on our side. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description This client build is older than the minimum supported. */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    listInvoices: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The invoices, newest first. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        items: {
-                            id: string;
-                            number: string | null;
-                            /** @enum {string} */
-                            status: "draft" | "open" | "paid" | "uncollectible" | "void";
-                            amountDueCents: number;
-                            amountPaidCents: number;
-                            currency: string;
-                            /** Format: date-time */
-                            periodStart: string | null;
-                            /** Format: date-time */
-                            periodEnd: string | null;
-                            /** Format: date-time */
-                            createdAt: string;
-                            hostedUrl: string | null;
-                            pdfUrl: string | null;
-                        }[];
-                    };
-                };
-            };
-            /** @description Authentication is required. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description The caller lacks the required permission. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description The request failed validation. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Rate limit exceeded. */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Something went wrong on our side. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description This client build is older than the minimum supported. */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    startCheckout: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    /** @enum {string} */
-                    plan: "starter" | "standard" | "enterprise";
-                    /**
-                     * @default month
-                     * @enum {string}
-                     */
-                    interval?: "month" | "year";
-                };
-            };
-        };
-        responses: {
-            /** @description Where to send the browser. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        url: string;
-                        provider: string;
-                    };
-                };
-            };
-            /** @description Authentication is required. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description The caller lacks the required permission. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description This plan has no price configured (`plan_not_purchasable`), or Integr8 invoices this company directly (`billing_invoiced`), as it does every company on a deployment that takes no card payments. */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The request failed validation. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Rate limit exceeded. */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Something went wrong on our side. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description This client build is older than the minimum supported. */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    openBillingPortal: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Where to send the browser. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        url: string;
-                        provider: string;
-                    };
-                };
-            };
-            /** @description Authentication is required. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description The caller lacks the required permission. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description This company has never paid, so there is no portal yet (`no_billing_account`), or Integr8 invoices it directly (`billing_invoiced`), as it does every company on a deployment that takes no card payments. */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The request failed validation. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Rate limit exceeded. */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Something went wrong on our side. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description This client build is older than the minimum supported. */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    billingWebhook: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Accepted, whether or not it was acted on. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        received: boolean;
-                        duplicate: boolean;
-                        handled: boolean;
-                    };
-                };
-            };
-            /** @description The signature did not verify. */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
             /** @description The request failed validation. */
             422: {
@@ -12247,287 +11737,6 @@ export interface operations {
             };
         };
     };
-    startSignup: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    email: string;
-                    companyName: string;
-                };
-            };
-        };
-        responses: {
-            /** @description Taken. Check the inbox. */
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        accepted: boolean;
-                    };
-                };
-            };
-            /** @description Public sign-up is off on this deployment (`signup_closed`). Integr8 sets companies up. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The request failed validation. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Rate limit exceeded. */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Something went wrong on our side. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Signing up is not configured on this deployment. */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    verifySignup: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    token: string;
-                    displayName: string;
-                    password: string;
-                };
-            };
-        };
-        responses: {
-            /** @description The company exists. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** Format: uuid */
-                        tenantId: string;
-                        email: string;
-                    };
-                };
-            };
-            /** @description Public sign-up is off on this deployment (`signup_closed`). Integr8 sets companies up. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The link is spent, expired or unknown (`invalid_signup_token`), or the password is too weak (`auth.weak_password`). */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Rate limit exceeded. */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Something went wrong on our side. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description This client build is older than the minimum supported. */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    resendSignupVerification: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    email: string;
-                };
-            };
-        };
-        responses: {
-            /** @description Taken. */
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        accepted: boolean;
-                    };
-                };
-            };
-            /** @description Public sign-up is off on this deployment (`signup_closed`). Integr8 sets companies up. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The request failed validation. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Rate limit exceeded. */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Something went wrong on our side. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description This client build is older than the minimum supported. */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    recordSignupStep: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    /** @enum {string} */
-                    step: "landing.viewed" | "pricing.viewed" | "features.viewed" | "signup.opened";
-                    /** @enum {string} */
-                    plan?: "trial" | "starter" | "standard" | "enterprise";
-                };
-            };
-        };
-        responses: {
-            /** @description Recorded, or quietly not. */
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        accepted: boolean;
-                    };
-                };
-            };
-            /** @description The request failed validation. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Rate limit exceeded. */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Something went wrong on our side. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description This client build is older than the minimum supported. */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
     getSettings: {
         parameters: {
             query?: never;
@@ -12560,7 +11769,6 @@ export interface operations {
                         workDayStarts: number;
                         workDayEnds: number;
                         workingDays: number[];
-                        aiWebEnabled: boolean;
                         aiDesktopEnabled: boolean;
                         aiMobileEnabled: boolean;
                         showCompanyName: boolean;
@@ -12649,7 +11857,6 @@ export interface operations {
                     workDayStarts?: number;
                     workDayEnds?: number;
                     workingDays?: number[];
-                    aiWebEnabled?: boolean;
                     aiDesktopEnabled?: boolean;
                     aiMobileEnabled?: boolean;
                     showCompanyName?: boolean;
@@ -12680,7 +11887,6 @@ export interface operations {
                         workDayStarts: number;
                         workDayEnds: number;
                         workingDays: number[];
-                        aiWebEnabled: boolean;
                         aiDesktopEnabled: boolean;
                         aiMobileEnabled: boolean;
                         showCompanyName: boolean;
@@ -12936,7 +12142,6 @@ export interface operations {
                             submissionsPerMonth: number | null;
                             storageBytes: number | null;
                             retentionDays: number | null;
-                            purchasable: boolean;
                         }[];
                     };
                 };
@@ -83128,8 +82333,6 @@ export interface operations {
                             /** @enum {string} */
                             plan: "trial" | "starter" | "standard" | "enterprise";
                             seats: number | null;
-                            /** @enum {string} */
-                            billingMode: "self_serve" | "invoiced";
                             members: number;
                             activeMembers: number;
                             storageBytes: number;
@@ -83216,23 +82419,16 @@ export interface operations {
                      * @default null
                      */
                     seats?: number | null;
-                    /**
-                     * @default self_serve
-                     * @enum {string}
-                     */
-                    billingMode?: "self_serve" | "invoiced";
                     /** Format: email */
                     ownerEmail: string;
                     websiteUrl?: string | null;
                     /**
                      * @default {
-                     *       "web": false,
                      *       "desktop": false,
                      *       "mobile": false
                      *     }
                      */
                     aiChannels?: {
-                        web: boolean;
                         desktop: boolean;
                         mobile: boolean;
                     };
@@ -83266,8 +82462,6 @@ export interface operations {
                             /** @enum {string} */
                             plan: "trial" | "starter" | "standard" | "enterprise";
                             seats: number | null;
-                            /** @enum {string} */
-                            billingMode: "self_serve" | "invoiced";
                             members: number;
                             activeMembers: number;
                             storageBytes: number;
@@ -83380,8 +82574,6 @@ export interface operations {
                         /** @enum {string} */
                         plan: "trial" | "starter" | "standard" | "enterprise";
                         seats: number | null;
-                        /** @enum {string} */
-                        billingMode: "self_serve" | "invoiced";
                         members: number;
                         activeMembers: number;
                         storageBytes: number;
@@ -83406,7 +82598,6 @@ export interface operations {
                             defaultTheme: "light" | "dark" | "system";
                             websiteUrl: string | null;
                             appsEnabled: boolean;
-                            aiWebEnabled: boolean;
                             aiDesktopEnabled: boolean;
                             aiMobileEnabled: boolean;
                             showCompanyName: boolean;
@@ -83433,29 +82624,18 @@ export interface operations {
                             auditedActions: number;
                         }[];
                         billing: {
-                            provider: string;
                             /** @enum {string} */
                             status: "trialing" | "active" | "past_due" | "canceled" | "incomplete";
                             /** @enum {string} */
                             plan: "trial" | "starter" | "standard" | "enterprise";
-                            /** @enum {string|null} */
-                            interval: "month" | "year" | null;
-                            /** Format: date-time */
-                            currentPeriodEnd: string | null;
-                            cancelAtPeriodEnd: boolean;
                             /** Format: date-time */
                             trialEndsAt: string | null;
                             /** Format: date-time */
-                            pastDueSince: string | null;
-                            /** Format: date-time */
-                            graceEndsAt: string | null;
-                            remindersSent: number;
-                            /** Format: date-time */
                             readOnlySince: string | null;
                             readOnlyReason: string | null;
-                            providerCustomerId: string | null;
-                            providerSubscriptionId: string | null;
                         } | null;
+                        /** @enum {string} */
+                        companyApp: "ready" | "apps_off" | "not_built" | "unavailable";
                         featureFlags: {
                             [key: string]: boolean;
                         };
@@ -83556,8 +82736,6 @@ export interface operations {
                         /** @enum {string} */
                         plan: "trial" | "starter" | "standard" | "enterprise";
                         seats: number | null;
-                        /** @enum {string} */
-                        billingMode: "self_serve" | "invoiced";
                         members: number;
                         activeMembers: number;
                         storageBytes: number;
@@ -83655,8 +82833,6 @@ export interface operations {
                         /** @enum {string} */
                         plan: "trial" | "starter" | "standard" | "enterprise";
                         seats: number | null;
-                        /** @enum {string} */
-                        billingMode: "self_serve" | "invoiced";
                         members: number;
                         activeMembers: number;
                         storageBytes: number;
@@ -83743,8 +82919,6 @@ export interface operations {
                     plan: "trial" | "starter" | "standard" | "enterprise";
                     /** @description The company’s own seat number. When set it replaces the plan’s, higher or lower; null uses the plan’s. */
                     seats: number | null;
-                    /** @enum {string} */
-                    billingMode?: "self_serve" | "invoiced";
                 };
             };
         };
@@ -83765,8 +82939,6 @@ export interface operations {
                         /** @enum {string} */
                         plan: "trial" | "starter" | "standard" | "enterprise";
                         seats: number | null;
-                        /** @enum {string} */
-                        billingMode: "self_serve" | "invoiced";
                         members: number;
                         activeMembers: number;
                         storageBytes: number;
@@ -83851,7 +83023,6 @@ export interface operations {
                 "application/json": {
                     websiteUrl?: string | null;
                     appsEnabled?: boolean;
-                    aiWebEnabled?: boolean;
                     aiDesktopEnabled?: boolean;
                     aiMobileEnabled?: boolean;
                     documentLinkPattern?: string | null;
@@ -83876,7 +83047,6 @@ export interface operations {
                         defaultTheme: "light" | "dark" | "system";
                         websiteUrl: string | null;
                         appsEnabled: boolean;
-                        aiWebEnabled: boolean;
                         aiDesktopEnabled: boolean;
                         aiMobileEnabled: boolean;
                         showCompanyName: boolean;
@@ -87930,6 +87100,13 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description `company_app_not_built`: the company has no desktop app to sign in to yet. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description The request failed validation. */
             422: {
                 headers: {
@@ -87957,14 +87134,12 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description This client build is older than the minimum supported. */
+            /** @description `releases_unavailable`: the app releases could not be read. */
             503: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
+                content?: never;
             };
         };
     };
@@ -89554,23 +88729,6 @@ export interface operations {
                                 appVersion: string | null;
                             }[];
                         };
-                        webhooks: {
-                            received: number;
-                            applied: number;
-                            failed: number;
-                            unmatched: number;
-                            pending: number;
-                            items: {
-                                id: string;
-                                type: string;
-                                tenantId: string | null;
-                                receivedAt: string;
-                                processedAt: string | null;
-                                /** @enum {string} */
-                                outcome: "applied" | "failed" | "unmatched" | "pending";
-                                error: string | null;
-                            }[];
-                        };
                         jobs: {
                             deadLettered: number;
                             retrying: number;
@@ -89637,52 +88795,70 @@ export interface operations {
             };
         };
     };
-    getSignupFunnel: {
+    getPlatformDownloads: {
         parameters: {
-            query?: {
-                days?: number;
-            };
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description The funnel and the recent signups behind it. */
+            /** @description What can be downloaded. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": {
-                        days: number;
-                        steps: {
-                            step: string;
-                            count: number;
-                        }[];
-                        timeToFirstForm: {
-                            companies: number;
-                            medianSeconds: number | null;
-                            items: {
-                                /** Format: uuid */
-                                tenantId: string;
-                                seconds: number;
-                            }[];
-                        };
-                        signups: {
-                            /** Format: uuid */
-                            id: string;
-                            email: string;
-                            companyName: string;
+                        staff: {
                             /** @enum {string} */
-                            status: "pending" | "verifying" | "verified" | "expired" | "abandoned";
-                            /** Format: date-time */
-                            createdAt: string;
-                            /** Format: date-time */
-                            verifiedAt: string | null;
-                            /** Format: uuid */
-                            tenantId: string | null;
-                        }[];
+                            status: "found";
+                            release: {
+                                tag: string;
+                                version: string;
+                                installers: {
+                                    name: string;
+                                    url: string;
+                                    /** @enum {string} */
+                                    platform: "windows" | "macos" | "linux" | "android";
+                                    /** @enum {string} */
+                                    kind: "exe" | "msi" | "dmg" | "appimage" | "deb" | "rpm" | "apk";
+                                    /** @enum {string|null} */
+                                    arch: "x64" | "arm64" | "universal" | null;
+                                    size: number | null;
+                                }[];
+                            };
+                        } | {
+                            /** @enum {string} */
+                            status: "none";
+                        } | {
+                            /** @enum {string} */
+                            status: "unavailable";
+                        };
+                        formsAi: {
+                            /** @enum {string} */
+                            status: "found";
+                            release: {
+                                tag: string;
+                                version: string;
+                                downloads: {
+                                    name: string;
+                                    url: string;
+                                    /** @enum {string} */
+                                    platform: "windows" | "macos" | "linux";
+                                    /** @enum {string} */
+                                    arch: "x64" | "arm64";
+                                    size: number | null;
+                                }[];
+                            };
+                        } | {
+                            /** @enum {string} */
+                            status: "none";
+                        } | {
+                            /** @enum {string} */
+                            status: "unavailable";
+                        };
                     };
                 };
             };

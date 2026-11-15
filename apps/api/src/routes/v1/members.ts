@@ -14,7 +14,6 @@ import { getPlatformDataSource, withTenant } from '@integr8/db';
 import { z } from 'zod';
 import { assertSeatAvailable } from '../../billing/entitlements.js';
 import { deliver, deliverInvitation } from '../../email/deliver.js';
-import { peopleUrl } from '../../email/links.js';
 import { hrSuspensionEmail } from '../../email/messages.js';
 import { messageLocale, momentFormatter } from '../../notifications/words.js';
 import { planFor } from '../../http/suspension.js';
@@ -166,7 +165,6 @@ async function tellOwnersOfHrSuspension(
         admin,
         person: target.displayName === '' ? target.email : target.displayName,
         when,
-        url: peopleUrl(context.config.WEB_APP_URL),
         locale,
       }),
       { kind: 'hr_suspension', tenantId },

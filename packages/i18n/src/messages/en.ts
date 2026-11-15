@@ -8418,7 +8418,7 @@ export const en = {
       title: 'Somebody with HR access was suspended',
       body: '{{admin}} suspended {{person}}, who can see your people\u2019s salaries and personal records, on {{date}}. They cannot sign in until they are let back in.',
       next: 'Only you can let them back in, change their role or remove them. If this was not expected, check with {{admin}}.',
-      action: 'Open People',
+      where: 'Open People in your company\u2019s desktop app.',
     },
     push: {
       newJob: 'New job: {{job}}',
@@ -8447,22 +8447,6 @@ export const en = {
     },
     email: {
       pasteLink: 'Or paste this into your browser:',
-      dunning: {
-        subjectFailed: 'Payment failed for {{company}}',
-        subjectReadOnly: '{{company}} is read-only — payment outstanding',
-        titleFailed: 'A payment did not go through',
-        titleReadOnly: 'Your account is read-only',
-        failed: 'A payment for {{company}} has not gone through.',
-        failedNoDeadline: 'Please update your card to keep everything working.',
-        failedDeadline:
-          'If it is still outstanding on {{date}}, the account becomes read-only — your data stays, but new work cannot be saved.',
-        failedFix: 'Updating your card takes a minute and fixes it immediately.',
-        readOnly: '{{company}} is now read-only because a payment is outstanding.',
-        readOnlyKept:
-          'Nothing has been deleted and nothing will be. Everything can still be read and exported; what has stopped is saving new work.',
-        readOnlyFix: 'Updating your card restores it straight away.',
-        action: 'Update your card',
-      },
       certificates: {
         subjectExpired: 'Certificates expired — {{company}}',
         subjectExpiring: 'Certificates expiring soon — {{company}}',
@@ -8481,7 +8465,7 @@ export const en = {
         ownNext:
           'Once it is renewed, send the new certificate to the office so they can record it.',
         teamNext: 'Record each renewal as a new certificate, so the old one stays in the history.',
-        action: 'Open qualifications',
+        where: 'Open Qualifications in your company\u2019s desktop app.',
       },
       contracts: {
         subjectEnded: 'Contracts ended without renewal — {{company}}',
@@ -8492,7 +8476,7 @@ export const en = {
         ended: '{{reference}} {{title}} for {{customer}} ended on {{date}} without being renewed.',
         ending: '{{reference}} {{title}} for {{customer}} ends on {{date}}.',
         next: 'Renew a contract to keep its maintenance plans making jobs and its customer’s jobs covered.',
-        action: 'Open contracts',
+        where: 'Open Contracts in your company\u2019s desktop app.',
       },
       deadlines: {
         subjectMissed: 'Deadlines missed — {{company}}',
@@ -8509,16 +8493,8 @@ export const en = {
         completionDue: '{{job}} ({{customer}}): the completion deadline is due at {{when}}.',
         explained:
           'A response deadline is met when the job is dispatched; a completion deadline when it is completed.',
-        action: 'Open the deadlines report',
+        where: 'Open the Deadlines report in your company\u2019s desktop app.',
       },
-    },
-    announcements: {
-      paymentFailed:
-        'A payment for this account has not gone through. Please update the card in Billing. If it is still outstanding on {{date}}, the account becomes read-only — your data stays, but new work cannot be saved.',
-      paymentFailedNoDate:
-        'A payment for this account has not gone through. Please update the card in Billing. If it is still outstanding shortly, the account becomes read-only — your data stays, but new work cannot be saved.',
-      readOnly:
-        'This account is read-only because a payment is outstanding. Nothing has been deleted and nothing will be: everything can still be read and exported. Update the card in Billing and writing is restored straight away.',
     },
   },
 

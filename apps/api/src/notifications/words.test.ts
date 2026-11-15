@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   contractRenewalEmail,
   deadlineAlertEmail,
-  dunningEmail,
   qualificationExpiryEmail,
 } from '../email/messages.js';
 import { fill, messageLocale, wordsFor } from './words.js';
@@ -30,31 +29,29 @@ describe('the language a message is written in', () => {
 describe('reminder emails', () => {
   const base = { to: 'owner@test.integr8.example', companyName: 'Nile Services' };
 
-  it('are written in English unless told otherwise, as before', () => {
-    const message = dunningEmail({
+  it('are written in English unless told otherwise, and name the screen instead of linking', () => {
+    const message = contractRenewalEmail({
       ...base,
-      billingUrl: 'https://app.test/billing',
-      deadline: new Date('2026-11-14T10:00:00Z'),
-      readOnly: false,
+      items: [
+        {
+          reference: 'SC-0001',
+          title: 'Chillers',
+          customer: 'Delta Mall',
+          endsOn: '2026-12-31',
+          stage: 'notice',
+        },
+      ],
     });
-    expect(message.subject).toBe('Payment failed for Nile Services');
-    expect(message.text).toContain('If it is still outstanding on 14 November 2026');
+    expect(message.subject).toBe('Contracts ending soon — Nile Services');
+    expect(message.text).toContain('SC-0001 Chillers for Delta Mall ends on 31 December 2026.');
     expect(message.html).toContain('dir="ltr"');
-    expect(message.html).toContain('Or paste this into your browser:');
+    // No web workspace to link to since P42: the office opens its desktop app.
+    expect(message.text).toContain('Open Contracts in your company’s desktop app.');
+    expect(message.html).not.toContain('<a href');
+    expect(message.actionUrl).toBeUndefined();
   });
 
   it('are written in Arabic, right to left, for a company that uses Arabic', () => {
-    const dunning = dunningEmail({
-      ...base,
-      billingUrl: 'https://app.test/billing',
-      deadline: null,
-      readOnly: true,
-      locale: 'ar',
-    });
-    expect(dunning.subject).toBe('Nile Services للقراءة فقط — توجد دفعة مستحقة');
-    expect(dunning.html).toContain('dir="rtl"');
-    expect(dunning.html).toContain('أو الصق هذا الرابط في متصفحك:');
-
     const certificates = qualificationExpiryEmail({
       ...base,
       items: [
@@ -67,10 +64,11 @@ describe('reminder emails', () => {
         },
       ],
       own: false,
-      url: 'https://app.test/qualifications',
       locale: 'ar',
     });
     expect(certificates.subject).toBe('شهادات منتهية الصلاحية — Nile Services');
+    expect(certificates.html).toContain('dir="rtl"');
+    expect(certificates.text).toContain('افتح الشهادات في تطبيق سطح المكتب الخاص بشركتك.');
     expect(certificates.text).toContain('Omar: انتهت صلاحية Gas Safe في');
 
     const contracts = contractRenewalEmail({
@@ -84,7 +82,6 @@ describe('reminder emails', () => {
           stage: 'notice',
         },
       ],
-      url: null,
       locale: 'ar',
     });
     expect(contracts.subject).toBe('عقود تنتهي قريبًا — Nile Services');
@@ -99,10 +96,8 @@ describe('reminder emails', () => {
           kind: 'response',
           dueAt: '1 Dec 2026, 10:00',
           stage: 'missed',
-          url: null,
         },
       ],
-      url: null,
       locale: 'ar',
     });
     expect(deadlines.subject).toBe('مواعيد نهائية فائتة — Nile Services');

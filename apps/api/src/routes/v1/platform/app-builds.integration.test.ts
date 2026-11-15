@@ -81,7 +81,7 @@ describe('switching a company’s apps on', () => {
     expect(recording().requested.filter((slug) => slug === company.slug)).toHaveLength(1);
 
     // Saving again with apps already on, or anything else, starts nothing.
-    const again = await saveSettings(company.id, { appsEnabled: true, aiWebEnabled: false });
+    const again = await saveSettings(company.id, { appsEnabled: true, aiDesktopEnabled: false });
     expect((JSON.parse(again.body) as { appBuild: AppBuild | null }).appBuild).toBeNull();
     const off = await saveSettings(company.id, { appsEnabled: false });
     expect((JSON.parse(off.body) as { appBuild: AppBuild | null }).appBuild).toBeNull();

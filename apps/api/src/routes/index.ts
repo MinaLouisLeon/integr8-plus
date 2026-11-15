@@ -8,7 +8,6 @@ import { billingRoutes } from './v1/billing.js';
 import { memberRoutes } from './v1/members.js';
 import { onboardingRoutes } from './v1/onboarding.js';
 import { settingsRoutes } from './v1/settings.js';
-import { signupRoutes } from './v1/signup.js';
 import { activityRoutes } from './v1/crm-activities.js';
 import { opportunityRoutes } from './v1/crm-opportunities.js';
 import { pipelineEditRoutes } from './v1/crm-pipelines.js';
@@ -82,7 +81,6 @@ export function allRoutes(config: ApiConfig): AnyRoute[] {
     ...aiShareRoutes,
     ...billingRoutes,
     ...memberRoutes,
-    ...signupRoutes,
     ...settingsRoutes,
     ...publicBrandRoutes,
     ...onboardingRoutes,

@@ -105,7 +105,7 @@ beforeAll(async () => {
   }
   forgetAiPolicy();
   await withTenant(api.tenantId, (tx) =>
-    tx.settings.update({ aiDesktopEnabled: true, aiWebEnabled: true, aiMobileEnabled: true }),
+    tx.settings.update({ aiDesktopEnabled: true, aiMobileEnabled: true }),
   );
   provider.reset();
 });

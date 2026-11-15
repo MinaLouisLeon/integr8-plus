@@ -183,25 +183,26 @@ export function clampToServer(policy: AiPolicyFields, config: ApiConfig): AiPoli
  * phones was one changed header away from a phone using it anyway. A header
  * that disagrees with the session is ignored; the session's app wins.
  *
- * Integr8 staff acting as the company always count as the web app, whatever
- * they signed in to the dashboard with: they work in the company's web
- * workspace. A request with no session record (none reaches here in
- * practice) is held to the web's switch too.
+ * Integr8 staff acting as the company always count as the desktop app: they
+ * work in the company's workspace from the staff desktop app (P42). A request
+ * with no session record (none reaches here in practice) is held to the
+ * desktop's switch too.
  */
 export function sessionClientApp(context: {
   principal: Pick<Principal, 'impersonatedBy'>;
   session?: { clientApp: ClientApp; impersonated: boolean } | undefined;
 }): ClientApp {
   if (context.principal.impersonatedBy !== undefined || context.session?.impersonated === true) {
-    return 'web';
+    return 'desktop';
   }
-  return context.session?.clientApp ?? 'web';
+  return context.session?.clientApp ?? 'desktop';
 }
 
 export function channelOf(clientApp: ClientApp): AiChannel {
-  // An unknown client (a script, `api`) is held to the web's switch: the
-  // strictest reading that still lets the web app's own callers through.
-  return clientApp === 'desktop' ? 'desktop' : clientApp === 'mobile' ? 'mobile' : 'web';
+  // The phone has its own switch; everything else — the desktop apps, and an
+  // older session recorded as `web` or an unknown client — is held to the
+  // desktop's, the office's app since P42.
+  return clientApp === 'mobile' ? 'mobile' : 'desktop';
 }
 
 export interface AiAccess {
@@ -238,7 +239,6 @@ export async function resolveAiAccess(input: {
     limits: await tx.aiMemberLimits.find(input.principal.userId),
   }));
   const channelEnabled = {
-    web: settings.aiWebEnabled,
     desktop: settings.aiDesktopEnabled,
     mobile: settings.aiMobileEnabled,
   }[channel];

@@ -239,70 +239,6 @@ export function passwordChangedEmail(input: {
       });
 }
 
-/**
- * Somebody has signed up and has to prove they own the address.
- *
- * Nothing is created until they click: no company, no bucket, no trial. Said in
- * the message, because it is also the honest answer to "what did I just sign
- * up for".
- */
-export function signupVerificationEmail(input: {
-  to: string;
-  companyName: string;
-  verifyUrl: string;
-  expiresAt: Date;
-}): EmailMessage {
-  return compose({
-    to: input.to,
-    subject: 'Confirm your email address',
-    title: 'Confirm your email address',
-    paragraphs: [
-      `Somebody — we hope you — started setting up ${input.companyName} on Integr8 Plus.`,
-      `Confirming creates the company and starts your trial. The link expires on ${day(input.expiresAt)}.`,
-      'If this was not you, ignore this message. Nothing has been created yet, and nothing will be.',
-    ],
-    action: { label: 'Confirm and create the company', url: input.verifyUrl },
-  });
-}
-
-/**
- * A payment has failed, or a trial has run out (P17).
- *
- * The message P17 could not send. `deadline` is the day writing stops, or null
- * once it already has — the two want different words, and getting them the
- * wrong way round tells somebody their account is fine when it is not.
- */
-export function dunningEmail(input: {
-  to: string;
-  companyName: string;
-  billingUrl: string;
-  deadline: Date | null;
-  readOnly: boolean;
-  locale?: EmailLocale;
-}): EmailMessage {
-  const locale = input.locale ?? 'en';
-  const words = wordsFor(locale).email.dunning;
-  const company = { company: input.companyName };
-  const paragraphs = input.readOnly
-    ? [fill(words.readOnly, company), words.readOnlyKept, words.readOnlyFix]
-    : [
-        fill(words.failed, company),
-        input.deadline === null
-          ? words.failedNoDeadline
-          : fill(words.failedDeadline, { date: dayWords(input.deadline, locale) }),
-        words.failedFix,
-      ];
-
-  return compose({
-    to: input.to,
-    locale,
-    subject: fill(input.readOnly ? words.subjectReadOnly : words.subjectFailed, company),
-    title: input.readOnly ? words.titleReadOnly : words.titleFailed,
-    paragraphs,
-    action: { label: words.action, url: input.billingUrl },
-  });
-}
-
 /** One certificate an expiry alert is about (P26). */
 export interface ExpiryItem {
   /** Whose it is; left out of the holder's own message. */
@@ -326,7 +262,6 @@ export function qualificationExpiryEmail(input: {
   companyName: string;
   items: readonly ExpiryItem[];
   own: boolean;
-  url: string | null;
   locale?: EmailLocale;
 }): EmailMessage {
   const locale = input.locale ?? 'en';
@@ -359,6 +294,10 @@ export function qualificationExpiryEmail(input: {
       : fill(words.team, company),
     ...input.items.map(line),
     input.own ? words.ownNext : words.teamNext,
+    // No link: the office works in the company's desktop app (P42), so the
+    // message names the screen instead. The holder's own message has none:
+    // they send the certificate to the office rather than record it.
+    ...(input.own ? [] : [words.where]),
   ];
   return compose({
     to: input.to,
@@ -366,7 +305,6 @@ export function qualificationExpiryEmail(input: {
     subject: fill(lapsed.length > 0 ? words.subjectExpired : words.subjectExpiring, company),
     title: lapsed.length > 0 ? words.titleExpired : words.titleExpiring,
     paragraphs,
-    ...(input.url === null || input.own ? {} : { action: { label: words.action, url: input.url } }),
   });
 }
 
@@ -387,7 +325,6 @@ export function contractRenewalEmail(input: {
   to: string;
   companyName: string;
   items: readonly RenewalItem[];
-  url: string | null;
   locale?: EmailLocale;
 }): EmailMessage {
   const locale = input.locale ?? 'en';
@@ -406,8 +343,7 @@ export function contractRenewalEmail(input: {
     locale,
     subject: fill(ended.length > 0 ? words.subjectEnded : words.subjectEnding, company),
     title: ended.length > 0 ? words.titleEnded : words.titleEnding,
-    paragraphs: [fill(words.intro, company), ...input.items.map(line), words.next],
-    ...(input.url === null ? {} : { action: { label: words.action, url: input.url } }),
+    paragraphs: [fill(words.intro, company), ...input.items.map(line), words.next, words.where],
   });
 }
 
@@ -419,7 +355,6 @@ export interface DeadlineItem {
   /** Already written in the company's time zone. */
   dueAt: string;
   stage: 'warning' | 'missed';
-  url: string | null;
 }
 
 /**
@@ -430,7 +365,6 @@ export function deadlineAlertEmail(input: {
   to: string;
   companyName: string;
   items: readonly DeadlineItem[];
-  url: string | null;
   locale?: EmailLocale;
 }): EmailMessage {
   const locale = input.locale ?? 'en';
@@ -446,8 +380,7 @@ export function deadlineAlertEmail(input: {
         : item.stage === 'missed'
           ? words.completionMissed
           : words.completionDue;
-    const text = fill(template, { job: item.job, customer: item.customer, when: item.dueAt });
-    return item.url === null ? text : `${text} ${item.url}`;
+    return fill(template, { job: item.job, customer: item.customer, when: item.dueAt });
   };
   return compose({
     to: input.to,
@@ -458,8 +391,8 @@ export function deadlineAlertEmail(input: {
       fill(missed.length > 0 ? words.introMissed : words.introDue, company),
       ...input.items.map(line),
       words.explained,
+      words.where,
     ],
-    ...(input.url === null ? {} : { action: { label: words.action, url: input.url } }),
   });
 }
 
@@ -477,7 +410,6 @@ export function hrSuspensionEmail(input: {
   person: string;
   /** Already written in the company's time zone. */
   when: string;
-  url: string | null;
   locale?: EmailLocale;
 }): EmailMessage {
   const locale = input.locale ?? 'en';
@@ -493,8 +425,7 @@ export function hrSuspensionEmail(input: {
     locale,
     subject: fill(words.subject, values),
     title: words.title,
-    paragraphs: [fill(words.body, values), fill(words.next, values)],
-    ...(input.url === null ? {} : { action: { label: words.action, url: input.url } }),
+    paragraphs: [fill(words.body, values), fill(words.next, values), words.where],
   });
 }
 

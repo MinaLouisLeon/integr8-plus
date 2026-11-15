@@ -1,13 +1,13 @@
 import { shownTabs, toPlatformUserId, toTenantId } from '@integr8/core';
 import { getPlatformDataSource, TENANT_PLANS, type TenantSummary, withTenant } from '@integr8/db';
 import { z } from 'zod';
-import { effectiveBillingMode } from '../../../billing/provider.js';
 import { conflict, notFound, unprocessable } from '../../../http/errors.js';
 import { documentLinkPatternProblem } from '../../../documents/render.js';
 import { applyTabChoice, assertKnownTabs } from '../../../platform/company-tabs.js';
 import { defineRoute, noSchema, type PlatformRequestContext } from '../../../http/routes.js';
 import { forgetTenantStatus } from '../../../http/suspension.js';
 import { onboardCompany } from '../../../platform/onboarding.js';
+import { assertCompanyAppReady, companyAppReadiness } from '../../../platform/company-app-gate.js';
 import { iso, isoOrNull } from '../schemas.js';
 import { deliverInvitation } from '../../../email/deliver.js';
 import { acceptInvitationUrl } from '../../../email/links.js';
@@ -17,7 +17,6 @@ import {
   appBuildSchema,
   companySettingsChangeSchema,
   type companySettingsSchema,
-  billingModeSchema,
   companyDetailSchema,
   companySummarySchema,
   onboardResponseSchema,
@@ -136,11 +135,17 @@ export const getCompanyRoute = defineRoute({
     const tenant = await platform.tenants.findById(params.tenantId);
     const settings = await withTenant(toTenantId(params.tenantId), (tx) => tx.settings.get());
 
+    const companyApp = await companyAppReadiness(
+      { slug: summary.slug, isTest: summary.isTest, appsEnabled: settings.appsEnabled },
+      context.services.appReleases,
+    );
+
     return {
       status: 200,
       body: {
         ...toSummary(summary, scheduled),
         settings: toCompanySettings(settings, flags),
+        companyApp,
         invitations: invitations.map((invitation) => ({
           id: invitation.id,
           email: invitation.email,
@@ -154,20 +159,11 @@ export const getCompanyRoute = defineRoute({
           subscription === undefined
             ? null
             : {
-                provider: subscription.provider,
                 status: subscription.status,
                 plan: subscription.plan,
-                interval: subscription.interval,
-                currentPeriodEnd: isoOrNull(subscription.currentPeriodEnd),
-                cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
                 trialEndsAt: isoOrNull(subscription.trialEndsAt),
-                pastDueSince: isoOrNull(subscription.pastDueSince),
-                graceEndsAt: isoOrNull(subscription.graceEndsAt),
-                remindersSent: subscription.remindersSent,
                 readOnlySince: isoOrNull(tenant?.readOnlySince ?? null),
                 readOnlyReason: tenant?.readOnlyReason ?? null,
-                providerCustomerId: subscription.providerCustomerId,
-                providerSubscriptionId: subscription.providerSubscriptionId,
               },
         featureFlags: flags,
         owners: owners.map((member) => ({
@@ -214,11 +210,6 @@ export const onboardCompanyRoute = defineRoute({
       .describe(
         'The company’s own seat number. When set it replaces the plan’s, higher or lower; null uses the plan’s.',
       ),
-    /**
-     * `invoiced` starts the company active on its plan with no trial, since
-     * Integr8 is taking the money; `self_serve` starts the trial as before.
-     */
-    billingMode: billingModeSchema.default('self_serve'),
     // A real address check, not just a length: the invitations table has one
     // too, and reaching it would mean a 500 after the company row committed.
     ownerEmail: z.email().max(320),
@@ -230,8 +221,8 @@ export const onboardCompanyRoute = defineRoute({
      * what the plan or override grants.
      */
     aiChannels: z
-      .object({ web: z.boolean(), desktop: z.boolean(), mobile: z.boolean() })
-      .default({ web: false, desktop: false, mobile: false }),
+      .object({ desktop: z.boolean(), mobile: z.boolean() })
+      .default({ desktop: false, mobile: false }),
     /**
      * Email the owner's invitation now. Off by default: a company is usually
      * set up first (its forms, job types and look), and the invitation is sent
@@ -275,13 +266,20 @@ export const onboardCompanyRoute = defineRoute({
       // Before anything is made, so a wrong key leaves no half-made company.
       assertKnownTabs(body.tabs);
     }
+    if (body.sendInvitation) {
+      // A new company's apps are off and unbuilt, so this refuses unless it is
+      // a test company or the deployment reads no releases (P42).
+      await assertCompanyAppReady(
+        { slug: body.slug, isTest: body.isTest, appsEnabled: false },
+        context.services.appReleases,
+      );
+    }
 
     const onboarded = await onboardCompany({
       slug: body.slug,
       name: body.name,
       plan: body.plan,
       seats: body.seats,
-      billingMode: body.billingMode,
       ownerEmail: body.ownerEmail,
       websiteUrl: body.websiteUrl ?? null,
       aiChannels: body.aiChannels,
@@ -293,10 +291,6 @@ export const onboardCompanyRoute = defineRoute({
       ownerAccess: { kind: 'invitation' },
       invitationTtlSeconds: INVITATION_TTL_SECONDS,
       media: context.services.media,
-      billing: {
-        provider: context.services.billing.provider,
-        trialDays: context.config.BILLING_TRIAL_DAYS,
-      },
     });
 
     const tabs =
@@ -313,7 +307,6 @@ export const onboardCompanyRoute = defineRoute({
       metadata: {
         plan: body.plan,
         seats: body.seats,
-        billingMode: body.billingMode,
         ownerEmail: body.ownerEmail,
         aiChannels: body.aiChannels,
         isTest: body.isTest,
@@ -330,6 +323,11 @@ export const onboardCompanyRoute = defineRoute({
 
     // Sent now only when asked: usually the company is set up first and the
     // invitation goes from its page when there is something to log in to.
+    const ready =
+      (await companyAppReadiness(
+        { slug: onboarded.tenant.slug, isTest: body.isTest, appsEnabled: false },
+        context.services.appReleases,
+      )) === 'ready';
     const delivery =
       body.sendInvitation && onboarded.invitation !== null
         ? await deliverInvitation({
@@ -349,8 +347,8 @@ export const onboardCompanyRoute = defineRoute({
       body: {
         company: toSummary(summary ?? fallbackSummary(onboarded.tenant), new Map()),
         // Never null on this path — `ownerAccess` is `invitation` above — but
-        // the type allows it because self-serve onboarding makes the owner
-        // directly and has nothing to send.
+        // the type allows it because the demo seeder makes the owner directly
+        // and has nothing to send.
         ownerInvitation: {
           id: onboarded.invitation?.id ?? '',
           email: onboarded.invitation?.email ?? onboarded.tenant.name,
@@ -358,7 +356,7 @@ export const onboardCompanyRoute = defineRoute({
           // The token itself, once, so the dashboard can show a link to send by
           // hand. It is never logged and never stored in plaintext.
           acceptUrl:
-            onboarded.invitation === null
+            onboarded.invitation === null || !ready
               ? null
               : acceptInvitationUrl(context.config.WEB_APP_URL, onboarded.invitation.token),
           emailed: delivery.sent,
@@ -444,9 +442,9 @@ export const setCompanyPlanRoute = defineRoute({
   method: 'patch',
   path: '/v1/platform/companies/:tenantId/plan',
   operationId: 'setCompanyPlan',
-  summary: 'Change a company’s plan, seat count or billing mode',
+  summary: 'Change a company’s plan or seat count',
   description:
-    'Sets the plan the API enforces and, for a company Integr8 invoices, the plan its people see on the billing screen. Switching a company to `invoiced` makes its subscription active with no trial and lifts a read-only state that non-payment caused: Integr8 is taking the money now. Switching back to `self_serve` leaves the subscription as the provider last described it. On a deployment that takes no card payments (`BILLING_PROVIDER=none`) every company is invoiced, and `self_serve` is stored as `invoiced`.',
+    'Sets the plan the API enforces and the plan the company’s people see on its billing screen. Integr8 invoices every company directly (P42), so the subscription becomes active on that plan with no trial.',
   tags: ['platform'],
   security: 'platform',
   params: z.object({ tenantId: z.uuid() }),
@@ -462,8 +460,6 @@ export const setCompanyPlanRoute = defineRoute({
       .describe(
         'The company’s own seat number. When set it replaces the plan’s, higher or lower; null uses the plan’s.',
       ),
-    /** Left out: unchanged. */
-    billingMode: billingModeSchema.optional(),
   }),
   responses: {
     200: { description: 'Changed.', schema: companySummarySchema },
@@ -474,51 +470,27 @@ export const setCompanyPlanRoute = defineRoute({
     const tenant = await platform.tenants.setPlan(params.tenantId, {
       plan: body.plan,
       seats: body.seats,
-      // With no card provider every company is invoiced (BILLING_PROVIDER=none).
-      ...(body.billingMode === undefined
-        ? {}
-        : {
-            billingMode:
-              context.services.billing.provider === 'none' ? 'invoiced' : body.billingMode,
-          }),
     });
     if (tenant === undefined) {
       throw notFound(`No company with id ${params.tenantId}`);
     }
 
     // The subscription row is what `/v1/billing/subscription` shows the
-    // company, so it has to agree with the plan just set. For a self-serve
-    // company that is all this touches: status, period and dunning belong to
-    // the provider. For an invoiced one there is no provider to wait for.
-    const invoiced =
-      effectiveBillingMode(tenant.billingMode, context.services.billing) === 'invoiced';
+    // company, so it has to agree with the plan just set.
     const subscription = await platform.billing.find(tenant.id);
     if (subscription === undefined) {
       await platform.billing.start({
         tenantId: tenant.id,
-        provider: context.services.billing.provider,
         plan: body.plan,
         trialEndsAt: null,
-        status: invoiced ? 'active' : 'trialing',
+        status: 'active',
       });
     } else {
       await platform.billing.update(tenant.id, {
         plan: body.plan,
-        ...(invoiced
-          ? {
-              status: 'active',
-              trialEndsAt: null,
-              pastDueSince: null,
-              graceEndsAt: null,
-              remindersSent: 0,
-            }
-          : {}),
+        status: 'active',
+        trialEndsAt: null,
       });
-    }
-    if (invoiced && tenant.readOnlySince !== null) {
-      // Read-only is how non-payment ends under self-serve. Integr8 invoicing
-      // the company is the payment arrangement now, so writes come back.
-      await platform.tenants.setReadOnly(tenant.id, null);
     }
 
     // The plan decides the storage allowance (P16), and the door-check caches
@@ -533,7 +505,7 @@ export const setCompanyPlanRoute = defineRoute({
       tenantSlug: tenant.slug,
       targetKind: 'tenant',
       targetId: tenant.id,
-      metadata: { plan: body.plan, seats: body.seats, billingMode: tenant.billingMode },
+      metadata: { plan: body.plan, seats: body.seats },
     });
 
     return { status: 200, body: await summaryOf(tenant.id) };
@@ -554,7 +526,6 @@ export const updateCompanySettingsRoute = defineRoute({
   body: z.object({
     websiteUrl: websiteUrlSchema.nullable().optional(),
     appsEnabled: z.boolean().optional(),
-    aiWebEnabled: z.boolean().optional(),
     aiDesktopEnabled: z.boolean().optional(),
     aiMobileEnabled: z.boolean().optional(),
     documentLinkPattern: z.string().trim().max(500).nullable().optional(),
@@ -759,7 +730,6 @@ function toCompanySettings(
     defaultTheme: 'light' | 'dark' | 'system';
     websiteUrl: string | null;
     appsEnabled: boolean;
-    aiWebEnabled: boolean;
     aiDesktopEnabled: boolean;
     aiMobileEnabled: boolean;
     showCompanyName: boolean;
@@ -776,7 +746,6 @@ function toCompanySettings(
     defaultTheme: settings.defaultTheme,
     websiteUrl: settings.websiteUrl,
     appsEnabled: settings.appsEnabled,
-    aiWebEnabled: settings.aiWebEnabled,
     aiDesktopEnabled: settings.aiDesktopEnabled,
     aiMobileEnabled: settings.aiMobileEnabled,
     showCompanyName: settings.showCompanyName,
@@ -800,7 +769,6 @@ function toSummary(
     status: company.status,
     plan: company.plan,
     seats: company.seats,
-    billingMode: company.billingMode,
     members: company.members,
     activeMembers: company.activeMembers,
     storageBytes: company.storageBytes,
@@ -831,7 +799,6 @@ function fallbackSummary(tenant: {
   status: TenantSummary['status'];
   plan: TenantSummary['plan'];
   seats: number | null;
-  billingMode: TenantSummary['billingMode'];
   createdAt: Date;
   suspendedAt: Date | null;
   suspendedReason: string | null;
