@@ -47,8 +47,8 @@ export const AI_POLICY_MODES = ['inherit', 'custom'] as const;
 export const aiPolicyModeSchema = z.enum(AI_POLICY_MODES);
 export type AiPolicyMode = z.infer<typeof aiPolicyModeSchema>;
 
-/** Which of a company's apps the assistant may appear in. Each is a switch the company owns. */
-export const AI_CHANNELS = ['web', 'desktop', 'mobile'] as const;
+/** Which of a company's apps the assistant may appear in (desktop and phone; P42). Each is a switch the company owns. */
+export const AI_CHANNELS = ['desktop', 'mobile'] as const;
 export const aiChannelSchema = z.enum(AI_CHANNELS);
 export type AiChannel = z.infer<typeof aiChannelSchema>;
 

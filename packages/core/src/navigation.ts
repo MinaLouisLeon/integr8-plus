@@ -4,12 +4,11 @@ import type { Permission } from './permissions.js';
 /**
  * The dashboard's map, as data.
  *
- * The web app and the desktop app each draw a side menu, and the two must not
- * drift: a section one of them forgets is a section half the company cannot
- * find. So the sections live here, once, with the permission that reveals each
- * and the icon that names it, and each app draws them with its own primitives.
- * No React in this package, by the repo's rule; a `path` is a key the app maps
- * to its own route, since the web uses `/work-orders` and the desktop a hash.
+ * The desktop app draws a side menu from it, and the staff app lists the same
+ * sections as the tabs it switches on and off per company, and the phone maps
+ * its home buttons to them. So the sections live here, once, with the
+ * permission that reveals each and the icon that names it. No React in this
+ * package, by the repo's rule; a `path` is a key the app maps to its own route.
  *
  * `label` and `hint` are i18n keys under `nav.*`, not words.
  */
@@ -75,15 +74,11 @@ export interface NavSection {
   /** A stable key; also the i18n suffix: `nav.section.<key>` and `nav.hint.<key>`. */
   key: string;
   group: NavGroup;
-  /** The app's route key. The web maps it to a path, the desktop to a hash route. */
+  /** The app's route key, which the desktop maps to a hash route. */
   path: NavPath;
   icon: NavIcon;
   /** Shown only to a seat holding this; absent means everybody signed in. */
   permission?: Permission;
-  /** Only the desktop app has this screen (the form builder, company branding, company roles). */
-  desktopOnly?: boolean;
-  /** Only the web app has this screen (billing, storage, people, get started). */
-  webOnly?: boolean;
   /**
    * Shown only to a company with this module switched on (the CRM). The
    * permission still applies as well: the module says the company has it, the
@@ -204,14 +199,13 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     feature: 'documents',
   },
   { key: 'workOrders', group: 'work', path: 'workOrders', icon: 'briefcase' },
-  // The scheduling board (P25): a calendar of visits, on the desktop only.
+  // The scheduling board (P25): a calendar of visits.
   {
     key: 'schedule',
     group: 'work',
     path: 'schedule',
     icon: 'calendar-check',
     permission: 'work_order.read_all',
-    desktopOnly: true,
   },
   // Skills and certificates (P26): who holds what, and what is running out.
   {
@@ -561,7 +555,6 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     path: 'forms',
     icon: 'clipboard',
     permission: 'form.read',
-    desktopOnly: true,
   },
   { key: 'jobTypes', group: 'setup', path: 'jobTypes', icon: 'tag' },
   {
@@ -570,7 +563,6 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     path: 'branding',
     icon: 'palette',
     permission: 'branding.manage',
-    desktopOnly: true,
   },
   // Whether the company has e-invoicing at all (ADR-0014): Integr8's switch,
   // shown only to staff acting as the company, and whatever the module's state.
@@ -580,28 +572,24 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     path: 'eInvoicingSwitch',
     icon: 'scale',
     permission: 'eta.switch',
-    desktopOnly: true,
   },
 
-  { key: 'getStarted', group: 'company', path: 'getStarted', icon: 'rocket', webOnly: true },
+  { key: 'getStarted', group: 'company', path: 'getStarted', icon: 'rocket' },
   {
     key: 'people',
     group: 'company',
     path: 'people',
     icon: 'user-plus',
     permission: 'member.read',
-    webOnly: true,
   },
-  // The company's own roles (ADR-0013). The web keeps them under People; the
-  // desktop has no People screen, so they get a tab of their own there, for
-  // those who give roles out: the owner changes them, an admin reads them.
+  // The company's own roles (ADR-0013), for those who give roles out: the
+  // owner changes them, an admin reads them. People gives the roles to people.
   {
     key: 'companyRoles',
     group: 'company',
     path: 'companyRoles',
     icon: 'users',
     permission: 'member.update_role',
-    desktopOnly: true,
   },
   {
     key: 'companySettings',
@@ -609,7 +597,6 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     path: 'companySettings',
     icon: 'building',
     permission: 'tenant.update',
-    webOnly: true,
   },
   {
     key: 'websiteAccess',
@@ -617,7 +604,6 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     path: 'websiteAccess',
     icon: 'building',
     permission: 'website.access.manage',
-    webOnly: true,
   },
   {
     key: 'storage',
@@ -625,7 +611,6 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     path: 'storage',
     icon: 'database',
     permission: 'storage.read',
-    webOnly: true,
   },
   {
     key: 'billing',
@@ -633,14 +618,12 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     path: 'billing',
     icon: 'credit-card',
     permission: 'billing.read',
-    webOnly: true,
   },
 ];
 
 /** The platform dashboard's sections (Integr8's own), one group. */
 export type PlatformNavPath =
   | 'companies'
-  | 'funnel'
   | 'storage'
   | 'plans'
   | 'audit'
@@ -659,7 +642,6 @@ export interface PlatformNavSection {
 
 export const PLATFORM_NAV_SECTIONS: readonly PlatformNavSection[] = [
   { key: 'companies', icon: 'building' },
-  { key: 'funnel', icon: 'funnel' },
   { key: 'storage', icon: 'database' },
   { key: 'plans', icon: 'credit-card' },
   { key: 'audit', icon: 'list' },
@@ -673,14 +655,11 @@ export const PLATFORM_NAV_SECTIONS: readonly PlatformNavSection[] = [
   { key: 'downloads', icon: 'download' },
 ];
 
-export type NavApp = 'web' | 'desktop';
-
 /**
- * The sections one seat sees in one app, grouped and in order. Empty groups
- * are dropped, so a viewer never sees a "Set-up" heading with nothing under it.
+ * The sections one seat sees, grouped and in order. Empty groups are dropped,
+ * so a viewer never sees a "Set-up" heading with nothing under it.
  */
 export function visibleNavigation(
-  app: NavApp,
   permissions: readonly Permission[],
   /**
    * The company's resolved feature flags, as `/v1/me` returns them. A section
@@ -702,9 +681,7 @@ export function visibleNavigation(
       !(hidden.has(section.key) && isSwitchableSection(section.key)) &&
       (section.permission === undefined || held.has(section.permission)) &&
       (section.feature === undefined || hasFeature(features, section.feature)) &&
-      (section.assistant !== true || options.assistant === true) &&
-      !(section.desktopOnly === true && app !== 'desktop') &&
-      !(section.webOnly === true && app !== 'web'),
+      (section.assistant !== true || options.assistant === true),
   );
   return NAV_GROUPS.map((group) => ({
     group,
