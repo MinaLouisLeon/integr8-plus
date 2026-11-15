@@ -242,6 +242,20 @@ describe('waiting for the company’s own desktop app (P42, D6)', () => {
     expect(body.acceptUrl).toContain(`${WEB}/accept-invitation`);
   });
 
+  it('holds invitations sent from inside the company too', async () => {
+    // The harness's own company: apps off, nothing built.
+    const owner = await api.member('owner', 'gate-owner');
+    const token = await api.signIn(owner);
+    const refused = await api.call(token, {
+      method: 'POST',
+      url: '/v1/members/invitations',
+      headers: { 'idempotency-key': randomUUID() },
+      payload: { email: `engineer-${randomUUID().slice(0, 8)}@gate.example`, role: 'engineer' },
+    });
+    expect(refused.statusCode, refused.body).toBe(409);
+    expect(json<{ error: { code: string } }>(refused).error.code).toBe('company_app_not_built');
+  });
+
   it('does not hold up a test company, which gets no app builds', async () => {
     const slug = `inv-${randomUUID().slice(0, 8)}`;
     const response = await api.call(admin.accessToken, {

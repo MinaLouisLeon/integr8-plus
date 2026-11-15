@@ -1,4 +1,5 @@
-import { ApiError, conflict } from '../http/errors.js';
+import { getPlatformDataSource, withTenant } from '@integr8/db';
+import { ApiError, conflict, notFound } from '../http/errors.js';
 import type { AppReleases } from './app-releases.js';
 
 /**
@@ -69,4 +70,25 @@ export async function assertCompanyAppReady(
       "The app releases could not be read just now, so whether this company's desktop app exists is unknown. Try again in a minute.",
     );
   }
+}
+
+/**
+ * The same rule for a company by id, for the invitation routes on either
+ * side: staff sending the owner's from the staff app, and anybody sending one
+ * from inside the company (staff acting as the company could otherwise invite
+ * the owner from its People screen before its app exists).
+ */
+export async function assertCompanyAppReadyFor(
+  tenantId: string,
+  releases: AppReleases,
+): Promise<void> {
+  const tenant = await getPlatformDataSource().tenants.findById(tenantId);
+  if (tenant === undefined) {
+    throw notFound(`No company with id ${tenantId}`);
+  }
+  const settings = await withTenant(tenantId, (tx) => tx.settings.get());
+  await assertCompanyAppReady(
+    { slug: tenant.slug, isTest: tenant.isTest, appsEnabled: settings.appsEnabled },
+    releases,
+  );
 }

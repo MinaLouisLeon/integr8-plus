@@ -88027,8 +88027,6 @@ export interface operations {
                             submissionsPerMonth: number | null;
                             priceCents: number | null;
                             currency: string | null;
-                            providerPriceMonthly: string | null;
-                            providerPriceYearly: string | null;
                             /** Format: date-time */
                             updatedAt: string;
                         }[];
@@ -88103,8 +88101,6 @@ export interface operations {
                     submissionsPerMonth?: number | null;
                     priceCents?: number | null;
                     currency?: string | null;
-                    providerPriceMonthly?: string | null;
-                    providerPriceYearly?: string | null;
                 };
             };
         };
@@ -88127,8 +88123,6 @@ export interface operations {
                         submissionsPerMonth: number | null;
                         priceCents: number | null;
                         currency: string | null;
-                        providerPriceMonthly: string | null;
-                        providerPriceYearly: string | null;
                         /** Format: date-time */
                         updatedAt: string;
                     };

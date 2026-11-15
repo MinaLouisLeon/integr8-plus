@@ -28,6 +28,7 @@ import {
 } from './member-rules.js';
 import { assertMayGiveRole, customRoleBody, customRoleNames } from './roles.js';
 import { inviterName } from './workspace.js';
+import { assertCompanyAppReadyFor } from '../../platform/company-app-gate.js';
 
 /**
  * Managing the people already here (P18).
@@ -188,10 +189,15 @@ export const resendInvitationRoute = defineRoute({
   responses: {
     200: { description: 'A new invitation, sent.', schema: invitationSchema },
     404: { description: 'No such invitation, or it has been accepted or withdrawn.' },
+    409: {
+      description: '`company_app_not_built`: the company has no desktop app to sign in to yet.',
+    },
   },
   handler: async ({ params }, context) => {
     const tenantId = context.principal.tenantId;
     const actor = toUserId(context.principal.userId);
+    // Nobody is invited before the company's own desktop app exists (P42, D6).
+    await assertCompanyAppReadyFor(tenantId, context.services.appReleases);
 
     const reissued = await withTenant(tenantId, async (tx) => {
       const pending = (await tx.invitations.listPending()).find(

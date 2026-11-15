@@ -708,3 +708,23 @@ describe('how a company pays (P42: Integr8 invoices every company)', () => {
     }
   });
 });
+
+describe('plans (P42: no card provider)', () => {
+  it('lists the plans and changes one, with no provider price ids anywhere', async () => {
+    const listed = await api.call(admin.accessToken, { method: 'GET', url: '/v1/platform/plans' });
+    expect(listed.statusCode, listed.body).toBe(200);
+    const plans = (JSON.parse(listed.body) as { items: Record<string, unknown>[] }).items;
+    expect(plans.length).toBeGreaterThan(0);
+    for (const plan of plans) {
+      expect(plan).not.toHaveProperty('providerPriceMonthly');
+    }
+
+    const changed = await api.call(admin.accessToken, {
+      method: 'PATCH',
+      url: '/v1/platform/plans/starter',
+      payload: { priceCents: 49_900, currency: 'EGP' },
+    });
+    expect(changed.statusCode, changed.body).toBe(200);
+    expect(JSON.parse(changed.body)).toMatchObject({ priceCents: 49_900, currency: 'EGP' });
+  });
+});

@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { deliverInvitation } from '../../../email/deliver.js';
 import { acceptInvitationUrl } from '../../../email/links.js';
 import { notFound } from '../../../http/errors.js';
-import { assertCompanyAppReady } from '../../../platform/company-app-gate.js';
+import { assertCompanyAppReadyFor } from '../../../platform/company-app-gate.js';
 import { defineRoute, noSchema } from '../../../http/routes.js';
 import { iso } from '../schemas.js';
 import { recordPlatformAction } from './audit.js';
@@ -229,15 +229,7 @@ export const resendInvitationRoute = defineRoute({
     const tenantId = toTenantId(params.tenantId);
     const platformUserId = context.platform.platformUserId;
 
-    const tenant = await getPlatformDataSource().tenants.findById(params.tenantId);
-    if (tenant === undefined) {
-      throw notFound(`No company with id ${params.tenantId}`);
-    }
-    const settings = await withTenant(tenantId, (tx) => tx.settings.get());
-    await assertCompanyAppReady(
-      { slug: tenant.slug, isTest: tenant.isTest, appsEnabled: settings.appsEnabled },
-      context.services.appReleases,
-    );
+    await assertCompanyAppReadyFor(params.tenantId, context.services.appReleases);
 
     const reissued = await withTenant(tenantId, async (tx) => {
       const pending = (await tx.invitations.listPending()).find(

@@ -20,6 +20,7 @@ import {
   sessionSchema,
 } from './schemas.js';
 import { customRoleBody, customRoleNames, customRoleOf } from './roles.js';
+import { assertCompanyAppReadyFor } from '../../platform/company-app-gate.js';
 
 /**
  * Who I am, my devices, and the people in this company.
@@ -322,7 +323,10 @@ export const inviteMemberRoute = defineRoute({
   }),
   responses: {
     201: { description: 'The invitation was created.', schema: invitationSchema },
-    409: { description: 'Every seat on this plan is taken (`seat_limit_reached`).' },
+    409: {
+      description:
+        'Every seat on this plan is taken (`seat_limit_reached`), or the company’s own desktop app is not built yet (`company_app_not_built`).',
+    },
     422: { description: 'Already a member, or a role above the inviter’s own.' },
   },
   handler: async ({ body }, context) => {
@@ -335,6 +339,8 @@ export const inviteMemberRoute = defineRoute({
       tenantId: context.principal.tenantId,
       plan: await planFor(context.principal.tenantId),
     });
+    // Nobody is invited before the company's own desktop app exists (P42, D6).
+    await assertCompanyAppReadyFor(context.principal.tenantId, context.services.appReleases);
 
     const { invitation, token } = await context.services.invitations.invite(context.principal, {
       email: body.email,

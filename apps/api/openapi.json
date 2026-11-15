@@ -208341,14 +208341,6 @@
                             "nullable": true,
                             "type": "string"
                           },
-                          "providerPriceMonthly": {
-                            "nullable": true,
-                            "type": "string"
-                          },
-                          "providerPriceYearly": {
-                            "nullable": true,
-                            "type": "string"
-                          },
                           "updatedAt": {
                             "type": "string",
                             "format": "date-time",
@@ -208365,8 +208357,6 @@
                           "submissionsPerMonth",
                           "priceCents",
                           "currency",
-                          "providerPriceMonthly",
-                          "providerPriceYearly",
                           "updatedAt"
                         ],
                         "additionalProperties": false
@@ -208520,16 +208510,6 @@
                     "type": "string",
                     "minLength": 3,
                     "maxLength": 3
-                  },
-                  "providerPriceMonthly": {
-                    "nullable": true,
-                    "type": "string",
-                    "maxLength": 255
-                  },
-                  "providerPriceYearly": {
-                    "nullable": true,
-                    "type": "string",
-                    "maxLength": 255
                   }
                 }
               }
@@ -208599,14 +208579,6 @@
                       "nullable": true,
                       "type": "string"
                     },
-                    "providerPriceMonthly": {
-                      "nullable": true,
-                      "type": "string"
-                    },
-                    "providerPriceYearly": {
-                      "nullable": true,
-                      "type": "string"
-                    },
                     "updatedAt": {
                       "type": "string",
                       "format": "date-time",
@@ -208623,8 +208595,6 @@
                     "submissionsPerMonth",
                     "priceCents",
                     "currency",
-                    "providerPriceMonthly",
-                    "providerPriceYearly",
                     "updatedAt"
                   ],
                   "additionalProperties": false
