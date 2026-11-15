@@ -1,6 +1,6 @@
 import { createI18n, I18nextProvider, type Locale } from '@integr8/i18n';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState, type ReactNode } from 'react';
 import { HashRouter, Navigate, Outlet, Route, Routes, useNavigate } from 'react-router';
 import { AppFrame } from '~/components/app-frame';
 import { ClientTooOldBanner } from '~/components/client-too-old-banner';
@@ -14,7 +14,9 @@ import {
   writePreferences,
   type Preferences,
 } from '~/lib/preferences';
+import { APP_FLAVOR } from '~/lib/env';
 import { session, whenSignedOut } from '~/lib/session';
+import { afterCompanySignOut } from '~/lib/staff-bridge';
 import { FormBuilderRoute } from '~/features/forms/routes/form-builder';
 import { ChangePasswordRoute } from '~/routes/change-password';
 import { FormVersionRoute } from '~/features/forms/routes/form-version';
@@ -139,6 +141,20 @@ import { SignInRoute } from '~/routes/sign-in';
  * between sections redraws the screen and not the menu. The sign-in screen
  * stands alone.
  */
+
+/**
+ * The staff dashboard (P42), for the staff build and the development build
+ * only. Vite inlines the flavour, so in a company's build this is `null` and
+ * the dashboard's module is left out of the bundle altogether
+ * (`scripts/check-company-bundle.mjs` checks).
+ */
+const PlatformApp =
+  import.meta.env.VITE_APP_FLAVOR === 'company'
+    ? null
+    : lazy(() => import('~/features/platform/routes'));
+
+/** Where the app opens: the staff dashboard in the staff build, the company's elsewhere. */
+const HOME = APP_FLAVOR === 'staff' ? '/platform' : '/dashboard';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -290,6 +306,16 @@ export function App() {
           <ContextMenuProvider>
             <Routes>
               <Route path="/sign-in" element={<SignInRoute />} />
+              {PlatformApp === null ? null : (
+                <Route
+                  path="/platform/*"
+                  element={
+                    <Suspense fallback={<LoadingState />}>
+                      <PlatformApp locale={preferences.locale} onLocaleChange={changeLocale} />
+                    </Suspense>
+                  }
+                />
+              )}
               <Route
                 element={
                   <RequireSession locale={preferences.locale} onLocaleChange={changeLocale} />
@@ -299,7 +325,7 @@ export function App() {
                   <Route key={path} path={path} element={element} />
                 ))}
               </Route>
-              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+              <Route path="*" element={<Navigate to={HOME} replace />} />
             </Routes>
           </ContextMenuProvider>
         </HashRouter>
@@ -333,11 +359,20 @@ function RequireSession({
     whenSignedOut(() => {
       // Whoever signs in next starts from nothing of this session's.
       queries.clear();
-      void navigate('/sign-in', { replace: true });
+      // Staff working inside a company go back to the dashboard (P42).
+      void navigate(afterCompanySignOut(), { replace: true });
     });
 
     void (async () => {
-      const allowed = await session().isSignedIn();
+      let allowed = await session().isSignedIn();
+      // A company session in the staff app exists only beside a staff
+      // session, which is held in memory (P42, D2). After a restart there is
+      // none, so a company session left in the credential store is ended
+      // rather than let in without the staff sign-in.
+      if (allowed && APP_FLAVOR === 'staff' && afterCompanySignOut() === '/sign-in') {
+        await session().signOut();
+        allowed = false;
+      }
       if (cancelled) {
         return;
       }

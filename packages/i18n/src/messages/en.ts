@@ -649,6 +649,8 @@ export const en = {
     },
 
     impersonationBanner: 'You are viewing this account as {{name}}. Everything you do is recorded.',
+    // P42: the staff app's way out of a company, back to its dashboard.
+    backToDashboard: 'Back to the dashboard',
     // The desktop app's strip when a newer version is ready (P20). Windows closes
     // the app to install it and the installer opens the new version.
     appUpdate: {
@@ -8869,6 +8871,15 @@ export const en = {
       copyLink: 'Copy a new link',
       copied: 'A new link is copied. It replaces the old one.',
       failed: 'The email could not be sent ({{problem}}). Use “Copy a new link” instead.',
+      // P42 (D6): an invitation waits for the company's own desktop app.
+      waitForApp: {
+        apps_off:
+          'Invitations wait for this company’s own desktop app. Switch its apps on and build them under Website and apps, then send.',
+        not_built:
+          'Invitations wait for this company’s own desktop app, which has not been built yet. Build its apps under Website and apps and send once the release is out.',
+        unavailable:
+          'The app releases could not be checked just now, so invitations cannot be sent. Try again in a minute.',
+      },
     },
     apps: {
       title: 'Website and apps',
@@ -8955,6 +8966,11 @@ export const en = {
       endedBy: 'Ended',
       banner:
         'You are acting as {{name}} at {{company}}. Everything you do is recorded against you.',
+    },
+    // P42 (D3): working inside a company from the staff app, as the company itself.
+    workInside: {
+      action: 'Work inside this company',
+      title: 'Work inside {{name}}',
     },
     lifecycle: {
       export: 'Export their data',
