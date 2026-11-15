@@ -2,7 +2,7 @@ import { ApiRequestError } from '@integr8/api-client';
 
 /**
  * Members' shares of the company's assistant allowance, read and written as
- * the desktop's assistant settings screen needs them (docs/ai/ADR-0002 D6, D7).
+ * the desktop's assistant settings screen needs them (docs/ai/README.md D6, D7).
  *
  * Pure, so the rules a person can trip over — what the box accepts, and what
  * each refusal means — are tested without a window.

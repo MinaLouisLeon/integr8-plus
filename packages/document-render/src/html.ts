@@ -26,7 +26,7 @@ import { qrSvg } from './qr.js';
 import { type DocumentLocale, wordsFor } from './words.js';
 
 /**
- * A template and a submission as one HTML page (docs/documents/ADR-0001 D4).
+ * A template and a submission as one HTML page (docs/documents/README.md D4).
  *
  * The server prints the page to PDF with Chromium; the designer shows the same
  * page as its live preview, so what staff see is what the PDF becomes. Every

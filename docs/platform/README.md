@@ -1,425 +1,166 @@
-# Running the business
+# The staff dashboard
 
-Everything a super admin does — onboard a company, support one, suspend one, close one — is a
-route under `/v1/platform` and a screen in the dashboard (P15). Nothing here needs a terminal,
-a psql session or the Cloudflare console, which is the whole point: any manual step becomes the
-bottleneck the moment there are ten customers.
+Everything Integr8 staff do (onboard, support, suspend, close a company; plans,
+billing, flags, templates, releases) is a route under `/v1/platform` and a screen
+in the web app's `/platform` dashboard, which wears the Integr8 Media look. The
+staff desktop app has none of these screens: staff use it to work **inside** a
+company through impersonation, mainly to build forms and set branding.
 
 ```
-apps/api/src/routes/v1/platform
-  auth.ts           sign in, refresh, sign out, who am I
-  companies.ts      the directory, one company, onboarding, suspend, reactivate, plan
-  lifecycle.ts      export, schedule a deletion, cancel it
-  impersonation.ts  act as a user, stop, and every time anybody did
-  audit.ts          the platform audit log, and the one way to write to it
-  settings.ts       feature flags, announcements
-  templates.ts      the global form template library: built-in and staff-made (1.3.0)
-  template-packages.ts  a .integr8form file into the library, any template out to one (1.3.0)
-  support.ts        recent failures, unlock, unstick sync, releases in the field
-        │
-apps/api/src/platform
-  onboarding.ts     company + job types + owner invitation + bucket, in one action
-  app-builds.ts     asks GitHub to build one company's own apps (APP_BUILDS)
-  export.ts         everything a company has, as one gzipped JSON file
-  purge.ts          bucket first, then rows — see below
-        │
-@integr8/auth       PlatformSessionService: password, then a six-digit code
-@integr8/db         platform_sessions, platform_audit_log, feature_flags, announcements,
-                    tenant_exports, tenant_deletions, purge_tenant()
+apps/api/src/routes/v1/platform   auth, companies, lifecycle, impersonation, audit, settings,
+                                  templates, template-packages, support, staff, storage, funnel,
+                                  health, ai, website-keys
+apps/api/src/platform             onboarding, app builds, export, purge, admin-cli
+apps/web/src/app/platform         companies, funnel, storage, plans, audit, flags, announcements,
+                                  templates, releases, health, staff, downloads
 ```
-
----
 
 ## Signing in
 
-A platform session is **not** a tenant session, all the way down: a different table, a
-different token type, a different lifetime.
+A platform session is not a company session: its own table
+(`platform_sessions`), token type (`platform`) and limits. Staff accounts live in
+`platform_users` (scrypt password and an always-required six-digit authenticator
+code, its secret sealed with `PLATFORM_SECRET_KEY`; rotating that key makes every
+second factor unreadable). Access tokens last 5 minutes, sessions at most 8
+hours; lockout after 5 failures. A wrong password, a wrong code and an unknown
+address get the same answer. A platform token cannot reach a company route at
+all.
 
-|                   | Customer      | Super admin                                  |
-| ----------------- | ------------- | -------------------------------------------- |
-| Credentials       | Supabase Auth | `platform_users`, scrypt, beside the account |
-| Second factor     | —             | Always. Six digits, RFC 6238                 |
-| Token `typ`       | `access`      | `platform`                                   |
-| Carries a company | `tid`, always | Nothing. There is no company                 |
-| Access token      | 15 minutes    | 5 minutes                                    |
-| Session ceiling   | 90 days       | 8 hours                                      |
-
-The third token type was the alternative to letting `tid` be null on an access token. A
-nullable `tid` would have meant every handler in the system asking whether the company it was
-about to act for was really there. A separate type means a platform token cannot reach a tenant
-handler at all: `verifyAccessToken` rejects it on `typ` before the claims are read.
-
-Both factors are always checked, even when the password is wrong and even when the account is
-not set up, so the time an answer takes does not say which half failed. A wrong password, a
-wrong code and an unknown address are the same sentence. A locked account is the one case that
-says more, because waiting is the fix and the person needs to know that.
-
-The TOTP secret is encrypted at rest with `PLATFORM_SECRET_KEY` (AES-256-GCM). A stolen
-database backup yields nothing without the key; a stolen key yields nothing without the backup.
-**Rotating that key makes every enrolled second factor unreadable** and every super admin has
-to enrol again — plan it.
-
-### A session limited to test companies (0077, P38)
-
-`POST /v1/platform/auth/sign-in` takes an optional `scope: "test_companies"`. The developer MCP
-server's terminal login (`pnpm dev-mcp login`, [developer-mcp.md](../contributing/developer-mcp.md))
-asks for it; the dashboard never does. Such a session:
-
-- ends **8 hours after sign-in**, whatever happens; refreshing never moves the end or changes the
-  scope (`sessionExpiresAt` and `scope` come back with every token pair, and from `/v1/platform/me`);
-- may call only the platform routes that list `test_companies` in their `platformScopes`
-  (`apps/api/src/http/session-scope.ts`): `me`, sign-out, the companies list (which then holds
-  test companies only), one company's page, starting, ending and listing impersonation, and a
-  test company's outbox and audit lines. `session-scope.test.ts` pins that list;
-- on a route whose path names a company (`:tenantId`) is refused for any company that is not a
-  test company, or does not exist, with the same answer;
-- is refused everywhere else with 403 `session_scope`, and each refusal is written to the platform
-  audit log as `platform.session_scope_refused`;
-- starts impersonation only with a reason beginning `Developer MCP:` (422
-  `developer_reason_required` otherwise); the grant records `from_limited_session`.
-
-New platform routes are closed to it by default: a route opens only by listing the scope.
-
----
-
-## Test companies (0077, P38)
-
-A company is a **test company** from the moment it is created, or never: `tenants.is_test` is
-written by the insert and a trigger refuses any later change, in either direction, so a real
-company can never become one the developer tool may enter. The demo seeder always makes test
-companies; the onboarding form has a **Test company** switch, off by default, with a warning.
-
-| Area            | For a test company                                                                                                  |
-| --------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Dashboard       | A **Test** badge on the list and the company page; **Show** filters all, real or test companies (`?test=`)          |
-| Billing         | Not in `billing.list`, lapsed trials or dunning; not listed for storage overage                                     |
-| Totals          | Left out of the sign-up funnel. The storage page's projected Cloudflare bill still counts it: Cloudflare charges it |
-| Email and push  | Not sent. Kept in `test_outbox` for 7 days (`GET /v1/platform/companies/{id}/test-outbox`)                          |
-| Company apps    | Refused (409 `test_company_no_apps`), and never in the release pipeline's list                                      |
-| Everything else | Unchanged: plan limits, modules, tabs, export, close and purge work as for any company                              |
-
-The places that send are `email/deliver.ts` (every company email passes `tenantId`; a sign-in
-code is kept when every company of the address is a test company) and the push senders' callers
-(`push/notify.ts`, deadline alerts, certificate expiry), all through `test-companies/outbox.ts`.
-`GET /v1/platform/companies/{id}/test-audit` reads a test company's own audit log, so the
-developer tool can read back what a call changed.
-
----
+**A session limited to test companies.** `POST /v1/platform/auth/sign-in` with
+`scope: "test_companies"` (the developer MCP server's terminal login; the
+dashboard never asks for it) ends 8 hours after sign-in whatever happens, may
+call only routes listing `test_companies` in `platformScopes` (me, sign-out, the
+companies list of test companies, one company's page, impersonation, a test
+company's outbox and audit lines; pinned by `session-scope.test.ts`), is refused
+for any company that is not a test company, starts impersonation only with a
+reason beginning `Developer MCP:`, and gets 403 `session_scope` elsewhere,
+audited as `platform.session_scope_refused`. New platform routes are closed to it
+unless they list the scope.
 
 ## Staff
 
-The dashboard's **Staff** page lists everybody who can sign in to it. Everybody signed in can
-see the list; only a **staff manager** can change it.
-
-A staff manager is an account made with the terminal command on the server:
+The **Staff** page lists everyone who can sign in; only a **staff manager** (an
+account made with the terminal command) changes it: add somebody (a generated
+password and authenticator secret shown once), give new credentials, remove
+(deactivated, not deleted; sessions and impersonations end). Terminal accounts
+are never changed from the dashboard.
 
 ```bash
-docker compose -f deploy/compose.yml --env-file deploy/.env \
-  run --rm api node dist/platform/admin-cli.js create you@your-domain.example "Your Name"
+docker compose -f deploy/compose.yml --env-file deploy/.env run --rm api \
+  node dist/platform/admin-cli.js create|remove|list|user-password|hr-reseal …
 ```
 
-From the Staff page a staff manager can:
-
-- **Add** somebody, by name and email address. The page shows a generated password and an
-  authenticator secret once; send them on privately. The new person can do everything in the
-  dashboard except manage staff, and never becomes a staff manager from the dashboard.
-- **Give them a new password and code**, when they have lost either. Their sessions end.
-- **Remove** them. The account is deactivated, not deleted, so the audit log keeps its name.
-  Their dashboard sessions end at once, and so does any company they were acting as. Adding
-  the same address again brings the account back with new credentials.
-
-A terminal account is never changed from the dashboard, the manager's own included. That stays
-with whoever holds the server:
-
-| Terminal command                  | What it does                                                                                           |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `admin-cli create <email> <name>` | Makes a staff manager, or resets one's password and code. Run for a dashboard account, it promotes it. |
-| `admin-cli remove <email>`        | Takes any account off the staff, terminal ones included, and ends its sessions.                        |
-| `admin-cli list`                  | Every account, whether it is a staff manager, and whether it is set up.                                |
-
-Removing a terminal account's second factor (support's "lost my phone" reset) also takes a staff
-manager. The API enforces all of this; the page only leaves out what would be refused. Each
-change is in the audit log as `staff.added`, `staff.restored`, `staff.credentials_reset` or
-`staff.removed`.
-
----
+Only staff managers manage website keys. Reserve the company slug `staff`.
 
 ## Onboarding a company
 
-One call, `POST /v1/platform/companies`, and a company is usable:
+`POST /v1/platform/companies` makes a usable company in one action: the company
+(plan, optional seat count that replaces the plan's, modules, tabs, which apps
+show the assistant, test or not), starter job types, the owner's invitation
+(emailed only when "Email the owner's invitation now" is ticked, so Integr8 can
+set the company up first), and its R2 bucket. The first parts are one
+transaction; the bucket comes last and, if it fails, the media maintenance
+provisions it later. New companies start on `Africa/Cairo`, Sunday to Thursday,
+and are stored as invoiced. The company page can resend or copy a fresh
+invitation link (the old one stops working).
 
-1. the company row, with its plan and seat count. The seat count is optional: empty, the
-   company has the plan's number of seats; set, it replaces the plan's number, higher or lower
-   (the same field on the company's page changes it later; see docs/billing);
-2. **roles** — nothing to do. Roles are a fixed set in `@integr8/core`, not rows;
-3. job types, because a company with none cannot raise a job and an empty list is the first
-   thing that makes a new customer think the product is broken;
-4. the owner's invitation — the only way in. We never set a password for somebody else;
-5. the R2 bucket, so their first upload does not fail.
+Also on the company page: modules and tabs, branding is set from the desktop app
+(staff, acting as the company), the document link pattern, "Show the company name
+beside the logo", website keys, the AI policy and members' shares, seats,
+plan, suspension, export and closing, and **Build apps for this company**
+([deployment/](../deployment/README.md#company-apps)).
 
-The first four are one transaction. The bucket is not, because a call to Cloudflare cannot join
-a database transaction, so it happens last and a failure there leaves a company that is complete
-except for storage. That is recoverable and already handled: the media maintenance sweep
-provisions any company whose bucket is missing, and the response says what happened rather than
-pretending.
+## Test companies
 
-### Inviting the owner when the company is ready
+A company is a test company from creation or never: `tenants.is_test` is written
+by the insert and a trigger refuses any change. The demo seeder and `db:volume`
+always make test companies; the onboarding form has a **Test company** switch.
 
-Onboarding creates the owner's invitation but **does not email it unless asked**
-(`sendInvitation: true`, the "Email the owner's invitation now" box). Integr8 sets a company up
-first — its forms, job types and look — and the owner should arrive to a company that is ready,
-not to an empty one. The link is returned either way, to copy if wanted.
+| Area            | For a test company                                                                           |
+| --------------- | -------------------------------------------------------------------------------------------- |
+| Dashboard       | A **Test** badge; the list filters all, real or test (`?test=`)                              |
+| Billing         | Left out of billing, lapsed trials, dunning and storage overage                              |
+| Totals          | Left out of the sign-up funnel (still in the storage cost projection: Cloudflare bills it)   |
+| Email and push  | Never sent: kept in `test_outbox` for 7 days (`GET /v1/platform/companies/{id}/test-outbox`) |
+| Company apps    | Refused (409 `test_company_no_apps`)                                                         |
+| Everything else | Unchanged: limits, modules, export, close and purge work as for any company                  |
 
-The company's page lists every invitation nobody has accepted, with its expiry, and offers two
-actions, both through `POST /v1/platform/companies/:tenantId/invitations/:invitationId/resend`:
+`GET /v1/platform/companies/{id}/test-audit` reads a test company's audit log, so
+the developer tool can read back what a call changed.
 
-| Action              | Body                     | Does                                                              |
-| ------------------- | ------------------------ | ----------------------------------------------------------------- |
-| **Send invitation** | `{}`                     | A fresh seven-day invitation, emailed from Integr8 through Resend |
-| **Copy a new link** | `{ "sendEmail": false }` | The same fresh invitation, nothing sent; the link is copied       |
+## Plans and billing
 
-Both withdraw the previous invitation, so an old link that went astray stops working, and both
-work on an invitation that already expired while the company was being set up.
+`plan_allowances` (dashboard → Plans): one row per plan (trial, starter,
+standard, enterprise) with storage, seats, submissions a month, overage policy,
+warning threshold, retention, price and the assistant policy. Three limits are
+enforced by the API at the moment something is taken:
 
-### Building the company's own apps
+| Limit       | Refused when                                             | Error                          |
+| ----------- | -------------------------------------------------------- | ------------------------------ |
+| Seats       | inviting, accepting an invitation, re-activating someone | 409 `seat_limit_reached`       |
+| Submissions | starting and submitting (a correction never counts)      | 409 `submission_limit_reached` |
+| Storage     | requesting an upload, on a `block` plan                  | 409 `storage_quota_exceeded`   |
 
-The company's page → **Website and apps** → **Build apps for this company** puts the company in
-the list every version release builds (`GET /v1/build/companies`). Saving with the box newly
-ticked also asks for the company's first build at once, and **Rebuild apps**
-(`POST /v1/platform/companies/:tenantId/app-builds`, refused with `apps_not_enabled` while the
-box is off) asks again later: after its look changed, or for a version released before it was
-switched on. Both write `tenant.app_build_requested` to the audit log with what GitHub said.
+`BILLING_PROVIDER=none` is the production setting: Integr8 invoices every company
+itself, every company reads as invoiced, card routes refuse (409
+`billing_invoiced`), dunning does nothing, and staff set the plan. `stripe` keeps
+self-serve checkout, the card portal, invoices read from Stripe and dunning
+(grace, then read-only; never deletion). A Paymob adapter may come later. The
+company's Billing page (web) shows its plan and how to reach Integr8.
 
-Whether the server can ask is `APP_BUILDS`:
+## Support
 
-| `APP_BUILDS`    | What a request does                                                                                                                                                                                                                                                                                                                                    |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `off` (default) | Nothing is started; the dashboard says to run **Build company apps** from GitHub Actions with the company's short name. The recording stand-in keeps the requests for tests                                                                                                                                                                            |
-| `github`        | Dispatches `build-company-apps.yml` for that company on `GITHUB_BUILD_REF` (default `main`) with `GITHUB_BUILD_TOKEN`, a fine-grained token with **Actions: read and write** on `GITHUB_BUILD_REPOSITORY` only. The dashboard links the run when GitHub names it, otherwise the workflow's runs. Missing token or repository: the API refuses to start |
-
-GitHub answers as soon as the run is queued, so the request never waits for a build; whether it
-finished is on GitHub (the run, then the release `company-<slug>-v<version>`). See
-`docs/deployment/company-apps.md`.
-
----
+Impersonation (full access as a chosen person, a reason of at least ten
+characters, audited in the company's and the platform's logs before the grant
+exists, re-checked on every request, a banner in every app); recent failures;
+unlocking accounts; unsticking a phone's sync; releases in the field (which app
+versions are in use); announcements (banners in every app, including the phone);
+health (scheduled task runs, the heartbeat).
 
 ## Suspending
 
-**Every request is refused, reads included** — 423, with the reason the customer is shown.
-
-The alternative was read-only, and it lost. A suspension is a commercial event, not a
-maintenance window, and "you can still see your jobs but not finish them" is a state nobody
-standing in a plant room can act on. One clear answer beats half-working software.
-
-The check is after authentication — until then there is no company to check — and the status is
-cached for 30 seconds per process. That cache is why the exit criterion says _within one
-minute_ rather than _immediately_; the alternative is a `tenants` read on every request for a
-state that changes a handful of times a year. The dashboard clears its own cache entry when it
-suspends somebody, so whoever pressed the button sees the effect at once.
-
----
-
-## Impersonation
-
-A super admin gets **full access as that user** — anything the user can do. A read-only mode
-would mean reproducing half of every reported problem, which is no use to the person who
-reported it.
-
-What makes that acceptable is the other half of the same decision:
-
-- the audit entry is written **before** the grant exists, and the grant carries a non-null
-  foreign key to it. There is no ordering of those writes that produces a session with no
-  entry;
-- the grant is re-checked on **every** request, so ending it takes effect now rather than
-  whenever the access token happens to lapse;
-- the token says who is really behind it, in a claim all three apps read to paint a banner. The
-  plan is blunt about why: _support engineers who forget they are impersonating cause the worst
-  incidents_;
-- a reason of at least ten characters, enforced by a check constraint rather than by a form.
-
-Both audit logs get an entry: the company's, which they can read, and the platform's, which
-outlives them.
-
----
+Every request from the company is refused, reads included: 423 with the reason
+shown to its people. Checked after authentication and cached 30 seconds per
+process.
 
 ## Closing a company
 
-Export, wait, then purge. Four options were considered and this one is the only one that makes
-the single irreversible act in the system reversible for a week.
-
 ```
-export  ──▶  schedule  ──▶  (7 days)  ──▶  purge
-             suspends               cancel any time until here
-             immediately
+export ──▶ schedule (suspends now) ──▶ 7 days, cancel any time ──▶ purge
 ```
 
-- **The export comes first, and the database enforces it.** `tenant_deletions.export_id` is not
-  null, so a schedule without a finished export cannot be written. It is the same export a
-  customer asking for their data would be given — there is no "deletion export" that quietly
-  holds less.
-- **What the export holds is a decision per table.** `EXPORTED_TABLES` in
-  `packages/db/src/repositories/tenant-data-export.ts` lists what goes in: the company's
-  records in every module, its settings, documents, and its e-invoicing with the full Tax
-  Authority submission history, which is a tax record. `NOT_EXPORTED_TABLES` names everything
-  else with the reason: credentials (sessions, invitations, push tokens), this system's working
-  state (jobs, counters, sync bookkeeping), figures derived from exported rows (stock balances),
-  and Integr8's own records about the company (its plan, feature switches, storage metering, the
-  model provider's cost). `WITHHELD_COLUMNS` leaves sealed values and link or signing secrets
-  out of the query itself: the Tax Authority login, HR's sealed national id, insurance and bank
-  numbers (their last four stay), signing nonces and the quote link hash. A new company table in
-  neither list fails to compile, and `tenant-data-export.integration.test.ts` checks both lists
-  against the database.
-- **The archive lives in a platform bucket, not the company's.** The purge destroys the
-  company's bucket, so an export kept there would be deleted by the act it exists to justify —
-  while `tenant_exports`, which has no foreign key to `tenants` precisely so it outlives the
-  company, went on saying the archive was ready.
-- **The company is suspended when the deletion is scheduled**, not when it runs: a company on
-  its way out should not be accruing data somebody then has to decide what to do with.
-- **Cancelling until the purge runs undoes everything.** It leaves the company suspended rather
-  than active, because whoever called the deletion off decides separately whether to start
-  serving them again.
-- **`purge_tenant()` refuses anything not scheduled and due**, so even the schema owner cannot
-  remove a company early. Since migration 0055 it runs with triggers and foreign-key checks
-  suspended (`session_replication_role = replica`) and empties every table whose `tenant_id`
-  references `tenants`, in one pass. Before that it deleted with every guard live and could not
-  purge a company that had published a form, converted a quote into an order, or approved a
-  purchase order. Suspending the checks is safe because no table outside that list points into
-  it; `packages/db/src/testing/tenant-purge.integration.test.ts` checks that on every run. A
-  company's history goes only when the company does: `platform_audit_log`, `tenant_exports` and
-  `tenant_deletions` keep their rows.
-- **One company that cannot be purged does not hold up anything else.** The worker tries each
-  due company on its own and logs the one that failed; it stays scheduled and is tried again.
-  Each housekeeping step on the worker's timer (media, sync, purges, metering, dunning, expiry
-  alerts, maintenance plans, deadlines, the assistant) also runs on its own, so a failing purge
-  no longer stops deadline alerts.
+- **Export first, enforced by the database** (`tenant_deletions.export_id` not
+  null): the same export a company asking for its data gets, one gzipped JSON
+  file kept in a platform bucket. `EXPORTED_TABLES` and `NOT_EXPORTED_TABLES`
+  (`packages/db/src/repositories/tenant-data-export.ts`) decide every company
+  table, with a reason for each left out; `WITHHELD_COLUMNS` keeps sealed values
+  and secrets out. A new table in neither list fails to compile.
+- **`purge_tenant()`** (security definer) refuses anything not scheduled and due,
+  then empties every table whose `tenant_id` references `tenants` with triggers
+  and foreign keys suspended. Safe only while no other table points into that
+  set; `tenant-purge.integration.test.ts` checks it. The bucket is emptied
+  first, then the rows; Auth accounts belonging to no other company go too. The
+  platform audit log, exports and deletions keep their rows.
+- One company that cannot be purged does not hold up the others.
 
-**Bucket first, then rows.** The two stores cannot be emptied atomically, so the order is the
-decision:
+Moving a company to another server is a separate staff command
+([database/](../database/README.md#moving-a-company-between-servers)).
 
-- bucket first, rows second — a crash in between leaves rows pointing at objects that are gone.
-  Recoverable, visible, and the purge simply runs again.
-- rows first, bucket second — a crash in between leaves a bucket nobody has a record of: a
-  customer's data sitting in Cloudflare with nothing left to say whose it was or that it should
-  go.
+## The audit logs
 
-The second is the one that ends up in a regulator's letter.
+`audit_log` (each company's, readable by its owners and admins) and
+`platform_audit_log` (Integr8's, outliving companies) are append-only for every
+role, the schema owner included, and both are split by year.
 
----
+## The template library
 
-## The audit log
+Built-in form templates are code (`pnpm --filter @integr8/db db:templates`
+syncs them); staff-made ones are saved from a company's form or imported from a
+`.integr8form` file on the **Templates** page, with their PDF templates and
+pictures. See [form-engine/](../form-engine/README.md#the-builder).
 
-`platform_audit_log` is append-only in the database, for every role including the schema owner:
-three statement-level triggers refuse update, delete and truncate. There is no arrangement of
-application code that can lose an entry, which is what makes it worth reading in an
-investigation.
+## Downloads
 
-It has **no foreign key to `tenants`** and keeps `tenant_slug` beside `tenant_id`, so the record
-of a company outlives the company. Searching is by keyset rather than offset, so paging through
-a log that is being written to cannot repeat or skip an entry.
-
----
-
-## The form template library (1.3.0)
-
-Dashboard → **Templates** lists every library template, built-in and staff-made, with a badge
-for each kind. A **built-in** one ships with the product and is changed only in its code; the
-page says so and offers nothing to press. A **staff-made** one was saved from a company's form
-in the staff desktop app (form builder → **Save as library template**; `docs/form-engine/
-builder.md`) and shows the company and form version it came from and how many PDF templates it
-carries. For those:
-
-- **Rename** — the name and description in English and Arabic, and the category
-  (`PATCH /v1/platform/form-templates/:key`, audited `form_template.renamed`).
-- **Replace with the newer version** — reads the source form again, in its company: its latest
-  published version and its PDF templates that are not archived replace the template's; the
-  name, description and category stay (`POST …/refresh`, `form_template.refreshed`). The
-  pictures of the version replaced are removed from the library's storage. Refused with
-  `form_template_source_gone` once that company or form no longer exists, and
-  `form_not_published` if nothing is published.
-- **Retire / Bring back** — a retired template is no longer offered to companies; forms already
-  made from it are copies and do not change (`POST …/retire`, `form_template.retired` /
-  `.restored`). **Show retired templates** lists them again.
-
-**Import a form file** (top of the page; decision 14) moves a catalogue between servers: a
-`.integr8form` file — exported from a company's form in the staff app, from this page on
-another server, or written by the forms AI tool — becomes a new staff-made template, stored
-exactly as **Save as library template** stores one: the form, its PDF templates in
-`form_template_documents`, every picture copied into the library's bucket under a new id and
-recorded in `form_template_files`. Pick the category beside the file; the key comes from the
-English title (`boiler_service_2` when `boiler_service` is taken, built-in keys included), the
-name is the form's title in both languages and the description is empty — change them with
-**Rename** afterwards. It has no source form, so **Replace with the newer version** stays off:
-import a newer file instead. `POST /v1/platform/form-templates/import?category=…` takes the
-file as the request body (`application/vnd.integr8.form+zip`, at most 50 MB). The file is read
-with every check of the format (refusals carry the package's code, e.g. `package_too_new`:
-update this server first), and because a library template is published content every company
-may start from, a form that would not publish, or a PDF template that would not save against
-it, is refused with `form_package_not_publishable` and each problem in `details`; the page
-lists them. Warnings (texts with no Arabic) are shown and stop nothing. Audited as
-`form_template.imported` with the file's app and version.
-
-**Export** on every row, built-in or staff-made, saves the template as a `.integr8form` file
-(`GET /v1/platform/form-templates/:key/export`, audited `form_template.exported`): its form, and
-a staff-made template's PDF templates with their pictures; settings are the defaults, as a
-library template has none of its own.
-Screenshots: `docs/screenshots/1.3.0/platform/templates-import-{result,refused}-{en,ar}.png`.
-
-Templates are never deleted. `PUT /v1/platform/form-templates/:key` still adds or replaces a
-staff-made template from a definition (without PDF templates) and refuses any key the product
-ships (`form_template_builtin`).
-
-The library's pictures live in the platform's own bucket, `<prefix>-platform-library` (beside
-`<prefix>-platform-exports`), which the API creates on first use with the same R2 token as the
-companies' buckets. It belongs to no company: no company's purge removes it and no company's
-storage counts it. A company's purge leaves the templates saved from its forms in place
-(`form_templates.source_tenant_id` has no foreign key); they can no longer be refreshed.
-
----
-
-## What the apps are told
-
-`GET /v1/me` carries three things from the platform, so no client needs a poll of its own:
-
-- `features` — this company's flags, resolved against the platform default. Like `permissions`,
-  it is what to show, not what is allowed;
-- `announcements` — banners, by language tag, with `dismissible`;
-- and a suspension is not a field here at all: a suspended company's `/v1/me` is a 423.
-
-**Where the banners show.** The web app's company workspace and the desktop app draw them with
-one component, `AnnouncementBanners` in `@integr8/operations-dom`, from the `/v1/me` answer each
-shell already holds: in the web shell under the impersonation banner on every signed-in page, and
-in the desktop frame under the top bar, outside the scrolling screen. Dunning's payment reminders
-arrive the same way, since they are announcements too. The phone keeps the last ones it heard
-from `/v1/me` in its local database (refreshed on launch and on returning to the app, at most every
-15 minutes) and shows them at the top of Today, offline too; ended ones drop by the phone's clock.
-Payment reminders therefore reach engineers' phones as well.
-
-- **Severity** is a word as well as a colour (Notice, Warning, Important). A `critical` banner is
-  an `alert`, so a screen reader interrupts with it; the others are polite `status` messages. The
-  most severe come first.
-- **Language:** the reader's own tag, then its base language, then English, then whatever there
-  is. Staff write English today, so an Arabic screen usually shows English: the text carries its
-  own `lang` and that language's direction, so it is laid out left to right inside the mirrored
-  page (and an Arabic message that opens with "Integr8" still reads right to left).
-- **Dismissing** is per browser or per desktop install: the ids of the most recent dismissals,
-  up to two hundred, are kept in `localStorage` under `integr8.announcements.dismissed`, and
-  nothing else is. A banner posted as not dismissible has no button and ignores any remembered
-  id. Closing one moves focus to the next banner, or to the page's `main` when none is left.
-- **Ending:** a banner whose `endsAt` passes is taken down then, without another `/v1/me`,
-  because the desktop app stays open for days. Ending one early from the dashboard reaches a
-  screen the next time that app fetches `/v1/me`: at sign-in, on a reload, and when a screen
-  that reads it opens after the 30 seconds the answer is cached.
-
----
-
-## What is deliberately not here
-
-- **Desktop and web versions in the release view.** Only `sync_reports.app_version` records a
-  client's version, and only the phone writes it. Desktop and web send `x-client-version` on
-  every request and nothing writes it down. The fix is to record it, not to guess it here.
-- **"API calls" per company.** There is no request-level counter and no honest way to derive
-  one. The per-company activity view counts audited actions instead, which is what people mean
-  when they ask how busy a customer is.
-- **Clearing one device's sync queue.** The queue lives on the device. What the server can do is
-  forget the change log so every device bootstraps again, which fixes the failure people
-  actually report. Nothing queued on a device is lost: the outbox is untouched.
+**Downloads** (`/platform/downloads`) lists the staff desktop app and Integr8
+Forms for AI from the GitHub releases (`GITHUB_RELEASES_TOKEN`, the repository
+is private). The public `/download` page lists companies' apps only.

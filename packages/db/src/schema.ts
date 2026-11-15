@@ -3417,7 +3417,7 @@ export interface AiHelpArticlesTable {
 }
 
 // ---------------------------------------------------------------------------
-// PDF documents (0048; docs/documents/ADR-0001)
+// PDF documents (0048; docs/documents/README.md)
 // ---------------------------------------------------------------------------
 
 export type DocumentStatus = 'pending' | 'ready' | 'failed';

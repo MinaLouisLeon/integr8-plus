@@ -351,7 +351,7 @@ jobs:
   # Integr8 Forms for AI: one executable per operating system
   # ---------------------------------------------------------------------------
   # The offline MCP server staff connect their AI coding tools to (decision 15
-  # of the 1.3.0 form builder round, docs/forms-ai/README.md). A Node single
+  # of the 1.3.0 form builder round, docs/contributing/developer-tools.md). A Node single
   # executable cannot be cross-built, so each one is built on its own runner.
   # Unsigned on purpose: like the desktop apps without certificates, Windows
   # and macOS warn on first open. macOS gets the ad hoc signature without which

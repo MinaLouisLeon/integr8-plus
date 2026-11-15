@@ -1,90 +1,76 @@
 # The API
 
-One HTTP service in front of Postgres. Clients never query Supabase directly.
-
-| Document                                  | When you need it                      |
-| ----------------------------------------- | ------------------------------------- |
-| [versioning.md](./versioning.md)          | Before changing any endpoint's shape  |
-| [`docs/auth/`](../auth/README.md)         | Tokens, roles, sessions               |
-| [`docs/database/`](../database/README.md) | Tenant isolation underneath all of it |
-
----
+`apps/api`: one Fastify service serving `/v1`, in front of Postgres. Every
+client (web, desktop, phone, the developer MCP server, company websites) goes
+through it. At 2.0.0 it has 446 paths and 553 operations (459 routes need a
+company session, 67 a staff session, 31 none). The full request and response
+schemas are in the generated `apps/api/openapi.json` (large: query it with a
+small script rather than reading it whole). The integration tests in
+`apps/api/src/routes/v1/*.integration.test.ts` are the best examples of valid
+flows.
 
 ## The request pipeline
 
-Ordered so the cheapest rejection happens first and nothing expensive runs for a
-request that was never going to be served.
+Cheapest rejection first:
 
-0. **CORS** — an allow-listed browser origin gets its headers; any other is
-   refused at preflight and logged once. The memory of refused origins holds
-   the last 1,000, and a malformed `Origin` or one over 255 characters is
-   refused without being remembered or logged, so a stranger cannot grow
-   either (`http/cors.ts`).
-1. **Context and request id** — so everything after it can be traced.
-2. **Client version** — an unsupported build is told once, clearly, with where
-   to update (`docs/api/versioning.md`).
-3. **Per-IP rate limit** — before any database work.
-4. **Validation** — zod, against the schema in the route definition.
-5. **Authentication** — verify the bearer token, then (after an impersonation
-   token's grant check) that its session is still live: not revoked, not past
-   its maximum lifetime, the person still an active member. That answer is
-   cached for 30 seconds per session, so signing out reaches a device within
-   half a minute rather than when its token lapses (docs/auth). A `platform`
-   route takes a super admin's token instead (P15), and re-reads its session
-   from the database on every request.
-6. **Suspension** — a suspended company is refused here, reads included.
-7. **Permission** — the matrix in `@integr8/core`.
-8. **Per-tenant rate limit** — one noisy company must not starve another.
-9. **Idempotency** — claim the key, then run the handler (see below).
-
-Validation runs _before_ authentication. That means an anonymous caller can
-learn that a body is malformed, which is not a secret; the reverse order would
-make every schema change a potential authentication oracle.
+0. **CORS.** An allow-listed origin (`API_CORS_ORIGINS`) gets its headers; any
+   other is refused at preflight (`http/cors.ts`).
+1. **Context and request id.**
+2. **Client version.** A build below `API_MIN_SUPPORTED_CLIENT` gets `503
+client_too_old` with where to update (`http/client-version.ts`).
+3. **Per-address rate limit**, before any database work.
+4. **Validation** (zod, from the route's own schemas). It runs before
+   authentication on purpose: a malformed body is not a secret, and the reverse
+   order would make schema changes an authentication oracle.
+5. **Authentication.** The bearer token's signature, then (after an
+   impersonation grant check) that its session is still live, cached 30 s per
+   session. Platform routes take a staff token and re-read the session every
+   time; a session limited to test companies is checked here
+   (`http/session-scope.ts`).
+6. **Suspension.** A suspended company is refused, reads included
+   (`http/suspension.ts`).
+7. **Permission**, from the matrix in `@integr8/core`.
+8. **Module switch.** A route that names a `feature` is refused with 403
+   `feature_disabled` to a company without that module (`http/features.ts`).
+   Hiding a menu entry is never the only thing in the way.
+9. **Per-company rate limit**, so one company cannot starve another.
+10. **Idempotency**, then the handler.
 
 ## One declaration per endpoint
 
-A route is a single value — method, path, schemas, who may call it, whether it
-is idempotent, and the handler. Fastify registers it and the OpenAPI document is
-generated from the same object, so the published contract cannot drift from the
-code because there is nothing for it to drift from.
+A route is one value (`defineRoute`): method, path, `operationId`, schemas,
+`security` (`authenticated`, `platform` or `public`), `permission` (or
+`anyPermission`), `feature`, `idempotent`, `platformScopes`, responses and the
+handler. Adding it to `apps/api/src/routes/index.ts` registers, documents,
+validates, authorises and rate-limits it. The OpenAPI document carries who may
+call each route as `x-integr8-permission`, `x-integr8-any-permission`,
+`x-integr8-feature`, `x-integr8-idempotency` (`required` or `honoured`) and
+`x-integr8-platform-scopes`.
 
-```ts
-export const inviteMemberRoute = defineRoute({
-  method: 'post',
-  path: '/v1/members/invitations',
-  operationId: 'inviteMember',
-  summary: 'Invite somebody to this company',
-  tags: ['workspace'],
-  security: 'authenticated',
-  permission: 'member.invite',
-  idempotent: true,
-  params: noSchema,
-  query: noSchema,
-  body: z.object({ email: z.string(), role: roleSchema }),
-  responses: { 201: { description: '…', schema: invitationSchema } },
-  handler: async ({ body }, context) => {
-    /* … */
-  },
-});
+After changing a route:
+
+```bash
+pnpm --filter @integr8/api openapi && pnpm --filter @integr8/api-client generate
 ```
 
-Add it to `routes/index.ts` and it is registered, documented, validated,
-authorised and rate-limited. There is no second place to remember.
+and commit both `openapi.json` and the client; CI fails on drift.
 
-A `platform` route may also say which staff sessions may call it, with
-`platformScopes` (P38). Left out, only the dashboard's full session may; a
-session limited to test companies (the developer MCP server, signed in with
-`scope: "test_companies"`) is refused with 403 `session_scope`. See
-[`docs/platform/README.md`](../platform/README.md#a-session-limited-to-test-companies-0077-p38).
+## Headers
 
-The OpenAPI document carries who may call each route as `x-integr8-permission`,
-`x-integr8-any-permission`, `x-integr8-feature`, `x-integr8-idempotency`
-(`required` or `honoured`) and `x-integr8-platform-scopes`. Generated clients
-ignore them; the developer MCP server's `get_route` reads them.
+| Header                 | Direction | Meaning                                                            |
+| ---------------------- | --------- | ------------------------------------------------------------------ |
+| `x-client-app`         | Request   | `web`, `desktop` or `mobile`. Required                             |
+| `x-client-version`     | Request   | The client build, e.g. `2.0.0`. Required                           |
+| `Authorization`        | Request   | `Bearer <access token>` (the web's server adds it from its cookie) |
+| `Idempotency-Key`      | Request   | On writes that declare it                                          |
+| `min-supported-client` | Response  | The oldest build this deployment serves, on every response         |
+| `x-request-id`         | Response  | Also on every log line for the request                             |
+| `x-api-release`        | Response  | The build serving the request                                      |
+| `idempotent-replay`    | Response  | `true` when the answer was replayed                                |
 
-## The error model
+## Errors
 
-Every failure, without exception:
+Every failure has one shape:
 
 ```json
 {
@@ -97,106 +83,95 @@ Every failure, without exception:
 }
 ```
 
-- `code` is for the client's code, and is part of the contract.
-- `message` is for a person, and never contains anything a stranger should not
-  read.
-- `details` is field-level, so a form highlights the input rather than showing
-  one message above everything.
-- `requestId` is the same id on every server log line for that request.
+`code` is the contract; `message` is for developers and never shown to a person
+(each app translates the code); `details` are per field; `requestId` matches the
+logs. An unexpected exception is a 500 with no detail, logged in full and sent
+to Sentry. Some routes answer `204` with no body.
 
-An unexpected exception becomes a 500 with no detail. Its message was written
-for us, not for a stranger; it is logged in full and sent to Sentry.
+## Idempotency
+
+A write sent with `Idempotency-Key` is recorded in `idempotency_keys` with a
+fingerprint of the request: a retry with the same key replays the first answer,
+and the same key with a different request answers 409 `idempotency_key_reused`.
+The fingerprint is an HMAC-SHA256 (key derived from `PLATFORM_SECRET_KEY`) over
+the method, path and body **without its secret fields** (names containing
+`password` or `secret`, names ending in `token`, and `code`/`otp` under
+`/v1/auth/` and `/v1/me/`). Records last `API_IDEMPOTENCY_TTL_SECONDS` (24 hours),
+or `SYNC_REPLAY_DAYS` (90) for a phone's change; the worker's housekeeping
+deletes spent ones. `legacyFingerprint` in `http/idempotency.ts` still matches
+the 1.x form of the fingerprint; no such record exists on a 2.0.0 database, so
+it can be removed.
+
+## Rate limits
+
+Postgres-backed fixed windows with an in-memory short circuit once a bucket is
+over: per address (`API_IP_RATE_LIMIT`), per company (`API_TENANT_RATE_LIMIT`),
+and their own for the website lookup (`WEBSITE_LOOKUP_RATE_LIMIT`). The limiter
+**fails open**: one that refused everything when its store was down would turn a
+degraded dependency into an outage. The per-address sign-in limit counts
+failures only, and the web server passes on the visitor's address.
 
 ## Background jobs
 
-A `jobs` table, a worker process, and no Redis. Retries use exponential backoff
-with **full jitter** — doubling alone synchronises retries, so everything that
-failed during a two-minute outage retries together the moment it ends, which is
-how a recovering dependency gets knocked over a second time.
+A `jobs` table and the worker process; no Redis. Retries back off exponentially
+with full jitter; a job that exhausts its attempts becomes `dead`, keeping its
+payload and last error. Claiming spans companies (the platform connection); each
+claimed job then runs inside a tenant transaction for its own `tenant_id`. The
+worker's scheduled tasks are listed in [architecture.md](../architecture.md#the-worker).
 
-A job that exhausts its attempts becomes `dead` rather than disappearing,
-keeping its payload and its last error for whoever looks at it. Requeuing one
-after a fix is an update, not a migration between tables.
+## Versioning: nothing breaking inside `/v1`
 
-```bash
-pnpm --filter @integr8/api worker
-```
+Shipped desktop and phone builds cannot be forced to update, so inside `/v1`
+only additive changes are allowed:
 
-The worker is a separate process from the API. A job that pins a core or leaks
-memory then degrades background work rather than every request, and the two
-scale independently: a queue backlog is a reason to add workers, not web
-containers.
+| Allowed                                                              | Not allowed                                          |
+| -------------------------------------------------------------------- | ---------------------------------------------------- |
+| A new endpoint, optional request field, response field or error code | Removing or renaming an endpoint or a response field |
+| A new value in a response enum (clients keep a default branch)       | Making an optional request field required            |
+| Relaxing a validation rule                                           | Narrowing a type or a rule, changing a default       |
+|                                                                      | Changing what a field or an error code means         |
 
-Claiming is the one queue operation that cannot be tenant-scoped — a worker
-polls for whatever work exists, and that spans companies. It runs on the owner
-connection, and each claimed job is then executed inside a tenant transaction
-for its own `tenant_id`, so the privilege stops at the claim.
+A change that cannot be additive ships as a new endpoint beside the old one.
+The old one is removed only once no supported build calls it, by raising
+`API_MIN_SUPPORTED_CLIENT`; an older build then gets `503 client_too_old` with a
+sentence it can show and an `update_url` (`API_UPDATE_URL`, or `WEB_APP_URL` +
+`/download`).
 
-## Rate limiting
+## Facts worth knowing before calling it
 
-Postgres-backed fixed windows, with an in-memory short circuit: once a bucket is
-known to be over its limit, the decision is served from memory until that window
-ends. The common case costs one cheap upsert; the abusive case costs nothing.
+- Work-order transitions need `expectedRevision`. A completed, reviewed or
+  cancelled job refuses starting a form and submitting a draft on it
+  (`submission_job_closed`). INSPECT and INSTALL job types require certificates.
+- Company `workingDays` are ISO numbers 1–7 (Monday = 1).
+- Passwords must not contain the email's local part
+  (`packages/auth/src/password-policy.ts`).
+- Platform routes declare `platformScopes`; without one, a session limited to
+  test companies gets 403 `session_scope`.
 
-It **fails open**. A rate limiter that rejects everything when its store is
-unreachable turns a degraded dependency into a full outage, and what it guards
-against is abuse rather than correctness.
+## Areas, by path
 
-If it becomes a contention point the answer is Redis, and that is a P19
-conversation. It is one class behind one method, which is what keeps that swap
-small.
+| Prefix                                                                                                   | Area                                                        |
+| -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| `/v1/auth`, `/v1/me`, `/v1/sessions`, `/v1/invitations`                                                  | Sign-in and the signed-in person                            |
+| `/v1/members`, `/v1/roles`                                                                               | People and company roles                                    |
+| `/v1/settings`, `/v1/onboarding`, `/v1/billing`, `/v1/plans`, `/v1/signup`                               | The company and its plan                                    |
+| `/v1/customers`, `/v1/sites`, `/v1/customer-tags`, `/v1/attachments`                                     | Customers and sites                                         |
+| `/v1/work-orders`, `/v1/visits`, `/v1/schedule`, `/v1/timesheets`, `/v1/job-types`, `/v1/saved-views`    | Field work                                                  |
+| `/v1/qualification-types`, `/v1/qualification-settings`, `/v1/qualifications`                            | Skills and certificates                                     |
+| `/v1/contracts`, `/v1/maintenance-plans`, `/v1/maintenance`, `/v1/deadline-rules`, `/v1/deadline-report` | Contracts and deadlines                                     |
+| `/v1/forms`, `/v1/form-templates`, `/v1/submissions`                                                     | Forms                                                       |
+| `/v1/document-templates`, `/v1/documents`, `/v1/business-documents`                                      | Documents                                                   |
+| `/v1/media`, `/v1/storage`                                                                               | Files                                                       |
+| `/v1/sync`                                                                                               | The phone                                                   |
+| `/v1/imports`                                                                                            | CSV imports                                                 |
+| `/v1/crm`, `/v1/analytics`                                                                               | CRM and its reports                                         |
+| `/v1/sales`, `/v1/finance`, `/v1/ledger`                                                                 | Sales, invoices and payments, the ledger                    |
+| `/v1/inventory`, `/v1/purchasing`, `/v1/assets`, `/v1/manufacturing`                                     | Stock, buying, assets, manufacturing                        |
+| `/v1/hr`, `/v1/expenses`, `/v1/payroll`                                                                  | HR, expenses, payroll                                       |
+| `/v1/eta`                                                                                                | E-invoicing                                                 |
+| `/v1/ai`                                                                                                 | The assistant                                               |
+| `/v1/public`, `/v1/website`, `/v1/build`                                                                 | No session: brand, quote links, company websites, CI builds |
+| `/v1/platform`                                                                                           | Staff only                                                  |
 
-## Idempotency records and what deletes them
-
-A write sent with an `Idempotency-Key` is recorded in `idempotency_keys` with a
-fingerprint of the request, so a retry with the same key replays the first
-answer and the same key with a different request answers 409
-`idempotency_key_reused`. The fingerprint is an HMAC-SHA256, keyed with a key
-derived from `PLATFORM_SECRET_KEY`, over the method, path and body **without its
-secret fields** (any name containing `password` or `secret`, any ending in
-`token`, and `code`/`otp` under `/v1/auth/` and `/v1/me/`;
-`apps/api/src/http/idempotency.ts`). Until 0065 it was a plain SHA-256 of the
-whole body, which let a reader of the table test guesses at a new password;
-0065 deleted the records already written for Change password and the ETA
-credentials. A record written by the earlier release still matches its retry
-(the old form is computed and compared, never stored) for as long as such
-records last: 24 hours, or `SYNC_REPLAY_DAYS` for a phone's change.
-
-Three tables grow with ordinary traffic and the worker deletes from them once a
-night (`housekeeping.tables` in `scheduled_task_runs`,
-`apps/api/src/jobs/table-housekeeping.ts`), in batches of 5,000 rows:
-
-| Table                | Deleted when                                        |
-| -------------------- | --------------------------------------------------- |
-| `rate_limit_buckets` | its window started more than a day ago              |
-| `idempotency_keys`   | past its own `expires_at` (24 h; a phone's: longer) |
-| `login_attempts`     | older than 90 days                                  |
-
-## Running it
-
-```bash
-cp apps/api/.env.example apps/api/.env      # plus packages/db and packages/auth
-pnpm --filter @integr8/api dev
-
-curl -s localhost:3000/health
-curl -s localhost:3000/health/ready
-```
-
-Both are for the machine the API runs on: in a deployment Caddy answers 404 for
-them on the public name, and the heartbeat (`deploy/vps/heartbeat.sh`) reports
-readiness to a monitor instead. Readiness keeps its answer for ten seconds.
-
-```bash
-pnpm --filter @integr8/api openapi           # regenerate openapi.json
-pnpm --filter @integr8/api-client generate   # regenerate the typed client
-
-pnpm test                                    # unit, no database
-pnpm test:integration                        # needs a disposable Postgres
-```
-
-## What is deliberately not here yet
-
-- **Product endpoints.** Customers, sites, work orders and forms are P06 and
-  P10. What exists is the skeleton and one real surface — sessions, members and
-  invitations — which is what makes the idempotency and error-model claims
-  testable rather than theoretical.
+`/health` and `/health/ready` are not reachable from the internet: Caddy keeps
+them private ([deployment/](../deployment/README.md)).

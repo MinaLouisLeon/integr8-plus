@@ -19,7 +19,7 @@ import { aiAllowanceSchema } from './ai.js';
 
 /**
  * How a company divides its assistant allowance among its people
- * (docs/ai/ADR-0002 D6, D7).
+ * (docs/ai/README.md D6, D7).
  *
  * Owners and admins (`member.update_role`) give each member a whole
  * percentage of the company's allowance; the shares are reserved slices and

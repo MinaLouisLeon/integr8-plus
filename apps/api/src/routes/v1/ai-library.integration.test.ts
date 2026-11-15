@@ -13,7 +13,7 @@ import {
 } from '../../testing/api-harness.js';
 
 /**
- * Answers without a model (docs/ai/ADR-0002 D9–D11).
+ * Answers without a model (docs/ai/README.md D9–D11).
  *
  * A policy that says `library` is answered from the help library: no provider
  * call, no tokens, no money, no share needed; the company's message limits

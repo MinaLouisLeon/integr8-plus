@@ -6,7 +6,7 @@ import { TenantScopedRepository, type TenantScope } from './tenant-scope.js';
 
 /**
  * Each member's share of the company's assistant allowance, and the dollar
- * cap the platform may put on them (docs/ai/ADR-0002 D6, D7).
+ * cap the platform may put on them (docs/ai/README.md D6, D7).
  *
  * A share is a whole percentage of every company allowance, reserved for that
  * member: across a company they total 100 or less. The check and the write

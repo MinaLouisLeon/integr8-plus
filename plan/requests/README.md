@@ -1,9 +1,9 @@
 # Change requests
 
-Wishes for the platform found while building forms with Integr8 Forms for AI (P39), waiting to
+Wishes for the platform found while building forms with Integr8 Forms for AI, waiting to
 be planned. Each is a folder copied from the person's computer (`CR-<number>-<slug>/` with
 `request.md`, its example `.integr8form` and pictures; format in
-[`docs/forms-ai/change-requests.md`](../../docs/forms-ai/change-requests.md)), or a note written
+[`docs/contributing/developer-tools.md`](../../docs/contributing/developer-tools.md#change-requests)), or a note written
 by hand (`CR-<number>-<slug>.md`).
 
 **Handing one over:** copy its folder here. If its number is taken, give it the next free number
@@ -22,9 +22,9 @@ Content rule: sample data only, never a real customer's.
 
 ## Requests
 
-| Request                                         | Kind          | Status in the repository | Plan or reason                                            |
-| ----------------------------------------------- | ------------- | ------------------------ | --------------------------------------------------------- |
-| [CR-0001](CR-0001-form-actions.md) Form actions | `form_action` | `planned`                | [P40](../v1.5-form-actions/P40-form-actions.md), proposed |
+| Request                                         | Kind          | Status in the repository | Plan or reason                                                              |
+| ----------------------------------------------- | ------------- | ------------------------ | --------------------------------------------------------------------------- |
+| [CR-0001](CR-0001-form-actions.md) Form actions | `form_action` | `planned`                | P40 in [`plan/README.md`](../README.md#p40-form-actions), server side built |
 
 Statuses: `received` (here, not planned), `planned` (with its phase file), `built` (with the
 version), `declined` (with the reason).

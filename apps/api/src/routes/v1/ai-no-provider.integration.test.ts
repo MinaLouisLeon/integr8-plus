@@ -11,7 +11,7 @@ import {
 } from '../../testing/api-harness.js';
 
 /**
- * A server with no AI provider at all (`AI_PROVIDER=none`; docs/ai/ADR-0002
+ * A server with no AI provider at all (`AI_PROVIDER=none`; docs/ai/README.md
  * D11, D12): every company is answered from the help library whatever its
  * policy says, nobody needs a share, and the platform is told there is
  * nothing to fix.

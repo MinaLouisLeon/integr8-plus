@@ -14,7 +14,7 @@ import {
 /**
  * What the AI reads before adding the shared PDF search to a company's
  * website (`get_website_guide`, `get_website_api`). The facts are those of
- * docs/documents/WEBSITE-LOOKUP.md, written for an AI working in the
+ * docs/documents/README.md, written for an AI working in the
  * website's code rather than for a person.
  */
 

@@ -4,17 +4,17 @@ One Postgres, one schema, every company separated by `tenant_id`. This folder
 explains how that separation is enforced, how to change the schema safely, and
 what to do when the database needs restoring.
 
-| Document                                                         | When you need it                                |
-| ---------------------------------------------------------------- | ----------------------------------------------- |
-| [migrations.md](./migrations.md)                                 | Read before every migration, and to roll back   |
-| [runbook-backup-and-restore.md](./runbook-backup-and-restore.md) | Nightly dumps, copies off the machine, restores |
+| Document                                                         | When you need it                                                          |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| [migrations.md](./migrations.md)                                 | Read before every migration, and to roll back; where the 1.x numbers went |
+| [runbook-backup-and-restore.md](./runbook-backup-and-restore.md) | Nightly dumps, copies off the machine, restores                           |
 
 The database is a plain Postgres 16: the `postgres` container in
 `deploy/compose.yml` on a server, or one on your machine for development.
 Creating an environment from nothing is the
 [setup checklist](../deployment/setup-checklist.md). The self-hosted Supabase
 Auth keeps its sign-in accounts in the same database, in its own `auth` schema
-([`docs/auth/self-hosted-auth.md`](../auth/self-hosted-auth.md)); everything
+([`docs/auth/`](../auth/README.md#the-auth-container)); everything
 below is about `public`.
 
 ---
@@ -26,16 +26,53 @@ Every table is one of three things.
 **The tenant.** `tenants` — one row per customer company. Its `id` is the
 `tenant_id` every other table carries.
 
-**Outside all tenants.** `platform_users` (super admins) and
-`schema_migrations`. These are listed in `PLATFORM_TABLES` in
+**Outside all tenants.** `platform_users` (super admins), `schema_migrations`,
+sign-in's `login_attempts`, `account_locks` and `rate_limit_buckets`, the form
+template library, staff sessions and audit, announcements, exports and
+deletions, feature flags, plan allowances, scheduled task runs, billing and
+sign-up records, the assistant's plan policies and help articles, and website
+keys: 26 tables in all. They are listed in `PLATFORM_TABLES` in
 `packages/db/src/schema.ts`, and that list is the only way to opt a table out of
 tenant scoping.
 
 **Tenant-scoped.** Everything else. A non-null `tenant_id` with a foreign key to
 `tenants(id)`, row-level security enabled, and a policy keyed on the current
 tenant context. The schema-invariant suite checks all four of those against the
-live catalogue, for every table, on every CI run — so a table added in P10 that
-forgets one of them fails the build rather than shipping.
+live catalogue, for every table, on every CI run, so a new table that forgets
+one of them fails the build rather than shipping.
+
+## The migrations
+
+2.0.0 started the schema again from one migration per module, in
+`packages/db/migrations/`. Each creates its module's tables, functions,
+triggers, row-level security policies and grants; comments on tables and
+columns carry the why into the database.
+
+| Migration            | Holds                                                                                                                                      |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `0001_foundation`    | Tenants, staff, settings, feature flags, plans and allowances, the job queue, rate limits, idempotency, `ensure_year_partitions()`         |
+| `0002_identity`      | Members, company roles, sessions, refresh tokens, invitations, grants, devices, lockout, the audit log                                     |
+| `0003_platform`      | Staff sessions and audit, subscriptions and billing events, sign-up, exports, deletions and `purge_tenant()`, announcements, `test_outbox` |
+| `0004_files`         | Files, upload intents, storage usage and samples                                                                                           |
+| `0005_field_work`    | Customers, sites, job types, work orders and their events, visits, shifts, qualifications, imports, saved views                            |
+| `0006_forms`         | Forms, versions, submissions, values and events, form actions and links, the template library, document templates, documents, website keys |
+| `0007_sync`          | The phone change log (`sync_touches`), sync reports                                                                                        |
+| `0008_crm`           | Leads, pipelines and stages, opportunities and amounts, activities                                                                         |
+| `0009_ledger`        | Accounts, journals and lines, periods, year-end closes, postings                                                                           |
+| `0010_inventory`     | Items, locations, stock movements and balances, counts, lots, materials used on jobs                                                       |
+| `0011_purchasing`    | Suppliers, purchase orders, goods receipts, supplier prices, van requests                                                                  |
+| `0012_sales`         | Quotes, sales orders, deliveries                                                                                                           |
+| `0013_finance`       | Invoices, credit notes, payments, allocations, reversals                                                                                   |
+| `0014_assets`        | Customer assets and their history                                                                                                          |
+| `0015_hr`            | Employees, expense categories and claims, pay terms, payroll rule sets, runs and lines                                                     |
+| `0016_manufacturing` | Bills of materials, assembly orders, material planning                                                                                     |
+| `0017_contracts`     | Service contracts, maintenance plans and occurrences, deadline rules and deadlines                                                         |
+| `0018_e_invoicing`   | ETA settings, documents, attempts, signing requests, codes and mappings                                                                    |
+| `0019_assistant`     | Conversations, messages, actions, usage, limits and cost                                                                                   |
+
+The next migration is `0020`. A database built by a 1.x release is refused
+(`before-baseline`) and has to be created again; a previous release may start on
+a newer schema (`ahead-of-build`).
 
 ## Three controls, each sufficient alone
 
@@ -119,9 +156,9 @@ compromised API or worker process could have dropped the schema, lifted the
 append-only triggers, read files on the database server or reached any other
 database in the cluster.
 
-`integr8_platform` (migration 0058) does that work instead. Bootstrap gives it
+`integr8_platform` does that work instead. Bootstrap gives it
 `BYPASSRLS` (only a superuser can) and makes sure it is not a superuser and
-cannot create roles or databases. 0058 grants it `select, insert, update,
+cannot create roles or databases. The migrations grant it `select, insert, update,
 delete` on every table in `public`, `select` only on `schema_migrations` (the
 readiness check reads it), the sequences, and `execute` on `purge_tenant()`.
 It owns nothing, so it cannot alter, drop or truncate a table, disable a
@@ -131,7 +168,7 @@ definer, owned by the superuser that runs migrations, and that is what lets it
 set `session_replication_role`.
 
 Unlike the two narrow roles, it reaches tables made by later migrations
-through default privileges set in 0058: it stands where the owner stood, and a
+through default privileges set in `0001_foundation`: it stands where the owner stood, and a
 table the platform code reads must not work everywhere but production. The
 schema-invariant suite checks it covers every table and nothing more, and
 `platform-role.integration.test.ts` tries what it must not be able to do.
@@ -159,7 +196,7 @@ role password or `SUPABASE_AUTH_JWT_SECRET`. A setting the API reads has to be
 named in compose's `x-api-env` list; `apps/api/src/compose-env.test.ts` fails
 until it is.
 
-## Tables split by year (P41)
+## Tables split by year
 
 The tables that grow forever and that no other table points at are
 partitioned by range on their date, one partition per UTC year
@@ -195,7 +232,7 @@ A new partitioned table: `partition by range (<date column>)` on the parent,
 keys that include the column, then `select ensure_year_partitions();` at the end
 of the migration. Nothing else is needed.
 
-## Seeing query plans at real sizes (P41)
+## Seeing query plans at real sizes
 
 A development database is empty, so a slow query hides until production.
 
@@ -218,7 +255,7 @@ The rules the plans hold the code to: indexes on tenant tables lead with
 read with a date range on their partition column; optional filters are added
 only when given, never written as `($1 is null or col >= $1)`.
 
-## Moving a company between servers (P41)
+## Moving a company between servers
 
 `apps/api/src/transfer/` (staff only, the `transfer` service in compose; the
 setup guide, Stage 11 part AK, has the commands) writes one company to a
@@ -237,14 +274,12 @@ archive: columns are matched by name, so a column added since takes its
 default and one dropped is reported. That holds only while migrations follow
 the expand/contract rule in [migrations.md](./migrations.md).
 
-## The P35 seam
+## One pool today, a database per company later
 
 `getTenantDataSource(tenantId)` returns a handle onto the one shared pool for
-every tenant today. When P35 sells a dedicated-instance tier, it returns a data
-source backed by that company's own database and nothing above it changes. The
-warm LRU that caches these handles is already bounded and already disposes what
-it evicts, because the day an entry owns a real connection pool is not the day
-to discover it does not.
+every company. A dedicated-database tier would return a data source backed by
+that company's own database and nothing above it would change; the cache of
+handles is already bounded and disposes what it evicts.
 
 ## Running things
 

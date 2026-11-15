@@ -7328,7 +7328,7 @@ export const en = {
     },
   },
 
-  // PDF documents made from submissions (docs/documents/ADR-0001).
+  // PDF documents made from submissions (docs/documents/README.md).
   eta: {
     title: 'E-invoicing',
     switch: {
