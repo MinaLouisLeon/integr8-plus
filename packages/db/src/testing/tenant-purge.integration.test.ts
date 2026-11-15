@@ -38,6 +38,7 @@ const PURGED_TABLES_SQL = `
      and parent.relname = 'tenants'
      and parent.relnamespace = 'public'::regnamespace
      and child.relnamespace = 'public'::regnamespace
+     and not child.relispartition
      and att.attname = 'tenant_id'`;
 
 let owner: pg.Client;
@@ -58,7 +59,8 @@ async function tablesWithTenantId(): Promise<string[]> {
     `select c.relname::text as name
        from pg_class c
        join pg_attribute a on a.attrelid = c.oid and a.attname = 'tenant_id' and not a.attisdropped
-      where c.relkind = 'r' and c.relnamespace = 'public'::regnamespace
+      where c.relkind in ('r', 'p') and not c.relispartition
+        and c.relnamespace = 'public'::regnamespace
       order by 1`,
   );
   return result.rows.map((row) => row.name);
@@ -133,6 +135,7 @@ describe('what the purge relies on', () => {
         where con.contype = 'f'
           and dst.relname in (select name from purged)
           and src.relname not in (select name from purged)
+          and not src.relispartition
           and dst.relname <> 'tenants'`,
     );
     expect(result.rows).toEqual([]);

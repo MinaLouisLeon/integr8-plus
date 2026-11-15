@@ -148,6 +148,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` completed · `[!]` block
 - [ ] **P33** — Public API, webhooks and integrations
 - [ ] **P34** — Enterprise access and security review
 - [ ] **P35** — Dedicated-instance tier
+- [ ] **P41** — Database restructure: a clean baseline, yearly partitions, export and import (built 2026-11-14, in progress: the owner's run on the Proxmox test machine remains)
 
 ---
 

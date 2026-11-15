@@ -50,9 +50,17 @@ export interface MigrationStatus {
    * `ahead-of-build` is an applied migration this build has no file for and
    * that is newer than every file it has: a newer release ran it, and this
    * build is an earlier one. `missing-file` is the same absence anywhere else,
-   * which no rollback explains.
+   * which no rollback explains. `before-baseline` is an applied migration
+   * whose name is not this build's for the same number: the database was built
+   * by a release before 2.0.0, whose migrations the baseline replaced (P41).
    */
-  state: 'applied' | 'pending' | 'missing-file' | 'checksum-mismatch' | 'ahead-of-build';
+  state:
+    | 'applied'
+    | 'pending'
+    | 'missing-file'
+    | 'checksum-mismatch'
+    | 'ahead-of-build'
+    | 'before-baseline';
   appliedAt?: Date;
 }
 
@@ -113,6 +121,9 @@ export function compareMigrations(
         appliedAt: row.applied_at,
       };
     }
+    if (file.name !== row.name) {
+      return { version, name: row.name, state: 'before-baseline', appliedAt: row.applied_at };
+    }
     return {
       version,
       name: file.name,
@@ -133,6 +144,17 @@ export function compareMigrations(
 export function migrationProblems(statuses: readonly MigrationStatus[]): string[] {
   const ahead = statuses.filter((entry) => entry.state === 'ahead-of-build');
   const problems: string[] = [];
+
+  // One answer for a database from before 2.0.0, rather than seventy lines
+  // about files that were replaced on purpose.
+  const before = statuses.find((entry) => entry.state === 'before-baseline');
+  if (before !== undefined) {
+    return [
+      `This database was built by a release before 2.0.0 (it has ${before.version}_${before.name}). ` +
+        '2.0.0 starts the schema again from a new baseline, so the database must be created afresh: ' +
+        'see the setup guide, "Moving to 2.0.0".',
+    ];
+  }
 
   for (const entry of statuses) {
     const label = `${entry.version}_${entry.name}`;

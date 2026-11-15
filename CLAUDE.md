@@ -54,6 +54,8 @@ pnpm --filter @integr8/api openapi && pnpm --filter @integr8/api-client generate
 pnpm --filter @integr8/db db up | status | deploy   # migrations (deploy = bootstrap roles + up)
 pnpm --filter @integr8/db db:templates               # sync the form template library
 pnpm --filter @integr8/api demo-company --owner-email you@example.com   # demo company, see below
+pnpm --filter @integr8/db db:volume && pnpm --filter @integr8/db db:plans --source '*'   # query plans at real sizes (P41)
+pnpm --filter @integr8/api transfer export|import|inspect …   # move one company between servers, staff only (P41)
 ```
 
 Git hooks (husky): pre-commit runs eslint + prettier on staged files;

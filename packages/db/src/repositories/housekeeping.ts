@@ -67,14 +67,26 @@ export class HousekeepingRepository {
       loginAttempts: await this.#inBatches(batchSize, maxBatches, (limit) =>
         sql`
           delete from login_attempts
-          where ctid in (
-            select ctid from login_attempts
+          where (id, occurred_at) in (
+            select id, occurred_at from login_attempts
             where occurred_at < ${cutoffs.loginAttemptsBefore}
             limit ${limit}
           )
         `.execute(this.db),
       ),
     };
+  }
+
+  /**
+   * Makes this year's and next year's partitions of every year-partitioned
+   * table, and gives any year the default partition holds its own (P41).
+   * Returns how many were made; nothing to do is zero.
+   */
+  async ensureYearPartitions(yearsAhead = 1): Promise<number> {
+    const result = await sql<{ made: number }>`
+      select ensure_year_partitions(${yearsAhead}::integer) as made
+    `.execute(this.db);
+    return result.rows[0]?.made ?? 0;
   }
 
   async #inBatches(

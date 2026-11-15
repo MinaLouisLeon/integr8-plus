@@ -37,6 +37,17 @@ pnpm --filter @integr8/db db verify          # checksums still match
 pnpm --filter @integr8/db db new add_sites
 ```
 
+## The 2.0.0 baseline
+
+2.0.0 started the numbering again (P41). `0001_foundation` to `0019_assistant`
+are one migration per module, generated from the schema release 1.4.0's
+migrations 0001–0079 built and checked object by object against it; the old
+files and their reasoning are in git before 2.0.0, and comments on tables and
+columns carry the why into the database. A database built by 1.x is refused
+with a message saying to create it afresh (state `before-baseline`). New work
+takes the next number after the highest file, and is immutable once applied
+like any other.
+
 ## An applied migration is immutable
 
 The checksum exists to enforce one rule: once a migration has run anywhere, its

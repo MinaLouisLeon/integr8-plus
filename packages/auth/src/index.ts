@@ -86,6 +86,7 @@ export {
   type FakeIdentity,
   type IdentityProvider,
   type SupabaseIdentityProviderOptions,
+  type ImportedIdentity,
   type VerifiedIdentity,
 } from './identity-provider.js';
 

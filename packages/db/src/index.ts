@@ -932,3 +932,19 @@ export {
   type IdempotencyStatus,
   type JobStatus,
 } from './schema.js';
+
+// Moving one company between servers (P41): staff-only, from the API's transfer command.
+export {
+  existingSignInAccounts,
+  exportCompanyRows,
+  importCompanyRows,
+  NOT_TRANSFERRED,
+  readSignInAccounts,
+  schemaVersion,
+  TRANSFER_FORMAT_VERSION,
+  TransferRefusedError,
+  type SignInAccount,
+  type TableHeader,
+  type TransferTable,
+  type WriteReport,
+} from './transfer/index.js';

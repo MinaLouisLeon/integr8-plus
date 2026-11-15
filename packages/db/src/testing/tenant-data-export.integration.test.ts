@@ -40,6 +40,7 @@ const COMPANY_TABLES_SQL = `
      and parent.relname = 'tenants'
      and parent.relnamespace = 'public'::regnamespace
      and child.relnamespace = 'public'::regnamespace
+     and not child.relispartition
      and att.attname = 'tenant_id'
    order by 1`;
 

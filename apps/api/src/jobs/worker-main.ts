@@ -19,6 +19,7 @@ import { runSyncMaintenance } from '../sync/maintenance.js';
 import { buildJobHandlers } from './handlers.js';
 import { runMaintenanceSteps } from './maintenance-steps.js';
 import { runTableHousekeeping } from './table-housekeeping.js';
+import { runYearPartitions } from './year-partitions.js';
 import { Worker } from './worker.js';
 
 /**
@@ -313,6 +314,14 @@ async function main(): Promise<void> {
           name: 'Table housekeeping',
           run: async () => {
             await runTableHousekeeping({ logger, workerId: worker.id });
+          },
+        },
+        {
+          // Next year's partitions of the tables split by year (P41), made
+          // long before they are needed. Logs only when it made one.
+          name: 'Year partitions',
+          run: async () => {
+            await runYearPartitions({ logger, workerId: worker.id });
           },
         },
       ],
