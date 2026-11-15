@@ -645,11 +645,16 @@ export class LedgerRepository extends TenantScopedRepository {
       })
       .returningAll()
       .executeTakeFirstOrThrow();
-    await this.insertLines(row.id, lines);
+    await this.insertLines(row.id, input.entryDate, lines);
     return toJournal(row);
   }
 
-  private async insertLines(journalId: string, lines: readonly JournalLineInput[]): Promise<void> {
+  /** `entryDate` must be the journal's: the lines' foreign key carries it. */
+  private async insertLines(
+    journalId: string,
+    entryDate: string,
+    lines: readonly JournalLineInput[],
+  ): Promise<void> {
     if (lines.length === 0) {
       return;
     }
@@ -659,6 +664,7 @@ export class LedgerRepository extends TenantScopedRepository {
         lines.map((line, index) => ({
           tenant_id: this.tenantId,
           journal_id: journalId,
+          entry_date: entryDate,
           line_no: index + 1,
           account_id: line.accountId,
           debit: isZero(line.debit) ? '0' : (line.debit ?? '0'),
@@ -700,7 +706,7 @@ export class LedgerRepository extends TenantScopedRepository {
       .where('tenant_id', '=', this.tenantId)
       .where('journal_id', '=', id)
       .execute();
-    await this.insertLines(id, lines);
+    await this.insertLines(id, changes.entryDate, lines);
     return toJournal(row);
   }
 

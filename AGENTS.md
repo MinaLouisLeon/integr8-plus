@@ -12,27 +12,28 @@ This block is written and re-added by `turbo` before repository-scoped commands 
 # Integr8 Plus — guide for coding agents
 
 A multi-tenant field-operations platform sold to service companies on subscription.
-Office staff use the web app or their company's desktop app; engineers use an
-offline-first phone app; Integr8 staff run tenants from the platform dashboard.
+Office staff use their company's desktop app; engineers use an offline-first
+phone app; Integr8 staff run tenants from the staff desktop app. The web app is
+the public site only (P42).
 
-Longer references: `README.md` (product + setup), `CONTRIBUTING.md` (rules and
-checklists), `docs/` (one folder per area), `plan/README.md` (what is built and next).
+Longer references: `docs/README.md` (the documentation index, written for 2.0.0),
+`docs/contributing/README.md` (rules and checklists), `plan/README.md` (what is not finished).
 Current project state and known gotchas: `MEMORY.md`.
 
 ## Workspace
 
 pnpm 10 workspaces + Turborepo, Node 22.22.1 or newer 22.x (22.23.4 recommended, see `.nvmrc`), TypeScript 6.0.3 (pinned on purpose —
-see `CONTRIBUTING.md`), Vitest, ESLint (type-aware, flat config), Prettier. Every dependency
+see `docs/contributing/README.md`), Vitest, ESLint (type-aware, flat config), Prettier. Every dependency
 is pinned to an exact version.
 
 | Path                         | Package                      | What                                                                            |
 | ---------------------------- | ---------------------------- | ------------------------------------------------------------------------------- |
 | `apps/api`                   | `@integr8/api`               | Fastify `/v1` service, OpenAPI, worker, platform/storage CLIs. Port 3000        |
-| `apps/web`                   | `@integr8/web`               | Next.js: marketing, office app, billing, platform dashboard. Port 3001          |
+| `apps/web`                   | `@integr8/web`               | Next.js: the public site only, no sign-in (P42). Port 3001                      |
 | `apps/desktop`               | `@integr8/desktop`           | React + Vite SPA in Tauri v2; `staff` / `company` flavours. Port 3002           |
 | `apps/mobile`                | `@integr8/mobile`            | Expo Router, offline-first (SQLCipher); one build per company                   |
 | `apps/forms-ai`              | `@integr8/forms-ai`          | Offline MCP server + installer for AI tools writing `.integr8form`; Node SEA    |
-| `apps/dev-mcp`               | `@integr8/dev-mcp`           | Developer MCP server: act in test companies on a running API (run from source)  |
+| `apps/dev-mcp`               | `@integr8/dev-mcp`           | Developer MCP server: test companies on a running API + every Forms for AI tool |
 | `packages/core`              | `@integr8/core`              | Domain types, zod schemas, permission matrix, navigation model                  |
 | `packages/db`                | `@integr8/db`                | Migrations, repositories, tenant isolation, seeds — the only place SQL runs     |
 | `packages/auth`              | `@integr8/auth`              | Sessions, EdDSA tokens, refresh rotation, impersonation, offline grants         |
@@ -40,19 +41,20 @@ is pinned to an exact version.
 | `packages/form-engine`       | `@integr8/form-engine`       | Pure form engine + conformance suite (Node and Hermes must agree byte-for-byte) |
 | `packages/form-package`      | `@integr8/form-package`      | The `.integr8form` file: pack, strict unpack, publish-level check (Node only)   |
 | `packages/form-input`        | `@integr8/form-input`        | Engine state → what a form filler shows                                         |
-| `packages/form-renderer-dom` | `@integr8/form-renderer-dom` | Form/submission screens for web + desktop                                       |
-| `packages/operations-dom`    | `@integr8/operations-dom`    | Operations screens shared by web + desktop                                      |
+| `packages/form-renderer-dom` | `@integr8/form-renderer-dom` | Form/submission screens for the desktop (and the public site's quote link)      |
+| `packages/operations-dom`    | `@integr8/operations-dom`    | Operations screens for the desktop app                                          |
 | `packages/offline`           | `@integr8/offline`           | Phone SQLite schema, queries, sync engine (no React Native inside)              |
 | `packages/i18n`              | `@integr8/i18n`              | English + Arabic catalogues (TypeScript), direction helpers                     |
 | `packages/tokens`            | `@integr8/tokens`            | Design tokens, themes, brand accent                                             |
 | `packages/document-render`   | `@integr8/document-render`   | Printable business documents                                                    |
 | `packages/eta`               | `@integr8/eta`               | Egyptian Tax Authority e-invoicing                                              |
+| `packages/releases`          | `@integr8/releases`          | The apps' GitHub releases: update feed, downloads (public site and API)         |
 
 ## Commands
 
 ```bash
 pnpm build | lint | typecheck | test     # whole workspace; none need a database
-pnpm test:integration                    # needs a disposable Postgres (see README "Everyday commands")
+pnpm test:integration                    # needs a disposable Postgres (see `docs/contributing/README.md`)
 pnpm format:check                        # what CI runs; `pnpm format` writes
 pnpm guide:check                         # setup checklist MD/HTML parity (see below)
 pnpm pins:check                          # exact dependency versions; one Node release everywhere
@@ -80,7 +82,7 @@ refuses pushes to `main`/`staging`/`dev`, then runs `pnpm typecheck` and `pnpm t
   permission, idempotency) and registered in `routes/index.ts`. Regenerate and commit
   `openapi.json` and the client after any change; CI fails on drift.
 - **Nothing breaking inside `/v1`.** Shipped desktop and phone builds cannot be
-  force-updated. Read `docs/api/versioning.md` before changing an endpoint's shape.
+  force-updated. Read `docs/api/README.md` before changing an endpoint's shape.
 - **Every user-facing string goes through `@integr8/i18n`**, in both `en.ts` and `ar.ts`
   (a parity test checks keys, placeholders and Arabic's six plural forms).
 - **Logical directions only** for RTL: `ms-`/`pe-`/`start-`/`text-start`, never
@@ -91,13 +93,15 @@ refuses pushes to `main`/`staging`/`dev`, then runs `pnpm typecheck` and `pnpm t
 
 ## Conventions
 
-- Shared domain types live only in `@integr8/core`. Apps never import from each other.
-- No shared UI component package: each app owns its `components/ui`; web and desktop share
-  screens through `form-renderer-dom` / `operations-dom`.
+- Shared domain types live only in `@integr8/core`. Apps never import from each other, with one
+  exception: `apps/dev-mcp` (never shipped) imports `@integr8/forms-ai/tools` to carry every Forms
+  for AI tool.
+- No shared UI component package: each app owns its `components/ui`; the desktop app draws
+  shared screens from `form-renderer-dom` / `operations-dom`.
 - Never store tokens in `localStorage` — use the `TokenStore` contract (keychain,
   SecureStore, httpOnly cookie).
 - External services have local stand-ins selected by env (`MEDIA_STORAGE=local`,
-  `GEOCODER=fake`, `PUSH_SENDER=recording`, `BILLING_PROVIDER=recording`,
+  `GEOCODER=fake`, `PUSH_SENDER=recording`, `APP_RELEASES=off`,
   `EMAIL_SENDER=recording`, `APP_BUILDS=off`). New integrations follow the same pattern:
   an interface, a `Recording…` stand-in, the real adapter, and a config check that
   refuses to start production on a half-configured switch (`apps/api/src/config.ts`).
@@ -105,7 +109,7 @@ refuses pushes to `main`/`staging`/`dev`, then runs `pnpm typecheck` and `pnpm t
   `deploy/compose.yml`, no Supabase cloud project. Auth only holds passwords and
   makes sign-in codes; it is reached through `IdentityProvider`
   (`packages/auth/src/identity-provider.ts`), whose `FakeIdentityProvider` is the
-  stand-in for tests only. See `docs/auth/self-hosted-auth.md`.
+  stand-in for tests only. See `docs/auth/README.md`.
 - Config vars are documented where they are read (zod schema comments) and in the
   matching `.env.example`; `deploy/.env.example` covers a whole deployment.
 - Code comments explain _why_, in plain prose — match the existing style.
@@ -115,18 +119,17 @@ refuses pushes to `main`/`staging`/`dev`, then runs `pnpm typecheck` and `pnpm t
 ## Change requests and planning
 
 Wishes for the platform found while building forms arrive as change requests in
-`plan/requests/` (P39). To plan one, follow `docs/contributing/planning-a-change-request.md`
+`plan/requests/`. To plan one, follow `docs/contributing/planning-a-change-request.md`
 (Claude Code: `/plan-change-request <number>`): it ends with a phase file for the owner to
 approve, and writes no product code. The developer MCP server (`.mcp.json`,
-`docs/contributing/developer-mcp.md`) lists and reads them and gives the test company to try
+`docs/contributing/developer-tools.md`) lists and reads them and gives the test company to try
 things on.
 
 ## Commits, branches, releases
 
 - Conventional Commits, `type(scope): subject`, header ≤ 100 chars. Allowed scopes are the
-  `scope-enum` in `commitlint.config.js` (authoritative; the list in `CONTRIBUTING.md` is
-  older). `docs:` with no scope is also used.
-- Work branches: `feat/<slug>`, `fix/<slug>`. Flow per `docs/contributing/branching.md`:
+  `scope-enum` in `commitlint.config.js` (authoritative). `docs:` with no scope is also used.
+- Work branches: `feat/<slug>`, `fix/<slug>`. Flow per `docs/contributing/README.md`:
   branch → `dev` → `staging` → `main`. Never push directly to `main`, `staging` or `dev`.
 - The version is the root `package.json` `version` only; a merge to `main` releases it and
   refuses a version already released.

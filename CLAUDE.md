@@ -14,32 +14,32 @@ recent decisions. Keep both up to date when you change something they describe.
 Integr8 sells to service companies (maintenance, installation, inspection),
 mainly in Egypt (EGP, Egyptian payroll, Egyptian Tax Authority e-invoicing),
 in English and Arabic (right-to-left). Every company is onboarded by Integr8
-staff from the platform dashboard; there is no public sign-up by default.
+staff from the staff desktop app; there is no public sign-up.
 
-| Who                          | Uses                                         |
-| ---------------------------- | -------------------------------------------- |
-| Integr8 staff (super admins) | Web `/platform` dashboard, staff desktop app |
-| A company's office           | Web app, or the company's own desktop app    |
-| A company's engineers        | The company's own phone app (works offline)  |
+| Who                          | Uses                                        |
+| ---------------------------- | ------------------------------------------- |
+| Integr8 staff (super admins) | The staff desktop app (the dashboard)       |
+| A company's office           | The company's own desktop app               |
+| A company's engineers        | The company's own phone app (works offline) |
 
 ## Repository layout (pnpm + Turborepo monorepo)
 
-| Path                   | What                                                                                                                                 |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `apps/api`             | Fastify `/v1` API, route registry → OpenAPI, background worker, CLIs (`platform/admin-cli.ts`, `demo/cli.ts`, storage)               |
-| `apps/web`             | Next.js: marketing site, company workspace `(app)/…`, platform dashboard `platform/…`                                                |
-| `apps/desktop`         | React + Tauri (staff app and per-company branded builds)                                                                             |
-| `apps/mobile`          | Expo / React Native, local SQLite, queued sync                                                                                       |
-| `apps/forms-ai`        | Integr8 Forms for AI: offline MCP server + terminal installer for AI coding tools writing `.integr8form` files (`docs/forms-ai/`)    |
-| `apps/dev-mcp`         | Developer MCP server: an AI tool in this repo acts in test companies on a running API (`docs/contributing/developer-mcp.md`)         |
-| `packages/core`        | Domain rules: roles, permissions matrix, state machines, money, payroll, etc.                                                        |
-| `packages/db`          | Postgres via Kysely: `migrations/NNNN_name.{up,down}.sql`, `schema.ts`, repositories, migrator, RLS                                  |
-| `packages/auth`        | Tokens, sessions, impersonation, invitations, the identity provider (self-hosted Supabase Auth)                                      |
-| `packages/form-engine` | Form definitions, validation, evaluation, template library                                                                           |
-| `packages/*` (others)  | `api-client` (generated), `i18n`, `offline`, `operations-dom`, `form-renderer-dom`, `form-input`, `document-render`, `eta`, `tokens` |
-| `docs/`                | Per-area docs; `docs/deployment/setup-checklist.{md,html}` is the operator's guide                                                   |
-| `deploy/`              | `compose.yml` (with the self-hosted Auth container), `.env.example`, `vps/` (setup script, Caddyfile, backups)                       |
-| `plan/`                | The build plan and roadmap                                                                                                           |
+| Path                   | What                                                                                                                                                            |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/api`             | Fastify `/v1` API, route registry → OpenAPI, background worker, CLIs (`platform/admin-cli.ts`, `demo/cli.ts`, storage)                                          |
+| `apps/web`             | Next.js: the public site only (marketing, help, legal, `/download`, quote/document/asset-tag links, invitations, update feed); nobody signs in (P42)            |
+| `apps/desktop`         | React + Tauri (staff app and per-company branded builds)                                                                                                        |
+| `apps/mobile`          | Expo / React Native, local SQLite, queued sync                                                                                                                  |
+| `apps/forms-ai`        | Integr8 Forms for AI: offline MCP server + terminal installer for AI coding tools writing `.integr8form` files (`docs/contributing/developer-tools.md`)         |
+| `apps/dev-mcp`         | Developer MCP server: an AI tool in this repo acts in test companies on a running API, and has every Forms for AI tool (`docs/contributing/developer-tools.md`) |
+| `packages/core`        | Domain rules: roles, permissions matrix, state machines, money, payroll, etc.                                                                                   |
+| `packages/db`          | Postgres via Kysely: `migrations/NNNN_name.{up,down}.sql`, `schema.ts`, repositories, migrator, RLS                                                             |
+| `packages/auth`        | Tokens, sessions, impersonation, invitations, the identity provider (self-hosted Supabase Auth)                                                                 |
+| `packages/form-engine` | Form definitions, validation, evaluation, template library                                                                                                      |
+| `packages/*` (others)  | `api-client` (generated), `i18n`, `offline`, `operations-dom`, `form-renderer-dom`, `form-input`, `document-render`, `eta`, `tokens`                            |
+| `docs/`                | The documentation, rewritten for 2.0.0: start at `docs/README.md`; `docs/deployment/setup-checklist.{md,html}` is the operator's guide                          |
+| `deploy/`              | `compose.yml` (with the self-hosted Auth container), `.env.example`, `vps/` (setup script, Caddyfile, backups)                                                  |
+| `plan/`                | `plan/README.md`: what is in progress, the owner's decisions and steps, phases not started; `plan/requests/` change requests                                    |
 
 ## Commands
 
@@ -54,6 +54,8 @@ pnpm --filter @integr8/api openapi && pnpm --filter @integr8/api-client generate
 pnpm --filter @integr8/db db up | status | deploy   # migrations (deploy = bootstrap roles + up)
 pnpm --filter @integr8/db db:templates               # sync the form template library
 pnpm --filter @integr8/api demo-company --owner-email you@example.com   # demo company, see below
+pnpm --filter @integr8/db db:volume && pnpm --filter @integr8/db db:plans --source '*'   # query plans at real sizes (P41)
+pnpm --filter @integr8/api transfer export|import|inspect …   # move one company between servers, staff only (P41)
 ```
 
 Git hooks (husky): pre-commit runs eslint + prettier on staged files;
@@ -138,7 +140,7 @@ API refuses to start if the old `SUPABASE_URL` is set. Everything goes through
 `IdentityProvider` (`packages/auth/src/identity-provider.ts`); the suites use
 `FakeIdentityProvider`. Emailed 6-digit codes (`/v1/auth/magic-link`) and
 Change password (`/v1/me/password`) are described in
-`docs/auth/self-hosted-auth.md`. Staff accounts always use their own password
+`docs/auth/README.md`. Staff accounts always use their own password
 
 - authenticator code in `platform_users`. Details: `docs/auth/README.md`.
 
@@ -182,7 +184,7 @@ The whole operator procedure is `docs/deployment/setup-checklist.md`.
 - **Deployment-affecting changes** (new env var, migration, rollout or recovery step):
   update `docs/deployment/setup-checklist.md` **and** `.html` together, the relevant
   `.env.example`, then run `pnpm guide:check`.
-- **Docs and plan:** a feature also updates its `docs/<area>/` page and its phase file in
-  `plan/`. Keep `MEMORY.md` current when the project state it describes changes.
+- **Docs and plan:** a feature also updates its `docs/<area>/` page and its entry (or phase
+  file) in `plan/`. Keep `MEMORY.md` current when the project state it describes changes.
 - **Turborepo:** check the installed version's bundled docs before touching `turbo.json`
   (see the managed block in `AGENTS.md`).

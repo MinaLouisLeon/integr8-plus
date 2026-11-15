@@ -1,11 +1,10 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
 import type { FoundBrowser } from '../preview/browser.js';
 import { loadPicture } from '../mcp/package-files.js';
-import { formatError } from '../mcp/report.js';
+import { failure, guarded, text } from '../mcp/results.js';
 import { VERSION } from '../version.js';
 import type { PreviewWindow } from '../window/preview-window.js';
 import { REQUEST_KINDS, requestCode } from './format.js';
@@ -30,20 +29,13 @@ export interface RequestToolDeps {
   outputFolder: () => string;
   browser: () => FoundBrowser | undefined;
   scratch: string;
+  /** Other names for the list and read tools (the developer MCP server has its own). */
+  names?: RequestToolNames;
 }
 
-const text = (value: string): CallToolResult => ({ content: [{ type: 'text', text: value }] });
-const failure = (value: string): CallToolResult => ({
-  content: [{ type: 'text', text: value }],
-  isError: true,
-});
-
-async function guarded(work: () => Promise<CallToolResult> | CallToolResult) {
-  try {
-    return await work();
-  } catch (error) {
-    return failure(formatError(error));
-  }
+export interface RequestToolNames {
+  list?: string;
+  get?: string;
 }
 
 const words = z.string().trim().min(1).max(4000);
@@ -61,13 +53,15 @@ export const HANDOVER =
 
 export function registerRequestTools(server: McpServer, deps: RequestToolDeps): void {
   const root = () => requestsFolder(deps.outputFolder());
+  const listName = deps.names?.list ?? 'list_change_requests';
+  const getName = deps.names?.get ?? 'get_change_request';
 
   server.registerTool(
     'record_change_request',
     {
       title: 'Record a change request for the platform',
       description:
-        "Writes a change request: something the person wants that the Integr8 Plus platform cannot do yet. Ask first, and only record after they agree: what should happen, for whom, on which apps (web, desktop, phone), and today's workaround. It saves the words, the form and PDF templates being built (from the preview window, even if they do not pass the check yet) and pictures of the Form tab and the PDFs when a browser is available. Never put a real customer's data in a request: use sample answers only.",
+        "Writes a change request: something the person wants that the Integr8 Plus platform cannot do yet. Ask first, and only record after they agree: what should happen, for whom, on which apps (the company's desktop app, the staff app, the phone), and today's workaround. It saves the words, the form and PDF templates being built (from the preview window, even if they do not pass the check yet) and pictures of the Form tab and the PDFs when a browser is available. Never put a real customer's data in a request: use sample answers only.",
       inputSchema: {
         title: z
           .string()
@@ -173,7 +167,7 @@ export function registerRequestTools(server: McpServer, deps: RequestToolDeps): 
   );
 
   server.registerTool(
-    'list_change_requests',
+    listName,
     {
       title: 'List the change requests on this computer',
       description:
@@ -201,7 +195,7 @@ export function registerRequestTools(server: McpServer, deps: RequestToolDeps): 
   );
 
   server.registerTool(
-    'get_change_request',
+    getName,
     {
       title: 'Read one change request',
       description: 'One change request in full: its request.md and the files beside it.',

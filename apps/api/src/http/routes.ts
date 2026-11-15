@@ -54,19 +54,11 @@ export interface BaseRequestContext {
    * shift them. Optional so hand-built contexts in tests need not say.
    */
   receivedAt?: Date;
-  /** The body exactly as it arrived, for a route that declared `rawBody`. */
-  rawBody?: string | undefined;
   /**
    * The uploaded file's bytes, for a route that declared `fileBody` and was
    * sent that media type; `undefined` when the request carried something else.
    */
   fileBody?: Uint8Array | undefined;
-  /**
-   * The provider's signature over that body, for a route that declared
-   * `rawBody`. Read here rather than in the handler so a webhook route never
-   * reaches into Fastify itself.
-   */
-  signatureHeader?: string | undefined;
   /**
    * The `x-client-app` header: what the caller says it is. Fine for logs and
    * version checks; never for a decision a caller could gain by lying (the
@@ -201,16 +193,6 @@ interface RouteShape {
 
   /** Largest request body, in bytes, where this route needs more than `API_MAX_BODY_BYTES` — a CSV import. */
   bodyLimit?: number;
-
-  /**
-   * Whether this route needs the bytes exactly as they arrived (P17).
-   *
-   * A webhook signature covers what was sent, and parsing JSON and
-   * re-serialising it changes the bytes — a reordered key or a different
-   * escape is enough to make a genuine delivery look forged. A route that sets
-   * this receives the raw string on `context.rawBody` and an unparsed `body`.
-   */
-  rawBody?: boolean;
 
   /**
    * The media type of a file this route receives as its whole body (a

@@ -90,6 +90,19 @@ describe('what still fails', () => {
     expect(checkSchema(statuses).problems).toEqual(['0002_m0002 (checksum-mismatch)']);
   });
 
+  it('a database from before the 2.0.0 baseline, in one line', () => {
+    const statuses = compareMigrations(
+      [row('0001', 'core_tenancy'), row('0002', 'row_level_security'), row('0079', 'form_actions')],
+      build,
+    );
+
+    expect(states(statuses)).toMatchObject({ '0001': 'before-baseline', '0079': 'ahead-of-build' });
+    const problems = migrationProblems(statuses);
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toMatch(/before 2\.0\.0 \(it has 0001_core_tenancy\).*created afresh/u);
+    expect(checkSchema(statuses).problems).toContain('0001_core_tenancy (before-baseline)');
+  });
+
   it('a build with no migration files at all, which is a packaging mistake', () => {
     const statuses = compareMigrations([row('0001')], []);
 

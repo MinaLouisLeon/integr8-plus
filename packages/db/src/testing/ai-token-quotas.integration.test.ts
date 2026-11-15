@@ -17,7 +17,7 @@ import {
 } from './harness.js';
 
 /**
- * Token allowances, members' shares and members' dollar caps (docs/ai/ADR-0002).
+ * Token allowances, members' shares and members' dollar caps (docs/ai/README.md).
  *
  * The properties that matter: a company's shares never pass 100%, however two
  * owners race; simultaneous token holds never pass the company's pool or a

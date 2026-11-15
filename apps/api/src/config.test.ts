@@ -29,9 +29,8 @@ const PRODUCTION_BASE = {
   GEOCODER: 'mapbox',
   MAPBOX_ACCESS_TOKEN: 'pk.token',
   PUSH_SENDER: 'expo',
-  BILLING_PROVIDER: 'stripe',
-  STRIPE_SECRET_KEY: 'sk_live_x',
-  STRIPE_WEBHOOK_SECRET: 'whsec_x',
+  APP_RELEASES: 'github',
+  GITHUB_RELEASES_REPOSITORY: 'integr8/integr8-plus',
   EMAIL_SENDER: 'resend',
   RESEND_API_KEY: 're_x',
   EMAIL_FROM: 'Integr8 <hello@example.com>',
@@ -85,16 +84,6 @@ describe("the web app's origin and API_CORS_ORIGINS", () => {
         PRODUCTION_DATABASE,
       ),
     ).not.toThrow();
-  });
-});
-
-describe('public sign-up', () => {
-  // Companies are set up by Integr8 from the dashboard; a deployment has to
-  // say so explicitly to let strangers make their own.
-  it('is off unless the deployment opens it', () => {
-    expect(loadApiConfig({}).PUBLIC_SIGNUP).toBe('off');
-    expect(loadApiConfig({ PUBLIC_SIGNUP: 'open' }).PUBLIC_SIGNUP).toBe('open');
-    expect(() => loadApiConfig({ PUBLIC_SIGNUP: 'yes' })).toThrow();
   });
 });
 
@@ -220,7 +209,7 @@ describe('the database connections production is given', () => {
   });
 });
 
-describe('the billing provider in production', () => {
+describe('the app releases in production (P42)', () => {
   const ready = (overrides: Record<string, string | undefined>) => () =>
     assertProductionReady(
       loadApiConfig({
@@ -231,33 +220,18 @@ describe('the billing provider in production', () => {
       PRODUCTION_DATABASE,
     );
 
-  it('starts with none and no Stripe keys: Integr8 invoices every company', () => {
-    expect(
-      ready({
-        BILLING_PROVIDER: 'none',
-        STRIPE_SECRET_KEY: undefined,
-        STRIPE_WEBHOOK_SECRET: undefined,
-      }),
-    ).not.toThrow();
+  it('starts when the releases are read from GitHub', () => {
+    expect(ready({})).not.toThrow();
   });
 
-  it('refuses Stripe test keys, which would mark companies paid with no money moving', () => {
-    expect(ready({ STRIPE_SECRET_KEY: 'sk_test_abc' })).toThrow(/test-mode key/u);
-    expect(ready({ STRIPE_SECRET_KEY: 'rk_test_abc' })).toThrow(/test-mode key/u);
-    expect(ready({ STRIPE_SECRET_KEY: 'pk_live_abc' })).toThrow(/publishable key/u);
-    expect(ready({ STRIPE_SECRET_KEY: 'sk_live_abc' })).not.toThrow();
+  it('refuses off: owners could be invited before their company has an app', () => {
+    expect(ready({ APP_RELEASES: 'off' })).toThrow(/APP_RELEASES is off/u);
   });
 
-  it('still refuses recording', () => {
-    expect(ready({ BILLING_PROVIDER: 'recording' })).toThrow(/BILLING_PROVIDER is recording/u);
-  });
-
-  it('lets staging use test keys', () => {
+  it('refuses github with no repository, wherever it runs', () => {
     expect(() =>
-      assertProductionReady(
-        loadApiConfig({ ...PRODUCTION_BASE, APP_ENV: 'staging', STRIPE_SECRET_KEY: 'sk_test_abc' }),
-      ),
-    ).not.toThrow();
+      loadApiConfig({ APP_RELEASES: 'github', GITHUB_RELEASES_REPOSITORY: undefined }),
+    ).toThrow(/GITHUB_RELEASES_REPOSITORY is not set/u);
   });
 });
 

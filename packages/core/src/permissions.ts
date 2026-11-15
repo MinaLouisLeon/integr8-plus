@@ -586,6 +586,38 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'manufacturing.manage',
   ],
 
+  // Keeps the books: issues invoices and credit notes and records money,
+  // posts and manages the general ledger, approves and pays expense claims,
+  // and prepares, signs and sends e-invoices. Reads what the books are built
+  // from (customers, sales, purchases, stock, assets, contracts, documents)
+  // and changes none of it. Unlocking a closed period stays the owner's,
+  // approving purchases the owner's and admin's, configuring e-invoicing
+  // too, and payroll the HR manager's (it needs people's sensitive details).
+  accountant: [
+    'tenant.read',
+    'member.read',
+    'form.read',
+    'customer.read',
+    'inventory.read',
+    'purchasing.read',
+    'sales.read',
+    'finance.read',
+    'finance.manage',
+    'finance.issue',
+    'asset.read',
+    'ledger.read',
+    'ledger.post',
+    'ledger.manage',
+    'expense.submit',
+    'expense.approve',
+    'contract.read',
+    'document.read',
+    'eta.read',
+    'eta.prepare',
+    'eta.sign',
+    'eta.submit',
+  ],
+
   // Runs the day: needs to see who is available, not to change who they are.
   // Reads every submission to follow the day's work, and can fill a form on an
   // engineer's behalf; correcting a submitted one is left to owners and admins.
@@ -691,6 +723,7 @@ const BY_ROLE: Readonly<Record<Role, ReadonlySet<Permission>>> = Object.freeze({
   admin: new Set(MATRIX.admin),
   hr_manager: new Set(MATRIX.hr_manager),
   inventory_manager: new Set(MATRIX.inventory_manager),
+  accountant: new Set(MATRIX.accountant),
   dispatcher: new Set(MATRIX.dispatcher),
   engineer: new Set(MATRIX.engineer),
   viewer: new Set(MATRIX.viewer),

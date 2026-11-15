@@ -17,21 +17,29 @@ describe('the dashboard map', () => {
     expect(new Set(keys).size).toBe(keys.length);
   });
 
-  it('shows an owner every section an app has, and drops empty groups', () => {
-    const web = visibleNavigation('web', permissionsFor('owner')).flatMap((g) => g.sections);
-    expect(web.map((s) => s.key)).toContain('billing');
-    expect(web.map((s) => s.key)).not.toContain('forms');
-    const desktop = visibleNavigation('desktop', permissionsFor('owner')).flatMap(
-      (g) => g.sections,
+  it('shows an owner the company screens and the form list in one menu (P42)', () => {
+    const keys = visibleNavigation(permissionsFor('owner'))
+      .flatMap((g) => g.sections)
+      .map((s) => s.key);
+    expect(keys).toEqual(
+      expect.arrayContaining([
+        'forms',
+        'schedule',
+        'getStarted',
+        'people',
+        'companyRoles',
+        'companySettings',
+        'websiteAccess',
+        'storage',
+        'billing',
+      ]),
     );
-    expect(desktop.map((s) => s.key)).toContain('forms');
-    expect(desktop.map((s) => s.key)).not.toContain('billing');
   });
 
   it('shows the assistant only when the caller says it is on for this seat and app', () => {
-    const without = visibleNavigation('web', permissionsFor('viewer')).flatMap((g) => g.sections);
+    const without = visibleNavigation(permissionsFor('viewer')).flatMap((g) => g.sections);
     expect(without.map((s) => s.key)).not.toContain('assistant');
-    const withIt = visibleNavigation('web', permissionsFor('viewer'), undefined, {
+    const withIt = visibleNavigation(permissionsFor('viewer'), undefined, {
       assistant: true,
     }).flatMap((g) => g.sections);
     expect(withIt.map((s) => s.key)).toContain('assistant');
@@ -40,17 +48,16 @@ describe('the dashboard map', () => {
   });
 
   it('shows branding only to staff sitting in the seat', () => {
-    const owner = visibleNavigation('desktop', permissionsHeld({ role: 'owner' }));
+    const owner = visibleNavigation(permissionsHeld({ role: 'owner' }));
     expect(owner.flatMap((g) => g.sections).map((s) => s.key)).not.toContain('branding');
     const staff = visibleNavigation(
-      'desktop',
       permissionsHeld({ role: 'owner', impersonatedBy: { pid: 'p', gid: 'g' } }),
     );
     expect(staff.flatMap((g) => g.sections).map((s) => s.key)).toContain('branding');
   });
 
   it('shows a viewer no imports, no timesheets and no empty operations heading', () => {
-    const groups = visibleNavigation('web', permissionsFor('viewer'));
+    const groups = visibleNavigation(permissionsFor('viewer'));
     const keys = groups.flatMap((g) => g.sections).map((s) => s.key);
     expect(keys).not.toContain('imports');
     expect(keys).not.toContain('timesheets');
@@ -65,7 +72,7 @@ describe('the dashboard map', () => {
       role: 'owner' | 'dispatcher' | 'engineer' | 'viewer',
       features?: Record<string, boolean>,
     ) =>
-      visibleNavigation('web', permissionsFor(role), features)
+      visibleNavigation(permissionsFor(role), features)
         .flatMap((g) => g.sections)
         .map((s) => s.key);
 
@@ -91,7 +98,7 @@ describe('the dashboard map', () => {
       seat: Parameters<typeof permissionsHeld>[0],
       features?: Record<string, boolean>,
     ) =>
-      visibleNavigation('desktop', permissionsHeld(seat), features)
+      visibleNavigation(permissionsHeld(seat), features)
         .find((group) => group.group === 'inventory')
         ?.sections.map((section) => section.key);
     const making = ['boms', 'assemblyOrders', 'materialPlans'];
@@ -105,7 +112,7 @@ describe('the dashboard map', () => {
     expect(inventory({ role: 'engineer' }, both)).not.toContain('boms');
     // The module needs inventory: without it, nothing of manufacturing shows.
     expect(
-      visibleNavigation('web', permissionsHeld({ role: 'owner' }), { manufacturing: true })
+      visibleNavigation(permissionsHeld({ role: 'owner' }), { manufacturing: true })
         .flatMap((group) => group.sections)
         .map((section) => section.key),
     ).not.toContain('boms');
@@ -114,7 +121,7 @@ describe('the dashboard map', () => {
 
   it('shows the ledger under accounting to owners, admins and viewers of a company that has it', () => {
     const groupsFor = (role: 'owner' | 'admin' | 'dispatcher' | 'engineer' | 'viewer') =>
-      visibleNavigation('web', permissionsFor(role), { ledger: true });
+      visibleNavigation(permissionsFor(role), { ledger: true });
     const accounting = (role: 'owner' | 'admin' | 'dispatcher' | 'engineer' | 'viewer') =>
       groupsFor(role)
         .find((group) => group.group === 'accounting')
@@ -127,7 +134,7 @@ describe('the dashboard map', () => {
     expect(accounting('engineer')).toBeUndefined();
     // Without the module, no accounting heading at all.
     expect(
-      visibleNavigation('desktop', permissionsFor('owner'), { ledger: false }).map((g) => g.group),
+      visibleNavigation(permissionsFor('owner'), { ledger: false }).map((g) => g.group),
     ).not.toContain('accounting');
     // Right after finance, in the menu's order.
     expect(NAV_GROUPS.indexOf('accounting')).toBe(NAV_GROUPS.indexOf('finance') + 1);
@@ -135,7 +142,7 @@ describe('the dashboard map', () => {
 
   it('shows HR after accounting: the lists to those who may use them, a profile and claims to everybody', () => {
     const hr = (seat: Parameters<typeof permissionsHeld>[0], features?: Record<string, boolean>) =>
-      visibleNavigation('web', permissionsHeld(seat), features)
+      visibleNavigation(permissionsHeld(seat), features)
         .find((group) => group.group === 'hr')
         ?.sections.map((section) => section.key);
     const everything = ['employees', 'expenseClaims', 'myProfile', 'myExpenses'];
@@ -155,9 +162,9 @@ describe('the dashboard map', () => {
     // Payroll's sections need its module on top of HR's.
     expect(hr({ role: 'owner' }, { hr: true, payroll: false })).toEqual(everything);
     expect(hr({ role: 'owner' }, { hr: false, payroll: true })).toBeUndefined();
-    // The same in the desktop app, which has every one of these screens.
+    // A viewer still sees their own profile and claims.
     expect(
-      visibleNavigation('desktop', permissionsHeld({ role: 'viewer' }), { hr: true })
+      visibleNavigation(permissionsHeld({ role: 'viewer' }), { hr: true })
         .flatMap((group) => group.sections)
         .map((section) => section.key),
     ).toEqual(expect.arrayContaining(['myProfile', 'myExpenses']));
@@ -165,7 +172,7 @@ describe('the dashboard map', () => {
 
   it('shows payroll inside HR: runs and rules to those who keep payroll, payslips to everybody', () => {
     const hr = (seat: Parameters<typeof permissionsHeld>[0], features?: Record<string, boolean>) =>
-      visibleNavigation('web', permissionsHeld(seat), features)
+      visibleNavigation(permissionsHeld(seat), features)
         .find((group) => group.group === 'hr')
         ?.sections.map((section) => section.key);
     const on = { hr: true, payroll: true };
@@ -200,35 +207,32 @@ describe('the dashboard map', () => {
 
   it('lists the eighth round’s screens, each to the seats its screen serves', () => {
     const group = (
-      app: 'web' | 'desktop',
       seat: Parameters<typeof permissionsHeld>[0],
       name: 'crm' | 'inventory',
       features: Record<string, boolean>,
     ) =>
-      visibleNavigation(app, permissionsHeld(seat), features)
+      visibleNavigation(permissionsHeld(seat), features)
         .find((entry) => entry.group === name)
         ?.sections.map((section) => section.key);
     const everything = { crm: true, inventory: true, purchasing: true };
 
     // Pipelines to those who keep them; reports to everybody who reads the CRM.
-    for (const app of ['web', 'desktop'] as const) {
-      expect(group(app, { role: 'owner' }, 'crm', everything)).toEqual([
-        'crm',
-        'leads',
-        'opportunities',
-        'activities',
-        'pipelines',
-        'crmReports',
-      ]);
-    }
-    expect(group('web', { role: 'dispatcher' }, 'crm', everything)).not.toContain('pipelines');
-    expect(group('web', { role: 'viewer' }, 'crm', everything)).toContain('crmReports');
-    expect(group('web', { role: 'owner' }, 'crm', { inventory: true })).toBeUndefined();
+    expect(group({ role: 'owner' }, 'crm', everything)).toEqual([
+      'crm',
+      'leads',
+      'opportunities',
+      'activities',
+      'pipelines',
+      'crmReports',
+    ]);
+    expect(group({ role: 'dispatcher' }, 'crm', everything)).not.toContain('pipelines');
+    expect(group({ role: 'viewer' }, 'crm', everything)).toContain('crmReports');
+    expect(group({ role: 'owner' }, 'crm', { inventory: true })).toBeUndefined();
 
     // Parts used to whoever reads stock; the van queue to those who move it;
     // the serial lookup (ninth round) to whoever reads stock; reorder, after
     // purchase orders, to those who buy.
-    expect(group('desktop', { role: 'owner' }, 'inventory', everything)).toEqual([
+    expect(group({ role: 'owner' }, 'inventory', everything)).toEqual([
       'inventory',
       'items',
       'stockLocations',
@@ -239,18 +243,16 @@ describe('the dashboard map', () => {
       'purchaseOrders',
       'reorder',
     ]);
-    expect(group('web', { role: 'dispatcher' }, 'inventory', everything)).toEqual(
+    expect(group({ role: 'dispatcher' }, 'inventory', everything)).toEqual(
       expect.arrayContaining(['partsUsage', 'vanRequests', 'reorder']),
     );
-    const engineer = group('web', { role: 'engineer' }, 'inventory', everything);
+    const engineer = group({ role: 'engineer' }, 'inventory', everything);
     expect(engineer).toContain('partsUsage');
     expect(engineer).not.toContain('vanRequests');
     expect(engineer).not.toContain('reorder');
-    expect(group('web', { role: 'viewer' }, 'inventory', everything)).not.toContain('reorder');
+    expect(group({ role: 'viewer' }, 'inventory', everything)).not.toContain('reorder');
     // Reorder is purchasing's: without that module, no entry.
-    expect(group('web', { role: 'owner' }, 'inventory', { inventory: true })).not.toContain(
-      'reorder',
-    );
+    expect(group({ role: 'owner' }, 'inventory', { inventory: true })).not.toContain('reorder');
   });
 });
 
@@ -270,7 +272,7 @@ describe('the tabs staff switch per company (0075)', () => {
 
   it('leaves a hidden tab out of the menu, but never the dashboard', () => {
     const shown = keysOf(
-      visibleNavigation('web', owner, undefined, { hidden: ['timesheets', 'dashboard'] }),
+      visibleNavigation(owner, undefined, { hidden: ['timesheets', 'dashboard'] }),
     );
     expect(shown).not.toContain('timesheets');
     expect(shown).toContain('dashboard');

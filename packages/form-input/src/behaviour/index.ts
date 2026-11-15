@@ -9,7 +9,7 @@
  * five or more steps each, and `expectedScreen`, the questions, labels,
  * required marks and errors the engine says should show. Each renderer's own
  * test reads its screen into a `Screen` and compares; see
- * docs/form-engine/builder.md, "Behaviour check".
+ * docs/form-engine/README.md, "Behaviour check".
  *
  * Test support, shipped as a subpath so no app bundles it by accident.
  */

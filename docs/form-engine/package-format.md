@@ -44,7 +44,7 @@ Every object is **strict**: a key not described here is refused (a newer file sa
 {
   "format": "integr8form",
   "formatVersion": 1,
-  "createdBy": { "app": "integr8-plus", "version": "1.3.0" },
+  "createdBy": { "app": "integr8-plus", "version": "2.0.0" },
   "createdAt": "2026-11-01T09:30:00.000Z",
   "form": {
     "title": { "en": "Boiler service", "ar": "صيانة الغلاية" },
@@ -106,7 +106,7 @@ Every object is **strict**: a key not described here is refused (a newer file sa
   `dropdown`, `radio`, `multi_select`, `checkbox`, `yes_no`, `signature`, `photo`, `file`,
   `gps`. The six library forms in `packages/form-engine/src/templates/` are complete examples.
 - **`schemaVersion`** is the lowest format that has everything the definition uses: 2 when it
-  has Information blocks, page or section descriptions, or the 1.3.0 calculations (dates, times,
+  has Information blocks, page or section descriptions, or the format-2 calculations (dates, times,
   brackets); otherwise 1. `packFormPackage` sets it, as the API does when a draft is saved; a
   hand-written file must get it right (`checkFormPackage` reports `schema_version_too_low`).
 - **Reading a file only needs a draft**: `definition` must be a JSON object with a whole-number
@@ -210,9 +210,9 @@ Three version numbers, each refused when newer than the reader knows:
   the manifest changes, including a new optional field, because readers are strict. A reader
   checks it before anything else, so a newer file is reported as too new rather than as a list
   of entries it has never heard of. When it is raised, readers keep reading every older version.
-- **The form's `schemaVersion`**: the form engine's format (1 or 2 in 1.3.0). Older formats are
+- **The form's `schemaVersion`**: the form engine's format (1 or 2). Older formats are
   read as they are.
-- **A design's `schemaVersion`**: the PDF designer's format (2 in 1.3.0). Version 1 designs are
+- **A design's `schemaVersion`**: the PDF designer's format (2). Version 1 designs are
   upgraded on reading.
 
 A server only imports files whose three versions it knows; an older server asks for an update.
@@ -226,4 +226,6 @@ creates a **new, unpublished draft form** in the company being acted as (or a st
 template, from the dashboard's Templates page), with its PDF templates and every picture copied
 into storage under new ids; it never replaces an existing form. Both are for Integr8 staff only
 and are audited. The routes and screens are described with the form builder
-([builder.md](builder.md)).
+([README.md](./README.md#the-builder)). A form's **actions** (expense claims,
+follow-up forms) are not carried in the file yet: an imported form has none
+until they are set again (through the API: the builder has no Actions tab yet).

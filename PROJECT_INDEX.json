@@ -1,6 +1,6 @@
 {
   "project": "Integr8 Plus",
-  "version": "1.4.0",
+  "version": "2.0.0",
   "summary": "Multi-tenant field operations and business platform with web, desktop, mobile and API apps.",
   "apps": {
     "api": "Fastify versioned API, OpenAPI routes, jobs and platform tooling",
@@ -35,7 +35,7 @@
     "apps/mobile/app/",
     "packages/operations-dom/src/",
     "packages/db/migrations/",
-    "docs/crm-erp/",
+    "docs/modules/README.md",
     "docs/ai/",
     "docs/e-invoicing/"
   ],

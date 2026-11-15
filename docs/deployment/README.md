@@ -1,290 +1,155 @@
-# Deploying Integr8 Plus
+# Deployment
 
-How to run a production-shaped stack: for testing first, then for a customer.
-What ships is two container images, a database and a sign-in server, all on
-one machine; everything else is configuration.
+One Oracle Cloud Always Free ARM machine (Ampere A1, 4 cores, 24 GB) runs
+`deploy/compose.yml` from `/opt/integr8`, behind Caddy, with its settings in
+`deploy/.env`. Web at `app.integr8-media.com`, API at `api.integr8-media.com`; R2
+for files, Resend for mail, Expo for push. The machine is to be shared with the
+MyRooms project, which keeps its own Supabase; the two Auth containers stay
+separate. A home test box (Ubuntu 24.04, Docker) checks out `staging`.
 
-**Following along?** [The setup checklist](./setup-checklist.md) walks every
-step in order, from creating the accounts and keys to a running stack, going
-live, updating, and wiping or rebuilding the machine. The same guide is a page
-with tick boxes that remember your progress: download
-[`setup-checklist.html`](./setup-checklist.html), `setup-checklist.css` and
-`setup-checklist.js` into one folder and open the `.html` in a browser.
+**The operator's procedure is the setup guide**,
+[setup-checklist.md](./setup-checklist.md) (and the same as an interactive
+`setup-checklist.html`): every stage, part and tick box, from an empty machine
+to updates and recovery. Commands on the machine run as
+`docker compose -f deploy/compose.yml --env-file deploy/.env run --rm api node dist/…`.
 
-```
-                      ┌──────────────────────────┐
-  browsers ──TLS────▶ │ reverse proxy (Caddy/LB) │
-  phones  ──TLS────▶  └──────┬───────────┬───────┘
-                             │           │
-                     app.example.com   api.example.com
-                             │           │
-                      ┌──────▼──────┐ ┌──▼─────────────┐    ┌─────────────────┐
-                      │  web image  │ │   api image    │    │   api image     │
-                      │  Next.js    │ │   Fastify      │    │   worker        │
-                      └──────┬──────┘ └──┬─────────────┘    └──┬──────────────┘
-                             │ API_BASE_URL │                  │
-                             └──────────────┴────────┬─────────┘
-                                                     ▼
-                                      Postgres  ·  Supabase Auth (http://auth:9999)
-                                      ── both in the compose stack, no published port ──
-                                      R2 · Stripe · Resend · Mapbox · Expo · Sentry
-```
+**The guide on GitHub Pages**, behind a username and password:
+`.github/workflows/guide-pages.yml` runs when the guide reaches `main` (or by
+hand) and publishes `scripts/guide/build-site.mjs`'s output. Pages has no
+sign-in, so the guide (its stylesheet and script inlined) is encrypted with
+AES-256-GCM under a key derived from the username and password (PBKDF2-SHA-256,
+600 000 rounds); the page holds only that and a sign-in form, and the browser
+decrypts it, keeping the key (not the password) for the tab. The credentials
+are the repository secrets `GUIDE_USERNAME` and `GUIDE_PASSWORD`, never in the
+repository; Pages' source must be "GitHub Actions". Anyone with the page can
+guess passwords offline, so a long password is what protects it, and the
+Markdown and HTML in the repository are as readable as the repository is.
+Locally: `GUIDE_USERNAME=… GUIDE_PASSWORD=… pnpm guide:site` writes
+`dist/guide-site/`.
 
-| Piece               | Where                                       | Notes                                                                   |
-| ------------------- | ------------------------------------------- | ----------------------------------------------------------------------- |
-| API image           | `apps/api/Dockerfile`                       | Also the worker (`node dist/jobs/worker-main.js`) and the migrator      |
-| Web image           | `apps/web/Dockerfile`                       | Next.js standalone server; `NEXT_PUBLIC_*` baked in at build time       |
-| Compose stack       | `deploy/compose.yml`, `deploy/.env.example` | Postgres + bootstrap + migrate + auth + api + worker + web, one machine |
-| Machine preparation | `deploy/vps/setup.sh`, `Caddyfile.example`  | Firewall, Docker and Caddy on a fresh Ubuntu or Oracle Linux machine    |
-| Database runbooks   | `docs/database/`                            | Migrations, nightly backups and restore                                 |
-| Sign-in server      | `docs/auth/self-hosted-auth.md`             | The Supabase Auth container: settings, secrets, rotation                |
-| Company apps        | `docs/deployment/company-apps.md`           | Installers and phone apps built per company, and the staff desktop      |
+## The services
 
-## Two modes
+| Service     | Image                          | Does                                                                                                         | Memory |
+| ----------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------ | ------ |
+| `postgres`  | `postgres:16`                  | The database; `pg_stat_statements` and `auto_explain` (plans over 500 ms)                                    | 1 GB   |
+| `bootstrap` | the API image                  | Creates the roles and Auth's schema, resets their passwords, on every start                                  | 512 MB |
+| `migrate`   | the API image                  | Applies migrations; refuses a 1.x database                                                                   | 512 MB |
+| `auth`      | `supabase/auth:v2.197.0`       | Passwords and sign-in codes; no published port                                                               | 256 MB |
+| `api`       | built on the machine           | `/v1` on port 3000; Chromium for PDF previews                                                                | 1 GB   |
+| `worker`    | the API image                  | Jobs and scheduled tasks; Chromium for documents                                                             | 1.5 GB |
+| `transfer`  | the API image, profile `tools` | Moving a company between servers; the only service with both the owner's database URL and the API's settings | 1 GB   |
+| `web`       | built on the machine           | Next.js on port 3001                                                                                         | 768 MB |
 
-`APP_ENV` decides how strict the API is at startup (`assertProductionReady` in
-`apps/api/src/config.ts`):
+Start order: `postgres` → `bootstrap` → `migrate` and `auth` → `api` and `worker`
+(wait for Auth's health) → `web`. Each service gets only the settings it reads
+(`x-api-env` in compose; `apps/api/src/compose-env.test.ts` fails when the API
+reads one compose does not pass). The API and worker never get
+`POSTGRES_PASSWORD`, `DATABASE_URL_ADMIN`, a role password or the Auth JWT secret;
+they connect as `integr8_app`, `integr8_auth` and `integr8_platform`
+([database/](../database/README.md#the-roles)). GitHub publishes no images: every
+machine builds its own with `--build`.
 
-- **`staging`** — a production-shaped stack where the fakes are allowed: local
-  media storage, the recording billing and email providers, the fake geocoder.
-  Nothing leaves the machine, sign-in included: the Auth container is part of
-  the stack. **Start here.**
-- **`production`** — the API refuses to start unless Sentry, R2, Mapbox, Expo
-  push, Stripe, Resend, `WEB_APP_URL`, `API_CORS_ORIGINS` and `API_RELEASE` are
-  all configured. The refusal lists exactly what is missing.
+## Settings
 
-Example values from `deploy/.env.example` are refused in production too, by the
-API, the worker and the `bootstrap` and `migrate` steps: a password, key, token
-or address that still contains `change-me`, an address on a `.example` host
-(the template's `your-domain.example` lines), a public address (`AUTH_ISSUER`,
-`WEB_APP_URL`, `API_PUBLIC_URL`, `API_UPDATE_URL`, `API_CORS_ORIGINS`) on a
-`.local` host, `AUTH_ISSUER` left unset at its development default
-`https://api.integr8.local`, and a database password shorter than 16
-characters, on its own line or inside a `DATABASE_URL*`. Each refusal names the
-setting and never its value. Staging starts and logs the same list, each line
-beginning "Production would refuse". `sh deploy/vps/check-env.sh` lists, by name
-only, every setting in `deploy/.env` that still holds an example value; run it
-after filling the file and before switching to production.
+`deploy/.env.example` lists every setting for a whole deployment; each app's
+`config.ts` documents what it reads. `APP_ENV` decides how strict start-up is:
 
-## First deployment, step by step
+- **`staging`**: production-shaped, stand-ins allowed (local files, recording
+  mail and billing, fake geocoder). Logs what production would refuse.
+- **`production`**: refuses to start without Sentry, R2, Mapbox, Expo push,
+  mail, `WEB_APP_URL`, `API_CORS_ORIGINS` and `API_RELEASE`, on any stand-in, and
+  on example values (`change-me`, `.example` hosts, public `.local` addresses,
+  database passwords under 16 characters). Each refusal names the setting, never
+  the value. `sh deploy/vps/check-env.sh` lists the offenders by name.
 
-1. **A machine with Docker** (2 vCPU, 4 GB is plenty for testing) and two DNS
-   names pointing at it: `app.` for the web app and `api.` for the API. Put a
-   reverse proxy with TLS in front (Caddy does this in four lines; any load
-   balancer works). The API must be reachable from phones, so it needs its own
-   public hostname. On a fresh Ubuntu or Oracle Linux machine,
-   `deploy/vps/setup.sh` opens the firewall, installs Docker and Caddy, and
-   `deploy/vps/Caddyfile.example` is the proxy configuration; see **Oracle
-   Cloud** below for the free machine this was written against.
-2. **Configuration.** `cp deploy/.env.example deploy/.env`, then:
-   - set the three addresses and `API_CORS_ORIGINS`;
-   - set four database passwords (the compose Postgres is created from them);
-   - run `pnpm --filter @integr8/auth keygen` once and paste what it prints:
-     the four signing-key lines, and the three for the Auth container
-     (`SUPABASE_AUTH_JWT_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`,
-     `SUPABASE_AUTH_DB_PASSWORD`). There is no Supabase project to create;
-   - leave the fakes (`MEDIA_STORAGE=local`, `BILLING_PROVIDER=recording`,
-     `EMAIL_SENDER=recording`, `GEOCODER=fake`, `PUSH_SENDER=recording`) for the
-     first run.
-3. **Start it.**
-   ```bash
-   docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build
-   docker compose -f deploy/compose.yml --env-file deploy/.env logs -f migrate api
-   ```
-   On an ARM machine the same command builds ARM images; nothing changes.
-   `bootstrap` creates the roles and Auth's schema, `migrate` applies ours and
-   `auth` migrates its own, then the API answers `GET /health/ready` (on the
-   machine: `curl -s http://127.0.0.1:3000/health/ready`) with `status: ready`
-   and the web app starts. `docker compose ps` shows `auth`
-   healthy. The API and web ports are bound to `127.0.0.1`: only the proxy on
-   the same machine reaches them.
-4. **Create the first super admin.** The dashboard has no self-service signup,
-   so the API image carries a small command for it:
-   ```bash
-   docker compose -f deploy/compose.yml --env-file deploy/.env \
-     run --rm api node dist/platform/admin-cli.js create you@your-domain.example "Your Name"
-   ```
-   It prints a generated password and the authenticator secret (as an
-   `otpauth://` URI to turn into a QR code) exactly once. Sign in at
-   `/platform/sign-in`, then change the password. An account made this way is
-   a staff manager: it can add and remove colleagues on the dashboard's
-   **Staff** page, and the people it adds cannot. `docs/platform/README.md`
-   covers what a super admin can do.
-5. **Walk the path a customer walks.** `/sign-up` → verification link (with the
-   recording email sender it is in the API log, not an inbox) → first-run
-   checklist → build a form on the desktop app → dispatch a job → complete it
-   on a phone → see it in the office. The platform dashboard's **Health** page
-   shows sync trouble, billing deliveries and failed background work.
-6. **Then turn the services real, one at a time**, restarting the API and
-   worker after each: R2 (`MEDIA_STORAGE=r2`), Resend, Mapbox, Expo push,
-   Stripe (`BILLING_PROVIDER=stripe`, point the Stripe webhook at
-   `https://api.../v1/billing/webhook`), Sentry. Finally `APP_ENV=production`,
-   which makes the API refuse to start if any of them is missing.
-
-## Oracle Cloud Always Free, the machine this was first run on
-
-Oracle's Always Free tier includes an ARM machine (shape `VM.Standard.A1.Flex`,
-up to 4 OCPUs and 24 GB RAM, 200 GB of block storage) that never expires. It
-runs the compose stack as is. Three things are specific to it:
-
-- **ARM.** The machine builds its own images with `up -d --build` (allow ten
-  to fifteen minutes); GitHub does not publish images.
-- **Two firewalls.** The console's security list (VCN → subnet → Default
-  Security List) must have ingress rules for TCP 80 and 443, _and_ the Ubuntu
-  image's own iptables rules must allow them. `setup.sh` does the second
-  part; the console cannot.
-- **Capacity and idling.** ARM capacity in busy regions is often exhausted
-  ("Out of host capacity"); retrying later, or asking for 2 OCPUs and 12 GB,
-  usually works. Oracle also reclaims idle Always Free instances on tenancies
-  that have not been upgraded to Pay As You Go; upgrading keeps the free
-  resources free and removes both limits, at the cost of being charged if you
-  create something that is not in the free tier.
-
-The step-by-step version, from account creation to the first sign-up, is the
-setup checklist shared alongside this repository; this README is the reference
-it points back to.
-
-## Sharing the machine with another product
-
-The VPS also runs MyRooms, with its own full Supabase stack. The two stay
-apart:
-
-- **Separate Auth containers.** MyRooms' Supabase includes an Auth of the same
-  version; Integr8 Plus still runs its own, because one shared Auth would mix
-  two products' users.
-- **No public ports.** The API and web are published on `127.0.0.1` only, as
-  MyRooms' are. Ports Docker publishes go round Ubuntu's firewall, so binding
-  to every address would expose them however the firewall is set. Caddy
-  proxies to `localhost`; Postgres and Auth publish nothing at all.
-- **Memory caps.** Each container has a `mem_limit` in `deploy/compose.yml`
-  (Postgres 1 GB, API 768 MB, worker 1.5 GB for Chromium, web 768 MB, Auth
-  256 MB, the one-off bootstrap and migrate 512 MB): starting values, to tune
-  from `docker stats`, so one product cannot starve the other.
-
-## Backups, before any real data
-
-The compose Postgres is one volume on one disk, and it holds everything:
-company data and, in its `auth` schema, every sign-in account.
-`deploy/vps/backup-postgres.sh` dumps the whole database nightly from root's
-cron and keeps the last fourteen files under `/home/integr8-backup`;
-[the backup and restore runbook](../database/runbook-backup-and-restore.md)
-has the schedule, the checks and the restore. That covers a bad migration or a
-deleted company. Losing the machine needs a copy elsewhere, set up before a
-paying customer's data exists: with `BACKUP_REMOTE` in `deploy/.env` (an rclone
-remote, recommended an R2 bucket of its own behind rclone's encrypting `crypt`
-layer), the script copies each dump there and keeps the newest
-`BACKUP_REMOTE_KEEP` (30). A copy that fails makes the run fail with an `ERROR`
-line, and `BACKUP_PING_URL` tells a heartbeat monitor about every night, good
-or bad. Without `BACKUP_REMOTE` each run says the dump is on this machine only.
-A boot-volume backup policy in the Oracle console is a useful second layer
-(check the schedule the console shows for it), but it stays in the same
-account as the machine.
-
-`deploy/vps/restore-drill.sh` proves a dump restores without going near the
-live database: it loads the newest dump, or with `--remote` the newest
-off-machine copy, into a throwaway Postgres container with no network, checks
-the migrations, row counts, policies and grants that came back, times it,
-removes the container and prints a row for the runbook's rehearsal log. Run it
-monthly; the runbook also has the six-monthly full rehearsal on the test box.
-
-Container logs are capped at 50 MB per container by the `x-logging` block in
-`deploy/compose.yml`, so a chatty week cannot fill the disk.
+Keys that must be kept with the backups, because data sealed with them is
+unreadable without them: `HR_DATA_KEY` (and `HR_DATA_KEYS_PREVIOUS`),
+`ETA_CREDENTIALS_KEY`, `PLATFORM_SECRET_KEY`, the auth signing keys.
 
 ## Security headers
 
-`deploy/vps/Caddyfile.example` sends `Strict-Transport-Security: max-age=31536000`
-for both names, deliberately without `includeSubDomains` or `preload`: other
-names under the domain (the test box behind its tunnel, mail, the MyRooms
-project) are not this file's to commit to HTTPS, and a preload entry takes
-months to undo. The API's name also gets `X-Content-Type-Options: nosniff`,
-`Referrer-Policy: no-referrer` and `X-Frame-Options: DENY`.
+Caddy (`deploy/vps/Caddyfile.example`) sends HSTS for a year (no
+`includeSubDomains`, no preload), and on the API `nosniff`, `Referrer-Policy:
+no-referrer`, `X-Frame-Options: DENY`; it answers 404 for `/health*` on the
+public name. The public site sets its own (`apps/web/src/lib/content-security-policy.ts`):
+an enforced `frame-ancestors 'none'` and a full Content Security Policy in
+**report-only** mode (to the API, R2 and Sentry), reported to Sentry when
+`NEXT_PUBLIC_SENTRY_DSN` is set, to be enforced once reports are quiet. The
+desktop app's policy is in `apps/desktop/src-tauri/tauri.conf.json`, enforced by
+Tauri, with the API origin stamped in per build.
 
-The web app sets its own (`apps/web/src/lib/content-security-policy.ts`, read by
-`next.config.ts` at build time): the enforced `Content-Security-Policy:
-frame-ancestors 'none'`, `X-Frame-Options`, `nosniff` and a referrer policy,
-plus a full policy sent as `Content-Security-Policy-Report-Only`. It allows
-scripts and styles from the site itself (inline too: the App Router streams
-page data in inline scripts, and nonces would make every page dynamic),
-`connect-src` to the API (`NEXT_PUBLIC_API_BASE_URL`), R2
-(`*.r2.cloudflarestorage.com`, for presigned uploads and downloads) and the
-Sentry ingest host, images from the site, `data:`, `blob:`, the API and R2,
-and no plugins, foreign `<base>` or form targets. With a DSN
-(`NEXT_PUBLIC_SENTRY_DSN`), violations are reported to Sentry's CSP endpoint
-(`report-uri` and `Reporting-Endpoints`). Once the reports have been quiet for
-a couple of weeks, the policy moves to the enforced header in one change in
-that file.
+## Health and the heartbeat
 
-The desktop app's policy is in `apps/desktop/src-tauri/tauri.conf.json`, and
-Tauri enforces it: scripts from the app only, the API (stamped in per build by
-`apps/desktop/scripts/stamp.mjs`), R2 and Sentry, nothing else.
+`/health` (the process runs) and `/health/ready` (the database answers and the
+schema fits the build) are for the machine only. `deploy/vps/heartbeat.sh` runs
+from root's cron every five minutes, asks `/health/ready` locally, and calls
+`HEALTH_PING_URL` (or it with `/fail`), so the outside monitor alerts on failure
+and on silence.
 
-Checked on the machine (setup guide, Stage 4):
+## Backups
 
-```bash
-curl -sI https://api.your-domain.example/health | grep -iE 'strict-transport|x-content-type|x-frame|referrer-policy'
-curl -sI https://app.your-domain.example | grep -iE 'strict-transport|content-security'
-```
+`deploy/vps/backup-postgres.sh` dumps the whole database (the `auth` schema
+included) nightly and copies it off the machine with rclone to `BACKUP_REMOTE`;
+`deploy/vps/restore-drill.sh` rehearses a restore. The procedure is
+[database/runbook-backup-and-restore.md](../database/runbook-backup-and-restore.md).
 
-## Health checks and the heartbeat
+## Releasing a version
 
-`/health` (the process is running) and `/health/ready` (the database answers
-and its schema fits this build) are for the machine, not the internet: they
-name the release and what is failing. `deploy/vps/Caddyfile.example` answers
-404 for both on the API's public name. Docker's health check calls
-`/health/ready` inside the container, and readiness reuses the API's platform
-pool and keeps its answer for ten seconds, so frequent calls cost one query.
+The version is the root `package.json` `version` only (the phone and web read
+it; `apps/api/src/app-info.ts` keeps a copy a test holds equal; the setup guide
+and `deploy/.env.example` state it). The flow is `dev` → `staging` → `main`
+([contributing/](../contributing/README.md)).
 
-An outside uptime check therefore cannot use them. Instead
-`deploy/vps/heartbeat.sh` runs from root's cron every five minutes, asks
-`http://127.0.0.1:3000/health/ready` itself, and calls `HEALTH_PING_URL` (a
-heartbeat in Better Stack, healthchecks.io or UptimeRobot) when the API is
-ready, or that URL with `/fail` added when it is not (`HEALTH_PING_FAIL=off`
-for a monitor with no `/fail` address). The monitor alerts on a failure and on
-silence, which also covers the machine or cron being down. It reads
-`deploy/.env` line by line, never with `source`. Setup guide, Stage 9 part C.
+1. Bump the version in the pull request that promotes `staging` to `main`.
+   `release-main.yml` refuses `0.0.0` and a version already released.
+2. Merge to `staging`: nothing runs on GitHub; the test box builds it.
+3. Merge to `main`: `release-main.yml` checks, builds the release's files (API
+   and web archives, staff desktop installers, Forms for AI executables) and
+   company apps, and publishes the release.
+4. On the machine: check out the tag, `docker compose up -d --build`. `migrate`
+   runs first; the API's readiness refuses traffic until the schema fits.
+5. Rolling back: check out the previous tag and build. Its `migrate` finds newer
+   migrations applied, applies nothing and exits cleanly (`ahead-of-build`); the
+   expand/contract rule keeps that safe. A migration is rolled back only on
+   purpose, by the release that added it (`… migrator/cli.js down --steps 1`).
 
-```bash
-# sudo crontab -e
-*/5 * * * * /opt/integr8/deploy/vps/heartbeat.sh >> /var/log/integr8-heartbeat.log 2>&1
-```
+Set the repository variable `DESKTOP_BUILDS=disabled` while no code-signing
+certificates exist, to save runner minutes.
 
-## Releasing a new version
+## Company apps
 
-0. **Bump the version** in the root `package.json` in the pull request that
-   promotes `staging` to `main`. `release-main.yml` refuses `0.0.0` and refuses
-   a version that already has a release, so a merge into `main` without a bump
-   fails its release job. The version also stamps `APP_VERSION`/`API_RELEASE` in a deployment's
-   env file. Until signed desktop
-   installers are wanted (P20), set the repository variable
-   `DESKTOP_BUILDS=disabled` so the release does not spend macOS and Windows
-   runner minutes on unsigned builds.
-1. Merge to `staging`. Nothing runs on GitHub; the test box checks out
-   `staging` and builds it.
-2. Merge to `main`. `release-main.yml` publishes the release (installers and
-   company apps). GitHub builds no Docker images.
-3. On the machine: check out the release tag, then `docker compose up -d
---build`, which builds the API and web images there. `migrate` runs first;
-   the API's readiness check refuses traffic until the schema matches the
-   build.
-4. Roll back by checking out the previous release's tag and building again. The previous image's `migrate` finds the newer release's migrations already
-   applied, applies nothing, logs that the database is ahead of its build and
-   exits cleanly; its readiness check passes with a note naming them. So the
-   API, worker and web start on the newer schema, which expand/contract
-   ([migrations.md](../database/migrations.md#rolling-back-a-release)) keeps
-   safe. Releases up to v1.2.1 predate this and stop at `migrate`: the setup
-   guide's Stage 11, part Q, has the way round it.
-5. Migrations are rolled back deliberately, never automatically, and only by
-   the release that added them, because only its image has their down files:
-   with the newer tag still set, after reading the migration's down file,
-   `docker compose run --rm api node node_modules/@integr8/db/dist/migrator/cli.js down --steps 1`,
-   then set the previous tag. The previous image refuses to roll back a
-   migration it has no file for.
+Every company gets its own desktop installers and phone app (its name, icon,
+colours, `com.integr8.plus.<slug>`); a company app's sign-in sends its slug and
+the API answers 403 `wrong_company` to anyone from another company. Integr8's own
+people use the **staff** desktop build. There is no staff phone app.
 
-## What is not here yet
+1. Onboard the company; in the staff desktop app set its branding (logo, a square
+   app icon of at least 512 × 512, accent and menu colours, theme, website).
+2. On its dashboard page tick **Build apps for this company**: it joins
+   `GET /v1/build/companies` (read by CI with `BUILD_TOKEN`), and every version
+   release builds it.
+3. A build: `build-company-apps.yml` reads the public brand endpoint, stamps the
+   desktop (`apps/desktop/scripts/stamp.mjs`, then `tauri build` for Windows,
+   macOS, Linux) and the phone (`company.json`, `eas build --channel
+production-<slug>`), and publishes the release `company-<slug>-v<version>`.
+   `STORE_SUBMIT=enabled` also submits to the Play internal track and the App
+   Store.
+4. With `APP_BUILDS=github` (and `GITHUB_BUILD_TOKEN`, a fine-grained token with
+   Actions read and write, and `GITHUB_BUILD_REPOSITORY`), ticking the box and
+   **Rebuild apps** start builds from the dashboard; with `off` (the default) run
+   **Build company apps** by hand from GitHub Actions on `main`. Test companies
+   get no apps.
 
-A restore rehearsed on the real machine (the drill script and the steps are in
-`docs/database/runbook-backup-and-restore.md`; nobody has run them there yet),
-uptime monitoring and alerting, code-signed desktop builds (P20: the
-workflows sign when the certificates' secrets exist; none have been bought
-yet), store-signed mobile builds, and the rest of P19. The compose stack is a first production for testing, not the
-final shape.
+One Expo account and project (EAS slug always `integr8-plus`) and one Firebase
+project (an Android app per company) serve every company
+([apps/mobile.md](../apps/mobile.md#a-companys-own-build)). Desktop apps update
+themselves from `app.integr8-media.com/desktop-updates`; `/download` and the
+updater need `GITHUB_RELEASES_TOKEN` because the repository is private. Builds
+are unsigned until certificates are bought: Windows shows SmartScreen, macOS
+needs right-click → Open, Linux and macOS downloads need `chmod +x`.
+
+## Not done yet
+
+A restore rehearsed on the real machine, code-signed desktop builds,
+store-signed phone builds, the R2 test secrets in CI, and the owner's steps in
+[the plan](../../plan/README.md#owner-steps).

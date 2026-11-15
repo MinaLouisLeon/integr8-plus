@@ -5,10 +5,10 @@ import { useTranslation } from '@integr8/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { MarketingShell, PageIntro, pillClass } from '~/components/marketing-shell';
 import { Magnetic } from '~/components/site/motion';
-import type { Installer, InstallerPlatform } from '~/lib/desktop-updates';
+import type { Installer, InstallerPlatform } from '@integr8/releases';
 import { formatBytes } from '~/lib/platform-format';
-import type { ReleaseLookup } from '~/lib/release-lookup';
-import { apiClient } from '~/lib/session';
+import type { ReleaseLookup } from '@integr8/releases';
+import { apiClient } from '~/lib/api-client';
 
 export interface CompanyLookup {
   slug: string;

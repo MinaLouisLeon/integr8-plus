@@ -539,6 +539,22 @@ function checkExpression(
   }
 }
 
+/**
+ * Checks a condition that lives outside the definition but reads its answers
+ * (a form action's `when`, P40): the same size and type rules as a field's own
+ * condition, at the form's top level, so repeatable sections' fields are out.
+ */
+export function checkFormCondition(
+  form: CompiledForm,
+  expression: Expression,
+  path: string,
+  owner: string,
+): DefinitionIssue[] {
+  const issues: DefinitionIssue[] = [];
+  checkExpression(expression, 'boolean', path, owner, form.elements, issues, []);
+  return issues;
+}
+
 type RuleType = Exclude<ValueType, 'opaque'> | 'opaque';
 
 const ORDERED: ReadonlySet<RuleType> = new Set(['number', 'date', 'time', 'datetime']);

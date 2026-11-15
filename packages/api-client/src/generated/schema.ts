@@ -348,92 +348,12 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * What this company is paying for, and what it is allowed
-         * @description The plan, where the subscription stands, and the limits with the usage against them — the same numbers the API enforces, so a screen can warn before a refusal rather than explain one afterwards.
+         * What this company is on, and what it is allowed
+         * @description The plan, where it stands, and the limits with the usage against them — the same numbers the API enforces, so a screen can warn before a refusal rather than explain one afterwards. Integr8 invoices every company directly; nothing here is paid in the app.
          */
         get: operations["getSubscription"];
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/billing/invoices": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * The invoices this company has been sent
-         * @description Newest first, read from the billing provider on each call so a payment made on the provider's page shows here straight away. Each links to the provider's hosted copy and its PDF. Empty for a company that has never subscribed.
-         */
-        get: operations["listInvoices"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/billing/checkout": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Begin paying for a plan
-         * @description Returns a link to the provider's hosted page. Card details never touch this API — the browser goes to the provider and comes back, and the subscription becomes real when the provider's webhook says so, not when the browser returns.
-         */
-        post: operations["startCheckout"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/billing/portal": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Open the provider’s billing portal
-         * @description Where a card is updated and a subscription is cancelled. All of it is the provider’s hosted page, so this API never holds a card number. Invoices are listed by `GET /v1/billing/invoices` as well, and each links back here.
-         */
-        post: operations["openBillingPortal"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/billing/webhook": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * What the billing provider says happened
-         * @description Verified by signature over the exact bytes sent, and deduplicated on the provider's own event id. Not for clients: it is called by the provider.
-         */
-        post: operations["billingWebhook"];
         delete?: never;
         options?: never;
         head?: never;
@@ -559,86 +479,6 @@ export interface paths {
          * @description Only the owner takes the HR grant back; the owner or an admin the inventory one. Their sessions end, so the next token they get no longer carries it.
          */
         delete: operations["removeMemberGrant"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/signup": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Ask for a company
-         * @description Sends a link to prove the address. Nothing is created until that link is followed: no company, no storage, no trial. Answers the same way whether or not the address already has an account.
-         */
-        post: operations["startSignup"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/signup/verify": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Prove the address, and get the company
-         * @description Creates the account, the company, its job types, its storage and its trial — in that order, so a failure part-way leaves nothing orphaned. The caller signs in normally afterwards.
-         */
-        post: operations["verifySignup"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/signup/resend": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Send the verification link again
-         * @description Rotates the link, so the previous one stops working. Answers the same way whether or not there was anything to send.
-         */
-        post: operations["resendSignupVerification"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/signup/step": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Record a step of the signup funnel
-         * @description Called by the public pages. Anonymous by construction: a step name and an optional plan, nothing that identifies a person.
-         */
-        post: operations["recordSignupStep"];
-        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -979,7 +819,7 @@ export interface paths {
         put?: never;
         /**
          * Accept an invitation
-         * @description Public, because the invitee has no session yet. The company comes from the token: there is no parameter in which to name a different one. Makes the membership and signs nobody in: the person signs in afterwards with the address returned. An address with no sign-in yet must send a `password` meeting the password policy (422 `auth.invitation_password_required` without one, `auth.weak_password` for one refused); an address that already signs in needs none, and one sent is not applied (`existingAccount`).
+         * @description Public, because the invitee has no session yet. The company comes from the token: there is no parameter in which to name a different one. Makes the membership and signs nobody in: the person signs in afterwards with the address returned, in the company’s own app (`company` names it). An address with no sign-in yet must send a `password` meeting the password policy (422 `auth.invitation_password_required` without one, `auth.weak_password` for one refused); an address that already signs in needs none, and one sent is not applied (`existingAccount`).
          */
         post: operations["acceptInvitation"];
         delete?: never;
@@ -1086,6 +926,26 @@ export interface paths {
          * @description Stores the definition as it is, valid or not, except that the server sets `schemaVersion` to the lowest format that has everything the definition uses (2 for descriptions, Information blocks and the 1.3.0 calculations; otherwise 1) — the response carries the definition as stored. `expectedRevision` is the revision the builder last saw, or `null` to start a draft when there is none. A save based on an older revision is refused with 409, so a second tab cannot overwrite the first.
          */
         put: operations["saveFormDraft"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/forms/{formId}/draft/actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Save what the draft does when a submission is submitted
+         * @description Form actions (P40): up to ten expense claims made from the answers and follow-up forms opened for the same job. Stored when they have the right shape (422 `invalid_actions` otherwise); whether they publish — questions, categories, next forms, the HR module — is for `draft/check` and `draft/publish` to say. On `expectedRevision`, as the definition is (409 `draft_conflict`). A new draft starts with the live version’s actions.
+         */
+        put: operations["saveFormDraftActions"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1459,6 +1319,26 @@ export interface paths {
          * @description Needs a reason, which is kept in the submission’s history with who reopened it and when. The answers as submitted are kept too; nothing about the original is lost.
          */
         post: operations["reopenSubmission"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/submissions/{submissionId}/actions/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Make it now: run a submission’s failed form actions again
+         * @description For those who correct submissions or approve claims (P40). Runs every action of the submitted form that failed, as the first submit would have, and makes each at most once; claims and follow-ups still belong to the person who submitted. Nothing to do is not an error.
+         */
+        post: operations["retryFormActions"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1895,6 +1775,26 @@ export interface paths {
          * @description For a company’s website server, never a browser: `Authorization: Bearer <website key>`. The page a document’s QR code and shared link open when the company’s links point at its own website (0075), such as `https://example.com/documents/<code>`, asks this with the code from its address. Found only when the code is one of this company’s documents, shared, and its link has not expired or been stopped; every other case answers `found: false` alike, so the page learns nothing it should not. Same switches and rate limit as the lookup.
          */
         get: operations["getWebsiteDocumentByCode"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/public/asset-tags/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Whose a printed asset tag is
+         * @description Public. The company a tag code belongs to, for the page its QR code opens; nothing about the asset. 404 for a code that is unknown, malformed, or belongs to a company without the assets module.
+         */
+        get: operations["getPublicAssetTag"];
         put?: never;
         post?: never;
         delete?: never;
@@ -6171,6 +6071,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/expenses/{claimId}/submission": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The submitted form a claim was made from, read-only
+         * @description For those who approve claims (P40): the one submission whose form action made this claim, even without access to other submissions, so the claim is decided beside the answers it came from. 404 when the claim was not made by a form.
+         */
+        get: operations["getExpenseClaimSubmission"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/expenses/{claimId}/withdraw": {
         parameters: {
             query?: never;
@@ -6199,7 +6119,7 @@ export interface paths {
         put?: never;
         /**
          * Approve a claim, to be paid back directly or through payroll
-         * @description By an owner, admin or HR manager who is not the claimant (409 `self_approval`). `settleVia: payroll` needs the payroll module (422 `payroll_off`). Posts to the ledger when it is set up.
+         * @description By an approver who is not the claimant (409 `self_approval`). `settleVia: payroll` needs the payroll module (422 `payroll_off`). `approvedAmount` approves a different amount than was claimed, with `amountNote` saying why (422 `amount_note_required`); the claim itself is unchanged, and the approved amount is what is posted and paid back. Posts to the ledger when it is set up.
          */
         post: operations["approveExpenseClaim"];
         delete?: never;
@@ -7957,8 +7877,8 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * Change a company’s plan, seat count or billing mode
-         * @description Sets the plan the API enforces and, for a company Integr8 invoices, the plan its people see on the billing screen. Switching a company to `invoiced` makes its subscription active with no trial and lifts a read-only state that non-payment caused: Integr8 is taking the money now. Switching back to `self_serve` leaves the subscription as the provider last described it. On a deployment that takes no card payments (`BILLING_PROVIDER=none`) every company is invoiced, and `self_serve` is stored as `invoiced`.
+         * Change a company’s plan or seat count
+         * @description Sets the plan the API enforces and the plan the company’s people see on its billing screen. Integr8 invoices every company directly (P42), so the subscription becomes active on that plan with no trial.
          */
         patch: operations["setCompanyPlan"];
         trace?: never;
@@ -8638,7 +8558,7 @@ export interface paths {
         put?: never;
         /**
          * Send somebody their invitation, or a fresh link to it
-         * @description Withdraws the old invitation and issues a new one to the same address and role, valid for seven days from now, then emails it unless `sendEmail` is false (the link is returned either way, to send by hand). A new token rather than the old one: the old link may be sitting in a mailbox somebody else can read. Works on an expired invitation too, which is how a company set up weeks ago gets its owner in once its forms are ready.
+         * @description Withdraws the old invitation and issues a new one to the same address and role, valid for seven days from now, then emails it unless `sendEmail` is false (the link is returned either way, to send by hand). A new token rather than the old one: the old link may be sitting in a mailbox somebody else can read. Works on an expired invitation too, which is how a company set up weeks ago gets its owner in once its forms are ready. Refused with 409 `company_app_not_built` until the company’s own desktop app exists (P42), and 503 `releases_unavailable` when that cannot be checked.
          */
         post: operations["resendInvitation"];
         delete?: never;
@@ -8925,7 +8845,7 @@ export interface paths {
         };
         /**
          * What is failing quietly
-         * @description Phones whose sync runs show trouble, billing deliveries that were recorded but not applied, background work that gave up — over the last few days, across every company — and maintenance plans the worker currently cannot make jobs for. The things that look fine from the office until a customer rings.
+         * @description Phones whose sync runs show trouble, background work that gave up — over the last few days, across every company — and maintenance plans the worker currently cannot make jobs for. The things that look fine from the office until a customer rings.
          */
         get: operations["getPlatformHealth"];
         put?: never;
@@ -8936,7 +8856,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/platform/funnel": {
+    "/v1/platform/downloads": {
         parameters: {
             query?: never;
             header?: never;
@@ -8944,10 +8864,10 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * The signup funnel, and where it leaks
-         * @description Steps with how many attempts reached each, over a window. The page steps count visits and the rest count attempts; they cannot be combined into one number honestly, so they are not.
+         * The staff app and Integr8 Forms for AI, newest release of each
+         * @description Read from the GitHub releases this deployment is set to (`APP_RELEASES=github`). Each is `found` with its files, `none` when nothing is published (or releases are not read here), or `unavailable` when GitHub could not be asked.
          */
-        get: operations["getSignupFunnel"];
+        get: operations["getPlatformDownloads"];
         put?: never;
         post?: never;
         delete?: never;
@@ -9041,7 +8961,7 @@ export interface operations {
                             /** Format: uuid */
                             tenantId: string;
                             /** @enum {string} */
-                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                             /** @enum {string} */
                             status: "invited" | "active" | "suspended";
                         }[];
@@ -9232,7 +9152,7 @@ export interface operations {
                             /** Format: uuid */
                             tenantId: string;
                             /** @enum {string} */
-                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                             /** @enum {string} */
                             status: "invited" | "active" | "suspended";
                         }[];
@@ -9437,7 +9357,7 @@ export interface operations {
                             /** Format: uuid */
                             tenantId: string;
                             /** @enum {string} */
-                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                             /** @enum {string} */
                             status: "invited" | "active" | "suspended";
                         }[];
@@ -10059,7 +9979,7 @@ export interface operations {
                         /** @enum {string|null} */
                         blockedBy: "global_off" | "plan_off" | "custom_off" | "not_served" | "provider_unconfigured" | "channel_off" | "member_off" | "no_share" | null;
                         /** @enum {string} */
-                        channel: "web" | "desktop" | "mobile";
+                        channel: "desktop" | "mobile";
                         /** @enum {string} */
                         answerSource: "model" | "library";
                         tools: string[];
@@ -11031,22 +10951,11 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        /** @enum {string} */
-                        billingMode: "self_serve" | "invoiced";
                         plan: string;
                         /** @enum {string} */
                         status: "trialing" | "active" | "past_due" | "canceled" | "incomplete";
-                        /** @enum {string|null} */
-                        interval: "month" | "year" | null;
-                        /** Format: date-time */
-                        currentPeriodEnd: string | null;
-                        cancelAtPeriodEnd: boolean;
                         /** Format: date-time */
                         trialEndsAt: string | null;
-                        /** Format: date-time */
-                        pastDueSince: string | null;
-                        /** Format: date-time */
-                        graceEndsAt: string | null;
                         readOnly: boolean;
                         readOnlyReason: string | null;
                         entitlements: {
@@ -11117,345 +11026,6 @@ export interface operations {
             };
         };
     };
-    listInvoices: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The invoices, newest first. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        items: {
-                            id: string;
-                            number: string | null;
-                            /** @enum {string} */
-                            status: "draft" | "open" | "paid" | "uncollectible" | "void";
-                            amountDueCents: number;
-                            amountPaidCents: number;
-                            currency: string;
-                            /** Format: date-time */
-                            periodStart: string | null;
-                            /** Format: date-time */
-                            periodEnd: string | null;
-                            /** Format: date-time */
-                            createdAt: string;
-                            hostedUrl: string | null;
-                            pdfUrl: string | null;
-                        }[];
-                    };
-                };
-            };
-            /** @description Authentication is required. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description The caller lacks the required permission. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description The request failed validation. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Rate limit exceeded. */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Something went wrong on our side. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description This client build is older than the minimum supported. */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    startCheckout: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    /** @enum {string} */
-                    plan: "starter" | "standard" | "enterprise";
-                    /**
-                     * @default month
-                     * @enum {string}
-                     */
-                    interval?: "month" | "year";
-                };
-            };
-        };
-        responses: {
-            /** @description Where to send the browser. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        url: string;
-                        provider: string;
-                    };
-                };
-            };
-            /** @description Authentication is required. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description The caller lacks the required permission. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description This plan has no price configured (`plan_not_purchasable`), or Integr8 invoices this company directly (`billing_invoiced`), as it does every company on a deployment that takes no card payments. */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The request failed validation. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Rate limit exceeded. */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Something went wrong on our side. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description This client build is older than the minimum supported. */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    openBillingPortal: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Where to send the browser. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        url: string;
-                        provider: string;
-                    };
-                };
-            };
-            /** @description Authentication is required. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description The caller lacks the required permission. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description This company has never paid, so there is no portal yet (`no_billing_account`), or Integr8 invoices it directly (`billing_invoiced`), as it does every company on a deployment that takes no card payments. */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The request failed validation. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Rate limit exceeded. */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Something went wrong on our side. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description This client build is older than the minimum supported. */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    billingWebhook: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Accepted, whether or not it was acted on. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        received: boolean;
-                        duplicate: boolean;
-                        handled: boolean;
-                    };
-                };
-            };
-            /** @description The signature did not verify. */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The request failed validation. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Rate limit exceeded. */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Something went wrong on our side. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description This client build is older than the minimum supported. */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
     resendMemberInvitation: {
         parameters: {
             query?: never;
@@ -11478,7 +11048,7 @@ export interface operations {
                         id: string;
                         email: string;
                         /** @enum {string} */
-                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                         /** Format: date-time */
                         createdAt: string;
                         /** Format: date-time */
@@ -11508,6 +11078,13 @@ export interface operations {
             };
             /** @description No such invitation, or it has been accepted or withdrawn. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `company_app_not_built`: the company has no desktop app to sign in to yet. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11580,7 +11157,7 @@ export interface operations {
                         email: string;
                         displayName: string;
                         /** @enum {string} */
-                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                         grants: ("hr_manager" | "inventory_manager")[];
                         customRole?: {
                             /** Format: uuid */
@@ -11671,7 +11248,7 @@ export interface operations {
             content: {
                 "application/json": {
                     /** @enum {string} */
-                    role?: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                    role?: "owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                     /** Format: uuid */
                     customRoleId?: string;
                 };
@@ -11690,7 +11267,7 @@ export interface operations {
                         email: string;
                         displayName: string;
                         /** @enum {string} */
-                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                         grants: ("hr_manager" | "inventory_manager")[];
                         customRole?: {
                             /** Format: uuid */
@@ -11803,7 +11380,7 @@ export interface operations {
                         email: string;
                         displayName: string;
                         /** @enum {string} */
-                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                         grants: ("hr_manager" | "inventory_manager")[];
                         customRole?: {
                             /** Format: uuid */
@@ -12004,7 +11581,7 @@ export interface operations {
                         email: string;
                         displayName: string;
                         /** @enum {string} */
-                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                         grants: ("hr_manager" | "inventory_manager")[];
                         customRole?: {
                             /** Format: uuid */
@@ -12111,7 +11688,7 @@ export interface operations {
                         email: string;
                         displayName: string;
                         /** @enum {string} */
-                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                         grants: ("hr_manager" | "inventory_manager")[];
                         customRole?: {
                             /** Format: uuid */
@@ -12187,287 +11764,6 @@ export interface operations {
             };
         };
     };
-    startSignup: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    email: string;
-                    companyName: string;
-                };
-            };
-        };
-        responses: {
-            /** @description Taken. Check the inbox. */
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        accepted: boolean;
-                    };
-                };
-            };
-            /** @description Public sign-up is off on this deployment (`signup_closed`). Integr8 sets companies up. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The request failed validation. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Rate limit exceeded. */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Something went wrong on our side. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Signing up is not configured on this deployment. */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    verifySignup: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    token: string;
-                    displayName: string;
-                    password: string;
-                };
-            };
-        };
-        responses: {
-            /** @description The company exists. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** Format: uuid */
-                        tenantId: string;
-                        email: string;
-                    };
-                };
-            };
-            /** @description Public sign-up is off on this deployment (`signup_closed`). Integr8 sets companies up. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The link is spent, expired or unknown (`invalid_signup_token`), or the password is too weak (`auth.weak_password`). */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Rate limit exceeded. */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Something went wrong on our side. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description This client build is older than the minimum supported. */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    resendSignupVerification: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    email: string;
-                };
-            };
-        };
-        responses: {
-            /** @description Taken. */
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        accepted: boolean;
-                    };
-                };
-            };
-            /** @description Public sign-up is off on this deployment (`signup_closed`). Integr8 sets companies up. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The request failed validation. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Rate limit exceeded. */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Something went wrong on our side. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description This client build is older than the minimum supported. */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    recordSignupStep: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    /** @enum {string} */
-                    step: "landing.viewed" | "pricing.viewed" | "features.viewed" | "signup.opened";
-                    /** @enum {string} */
-                    plan?: "trial" | "starter" | "standard" | "enterprise";
-                };
-            };
-        };
-        responses: {
-            /** @description Recorded, or quietly not. */
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        accepted: boolean;
-                    };
-                };
-            };
-            /** @description The request failed validation. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Rate limit exceeded. */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Something went wrong on our side. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description This client build is older than the minimum supported. */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
     getSettings: {
         parameters: {
             query?: never;
@@ -12500,7 +11796,6 @@ export interface operations {
                         workDayStarts: number;
                         workDayEnds: number;
                         workingDays: number[];
-                        aiWebEnabled: boolean;
                         aiDesktopEnabled: boolean;
                         aiMobileEnabled: boolean;
                         showCompanyName: boolean;
@@ -12589,7 +11884,6 @@ export interface operations {
                     workDayStarts?: number;
                     workDayEnds?: number;
                     workingDays?: number[];
-                    aiWebEnabled?: boolean;
                     aiDesktopEnabled?: boolean;
                     aiMobileEnabled?: boolean;
                     showCompanyName?: boolean;
@@ -12620,7 +11914,6 @@ export interface operations {
                         workDayStarts: number;
                         workDayEnds: number;
                         workingDays: number[];
-                        aiWebEnabled: boolean;
                         aiDesktopEnabled: boolean;
                         aiMobileEnabled: boolean;
                         showCompanyName: boolean;
@@ -12876,7 +12169,6 @@ export interface operations {
                             submissionsPerMonth: number | null;
                             storageBytes: number | null;
                             retentionDays: number | null;
-                            purchasable: boolean;
                         }[];
                     };
                 };
@@ -13475,7 +12767,7 @@ export interface operations {
                         email: string;
                         displayName: string;
                         /** @enum {string} */
-                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                         grants: ("hr_manager" | "inventory_manager")[];
                         customRole?: {
                             /** Format: uuid */
@@ -13786,7 +13078,7 @@ export interface operations {
                             email: string;
                             displayName: string;
                             /** @enum {string} */
-                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                             grants: ("hr_manager" | "inventory_manager")[];
                             customRole?: {
                                 /** Format: uuid */
@@ -13879,7 +13171,7 @@ export interface operations {
                             id: string;
                             email: string;
                             /** @enum {string} */
-                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                             /** Format: date-time */
                             createdAt: string;
                             /** Format: date-time */
@@ -13961,7 +13253,7 @@ export interface operations {
                 "application/json": {
                     email: string;
                     /** @enum {string} */
-                    role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                    role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                 };
             };
         };
@@ -13977,7 +13269,7 @@ export interface operations {
                         id: string;
                         email: string;
                         /** @enum {string} */
-                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                         /** Format: date-time */
                         createdAt: string;
                         /** Format: date-time */
@@ -14005,7 +13297,7 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description Every seat on this plan is taken (`seat_limit_reached`). */
+            /** @description Every seat on this plan is taken (`seat_limit_reached`), or the company’s own desktop app is not built yet (`company_app_not_built`). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -14222,6 +13514,10 @@ export interface operations {
                         email: string;
                         existingAccount: boolean;
                         signInRequired: boolean;
+                        company: {
+                            name: string;
+                            slug: string;
+                        } | null;
                     };
                 };
             };
@@ -14371,7 +13667,7 @@ export interface operations {
                             /** Format: uuid */
                             id: string;
                             title: string;
-                            fillRoles: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer")[];
+                            fillRoles: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer")[];
                             signatureRequired: boolean;
                             requiredByJobTypeIds: string[];
                             /** Format: uuid */
@@ -14474,7 +13770,7 @@ export interface operations {
                             /** Format: uuid */
                             id: string;
                             title: string;
-                            fillRoles: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer")[];
+                            fillRoles: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer")[];
                             signatureRequired: boolean;
                             requiredByJobTypeIds: string[];
                             /** Format: uuid */
@@ -14504,6 +13800,9 @@ export interface operations {
                             definition: {
                                 [key: string]: unknown;
                             };
+                            actions: {
+                                [key: string]: unknown;
+                            }[];
                         } | null;
                         live: {
                             /** Format: uuid */
@@ -14526,6 +13825,9 @@ export interface operations {
                             definition: {
                                 [key: string]: unknown;
                             };
+                            actions: {
+                                [key: string]: unknown;
+                            }[];
                         } | null;
                     };
                 };
@@ -14617,7 +13919,7 @@ export interface operations {
                             /** Format: uuid */
                             id: string;
                             title: string;
-                            fillRoles: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer")[];
+                            fillRoles: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer")[];
                             signatureRequired: boolean;
                             requiredByJobTypeIds: string[];
                             /** Format: uuid */
@@ -14647,6 +13949,9 @@ export interface operations {
                             definition: {
                                 [key: string]: unknown;
                             };
+                            actions: {
+                                [key: string]: unknown;
+                            }[];
                         } | null;
                         live: {
                             /** Format: uuid */
@@ -14669,6 +13974,9 @@ export interface operations {
                             definition: {
                                 [key: string]: unknown;
                             };
+                            actions: {
+                                [key: string]: unknown;
+                            }[];
                         } | null;
                     };
                 };
@@ -14749,7 +14057,7 @@ export interface operations {
             content: {
                 "application/json": {
                     title?: string;
-                    fillRoles?: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer")[];
+                    fillRoles?: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer")[];
                     signatureRequired?: boolean;
                     requiredByJobTypeIds?: string[];
                 };
@@ -14766,7 +14074,7 @@ export interface operations {
                         /** Format: uuid */
                         id: string;
                         title: string;
-                        fillRoles: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer")[];
+                        fillRoles: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer")[];
                         signatureRequired: boolean;
                         requiredByJobTypeIds: string[];
                         /** Format: uuid */
@@ -14871,7 +14179,7 @@ export interface operations {
                             /** Format: uuid */
                             id: string;
                             title: string;
-                            fillRoles: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer")[];
+                            fillRoles: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer")[];
                             signatureRequired: boolean;
                             requiredByJobTypeIds: string[];
                             /** Format: uuid */
@@ -14901,6 +14209,9 @@ export interface operations {
                             definition: {
                                 [key: string]: unknown;
                             };
+                            actions: {
+                                [key: string]: unknown;
+                            }[];
                         } | null;
                         live: {
                             /** Format: uuid */
@@ -14923,6 +14234,9 @@ export interface operations {
                             definition: {
                                 [key: string]: unknown;
                             };
+                            actions: {
+                                [key: string]: unknown;
+                            }[];
                         } | null;
                     };
                 };
@@ -15046,6 +14360,9 @@ export interface operations {
                         definition: {
                             [key: string]: unknown;
                         };
+                        actions: {
+                            [key: string]: unknown;
+                        }[];
                     };
                 };
             };
@@ -15089,6 +14406,127 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Error"];
                 };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    saveFormDraftActions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                formId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    actions: {
+                        [key: string]: unknown;
+                    }[];
+                    expectedRevision: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The saved draft. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        formId: string;
+                        /** @enum {string} */
+                        status: "draft" | "published";
+                        versionNumber: number | null;
+                        revision: number;
+                        changeNote: string | null;
+                        changes: {
+                            [key: string]: unknown;
+                        } | null;
+                        createdAt: string;
+                        updatedAt: string;
+                        publishedAt: string | null;
+                        /** Format: uuid */
+                        publishedBy: string | null;
+                        definition: {
+                            [key: string]: unknown;
+                        };
+                        actions: {
+                            [key: string]: unknown;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such form, or no draft. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Somebody saved first. Reload the draft and reapply. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An action of the wrong shape. Details name it. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Rate limit exceeded. */
             429: {
@@ -15182,6 +14620,12 @@ export interface operations {
                             path: string;
                             elements: string[];
                             locale?: string;
+                        }[];
+                        actionIssues: {
+                            code: string;
+                            message: string;
+                            path: string;
+                            action: string | null;
                         }[];
                     };
                 };
@@ -15330,7 +14774,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description The definition does not compile. Details name the fields. */
+            /** @description The definition does not compile (`invalid_definition`), its actions do not check (`invalid_actions`), or it makes claims while the HR module is off (`form_action_needs_module`). Details name each problem. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -15616,6 +15060,9 @@ export interface operations {
                         definition: {
                             [key: string]: unknown;
                         };
+                        actions: {
+                            [key: string]: unknown;
+                        }[];
                     };
                 };
             };
@@ -15905,7 +15352,7 @@ export interface operations {
                             /** Format: uuid */
                             id: string;
                             title: string;
-                            fillRoles: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer")[];
+                            fillRoles: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer")[];
                             signatureRequired: boolean;
                             requiredByJobTypeIds: string[];
                             /** Format: uuid */
@@ -15935,6 +15382,9 @@ export interface operations {
                             definition: {
                                 [key: string]: unknown;
                             };
+                            actions: {
+                                [key: string]: unknown;
+                            }[];
                         } | null;
                         live: {
                             /** Format: uuid */
@@ -15957,6 +15407,9 @@ export interface operations {
                             definition: {
                                 [key: string]: unknown;
                             };
+                            actions: {
+                                [key: string]: unknown;
+                            }[];
                         } | null;
                         documentTemplatesCopied: number;
                     };
@@ -16817,6 +16270,50 @@ export interface operations {
                             fromSubmissionId: string;
                             fields: string[];
                         } | null;
+                        formActions: {
+                            results: {
+                                actionId: string;
+                                /** @enum {string} */
+                                kind: "expense_claim" | "open_form";
+                                /** @enum {string} */
+                                outcome: "made" | "skipped" | "failed";
+                                reasonCode: string | null;
+                                reason: string | null;
+                                claim: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    status: string;
+                                    amount: string;
+                                    payableAmount: string;
+                                    currency: string;
+                                } | null;
+                                followUp: {
+                                    /** Format: uuid */
+                                    submissionId: string;
+                                    /** Format: uuid */
+                                    formId: string;
+                                    formTitle: string;
+                                    /** @enum {string} */
+                                    status: "draft" | "submitted" | "reopened";
+                                    required: boolean;
+                                } | null;
+                            }[];
+                            openedFrom: {
+                                /** Format: uuid */
+                                submissionId: string;
+                                formTitle: string;
+                            } | null;
+                            canRetry: boolean;
+                        };
+                        nextForms: {
+                            /** Format: uuid */
+                            submissionId: string;
+                            /** Format: uuid */
+                            formId: string;
+                            formTitle: string;
+                            required: boolean;
+                        }[];
                     };
                 };
             };
@@ -17094,6 +16591,50 @@ export interface operations {
                             fromSubmissionId: string;
                             fields: string[];
                         } | null;
+                        formActions: {
+                            results: {
+                                actionId: string;
+                                /** @enum {string} */
+                                kind: "expense_claim" | "open_form";
+                                /** @enum {string} */
+                                outcome: "made" | "skipped" | "failed";
+                                reasonCode: string | null;
+                                reason: string | null;
+                                claim: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    status: string;
+                                    amount: string;
+                                    payableAmount: string;
+                                    currency: string;
+                                } | null;
+                                followUp: {
+                                    /** Format: uuid */
+                                    submissionId: string;
+                                    /** Format: uuid */
+                                    formId: string;
+                                    formTitle: string;
+                                    /** @enum {string} */
+                                    status: "draft" | "submitted" | "reopened";
+                                    required: boolean;
+                                } | null;
+                            }[];
+                            openedFrom: {
+                                /** Format: uuid */
+                                submissionId: string;
+                                formTitle: string;
+                            } | null;
+                            canRetry: boolean;
+                        };
+                        nextForms: {
+                            /** Format: uuid */
+                            submissionId: string;
+                            /** Format: uuid */
+                            formId: string;
+                            formTitle: string;
+                            required: boolean;
+                        }[];
                     };
                 };
             };
@@ -17413,6 +16954,50 @@ export interface operations {
                             fromSubmissionId: string;
                             fields: string[];
                         } | null;
+                        formActions: {
+                            results: {
+                                actionId: string;
+                                /** @enum {string} */
+                                kind: "expense_claim" | "open_form";
+                                /** @enum {string} */
+                                outcome: "made" | "skipped" | "failed";
+                                reasonCode: string | null;
+                                reason: string | null;
+                                claim: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    status: string;
+                                    amount: string;
+                                    payableAmount: string;
+                                    currency: string;
+                                } | null;
+                                followUp: {
+                                    /** Format: uuid */
+                                    submissionId: string;
+                                    /** Format: uuid */
+                                    formId: string;
+                                    formTitle: string;
+                                    /** @enum {string} */
+                                    status: "draft" | "submitted" | "reopened";
+                                    required: boolean;
+                                } | null;
+                            }[];
+                            openedFrom: {
+                                /** Format: uuid */
+                                submissionId: string;
+                                formTitle: string;
+                            } | null;
+                            canRetry: boolean;
+                        };
+                        nextForms: {
+                            /** Format: uuid */
+                            submissionId: string;
+                            /** Format: uuid */
+                            formId: string;
+                            formTitle: string;
+                            required: boolean;
+                        }[];
                     };
                 };
             };
@@ -17604,6 +17189,50 @@ export interface operations {
                             fromSubmissionId: string;
                             fields: string[];
                         } | null;
+                        formActions: {
+                            results: {
+                                actionId: string;
+                                /** @enum {string} */
+                                kind: "expense_claim" | "open_form";
+                                /** @enum {string} */
+                                outcome: "made" | "skipped" | "failed";
+                                reasonCode: string | null;
+                                reason: string | null;
+                                claim: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    status: string;
+                                    amount: string;
+                                    payableAmount: string;
+                                    currency: string;
+                                } | null;
+                                followUp: {
+                                    /** Format: uuid */
+                                    submissionId: string;
+                                    /** Format: uuid */
+                                    formId: string;
+                                    formTitle: string;
+                                    /** @enum {string} */
+                                    status: "draft" | "submitted" | "reopened";
+                                    required: boolean;
+                                } | null;
+                            }[];
+                            openedFrom: {
+                                /** Format: uuid */
+                                submissionId: string;
+                                formTitle: string;
+                            } | null;
+                            canRetry: boolean;
+                        };
+                        nextForms: {
+                            /** Format: uuid */
+                            submissionId: string;
+                            /** Format: uuid */
+                            formId: string;
+                            formTitle: string;
+                            required: boolean;
+                        }[];
                     };
                 };
             };
@@ -17633,6 +17262,237 @@ export interface operations {
                 content?: never;
             };
             /** @description Changed elsewhere, or not submitted. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    retryFormActions: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                submissionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The submission, with what its actions did. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        submission: {
+                            /** Format: uuid */
+                            id: string;
+                            workOrder: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: number;
+                                referenceLabel: string;
+                            } | null;
+                            /** Format: uuid */
+                            formId: string;
+                            formTitle: string;
+                            title: string | null;
+                            /** Format: uuid */
+                            formVersionId: string;
+                            versionNumber: number | null;
+                            /** @enum {string} */
+                            status: "draft" | "submitted" | "reopened";
+                            revision: number;
+                            submittedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            submittedAt: string | null;
+                            amendedAt: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            answers: {
+                                [key: string]: unknown;
+                            };
+                            submitLocation: ({
+                                /** @enum {string} */
+                                status: "captured";
+                                latitude: string;
+                                longitude: string;
+                                accuracyMeters?: string;
+                                /** Format: date-time */
+                                capturedAt: string;
+                            } | {
+                                /** @enum {string} */
+                                status: "denied" | "unavailable";
+                            }) | null;
+                        };
+                        version: {
+                            /** Format: uuid */
+                            id: string;
+                            versionNumber: number | null;
+                            definition: {
+                                [key: string]: unknown;
+                            };
+                        };
+                        events: {
+                            sequence: number;
+                            /** @enum {string} */
+                            kind: "submitted" | "reopened" | "amended";
+                            answers: {
+                                [key: string]: unknown;
+                            } | null;
+                            actor: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            reason: string | null;
+                            location: ({
+                                /** @enum {string} */
+                                status: "captured";
+                                latitude: string;
+                                longitude: string;
+                                accuracyMeters?: string;
+                                /** Format: date-time */
+                                capturedAt: string;
+                            } | {
+                                /** @enum {string} */
+                                status: "denied" | "unavailable";
+                            }) | null;
+                            occurredAt: string;
+                        }[];
+                        can: {
+                            edit: boolean;
+                            submit: boolean;
+                            reopen: boolean;
+                        };
+                        asset: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            name: string;
+                        } | null;
+                        carriedOver: {
+                            /** Format: uuid */
+                            fromSubmissionId: string;
+                            fields: string[];
+                        } | null;
+                        formActions: {
+                            results: {
+                                actionId: string;
+                                /** @enum {string} */
+                                kind: "expense_claim" | "open_form";
+                                /** @enum {string} */
+                                outcome: "made" | "skipped" | "failed";
+                                reasonCode: string | null;
+                                reason: string | null;
+                                claim: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    status: string;
+                                    amount: string;
+                                    payableAmount: string;
+                                    currency: string;
+                                } | null;
+                                followUp: {
+                                    /** Format: uuid */
+                                    submissionId: string;
+                                    /** Format: uuid */
+                                    formId: string;
+                                    formTitle: string;
+                                    /** @enum {string} */
+                                    status: "draft" | "submitted" | "reopened";
+                                    required: boolean;
+                                } | null;
+                            }[];
+                            openedFrom: {
+                                /** Format: uuid */
+                                submissionId: string;
+                                formTitle: string;
+                            } | null;
+                            canRetry: boolean;
+                        };
+                        nextForms: {
+                            /** Format: uuid */
+                            submissionId: string;
+                            /** Format: uuid */
+                            formId: string;
+                            formTitle: string;
+                            required: boolean;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This person neither corrects submissions nor approves claims. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such submission this person may see. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The submission is a draft (`submission_state`). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -21034,6 +20894,77 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getPublicAssetTag: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The company. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        company: {
+                            name: string;
+                            slug: string;
+                        };
+                        code: string;
+                    };
+                };
+            };
+            /** @description No company has this tag. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
             };
             /** @description Something went wrong on our side. */
             500: {
@@ -31833,7 +31764,7 @@ export interface operations {
                     "application/json": {
                         bases: {
                             /** @enum {string} */
-                            role: "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                            role: "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                             permissions: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                         }[];
                         addable: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
@@ -31920,7 +31851,7 @@ export interface operations {
                             name: string;
                             description: string | null;
                             /** @enum {string} */
-                            baseRole: "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                            baseRole: "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                             added: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                             removed: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                             permissions: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
@@ -32014,7 +31945,7 @@ export interface operations {
                     /** @default [] */
                     removed?: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                     /** @enum {string} */
-                    baseRole: "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                    baseRole: "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                 };
             };
         };
@@ -32031,7 +31962,7 @@ export interface operations {
                         name: string;
                         description: string | null;
                         /** @enum {string} */
-                        baseRole: "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                        baseRole: "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                         added: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                         removed: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                         permissions: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
@@ -32141,7 +32072,7 @@ export interface operations {
                         name: string;
                         description: string | null;
                         /** @enum {string} */
-                        baseRole: "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                        baseRole: "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                         added: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                         removed: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                         permissions: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
@@ -32251,7 +32182,7 @@ export interface operations {
                         name: string;
                         description: string | null;
                         /** @enum {string} */
-                        baseRole: "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                        baseRole: "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                         added: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                         removed: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                         permissions: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "deadline.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.upload" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
@@ -59648,7 +59579,7 @@ export interface operations {
                                 userId: string;
                                 displayName: string;
                                 /** @enum {string} */
-                                role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                                role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                             } | null;
                             sensitive: {
                                 nationalId: {
@@ -59795,7 +59726,7 @@ export interface operations {
                             userId: string;
                             displayName: string;
                             /** @enum {string} */
-                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                         } | null;
                         sensitive: {
                             nationalId: {
@@ -59919,7 +59850,7 @@ export interface operations {
                             userId: string;
                             displayName: string;
                             /** @enum {string} */
-                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                         } | null;
                         sensitive: {
                             nationalId: {
@@ -60049,7 +59980,7 @@ export interface operations {
                             userId: string;
                             displayName: string;
                             /** @enum {string} */
-                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                         } | null;
                         sensitive: {
                             nationalId: {
@@ -60203,7 +60134,7 @@ export interface operations {
                             userId: string;
                             displayName: string;
                             /** @enum {string} */
-                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
                         } | null;
                         sensitive: {
                             nationalId: {
@@ -60753,6 +60684,16 @@ export interface operations {
                             /** Format: date-time */
                             paidAt: string | null;
                             paymentReference: string | null;
+                            approvedAmount: string | null;
+                            amountNote: string | null;
+                            payableAmount: string;
+                            submission: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                formId: string;
+                                title: string;
+                            } | null;
                             version: number;
                         }[];
                         nextCursor: string | null;
@@ -60895,6 +60836,16 @@ export interface operations {
                         /** Format: date-time */
                         paidAt: string | null;
                         paymentReference: string | null;
+                        approvedAmount: string | null;
+                        amountNote: string | null;
+                        payableAmount: string;
+                        submission: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            formId: string;
+                            title: string;
+                        } | null;
                         version: number;
                         receipts: {
                             /** Format: uuid */
@@ -61052,6 +61003,16 @@ export interface operations {
                         /** Format: date-time */
                         paidAt: string | null;
                         paymentReference: string | null;
+                        approvedAmount: string | null;
+                        amountNote: string | null;
+                        payableAmount: string;
+                        submission: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            formId: string;
+                            title: string;
+                        } | null;
                         version: number;
                         receipts: {
                             /** Format: uuid */
@@ -61100,6 +61061,229 @@ export interface operations {
                 };
             };
             /** @description No such claim, or not one this person may read. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getExpenseClaimSubmission: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                claimId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The submission, as its page shows it. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        submission: {
+                            /** Format: uuid */
+                            id: string;
+                            workOrder: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: number;
+                                referenceLabel: string;
+                            } | null;
+                            /** Format: uuid */
+                            formId: string;
+                            formTitle: string;
+                            title: string | null;
+                            /** Format: uuid */
+                            formVersionId: string;
+                            versionNumber: number | null;
+                            /** @enum {string} */
+                            status: "draft" | "submitted" | "reopened";
+                            revision: number;
+                            submittedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            submittedAt: string | null;
+                            amendedAt: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            answers: {
+                                [key: string]: unknown;
+                            };
+                            submitLocation: ({
+                                /** @enum {string} */
+                                status: "captured";
+                                latitude: string;
+                                longitude: string;
+                                accuracyMeters?: string;
+                                /** Format: date-time */
+                                capturedAt: string;
+                            } | {
+                                /** @enum {string} */
+                                status: "denied" | "unavailable";
+                            }) | null;
+                        };
+                        version: {
+                            /** Format: uuid */
+                            id: string;
+                            versionNumber: number | null;
+                            definition: {
+                                [key: string]: unknown;
+                            };
+                        };
+                        events: {
+                            sequence: number;
+                            /** @enum {string} */
+                            kind: "submitted" | "reopened" | "amended";
+                            answers: {
+                                [key: string]: unknown;
+                            } | null;
+                            actor: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            reason: string | null;
+                            location: ({
+                                /** @enum {string} */
+                                status: "captured";
+                                latitude: string;
+                                longitude: string;
+                                accuracyMeters?: string;
+                                /** Format: date-time */
+                                capturedAt: string;
+                            } | {
+                                /** @enum {string} */
+                                status: "denied" | "unavailable";
+                            }) | null;
+                            occurredAt: string;
+                        }[];
+                        can: {
+                            edit: boolean;
+                            submit: boolean;
+                            reopen: boolean;
+                        };
+                        asset: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            name: string;
+                        } | null;
+                        carriedOver: {
+                            /** Format: uuid */
+                            fromSubmissionId: string;
+                            fields: string[];
+                        } | null;
+                        formActions: {
+                            results: {
+                                actionId: string;
+                                /** @enum {string} */
+                                kind: "expense_claim" | "open_form";
+                                /** @enum {string} */
+                                outcome: "made" | "skipped" | "failed";
+                                reasonCode: string | null;
+                                reason: string | null;
+                                claim: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    status: string;
+                                    amount: string;
+                                    payableAmount: string;
+                                    currency: string;
+                                } | null;
+                                followUp: {
+                                    /** Format: uuid */
+                                    submissionId: string;
+                                    /** Format: uuid */
+                                    formId: string;
+                                    formTitle: string;
+                                    /** @enum {string} */
+                                    status: "draft" | "submitted" | "reopened";
+                                    required: boolean;
+                                } | null;
+                            }[];
+                            openedFrom: {
+                                /** Format: uuid */
+                                submissionId: string;
+                                formTitle: string;
+                            } | null;
+                            canRetry: boolean;
+                        };
+                        nextForms: {
+                            /** Format: uuid */
+                            submissionId: string;
+                            /** Format: uuid */
+                            formId: string;
+                            formTitle: string;
+                            required: boolean;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `hr` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such claim, or it was not made by a form. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -61215,6 +61399,16 @@ export interface operations {
                         /** Format: date-time */
                         paidAt: string | null;
                         paymentReference: string | null;
+                        approvedAmount: string | null;
+                        amountNote: string | null;
+                        payableAmount: string;
+                        submission: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            formId: string;
+                            title: string;
+                        } | null;
                         version: number;
                         receipts: {
                             /** Format: uuid */
@@ -61332,6 +61526,8 @@ export interface operations {
                      * @enum {string}
                      */
                     settleVia?: "direct" | "payroll";
+                    approvedAmount?: string;
+                    amountNote?: string;
                 };
             };
         };
@@ -61390,6 +61586,16 @@ export interface operations {
                         /** Format: date-time */
                         paidAt: string | null;
                         paymentReference: string | null;
+                        approvedAmount: string | null;
+                        amountNote: string | null;
+                        payableAmount: string;
+                        submission: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            formId: string;
+                            title: string;
+                        } | null;
                         version: number;
                         receipts: {
                             /** Format: uuid */
@@ -61451,7 +61657,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Payroll is not switched on. */
+            /** @description Payroll is not switched on, or a different amount without a note. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -61559,6 +61765,16 @@ export interface operations {
                         /** Format: date-time */
                         paidAt: string | null;
                         paymentReference: string | null;
+                        approvedAmount: string | null;
+                        amountNote: string | null;
+                        payableAmount: string;
+                        submission: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            formId: string;
+                            title: string;
+                        } | null;
                         version: number;
                         receipts: {
                             /** Format: uuid */
@@ -61732,6 +61948,16 @@ export interface operations {
                         /** Format: date-time */
                         paidAt: string | null;
                         paymentReference: string | null;
+                        approvedAmount: string | null;
+                        amountNote: string | null;
+                        payableAmount: string;
+                        submission: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            formId: string;
+                            title: string;
+                        } | null;
                         version: number;
                         receipts: {
                             /** Format: uuid */
@@ -80192,7 +80418,7 @@ export interface operations {
                                 /** Format: uuid */
                                 id: string;
                                 title: string;
-                                fillRoles: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer")[];
+                                fillRoles: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer")[];
                                 signatureRequired: boolean;
                                 requiredByJobTypeIds: string[];
                                 /** Format: uuid */
@@ -80222,6 +80448,9 @@ export interface operations {
                                 definition: {
                                     [key: string]: unknown;
                                 };
+                                actions: {
+                                    [key: string]: unknown;
+                                }[];
                             } | null;
                             live: {
                                 /** Format: uuid */
@@ -80244,6 +80473,9 @@ export interface operations {
                                 definition: {
                                     [key: string]: unknown;
                                 };
+                                actions: {
+                                    [key: string]: unknown;
+                                }[];
                             } | null;
                         }[];
                         submissions: {
@@ -82203,8 +82435,6 @@ export interface operations {
                             /** @enum {string} */
                             plan: "trial" | "starter" | "standard" | "enterprise";
                             seats: number | null;
-                            /** @enum {string} */
-                            billingMode: "self_serve" | "invoiced";
                             members: number;
                             activeMembers: number;
                             storageBytes: number;
@@ -82291,23 +82521,16 @@ export interface operations {
                      * @default null
                      */
                     seats?: number | null;
-                    /**
-                     * @default self_serve
-                     * @enum {string}
-                     */
-                    billingMode?: "self_serve" | "invoiced";
                     /** Format: email */
                     ownerEmail: string;
                     websiteUrl?: string | null;
                     /**
                      * @default {
-                     *       "web": false,
                      *       "desktop": false,
                      *       "mobile": false
                      *     }
                      */
                     aiChannels?: {
-                        web: boolean;
                         desktop: boolean;
                         mobile: boolean;
                     };
@@ -82341,8 +82564,6 @@ export interface operations {
                             /** @enum {string} */
                             plan: "trial" | "starter" | "standard" | "enterprise";
                             seats: number | null;
-                            /** @enum {string} */
-                            billingMode: "self_serve" | "invoiced";
                             members: number;
                             activeMembers: number;
                             storageBytes: number;
@@ -82455,8 +82676,6 @@ export interface operations {
                         /** @enum {string} */
                         plan: "trial" | "starter" | "standard" | "enterprise";
                         seats: number | null;
-                        /** @enum {string} */
-                        billingMode: "self_serve" | "invoiced";
                         members: number;
                         activeMembers: number;
                         storageBytes: number;
@@ -82481,7 +82700,6 @@ export interface operations {
                             defaultTheme: "light" | "dark" | "system";
                             websiteUrl: string | null;
                             appsEnabled: boolean;
-                            aiWebEnabled: boolean;
                             aiDesktopEnabled: boolean;
                             aiMobileEnabled: boolean;
                             showCompanyName: boolean;
@@ -82508,29 +82726,18 @@ export interface operations {
                             auditedActions: number;
                         }[];
                         billing: {
-                            provider: string;
                             /** @enum {string} */
                             status: "trialing" | "active" | "past_due" | "canceled" | "incomplete";
                             /** @enum {string} */
                             plan: "trial" | "starter" | "standard" | "enterprise";
-                            /** @enum {string|null} */
-                            interval: "month" | "year" | null;
-                            /** Format: date-time */
-                            currentPeriodEnd: string | null;
-                            cancelAtPeriodEnd: boolean;
                             /** Format: date-time */
                             trialEndsAt: string | null;
                             /** Format: date-time */
-                            pastDueSince: string | null;
-                            /** Format: date-time */
-                            graceEndsAt: string | null;
-                            remindersSent: number;
-                            /** Format: date-time */
                             readOnlySince: string | null;
                             readOnlyReason: string | null;
-                            providerCustomerId: string | null;
-                            providerSubscriptionId: string | null;
                         } | null;
+                        /** @enum {string} */
+                        companyApp: "ready" | "apps_off" | "not_built" | "unavailable";
                         featureFlags: {
                             [key: string]: boolean;
                         };
@@ -82631,8 +82838,6 @@ export interface operations {
                         /** @enum {string} */
                         plan: "trial" | "starter" | "standard" | "enterprise";
                         seats: number | null;
-                        /** @enum {string} */
-                        billingMode: "self_serve" | "invoiced";
                         members: number;
                         activeMembers: number;
                         storageBytes: number;
@@ -82730,8 +82935,6 @@ export interface operations {
                         /** @enum {string} */
                         plan: "trial" | "starter" | "standard" | "enterprise";
                         seats: number | null;
-                        /** @enum {string} */
-                        billingMode: "self_serve" | "invoiced";
                         members: number;
                         activeMembers: number;
                         storageBytes: number;
@@ -82818,8 +83021,6 @@ export interface operations {
                     plan: "trial" | "starter" | "standard" | "enterprise";
                     /** @description The company’s own seat number. When set it replaces the plan’s, higher or lower; null uses the plan’s. */
                     seats: number | null;
-                    /** @enum {string} */
-                    billingMode?: "self_serve" | "invoiced";
                 };
             };
         };
@@ -82840,8 +83041,6 @@ export interface operations {
                         /** @enum {string} */
                         plan: "trial" | "starter" | "standard" | "enterprise";
                         seats: number | null;
-                        /** @enum {string} */
-                        billingMode: "self_serve" | "invoiced";
                         members: number;
                         activeMembers: number;
                         storageBytes: number;
@@ -82926,7 +83125,6 @@ export interface operations {
                 "application/json": {
                     websiteUrl?: string | null;
                     appsEnabled?: boolean;
-                    aiWebEnabled?: boolean;
                     aiDesktopEnabled?: boolean;
                     aiMobileEnabled?: boolean;
                     documentLinkPattern?: string | null;
@@ -82951,7 +83149,6 @@ export interface operations {
                         defaultTheme: "light" | "dark" | "system";
                         websiteUrl: string | null;
                         appsEnabled: boolean;
-                        aiWebEnabled: boolean;
                         aiDesktopEnabled: boolean;
                         aiMobileEnabled: boolean;
                         showCompanyName: boolean;
@@ -87005,6 +87202,13 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description `company_app_not_built`: the company has no desktop app to sign in to yet. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description The request failed validation. */
             422: {
                 headers: {
@@ -87032,14 +87236,12 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description This client build is older than the minimum supported. */
+            /** @description `releases_unavailable`: the app releases could not be read. */
             503: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
+                content?: never;
             };
         };
     };
@@ -87927,8 +88129,6 @@ export interface operations {
                             submissionsPerMonth: number | null;
                             priceCents: number | null;
                             currency: string | null;
-                            providerPriceMonthly: string | null;
-                            providerPriceYearly: string | null;
                             /** Format: date-time */
                             updatedAt: string;
                         }[];
@@ -88003,8 +88203,6 @@ export interface operations {
                     submissionsPerMonth?: number | null;
                     priceCents?: number | null;
                     currency?: string | null;
-                    providerPriceMonthly?: string | null;
-                    providerPriceYearly?: string | null;
                 };
             };
         };
@@ -88027,8 +88225,6 @@ export interface operations {
                         submissionsPerMonth: number | null;
                         priceCents: number | null;
                         currency: string | null;
-                        providerPriceMonthly: string | null;
-                        providerPriceYearly: string | null;
                         /** Format: date-time */
                         updatedAt: string;
                     };
@@ -88629,23 +88825,6 @@ export interface operations {
                                 appVersion: string | null;
                             }[];
                         };
-                        webhooks: {
-                            received: number;
-                            applied: number;
-                            failed: number;
-                            unmatched: number;
-                            pending: number;
-                            items: {
-                                id: string;
-                                type: string;
-                                tenantId: string | null;
-                                receivedAt: string;
-                                processedAt: string | null;
-                                /** @enum {string} */
-                                outcome: "applied" | "failed" | "unmatched" | "pending";
-                                error: string | null;
-                            }[];
-                        };
                         jobs: {
                             deadLettered: number;
                             retrying: number;
@@ -88712,52 +88891,70 @@ export interface operations {
             };
         };
     };
-    getSignupFunnel: {
+    getPlatformDownloads: {
         parameters: {
-            query?: {
-                days?: number;
-            };
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description The funnel and the recent signups behind it. */
+            /** @description What can be downloaded. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": {
-                        days: number;
-                        steps: {
-                            step: string;
-                            count: number;
-                        }[];
-                        timeToFirstForm: {
-                            companies: number;
-                            medianSeconds: number | null;
-                            items: {
-                                /** Format: uuid */
-                                tenantId: string;
-                                seconds: number;
-                            }[];
-                        };
-                        signups: {
-                            /** Format: uuid */
-                            id: string;
-                            email: string;
-                            companyName: string;
+                        staff: {
                             /** @enum {string} */
-                            status: "pending" | "verifying" | "verified" | "expired" | "abandoned";
-                            /** Format: date-time */
-                            createdAt: string;
-                            /** Format: date-time */
-                            verifiedAt: string | null;
-                            /** Format: uuid */
-                            tenantId: string | null;
-                        }[];
+                            status: "found";
+                            release: {
+                                tag: string;
+                                version: string;
+                                installers: {
+                                    name: string;
+                                    url: string;
+                                    /** @enum {string} */
+                                    platform: "windows" | "macos" | "linux" | "android";
+                                    /** @enum {string} */
+                                    kind: "exe" | "msi" | "dmg" | "appimage" | "deb" | "rpm" | "apk";
+                                    /** @enum {string|null} */
+                                    arch: "x64" | "arm64" | "universal" | null;
+                                    size: number | null;
+                                }[];
+                            };
+                        } | {
+                            /** @enum {string} */
+                            status: "none";
+                        } | {
+                            /** @enum {string} */
+                            status: "unavailable";
+                        };
+                        formsAi: {
+                            /** @enum {string} */
+                            status: "found";
+                            release: {
+                                tag: string;
+                                version: string;
+                                downloads: {
+                                    name: string;
+                                    url: string;
+                                    /** @enum {string} */
+                                    platform: "windows" | "macos" | "linux";
+                                    /** @enum {string} */
+                                    arch: "x64" | "arm64";
+                                    size: number | null;
+                                }[];
+                            };
+                        } | {
+                            /** @enum {string} */
+                            status: "none";
+                        } | {
+                            /** @enum {string} */
+                            status: "unavailable";
+                        };
                     };
                 };
             };

@@ -1,4 +1,4 @@
-import { desktopUpdateFeed, isAppName } from '~/lib/desktop-updates';
+import { desktopUpdateFeed, isAppName } from '@integr8/releases';
 
 /**
  * An update's file, passed through from a private repository's release.

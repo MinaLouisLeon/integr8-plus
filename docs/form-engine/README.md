@@ -1,419 +1,193 @@
-# The form engine
+# Forms
 
-`@integr8/form-engine` defines what a form _is_ and decides, for any set of answers,
-what is visible, what is required, what is calculated and what is valid. It has no UI,
-does no I/O and imports nothing platform-specific, so the phone, the desktop app and the
-server run **the same function** over **the same compiled form** and get **the same bytes**.
+Integr8 staff build each company's forms in the desktop app; the company's
+people fill them on the web, the desktop and the phone. One pure engine,
+`@integr8/form-engine`, evaluates a form everywhere (browser, desktop, the
+phone's Hermes and the server) and must decide exactly the same in each.
 
 ```
-compileDefinition(json)  ──▶  CompiledForm  ──▶  createFormState / transition / viewForm
-        │                          │
-   publish-time checks        validateSubmission  (on the server, for truth)
+forms ──< form_versions (draft → published, then immutable) ──< submissions ──< submission_values
+                │ actions                                          │ events, links, action results
 ```
-
-| Where it runs       | What it uses it for                                                                                                               |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| P07 builder         | `compileDefinition` to refuse an invalid publish, naming the fields; the authoring layer — see [the builder](builder.md)          |
-| P08 web and desktop | `@integr8/form-renderer-dom` — see [submissions](submissions.md)                                                                  |
-| P13 mobile          | `createFormState`, `transition`, `viewForm`, `toSubmission`, the conformance check — see [forms on the phone](../mobile/forms.md) |
-| API (P08)           | `validateSubmission` — the client validates for speed, the server for truth                                                       |
-| Drafts (P12)        | `migrateAnswers` when a newer version is published under a draft                                                                  |
-
----
 
 ## A definition
 
-Pages of sections of fields, stored verbatim in `form_versions.definition`.
+A form is pages of sections of fields, as JSON checked by zod
+(`definitionSchema`). Format 2 (`schemaVersion: 2`) adds Information blocks
+(text in a section, never an answer), page and section descriptions, and date,
+time and number calculations with brackets.
 
-```jsonc
-{
-  "schemaVersion": 1,
-  "title": { "en": "Boiler service", "ar": "صيانة الغلاية" },
-  "pages": [
-    {
-      "id": "inspection",
-      "sections": [
-        {
-          "id": "outcome",
-          "fields": [
-            {
-              "id": "result",
-              "type": "radio",
-              "label": { "en": "Result" },
-              "required": true,
-              "options": [
-                { "value": "pass", "label": { "en": "Pass" } },
-                { "value": "fail", "label": { "en": "Fail" } },
-              ],
-            },
-            {
-              "id": "reason",
-              "type": "long_text",
-              "label": { "en": "Reason" },
-              "required": true,
-              "visibleWhen": {
-                "kind": "compare",
-                "operator": "eq",
-                "left": { "kind": "answer", "field": "result" },
-                "right": { "kind": "text", "value": "fail" },
-              },
-            },
-          ],
-        },
-      ],
-    },
-  ],
-}
-```
+| Type                         | Answer                                                    | Configuration                                           |
+| ---------------------------- | --------------------------------------------------------- | ------------------------------------------------------- |
+| `text`, `long_text`          | string                                                    | `minLength`, `maxLength`, `pattern`, `default`          |
+| `barcode`                    | string                                                    | `maxLength`                                             |
+| `number`                     | safe integer                                              | `min`, `max`, `unit`, `default`, `calculation`          |
+| `decimal`                    | decimal **text**, e.g. `"12.50"`                          | `decimalPlaces`, `min`, `max`, `unit`, `calculation`    |
+| `rating`                     | integer 1…`scale`                                         | `scale` (3–10)                                          |
+| `date`, `time`, `datetime`   | `YYYY-MM-DD`, `HH:MM`, ISO with offset                    | `earliest`, `latest`, `default`, `calculation` (date)   |
+| `dropdown`, `radio`          | option value                                              | `options`, `default`                                    |
+| `multi_select`               | option values                                             | `options`, `minSelected`, `maxSelected`                 |
+| `checkbox`                   | boolean (`required` means ticked)                         | `default`                                               |
+| `yes_no`                     | `yes` · `no` · `not_applicable`                           | `allowNotApplicable`                                    |
+| `signature`, `photo`, `file` | file references                                           | `minFiles`, `maxFiles`, `maxFileBytes`, `acceptedTypes` |
+| `gps`                        | `{ latitude, longitude, accuracyMeters }` as decimal text | `maxAccuracyMeters`                                     |
 
-- **Ids are stable.** An answer is stored under its field's id for the life of the
-  product. Renaming a label changes nothing else. Pages, sections and fields share one
-  namespace: `^[a-z][a-z0-9_]{0,63}$`, which is a valid JSON key, Postgres column name and
-  CSV header at once.
-- **Strict.** An unknown property is refused, not ignored.
-- **Bounded.** 50 pages, 1,000 fields, rules of at most 500 nodes and 32 levels. A
-  definition is customer input evaluated on a cheap phone and a shared server.
-- **Repeatable sections** ask their questions once per thing found on site, stored as a
-  list of `{ id, values }` entries under the section's id — see
-  [repeating groups](repeating-groups.md) (P13b).
-- **Versioned by format.** `schemaVersion` is the lowest format that has everything the
-  definition uses: 1, or 2 for the 1.3.0 additions below. See
-  [Formats, and apps too old for one](#formats-and-apps-too-old-for-one).
+Every field also takes `label` and `help` (English and Arabic), `required`,
+`readOnly`, `visibleWhen`, `requiredWhen` and `rules` (custom checks with the
+builder's own message). Choices can depend on an earlier answer. A section can
+**repeat** (entries, each with its own answers, rules inside and across entries,
+minimum and maximum entries), and an answer can be prefilled from earlier
+answers or carried over from an asset's last visit.
 
-### Descriptions and Information blocks (format 2)
+**Rules.** Expressions are three-valued: a rule that reads an unanswered
+question is _unknown_, which neither shows a field nor fails a check. A hidden
+field is absent: its answer is not kept and not checked. Everything is checked
+again at publish (`prepareForPublish`), with errors worded for the builder.
 
-A page or a section may carry a `description` (localized plain text) shown under its
-title in every filler and in the builder.
+**A phone older than a form's format** shows "Update the app" for that form
+rather than filling it wrongly (`apps/api/src/sync/form-formats.ts`).
 
-An **Information block** is text among a section's questions:
+## Versions
 
-```jsonc
-{
-  "id": "isolate_first",
-  "type": "information",
-  "heading": { "en": "Before you start", "ar": "قبل أن تبدأ" }, // optional
-  "body": { "en": "Isolate the supply.\nTest it is dead." }, // plain text, line breaks kept
-  "style": "warning", // plain (default) · tip · warning (amber)
-  "visibleWhen": { "kind": "answered", "field": "result" }, // optional, like a question's
-}
-```
+Editing means a new draft and a new publish; one draft per form; versions are
+numbered at publish. A published version is immutable **in the database** (a row
+trigger refuses update and delete for every role with SQLSTATE `55000`, a
+statement trigger refuses truncate, and the runtime role has no delete). A
+submission binds to a published version at insert and never moves. A draft
+started on an older version is carried forward with `migrateAnswers`, which
+reports what did not fit (`field_removed`, `type_changed`, `option_removed`, …)
+and keeps rejected values flagged rather than blanking them.
 
-**Why it is stored with the questions but typed apart from them.** It sits in the
-section's `fields` list, so it keeps its place between two questions, moves, duplicates
-and is removed like one, shares the id namespace and follows "Shown when" through the
-same evaluation (`FormEvaluation.visible`, per entry inside a repeatable section). But in
-the engine's types it is an `Information`, not a `Field`: `SectionItem = Field |
-Information`, and `CompiledForm.fields` — what validation, submissions, reporting
-(`reportableFields`, hence `submission_values`), exports, the assistant and the PDF answer
-blocks read — holds questions only. A rule cannot read one (`not_a_field`), an answer to
-one is refused (`unknown_field`), and code that walks a section's items has to choose
-(`isQuestion`, `isInformation`), so nothing can include one by accident. A field type
-"with no value" was the alternative; it would have put the block in every list of
-answers, to be filtered out by hand in each. It prints on a PDF only where a template
-places it, with the `information` block (`@integr8/document-render`).
+## The same everywhere
 
-## Field types
+- **Lint.** The engine may not use `Date`, `Intl`, `Math.random`,
+  `localeCompare`, `toLocale*`, `toFixed`, `eval`, Node built-ins, React or
+  database clients, and has no ambient types.
+- **The conformance corpus** (`src/conformance/cases.ts`): rounding at both
+  signs, leap days and offsets, Arabic and emoji lengths, three-valued logic,
+  every publish error. Node must reproduce `conformance/golden.jsonl`; CI runs the
+  same corpus in Hermes, bundled with the phone's own Babel preset, on every
+  pull request. `pnpm --filter @integr8/form-engine conformance:golden`
+  regenerates it (read the diff).
+- **A behaviour check** holds the web filler, the phone and the builder's
+  preview to the same screens.
 
-| Type                | Answer                                                    | In a rule  | Configuration                                                   |
-| ------------------- | --------------------------------------------------------- | ---------- | --------------------------------------------------------------- |
-| `text`              | string                                                    | text       | `minLength`, `maxLength`, `pattern`, `default`                  |
-| `long_text`         | string                                                    | text       | `minLength`, `maxLength`, `default`                             |
-| `barcode`           | string                                                    | text       | `maxLength`                                                     |
-| `number`            | safe integer                                              | number     | `min`, `max`, `unit`, `default`, `calculation`                  |
-| `decimal`           | decimal **text**, e.g. `"12.50"`                          | number     | `decimalPlaces`, `min`, `max`, `unit`, `default`, `calculation` |
-| `rating`            | integer 1…`scale`                                         | number     | `scale` (3–10)                                                  |
-| `date`              | `YYYY-MM-DD`                                              | date       | `earliest`, `latest`, `default`, `calculation` (format 2)       |
-| `time`              | `HH:MM`                                                   | time       | `earliest`, `latest`, `default`                                 |
-| `datetime`          | `YYYY-MM-DDTHH:MM[:SS]` **with offset**                   | datetime   | `earliest`, `latest`, `default`                                 |
-| `dropdown`, `radio` | option value                                              | text       | `options`, `default`                                            |
-| `multi_select`      | option values                                             | `includes` | `options`, `minSelected`, `maxSelected`, `default`              |
-| `checkbox`          | boolean                                                   | boolean    | `default`. `required` means **ticked**.                         |
-| `yes_no`            | `yes` · `no` · `not_applicable`                           | text       | `allowNotApplicable`, `default`                                 |
-| `signature`         | media reference                                           | `answered` |                                                                 |
-| `photo`, `file`     | media references                                          | `answered` | `minFiles`, `maxFiles`, `maxFileBytes`, `acceptedTypes` (file)  |
-| `gps`               | `{ latitude, longitude, accuracyMeters }` as decimal text | `answered` | `maxAccuracyMeters`                                             |
+## The builder
 
-Every field also takes `label`, `help`, `required`, `readOnly`, `visibleWhen`,
-`requiredWhen` and `rules` (custom rules with the admin's own message).
+Desktop app, staff only (`form.manage`, through impersonation), on the
+`forms` section:
 
-### Required only when
+- Pages, sections and fields by drag and drop; conditions written as sentences
+  and shown on the cards; required-only-when, dependent choices, formulas, answer
+  keys.
+- English and Arabic side by side, and a Translations tab; missing Arabic only
+  warns at publish.
+- Autosave names the revision it is based on (409 when another window saved
+  first), with recovery.
+- Preview, including the phone's look; "Check" lists what would stop a publish.
+- **The template library.** Built-in templates (kept by `pnpm --filter
+@integr8/db db:templates`) and staff-made ones (`form_templates.source =
+'staff'`, managed on the dashboard's Templates page, pictures in a
+  `platform-library` bucket). A company starts a form from either.
+- **Copying.** Staff copy a form to another company as a draft, optionally with
+  its PDF templates and pictures, or save it to the library.
+- **Files.** A form with its PDF templates and pictures travels as one
+  `.integr8form` file ([package-format.md](./package-format.md)): exported from
+  the published version or the draft, imported as a new draft (or as a library
+  template; the library refuses a form that would not publish).
+- PDF templates are designed beside the form ([documents/](../documents/README.md)).
 
-`requiredWhen` is an expression beside `visibleWhen`. A field is mandatory when `required`
-is true **or** `requiredWhen` is definitely true (unknown counts as not required), and only
-visible fields are checked, as always. `viewForm` exposes the result as
-`required: ReadonlyMap<touchKey, boolean>`, so a renderer draws the mark from the view and
-it follows the answers; `progress.requiredTotal` counts the same way. It is not a
-dependency — like a custom rule it changes no value — so two fields may read each other.
-Adding or changing a `requiredWhen` is a `now_required` breaking change in the publish diff.
-
-### Dependent choices
-
-On `dropdown`, `radio` and `multi_select`, `dependsOn: { field, options }` makes the list
-cascade: `field` is another choice field in scope (same rules as a condition: outside every
-repeatable section, or in the same entry), and `options` maps each of **this** field's option
-values to the parent values that reveal it. An option absent from the map is offered whatever
-the parent's answer; while the parent is unanswered **nothing** is offered, and the renderer
-says "Choose _Area_ first". A multi-select parent reveals the union. `viewForm` exposes
-`availableOptions: ReadonlyMap<touchKey, { options, parentAnswered }>` for every visible
-dependent field, and validation refuses a stored choice that is not on offer with
-`option_unavailable` — the answer is kept and named, never dropped silently. Compile refuses
-a parent that is missing, not a choice, out of scope, a value either side does not have, and
-a field depending on itself or on another that depends back (a `circular_dependency`).
-
-Three choices that look fussy and are not:
-
-- **Decimals are text.** `0.1 + 0.2` is `0.30000000000000004` in JavaScript. Decimal
-  arithmetic is exact (`BigInt` units at a scale) and rounds **half away from zero**,
-  which is what a person with a calculator expects.
-- **Datetimes must carry an offset.** `14:05` is a different instant on the phone in
-  Cairo and the server in Frankfurt.
-- **Length is counted in Unicode code points**, not the UTF-16 units JavaScript stores, so
-  most emoji count once rather than twice. It is not quite "characters a person sees":
-  👍🏽 is a thumb and a skin tone, two code points, and a letter with a separate combining
-  mark counts twice. Counting visible characters exactly needs `Intl.Segmenter`, which
-  some Hermes builds do not have — and a length that differed between the phone and the
-  server would be worse than one that is slightly generous about what a character is.
-
-## Rules
-
-A rule is a typed syntax tree, never a string of code. Nothing in this package calls
-`eval` or `new Function`, and the lint config makes that an error.
-
-| Kind                                                | Produces                                          |
-| --------------------------------------------------- | ------------------------------------------------- |
-| `text` `number` `boolean` `date` `time` `datetime`  | a literal                                         |
-| `answer` `field`                                    | that field's value, or **unknown**                |
-| `today`                                             | the date the caller supplied — never a clock read |
-| `answered` `field`                                  | true or false, never unknown                      |
-| `includes` `field` `option`                         | multi-select membership                           |
-| `not` · `all` · `any`                               | logic                                             |
-| `compare` `eq ne lt le gt ge`                       | boolean                                           |
-| `arithmetic` `add subtract multiply divide`         | number                                            |
-| `now` (format 2)                                    | the date and time the caller supplied             |
-| `round` `operand` `places` (0–6) (format 2)         | number, half away from zero                       |
-| `percentage` `part` `whole` (format 2)              | part ÷ whole × 100; unknown when whole is 0       |
-| `statistic` `min max average` `operands` (format 2) | number over the known operands; unknown if none   |
-| `difference` `minutes hours days` `from` `to`       | number: `to` − `from`, exact (format 2)           |
-| `shift_date` `add subtract` `days weeks months`     | a date moved by a whole number (format 2)         |
-
-`arithmetic` is a tree, so brackets are simply nesting; a calculation the builder used to
-write as a left-to-right chain is the left-nested tree it always was, and evaluates exactly
-as before (the conformance golden file keeps every earlier case byte for byte).
-
-### Dates and times in calculations (format 2)
-
-- **No time zone in a date.** A `date` is a calendar day (days since 1970-01-01, integer
-  arithmetic, no `Date`). Days between two dates, and a date moved by days or weeks, are
-  plain day counts; no time zone or clock change can move them.
-- **Months keep the day of the month and clamp to the month's end.** 31 January + 1 month
-  is 28 February (29 in a leap year); 31 March − 1 month likewise; 29 February 2028 + 12
-  months is 28 February 2029. A fractional amount gives no date (unknown), not a rounded
-  one. Results outside the years 1–9999 are unknown.
-- **Two dates and times** are the time elapsed between the two instants, offsets applied —
-  a difference across a change of clocks is the real elapsed time. A date and a date-time
-  cannot be mixed (refused at publish): which day "now" falls on depends on a time zone the
-  engine does not have.
-- **Two times of day** are on the same day unless the later is earlier on the clock — a
-  22:00 to 06:00 shift is 8 hours, taken as the next day. Times are apart in minutes or
-  hours, never days.
-- **`today` and `now` come from the caller.** `today` is the filler's calendar date (the
-  phone's, which in Egypt is the company's `Africa/Cairo` day; the server accepts a claimed
-  day within one of its own). `now` is the filler's clock with its offset, read again at
-  every change. The server works a calculation out again when the form is submitted, with
-  `now` being the moment of submission (or, for a phone, when it recorded the submit), and
-  stores its own value — so a "minutes on site" figure is the server's, to the minute.
-- A date result is stored as `YYYY-MM-DD` on a calculated `date` question, can be compared
-  in rules (`due < today`), and is shown read-only, written the way the language writes
-  dates.
-
-### Formats, and apps too old for one
-
-`DEFINITION_SCHEMA_VERSION` is the newest format the engine reads (2 from 1.3.0).
-`requiredSchemaVersion(definition)` reads a definition — valid or half-built — and returns
-the lowest format that has what it uses (2 for a description, an Information block, a
-calculated date or any format-2 expression node). `withRequiredSchemaVersion` sets it: the
-API applies it on every draft save and the builder on every edit, so nobody types it, and a
-form that uses none of the additions stays format 1 that every phone opens. The compiler
-refuses a definition declaring less than it uses (`schema_version_too_low`), so a published
-version always says what it needs, and answers a format newer than its own with
-`schema_version_unsupported` — "update the app to open this form" (`needsNewerApp` in
-`@integr8/form-input`), never "this form is broken".
-
-Apps before 1.3.0 cannot read that marker: given a format 2 form they fail to compile it
-and show "This form cannot be shown on this phone. Tell the office it needs checking." —
-safely, without a crash. So the API's sync pull names such forms for a phone that declares
-an older `x-client-version` (`apps/api/src/sync/form-formats.ts`): the form's name becomes
-"Boiler service — Update the app to open this form · حدّث التطبيق لفتح هذا النموذج" in the
-job's list and at the top of the form. The definition is still sent unchanged, so the form
-opens as soon as the app is updated; the updated app pulls everything again once (offline
-migration 11), which replaces the marked names. An app from 1.3.0 checks the format itself
-and asks the engineer to update before starting the form.
-
-### Unknown is a value
-
-A rule reading an unanswered field gets **unknown**, and unknown propagates (Kleene
-logic): `unknown and false` is false, `unknown or true` is true, everything else with an
-unknown in it is unknown.
-
-**An element is shown only when its condition is definitely true.** That is the only
-reading under which "show _Reason_ when _Result_ is not _Pass_" does not appear the
-moment a blank form opens. To act on a blank answer, say so with `answered`.
-
-### Hidden means absent
-
-The answer to a hidden field does not exist for any other rule, for validation or for
-submission — even if the person typed it before the field disappeared. Change _Fail_ to
-_Pass_ and everything that depended on _Reason_ reacts as if it were never filled. The
-typed value stays in state, so switching back restores it; it is never sent.
-
-### Checked at publish
-
-`compileDefinition` refuses, with the path and the ids involved:
-
-- a structure that does not match the schema, or an unknown property
-- a duplicate id
-- a rule on a field that does not exist, or on a section as if it were a field
-- a type mismatch (`number` compared with `text`, ordering a yes/no, arithmetic on dates)
-- an option that does not exist — `"result" has no option "fial"`
-- a literal that does not parse
-- a field configuration at odds with itself, including a default its own rules reject
-- a pattern outside the safe subset (below)
-- a `dependsOn` naming a parent that is not a choice field in scope, or options that do not exist
-- **a circular dependency**, through visibility, calculations, dependent choices or containment:
+## Submissions
 
 ```
-Circular rule: section "failure" is shown depending on field "reason", and field
-"reason" is inside section "failure". None of these can be worked out until another one is.
+draft ──submit──▶ submitted ──reopen (reason)──▶ reopened ──submit (reason)──▶ submitted
 ```
 
-Custom validation rules and `requiredWhen` may read each other freely: they change no
-values, so they cannot take part in a cycle.
+- Drafts live on the server, belong to their author, and autosave against a
+  revision (409 `submission_changed` from a device that is behind). The phone
+  keeps its own drafts and syncs them ([apps/mobile.md](../apps/mobile.md#sync)).
+- Submitted answers cannot change; reopening and correcting need a reason; every
+  submit, reopening and correction is kept with its answers in
+  `submission_events`, which nobody can edit (triggers, select-only grants).
+- **The server checks again** on submit with the same engine, against the
+  version the submission is bound to. A submit can record where it happened
+  (location with its accuracy and corrected time).
+- **The name.** The submit step asks for a name, prefilled with the form's
+  title, stored in `submissions.title` and shown in lists.
+- On a job: a completed, reviewed or cancelled job refuses starting a form and
+  submitting a draft (`submission_job_closed`); a phone's draft started before
+  the job closed is accepted and marked `submittedAfterClose`. "Signature
+  required before close" on a form makes the job's sign-off required.
+- **Who sees what.** Filling needs `submission.fill` and the person's role in
+  the form's fill roles; everyone sees their own; `submission.read_all` (owner,
+  admin, dispatcher, viewer, and the roles the matrix gives it) sees everyone's;
+  `submission.amend` reopens and corrects, and the author of a reopened
+  submission may correct it. Drafts are their author's alone. Anything a caller
+  may not see answers 404.
+- **Reporting.** `submission_values` holds one row per answer (split by year),
+  for lists, filters and CSV export; repeating entries report one row per entry.
+  Files a submission names are indexed in `submission_file_uses`, so a file
+  follows its submission's visibility. Photos open in a viewer.
 
-## Patterns
+## Form actions
 
-A regular expression written by a customer can hang the server that revalidates every
-submission, and can mean different things in V8 and Hermes. So patterns are parsed
-against a small grammar before a form can be published:
+A form version may carry **actions** (`form_versions.actions`, beside the
+definition, so phones never read them): **expense claims** made from answers,
+and **another form opened** for the same job.
 
-- literals, `.`, `^`, `$`, `\d \D \w \W \s \S`, escaped punctuation
-- character classes with ranges and negation, groups, `(?:…)`, `|`
-- greedy `? * + {n} {n,} {n,m}`, with repetitions capped at 100
-
-Refused: backreferences, lookaround, named groups, `\b`, `\u`, `\p`, lazy quantifiers, and
-**any repeated group that itself contains a repetition or an alternative** — the shape
-behind almost every catastrophic backtracking pattern. What survives also has a cost
-budget (two open-ended repetitions, not three), and a pattern is never run against a value
-longer than 256 characters. Matching is whole-value.
-
-## Filling a form
-
-```ts
-let state = createFormState(form, draftAnswers); // defaults fill gaps, never overwrite
-const step = transition(form, state, { type: 'answer', field: 'result', value: 'fail' }, context);
-if (!step.accepted) explain(step.reason); // 'read_only', 'calculated', 'wrong_shape', …
-state = step.state;
-const view = viewForm(form, state, { today: '2026-09-13' });
+```json
+[
+  {
+    "id": "mileage",
+    "kind": "expense_claim",
+    "when": { "kind": "answered", "field": "km" },
+    "category": "Mileage",
+    "amount": { "field": "mileage_total" },
+    "description": { "en": "Mileage, {{job.reference}}", "ar": "بدل انتقال، {{job.reference}}" }
+  },
+  {
+    "id": "handover",
+    "kind": "open_form",
+    "form": "<form id>",
+    "required": true,
+    "when": {
+      "kind": "compare",
+      "operator": "eq",
+      "left": { "kind": "answer", "field": "needs_handover" },
+      "right": { "kind": "text", "value": "yes" }
+    }
+  }
+]
 ```
 
-State holds only what the person did — answers, touched fields, whether a submit was
-tried. Visibility, calculated values, errors and progress are **derived** every time, so
-nothing derived can go stale. `shownErrors` holds errors on fields the person has left, or
-all of them once a submit has been attempted.
+- `when` is the engine's expression on the submitted answers; unknown does not
+  hold. `amount` names a top-level number or calculation, rounded to piastres;
+  nothing, zero or less makes no claim. `category` is matched by name, ignoring
+  case, so a form travels between companies. At most 10 actions.
+- Schema, form-only checks and the plan of a submit are in `@integr8/form-engine`
+  (`actions.ts`); the company's checks (category exists, next form published, HR
+  on) in `apps/api/src/forms/action-checks.ts`.
+- The submit runs them in its own transaction, each in a savepoint; a claim that
+  cannot be made never refuses the submission. A claim's `client_action_id` is a
+  UUID v5 of submission + action, so it is made once. Outcomes are kept in
+  `submission_action_results`; **Make it now** (`POST
+/v1/submissions/{id}/actions/retry`) runs failed ones again.
+- Claims wait for approval; the approver may set `approvedAmount` and a note.
+  A follow-up form is a draft linked in `submission_links`, added to the job's
+  forms, so a required one blocks completing the job.
+- Routes: `PUT /v1/forms/{id}/draft/actions` (staff), `POST
+/v1/forms/{id}/draft/check` (`actionIssues`), publish (422 `invalid_actions`,
+  `form_action_needs_module`), submit (answers `formActions` and `nextForms`),
+  `GET /v1/expenses/{id}/submission` for claim deciders.
 
-Errors are **codes** with string parameters. The words live in `@integr8/i18n` under
-`form.errors`, and a test there fails if the engine gains a code with no message.
-
-## Versions and immutability
-
-```
-forms ──< form_versions (draft → published, then immutable) ──< submissions
-```
-
-Migration `0006` makes a published version immutable **in the database**, three ways,
-each sufficient alone:
-
-1. A row trigger refuses `UPDATE` and `DELETE` of a published version — for every role,
-   the schema owner included — with SQLSTATE `55000`.
-2. A statement trigger refuses `TRUNCATE`, which row triggers cannot see.
-3. The runtime role holds no `DELETE` on `forms` or `form_versions` at all.
-
-Editing a form means a new draft and a new publish. One draft per form at a time; version
-numbers are assigned at publish, 1 upwards. A submission binds to a **published** version
-at insert — a trigger refuses a draft — and can never be moved to another version.
-
-`src/testing/form-versions.integration.test.ts` proves this with raw SQL as the owner and
-as the runtime role. With the trigger removed from the migration, 14 of its tests fail.
-
-The database does not judge whether a definition is valid; it cannot run TypeScript. The
-publishing service calls `prepareForPublish` first.
-
-### Drafts against a superseded version
-
-`migrateAnswers(from, to, answers)` carries what still fits and says what did not:
-`field_removed`, `type_changed`, `now_calculated`, `option_removed`; multi-selects keep
-their surviving options (`trimmed`); values the new rules reject are kept and flagged
-(`nowInvalid`) rather than silently blanked.
-
-## Proving it behaves the same everywhere
-
-### The determinism rules, as lint
-
-The package's ESLint config refuses `Date`, `Intl`, `Math.random`, `localeCompare`,
-`toLocale*`, `toFixed`, `eval`, `new Function`, `process`, Node built-ins, React, React
-Native and database clients. Its `tsconfig.json` has no ambient types, so `Buffer` or
-`window` is a compile error.
-
-### The conformance corpus
-
-`src/conformance/cases.ts` holds scenarios chosen for where engines are most likely to
-disagree: rounding at both signs, leap days and UTC offsets, Arabic and emoji lengths,
-case-insensitive patterns, three-valued logic, required-only-when and dependent choices, the
-wording of every publish error. The
-runner records the engine's decision after every step as canonical JSON (sorted keys,
-integers only) into `conformance/golden.jsonl`.
-
-```bash
-pnpm --filter @integr8/form-engine test                 # Node must reproduce the golden file
-pnpm --filter @integr8/form-engine conformance:golden   # regenerate — then read the diff
-HERMES_BIN=/path/to/hermes pnpm --filter @integr8/form-engine conformance:hermes
-```
-
-The Hermes run bundles the corpus with esbuild, lowers it with **the mobile app's own
-Babel preset** (`babel-preset-expo`, resolved through `apps/mobile`), inlines the Babel
-helpers, and runs it in Hermes. CI does this on every pull request, with the Hermes
-download pinned by SHA-256.
-
-**What that proves, exactly.** The newest prebuilt Hermes command-line runner is the
-`v0.13.0` release, whose binary reports `0.12.0`. React Native 0.88 ships Hermes V1, which
-is newer. So the CI run is a genuine second engine — different regular expressions,
-number printing, BigInt and string library from V8 — reproducing Node's output byte for
-byte. It is not the exact engine in the phone. P13 closes that gap: `@integr8/form-engine/conformance`
-exports the corpus and the golden file as a module, and the mobile app's **Settings → Check the
-form engine** runs it in the app's own Hermes, release builds included. The conformance test
-fails if the module and `golden.jsonl` differ; `conformance:golden` writes both.
-
-Local Hermes: download `hermes-cli-windows.tar.gz` or `hermes-cli-darwin.tar.gz` from the
-same release and point `HERMES_BIN` at the `hermes` binary.
-
-### Property-based tests
-
-`src/properties.test.ts` generates random forms — pages, sections, types, conditions,
-calculations — and random sequences of answers, and checks for every one: it compiles;
-it decides the same after a JSON round trip and whatever the answer key order; nothing
-hidden has a value or an error; the server accepts what the phone submits and agrees on
-every error; progress is coherent; answering twice equals answering once. Two further
-properties inject cycles and check they are always refused, naming the fields.
-
-### Coverage
-
-`pnpm test` runs with coverage, and the build fails below 90 percent on lines, statements,
-functions or branches. At the time of writing it is 99.4 / 99.4 / 99.4 / 96.2.
+**Not built yet:** the builder's Actions tab and the other screens, the phone's
+next-form button, Forms for AI support, actions in `.integr8form` files, and
+the demo seeder's trip form. The owner's decisions on how actions behave are
+still open ([plan](../../plan/README.md)).
 
 ## Adding a field type
 
-1. Add its schema to `fieldSchema` and its row to `FIELD_TYPES` in `field-types.ts`.
-2. Handle it in `answerSchemaFor`, `isAnswered`, `validateAnswer`, `toRuleValue` and, if
-   it has configuration that can contradict itself, `fieldConfigIssues`. The compiler's
-   exhaustive switches make each of these a type error until done.
-3. Add a message to `@integr8/i18n` for any new error code; its test will insist.
-4. Add a conformance case, regenerate the golden file, and read the diff.
+The type's zod schema and answer shape in the engine, its rules and publish
+checks, conformance cases (regenerate the golden file), the web/desktop widget
+in `form-renderer-dom` (through `form-input`), the phone's widget, the builder's
+property panel, reporting in `submission_values`, and both languages.

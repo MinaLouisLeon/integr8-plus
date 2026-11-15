@@ -1,4 +1,5 @@
 import {
+  cpSync,
   existsSync,
   mkdirSync,
   readdirSync,
@@ -247,4 +248,49 @@ export function updateRequest(root: string, number: number, change: RequestChang
     }
   }
   return { folder, header: request.header, files: readdirSync(folder).sort() };
+}
+
+export interface HandedOver {
+  /** The request's code in the repository: its own, or the next free one there. */
+  code: string;
+  /** The copy in the repository. */
+  folder: string;
+  /** Its code on this computer, which its request.md keeps. */
+  draftCode: string;
+}
+
+/** Every number taken in a repository folder: request folders and hand-written notes. */
+function takenNumbers(target: string): number[] {
+  if (!existsSync(target)) {
+    return [];
+  }
+  return readdirSync(target)
+    .map((name) => Number(/^CR-(\d{4})(?:-|\.|$)/u.exec(name)?.[1] ?? 0))
+    .filter((number) => number > 0);
+}
+
+/**
+ * Hands a request over to the repository (plan/requests/README.md, "Handing
+ * one over"): copies its folder into `target`, keeping its number when free
+ * there and taking the next free one otherwise (its request.md keeps the
+ * number it has on this computer), then marks it handed over here. Only an
+ * open request is handed over; nothing already in `target` is overwritten.
+ */
+export function handOverRequest(root: string, number: number, target: string): HandedOver {
+  const found = findRequest(root, number);
+  if (found.header.status !== 'open') {
+    throw new Error(
+      `${requestCode(number)} is ${found.header.status}; only an open request is handed over.`,
+    );
+  }
+  const taken = takenNumbers(target);
+  const repoNumber = taken.includes(number) ? Math.max(...taken) + 1 : number;
+  if (repoNumber > 9999) {
+    throw new Error(`${target} has no free request number left.`);
+  }
+  const folder = join(target, requestFolderName(repoNumber, found.header.title));
+  mkdirSync(target, { recursive: true });
+  cpSync(found.folder, folder, { recursive: true, errorOnExist: true, force: false });
+  updateRequest(root, number, { status: 'handed_over' });
+  return { code: requestCode(repoNumber), folder, draftCode: requestCode(number) };
 }

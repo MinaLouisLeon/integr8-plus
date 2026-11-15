@@ -38,7 +38,6 @@ export interface TenantSettings {
   /** ISO weekday numbers; 1 is Monday. Empty means the company is closed. */
   workingDays: number[];
   /** Which of the company's apps show the assistant (0044; ADR-0001). Each narrows the platform grant. */
-  aiWebEnabled: boolean;
   aiDesktopEnabled: boolean;
   aiMobileEnabled: boolean;
   websiteFilesEnabled: boolean;
@@ -77,7 +76,6 @@ export const DEFAULT_SETTINGS: Omit<TenantSettings, 'tenantId'> = {
   workDayEnds: 17 * 60,
   // ISO weekday numbers: 7 is Sunday.
   workingDays: [7, 1, 2, 3, 4],
-  aiWebEnabled: false,
   aiDesktopEnabled: false,
   aiMobileEnabled: false,
   websiteFilesEnabled: false,
@@ -126,7 +124,6 @@ export class TenantSettingsRepository {
     workDayStarts?: number | undefined;
     workDayEnds?: number | undefined;
     workingDays?: number[] | undefined;
-    aiWebEnabled?: boolean | undefined;
     aiDesktopEnabled?: boolean | undefined;
     aiMobileEnabled?: boolean | undefined;
     websiteFilesEnabled?: boolean | undefined;
@@ -155,7 +152,6 @@ export class TenantSettingsRepository {
       ...(input.qualificationWarningDays === undefined
         ? {}
         : { qualification_warning_days: input.qualificationWarningDays }),
-      ...(input.aiWebEnabled === undefined ? {} : { ai_web_enabled: input.aiWebEnabled }),
       ...(input.aiDesktopEnabled === undefined
         ? {}
         : { ai_desktop_enabled: input.aiDesktopEnabled }),
@@ -280,7 +276,7 @@ export class TenantSettingsWriter {
     input: {
       websiteUrl?: string | null;
       /** Which of its apps show the assistant, chosen at onboarding (ADR-0001). */
-      aiChannels?: { web: boolean; desktop: boolean; mobile: boolean };
+      aiChannels?: { desktop: boolean; mobile: boolean };
       /** The tabs staff switched off at onboarding (0075). */
       hiddenNavSections?: readonly string[];
     } = {},
@@ -293,7 +289,6 @@ export class TenantSettingsWriter {
         ...(input.aiChannels === undefined
           ? {}
           : {
-              ai_web_enabled: input.aiChannels.web,
               ai_desktop_enabled: input.aiChannels.desktop,
               ai_mobile_enabled: input.aiChannels.mobile,
             }),
@@ -386,7 +381,6 @@ function toSettings(row: Selectable<TenantSettingsTable>): TenantSettings {
     workDayStarts: row.work_day_starts,
     workDayEnds: row.work_day_ends,
     workingDays: row.working_days,
-    aiWebEnabled: row.ai_web_enabled,
     aiDesktopEnabled: row.ai_desktop_enabled,
     aiMobileEnabled: row.ai_mobile_enabled,
     websiteFilesEnabled: row.website_files_enabled,

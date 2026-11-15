@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -53,7 +53,14 @@ async function handle(request: IncomingMessage, response: ServerResponse) {
   }
   const text = Buffer.concat(chunks).toString('utf8');
   const url = new URL(request.url ?? '/', 'http://127.0.0.1');
-  const body: unknown = text === '' ? null : JSON.parse(text);
+  const raw = Buffer.concat(chunks);
+  // A form file arrives as bytes; everything else is JSON.
+  const body: unknown =
+    text === ''
+      ? null
+      : (request.headers['content-type'] ?? '').includes('json')
+        ? JSON.parse(text)
+        : { bytes: raw.length, start: raw.subarray(0, 2).toString('latin1') };
   seen.push({ method: request.method ?? '', path: url.pathname, headers: request.headers, body });
   const auth = request.headers.authorization ?? '';
   const route = `${request.method ?? ''} ${url.pathname}`;
@@ -125,6 +132,10 @@ async function handle(request: IncomingMessage, response: ServerResponse) {
           { userId: ENGINEER, email: 'omar@nile.example', displayName: 'Omar', role: 'engineer' },
         ],
       });
+    case 'POST /v1/forms/import':
+      return reply(response, 201, { formId: '66666666-6666-4666-8666-666666666666' });
+    case 'GET /v1/public/asset-tags/TAG-0001':
+      return reply(response, 200, { company: { name: 'Nile Test Co', slug: 'nile-test' } });
     case 'POST /v1/customers':
       return reply(response, 201, { id: 'c1', name: 'Acme', portalToken: GRANT_TOKEN });
     default:
@@ -157,6 +168,17 @@ beforeAll(async () => {
     routes: RouteIndex.load(),
     trace,
     context: () => Promise.resolve({ mode: 'remote', connection }),
+    forms: {
+      host: {
+        platform: process.platform,
+        arch: process.arch,
+        home: join(folder, 'home'),
+        env: { INTEGR8_FORMS_OUTPUT: join(folder, 'forms') },
+      },
+      scratch: join(folder, 'scratch'),
+      browser: () => undefined,
+      openUrl: () => Promise.resolve(false),
+    },
   });
   const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
   await Promise.all([server.connect(serverSide), client.connect(clientSide)]);
@@ -183,8 +205,11 @@ async function call(name: string, args: Record<string, unknown> = {}) {
 describe('the developer tools', () => {
   it('lists every tool, and none of them signs in', async () => {
     const { tools } = await client.listTools();
-    expect(tools.map((tool) => tool.name).sort()).toEqual(
-      [
+    const names = tools.map((tool) => tool.name);
+    // The Forms for AI tools are listed too (forms-tools.test.ts); none signs in.
+    expect(names.filter((name) => /log_?in|sign_?in|token|password/u.test(name))).toEqual([]);
+    expect(names).toEqual(
+      expect.arrayContaining([
         'call_api',
         'create_test_company',
         'find_route',
@@ -199,8 +224,15 @@ describe('the developer tools', () => {
         'status',
         'submit_form',
         'use_company',
-      ].sort(),
+      ]),
     );
+  });
+
+  it('reports the version written in its package.json', () => {
+    const own = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
+      version: string;
+    };
+    expect(client.getServerVersion()?.version).toBe(own.version);
   });
 
   it('says where it points, refreshing the staff token and keeping the new pair', async () => {
@@ -248,6 +280,80 @@ describe('the developer tools', () => {
     expect(sent?.headers['x-client-version']).toBe('1.3.6');
     expect(sent?.headers['idempotency-key']).toMatch(/^[0-9a-f-]{36}$/u);
     expect(sent?.headers.authorization).toBe(`Bearer ${GRANT_TOKEN}`);
+  });
+
+  it('states each purpose in a grant: the same purpose reuses it, a new one ends it and starts another', async () => {
+    const grants = () =>
+      seen.filter((entry) => entry.method === 'POST' && entry.path.endsWith('/impersonate'));
+    const ended = () => seen.filter((entry) => entry.path.endsWith('/end'));
+    const before = grants().length;
+    const endedBefore = ended().length;
+    const send = (purpose: string) =>
+      call('call_api', {
+        method: 'POST',
+        path: '/v1/customers',
+        as: 'engineer',
+        purpose,
+        body: { name: 'Acme' },
+      });
+    await send('creating a customer');
+    expect(grants().length).toBe(before);
+    await send('checking duplicate customer names');
+    expect(grants().length).toBe(before + 1);
+    expect((grants().at(-1)?.body as { reason: string }).reason).toBe(
+      'Developer MCP: checking duplicate customer names',
+    );
+    expect(ended().length).toBe(endedBefore + 1);
+  });
+
+  it('imports a form file saved with the Forms tools into the company', async () => {
+    const example = JSON.parse((await call('get_example', { key: 'boiler_service' })).text) as {
+      definition: Record<string, unknown>;
+    };
+    const saved = await call('save_package', { definition: example.definition });
+    expect(saved.error).toBe(false);
+    const path = join(folder, 'forms', 'Boiler service.integr8form');
+    const imported = await call('import_form_package', { path });
+    expect(imported.text).toMatch(/^201 in \d+ ms/u);
+    const sent = seen.find((entry) => entry.path === '/v1/forms/import');
+    expect(sent?.headers['content-type']).toBe('application/vnd.integr8.form+zip');
+    expect(sent?.headers['idempotency-key']).toMatch(/^[0-9a-f-]{36}$/u);
+    expect(sent?.body).toEqual({ bytes: readFileSync(path).length, start: 'PK' });
+  });
+
+  it('refuses to send a file that is not a form file', async () => {
+    const before = seen.length;
+    const notes = join(folder, 'notes.txt');
+    writeFileSync(notes, 'private notes');
+    const disguised = join(folder, 'notes.integr8form');
+    writeFileSync(disguised, 'private notes');
+    expect((await call('import_form_package', { path: notes })).text).toMatch(
+      /Only a \.integr8form/u,
+    );
+    expect((await call('import_form_package', { path: disguised })).text).toMatch(
+      /does not start like one/u,
+    );
+    expect(
+      (await call('import_form_package', { path: join(folder, 'missing.integr8form') })).text,
+    ).toMatch(/There is no file/u);
+    expect(seen.length).toBe(before);
+  });
+
+  it('sends a public route as a visitor, with no grant and no sign-in', async () => {
+    const grants = () => seen.filter((entry) => entry.path.endsWith('/impersonate')).length;
+    const before = grants();
+    const answer = await call('call_api', {
+      method: 'GET',
+      path: '/v1/public/asset-tags/TAG-0001',
+      as: 'engineer',
+      purpose: 'opening a printed asset tag',
+    });
+    expect(answer.text).toMatch(/^200 in \d+ ms .*as visitor \(no sign-in\)/u);
+    expect(answer.text).toMatch(/Sent as a visitor/u);
+    const sent = seen.find((entry) => entry.path === '/v1/public/asset-tags/TAG-0001');
+    expect(sent?.headers.authorization).toBeUndefined();
+    expect(sent?.headers['x-client-app']).toBe('api');
+    expect(grants()).toBe(before);
   });
 
   it('refuses staff routes through call_api', async () => {

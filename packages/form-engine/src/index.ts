@@ -24,6 +24,31 @@
 export { canonicalJson, CanonicalJsonError, compareCodeUnits } from './canonical.js';
 
 export {
+  checkFormActions,
+  expenseClaimActionSchema,
+  fillActionText,
+  FORM_ACTION_ID,
+  FORM_ACTION_ISSUE_CODES,
+  FORM_ACTION_KINDS,
+  FORM_ACTION_PLACEHOLDERS,
+  formActionIdSchema,
+  formActionSchema,
+  formActionsSchema,
+  MAX_FORM_ACTIONS,
+  openFormActionSchema,
+  planFormActions,
+  type ExpenseClaimAction,
+  type FormAction,
+  type FormActionIssue,
+  type FormActionIssueCode,
+  type FormActionKind,
+  type FormActionPlaceholder,
+  type FormActionsCheck,
+  type OpenFormAction,
+  type PlannedAction,
+} from './actions.js';
+
+export {
   availableOptions,
   dependentChoiceParent,
   revealing,
@@ -31,6 +56,7 @@ export {
 } from './choices.js';
 
 export {
+  checkFormCondition,
   compileDefinition,
   DEFINITION_ISSUE_CODES,
   type CompiledForm,

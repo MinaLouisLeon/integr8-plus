@@ -1,9 +1,9 @@
 import { ar, en } from '@integr8/i18n/core';
 import type { Metadata } from 'next';
 import { DownloadView } from '~/components/download-view';
-import { desktopUpdateFeed, isAppName } from '~/lib/desktop-updates';
+import { desktopUpdateFeed, isAppName } from '@integr8/releases';
 import { readPreferences } from '~/lib/preferences';
-import { lookupInstallers, type ReleaseLookup } from '~/lib/release-lookup';
+import { lookupInstallers, type ReleaseLookup } from '@integr8/releases';
 
 /**
  * The download page (Low 6): a company's desktop app and its phone app, in the

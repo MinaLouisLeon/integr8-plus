@@ -14,7 +14,7 @@ import type {
 import { TenantScopedRepository, type TenantScope } from './tenant-scope.js';
 
 /**
- * PDF documents made from submissions (docs/documents/ADR-0001).
+ * PDF documents made from submissions (docs/documents/README.md).
  *
  * Templates belong to a form and are archived, never deleted. A document is
  * created pending, with its public code and the fields it was made with, then

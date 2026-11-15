@@ -35,8 +35,6 @@ export interface PlanAllowance {
   /** What it costs, for a screen to show. The provider does the arithmetic. */
   priceCents: number | null;
   currency: string | null;
-  providerPriceMonthly: string | null;
-  providerPriceYearly: string | null;
   updatedAt: Date;
 }
 
@@ -121,8 +119,6 @@ export class StorageMeteringRepository {
       submissionsPerMonth?: number | null | undefined;
       priceCents?: number | null | undefined;
       currency?: string | null | undefined;
-      providerPriceMonthly?: string | null | undefined;
-      providerPriceYearly?: string | null | undefined;
       updatedBy: PlatformUserId | string | null;
     },
   ): Promise<PlanAllowance | undefined> {
@@ -139,12 +135,6 @@ export class StorageMeteringRepository {
           : { submissions_per_month: input.submissionsPerMonth }),
         ...(input.priceCents === undefined ? {} : { price_cents: input.priceCents }),
         ...(input.currency === undefined ? {} : { currency: input.currency }),
-        ...(input.providerPriceMonthly === undefined
-          ? {}
-          : { provider_price_monthly: input.providerPriceMonthly }),
-        ...(input.providerPriceYearly === undefined
-          ? {}
-          : { provider_price_yearly: input.providerPriceYearly }),
         updated_by: input.updatedBy ?? null,
       })
       .where('plan', '=', plan)
@@ -419,8 +409,6 @@ function toAllowance(row: Selectable<PlanAllowancesTable>): PlanAllowance {
     submissionsPerMonth: row.submissions_per_month,
     priceCents: row.price_cents,
     currency: row.currency,
-    providerPriceMonthly: row.provider_price_monthly,
-    providerPriceYearly: row.provider_price_yearly,
     updatedAt: row.updated_at,
   };
 }

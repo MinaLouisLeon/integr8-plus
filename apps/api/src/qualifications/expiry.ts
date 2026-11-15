@@ -14,7 +14,6 @@ import {
 } from '@integr8/db';
 import type { ApiConfig } from '../config.js';
 import { deliver } from '../email/deliver.js';
-import { qualificationsUrl } from '../email/links.js';
 import { type ExpiryItem, qualificationExpiryEmail } from '../email/messages.js';
 import type { EmailSender } from '../email/sender.js';
 import { sendPushOrKeep } from '../test-companies/outbox.js';
@@ -294,7 +293,6 @@ async function send(
   });
 
   if (options.email !== undefined) {
-    const url = qualificationsUrl(options.config.WEB_APP_URL);
     for (const manager of prepared.managers) {
       await deliver(
         options.email,
@@ -304,7 +302,6 @@ async function send(
           companyName,
           items: alerts.map((alert) => item(alert, true)),
           own: false,
-          url,
           locale: prepared.locale,
         }),
         { kind: 'qualification_expiry', tenantId },
@@ -328,7 +325,6 @@ async function send(
           companyName,
           items: own.map((alert) => item(alert, false)),
           own: true,
-          url: null,
           locale: prepared.locale,
         }),
         { kind: 'qualification_expiry', tenantId },

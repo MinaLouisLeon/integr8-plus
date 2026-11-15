@@ -78,6 +78,15 @@ export class ImpersonationRepository extends TenantScopedRepository {
         target_user_id: toUserId(input.targetUserId),
         reason: input.reason.trim(),
         audit_log_id: input.auditLogId,
+        // The audit log is split by year (P41), so the key names the line's
+        // time as well. Read here rather than passed in: a JavaScript Date
+        // keeps milliseconds and Postgres keeps microseconds.
+        audit_log_occurred_at: (eb) =>
+          eb
+            .selectFrom('audit_log')
+            .select('occurred_at')
+            .where('audit_log.tenant_id', '=', this.tenantId)
+            .where('audit_log.id', '=', input.auditLogId),
         expires_at: input.expiresAt,
         from_limited_session: input.fromLimitedSession ?? false,
       })

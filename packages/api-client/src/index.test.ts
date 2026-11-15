@@ -295,7 +295,7 @@ describe('refreshing after a 401', () => {
     const { calls, fetchImpl } = stub((call) =>
       call === 1
         ? jsonResponse(errorBody('unauthorised', 'Authentication is required'), 401)
-        : jsonResponse({ recorded: true }, 202),
+        : jsonResponse({ sent: true }, 202),
     );
 
     const api = createClient({
@@ -307,12 +307,14 @@ describe('refreshing after a 401', () => {
       fetch: fetchImpl,
     });
 
-    const { response } = await api.POST('/v1/signup/step', { body: { step: 'landing.viewed' } });
+    const { response } = await api.POST('/v1/auth/magic-link', {
+      body: { email: 'dana@example.com' },
+    });
 
     expect(response.status).toBe(202);
     expect(calls).toHaveLength(2);
     expect(calls[1]?.headers.authorization).toBe('Bearer refreshed');
-    expect(calls[1]?.body).toBe(JSON.stringify({ step: 'landing.viewed' }));
+    expect(calls[1]?.body).toBe(JSON.stringify({ email: 'dana@example.com' }));
     expect(calls[1]?.body).toBe(calls[0]?.body);
   });
 

@@ -119,9 +119,9 @@ export async function seedLedgerActivity(ctx: DemoContext): Promise<void> {
     {},
   );
 
-  // Manual journals, drafted by the admin and posted by the owner.
+  // Manual journals, drafted by the accountant and posted by the owner.
   const draft = (entryDate: string, memo: string, lines: Record<string, unknown>[]) =>
-    ctx.call<Journal>('admin', 'POST', '/v1/ledger/journals', { entryDate, memo, lines });
+    ctx.call<Journal>('accounts', 'POST', '/v1/ledger/journals', { entryDate, memo, lines });
   const post = (journal: Journal) =>
     ctx.call('owner', 'POST', `/v1/ledger/journals/${journal.id}/post`, {});
 

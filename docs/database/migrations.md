@@ -10,8 +10,8 @@ usually just a migration; changing one that shipped is a sequence of them.
 Migrations are ordered pairs of SQL files in `packages/db/migrations/`:
 
 ```
-0003_add_work_orders.up.sql
-0003_add_work_orders.down.sql
+0020_add_route_plans.up.sql
+0020_add_route_plans.down.sql
 ```
 
 - The four-digit prefix orders them. `db new <slug>` allocates the next one.
@@ -29,13 +29,62 @@ concurrently`) opts out with `-- integr8:no-transaction` on its own line, and
 ```bash
 pnpm --filter @integr8/db db status          # what has run
 pnpm --filter @integr8/db db up              # apply everything pending
-pnpm --filter @integr8/db db up --to 0004    # apply up to and including 0004
+pnpm --filter @integr8/db db up --to 0020    # apply up to and including 0020
 pnpm --filter @integr8/db db down            # roll back exactly one
 pnpm --filter @integr8/db db down --steps 3
-pnpm --filter @integr8/db db down --to 0002  # roll back everything above 0002
+pnpm --filter @integr8/db db down --to 0019  # roll back everything above 0019
 pnpm --filter @integr8/db db verify          # checksums still match
 pnpm --filter @integr8/db db new add_sites
 ```
+
+## The 2.0.0 baseline
+
+2.0.0 started the numbering again. `0001_foundation` to `0019_assistant`
+are one migration per module, generated from the schema release 1.4.0's
+migrations 0001–0079 built and checked object by object against it; the old
+files and their reasoning are in git before 2.0.0, and comments on tables and
+columns carry the why into the database. A database built by 1.x is refused
+with a message saying to create it afresh (state `before-baseline`). New work
+takes the next number after the highest file, and is immutable once applied
+like any other. The first after the baseline is `0020_desktop_only` (P42): it
+drops what self-serve sign-up, card billing and the web app's assistant switch
+used, in one release, because every row then was test data; the next is `0021`.
+
+### Where the old numbers went
+
+Code comments, commit messages and the documents removed at 2.0.0 (in git
+history) name the 1.x migrations ("added in 0061", "see 0003"). Those numbers are history: they say when something was
+built, not a file you can open. This table says which baseline migration now
+holds what each old one made. Several old ones touched more than one area (a
+column added to `tenants` sits in `0001_foundation` whatever module wanted it),
+so the list names the main home first. Every baseline migration grants its own
+tables to the roles, so 0058's grants are spread across all nineteen.
+
+| 1.x migrations                                                                                                                                                                              | Now in                                     |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| 0001 core tenancy, 0002 row-level security, 0004 API infrastructure (idempotency, jobs), 0022 branding, 0057 Egyptian working week, 0075 tab switches, 0077 `is_test`                       | `0001_foundation`                          |
+| 0003 authentication, 0005 membership check, 0041 company roles, 0054 self-hosted sign-in, 0066 push device language, 0078 accountant role                                                   | `0002_identity`                            |
+| 0015 platform admin, 0017–0021 subscriptions, billing, sign-up, 0023 staff management, 0055 purge, 0056 no default retention, 0077 staff session scope and `test_outbox`                    | `0003_platform`                            |
+| 0009 media ledger, 0016 storage metering                                                                                                                                                    | `0004_files`                               |
+| 0010 customers, sites, work orders, 0013 job execution, 0051 visits, 0052 qualifications                                                                                                    | `0005_field_work`                          |
+| 0006–0008 forms, builder, submissions, 0012 submit location, 0014 repeating groups, 0048 documents, 0050 website keys, 0060, 0061, 0067, 0068, 0069, 0074, 0075 document fields, 0076, 0079 | `0006_forms`                               |
+| 0011 offline sync                                                                                                                                                                           | `0007_sync`                                |
+| 0024 CRM foundation, 0025 pipelines and activities, 0043 opportunity amounts                                                                                                                | `0008_crm`                                 |
+| 0033 ledger, 0034 postings, 0035 year close                                                                                                                                                 | `0009_ledger`                              |
+| 0026 inventory, 0028 work-order materials, 0040 stock follow-ups, 0042 serial and batch, 0062 parts after close                                                                             | `0010_inventory`                           |
+| 0027 purchasing                                                                                                                                                                             | `0011_purchasing`                          |
+| 0029 sales                                                                                                                                                                                  | `0012_sales`                               |
+| 0030 finance, 0064 rounding and reversals                                                                                                                                                   | `0013_finance`                             |
+| 0031 assets, 0032 asset carry-over and import                                                                                                                                               | `0014_assets`                              |
+| 0036 HR roles and profiles, 0037 expenses, 0038 payroll, 0079 approved claim amounts                                                                                                        | `0015_hr`                                  |
+| 0039 manufacturing                                                                                                                                                                          | `0016_manufacturing`                       |
+| 0053 contracts, maintenance plans and deadlines, 0063 maintenance plan failures                                                                                                             | `0017_contracts`                           |
+| 0049 e-invoicing                                                                                                                                                                            | `0018_e_invoicing`                         |
+| 0044 AI assistant, 0045 retention grants, 0046 token quotas, 0047 answer source                                                                                                             | `0019_assistant`                           |
+| 0058 platform role, 0065 table housekeeping                                                                                                                                                 | every baseline migration (grants, indexes) |
+
+Notes that said "rows written before 00NN keep the old behaviour" no longer
+apply: a 2.0.0 database starts empty, so every row follows the current rules.
 
 ## An applied migration is immutable
 
@@ -117,10 +166,10 @@ be there.
 
 `tenant_users.display_name` is one column. Reports need to sort by surname.
 
-#### Migration 0007 — expand
+#### Migration 0020 — expand
 
 ```sql
--- 0007 — expand: add first_name and last_name alongside display_name.
+-- 0020 — expand: add first_name and last_name alongside display_name.
 --
 -- Both nullable, and display_name untouched. Code deployed before this
 -- migration keeps working; code deployed after it writes all three.
@@ -130,7 +179,7 @@ alter table tenant_users add column last_name  text;
 ```
 
 ```sql
--- 0007 — down.
+-- 0020 — down.
 alter table tenant_users drop column if exists last_name;
 alter table tenant_users drop column if exists first_name;
 ```
@@ -142,10 +191,10 @@ lock, and the deploy that fills it has not happened yet.
 Deploy the code that writes `first_name`, `last_name` **and** `display_name`,
 and reads the new columns falling back to the old.
 
-#### Migration 0008 — backfill
+#### Migration 0021 — backfill
 
 ```sql
--- 0008 — backfill first_name and last_name from display_name.
+-- 0021 — backfill first_name and last_name from display_name.
 --
 -- Naive split on the first space: wrong for some names, and deliberately not
 -- the source of truth. New rows are written correctly by the application; this
@@ -159,7 +208,7 @@ update tenant_users
 ```
 
 ```sql
--- 0008 — down.
+-- 0021 — down.
 update tenant_users set first_name = null, last_name = null;
 ```
 
@@ -167,10 +216,10 @@ For a large table, do this in batches from a background job rather than in one
 statement — a single `update` holds row locks over the whole table for its
 duration. `tenant_users` is small enough not to care.
 
-#### Migration 0009 — tighten, next release
+#### Migration 0022 — tighten, next release
 
 ```sql
--- 0009 — first_name is now always written by the application.
+-- 0022 — first_name is now always written by the application.
 --
 -- `not valid` then `validate` takes a SHARE UPDATE EXCLUSIVE lock instead of
 -- ACCESS EXCLUSIVE, so reads and writes continue while existing rows are
@@ -184,28 +233,28 @@ alter table tenant_users validate constraint tenant_users_first_name_present;
 ```
 
 ```sql
--- 0009 — down.
+-- 0022 — down.
 alter table tenant_users drop constraint if exists tenant_users_first_name_present;
 ```
 
-#### Migration 0012 — contract, a release later still
+#### Migration 0025 — contract, a release later still
 
 ```sql
--- 0012 — contract: display_name goes.
+-- 0025 — contract: display_name goes.
 --
 -- Safe only because no deployed version still reads it. Check before merging:
 --   git grep display_name
 -- and confirm the oldest client version the API still supports (the
--- min_supported_client header from P04) does not send it.
+-- min-supported-client header) does not send it.
 
 alter table tenant_users drop column display_name;
 ```
 
 ```sql
--- 0012 — down.
+-- 0025 — down.
 --
 -- Restores the column and reconstructs its values. Not byte-identical for names
--- the 0008 split got wrong, which is the honest cost of the contract step and
+-- the 0021 split got wrong, which is the honest cost of the contract step and
 -- the reason it waits for a release where rolling back is unlikely.
 
 alter table tenant_users add column display_name text;

@@ -125,6 +125,8 @@ describe('inviting somebody', () => {
       email: to,
       existingAccount: false,
       signInRequired: true,
+      // The page sends them to this company's app (P42).
+      company: { name: expect.any(String) as string, slug: expect.any(String) as string },
     });
     expect(accepted.body).not.toContain('accessToken');
 
@@ -537,7 +539,9 @@ describe('somebody with HR access (Low 10)', () => {
     const told = email.lastTo(owner.email);
     expect(told?.subject).toContain('hr-rule-suspend');
     expect(told?.text).toContain('hr-rule-admin');
-    expect(told?.text).toContain(`${WEB}/settings/people`);
+    // Named, not linked: People is in the company's desktop app (P42).
+    expect(told?.text).toContain('Open People in your company’s desktop app.');
+    expect(told?.text).not.toContain(`${WEB}/`);
 
     // Letting them back in is the owner's.
     const back = await api.call(adminToken, {

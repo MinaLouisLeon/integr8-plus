@@ -4,7 +4,7 @@
  * A plan whose overage policy is `allow` (Standard, Enterprise when capped)
  * keeps taking uploads past its allowance, and the nightly sampler records how
  * far over the company was on each day (`tenant_storage_samples.overage_bytes`).
- * Integr8 invoices companies itself (`BILLING_PROVIDER=none`), so somebody
+ * Integr8 invoices every company itself (P42), so somebody
  * needs one number per company per month to put on the invoice.
  *
  * That number is the month's **average** overage: the bytes over the line on

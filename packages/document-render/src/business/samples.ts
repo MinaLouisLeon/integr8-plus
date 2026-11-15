@@ -10,7 +10,7 @@ import type {
 
 /**
  * One realistic record of each kind, in English and in Arabic, for the
- * layouts' tests and for the sample PDFs in docs/screenshots
+ * layouts' tests and for sample PDFs
  * (`apps/api/src/documents/business-samples-cli.ts`). Nothing a company sees
  * is made from it.
  */

@@ -4,10 +4,9 @@ import { useEffect, useId, useRef, useState } from 'react';
 /**
  * Banners from Integr8, at the top of every signed-in screen (P15).
  *
- * Staff post them from the platform dashboard, and dunning posts its payment
- * reminders the same way. `GET /v1/me` already carries the ones live for this
- * company, so the web shell and the desktop frame hand over what they have
- * rather than either growing a poll of its own.
+ * Staff post them from the staff app's dashboard. `GET /v1/me` already
+ * carries the ones live for this company, so the desktop frame hands over
+ * what it has rather than growing a poll of its own.
  *
  * - **The severity is said, not only coloured.** Each banner carries a visible
  *   word as well as its colour. A critical one is an alert, so a screen reader
@@ -43,8 +42,8 @@ export const DISMISSED_ANNOUNCEMENTS_KEY = 'integr8.announcements.dismissed';
 
 /**
  * How many dismissals are remembered. Announcements end, and their ids are
- * never reused, so only the recent ones can still matter; dunning posts one
- * every three days, and a few years of those fit.
+ * never reused, so only the recent ones can still matter, and a few years of
+ * them fit.
  */
 const REMEMBERED = 200;
 

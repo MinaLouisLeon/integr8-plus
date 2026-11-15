@@ -8,7 +8,6 @@ import { billingRoutes } from './v1/billing.js';
 import { memberRoutes } from './v1/members.js';
 import { onboardingRoutes } from './v1/onboarding.js';
 import { settingsRoutes } from './v1/settings.js';
-import { signupRoutes } from './v1/signup.js';
 import { activityRoutes } from './v1/crm-activities.js';
 import { opportunityRoutes } from './v1/crm-opportunities.js';
 import { pipelineEditRoutes } from './v1/crm-pipelines.js';
@@ -59,6 +58,7 @@ import { documentTemplateCopyRoutes } from './v1/document-template-copy.js';
 import { formCopyRoutes } from './v1/form-copy.js';
 import { formPackageRoutes } from './v1/form-package.js';
 import { documentPublicRoutes } from './v1/documents-public.js';
+import { assetTagPublicRoutes } from './v1/asset-tags-public.js';
 import { websiteDataRoutes } from './v1/website-data.js';
 import { etaSettingsRoutes } from './v1/e-invoicing.js';
 import { etaDocumentRoutes } from './v1/e-invoicing-documents.js';
@@ -82,7 +82,6 @@ export function allRoutes(config: ApiConfig): AnyRoute[] {
     ...aiShareRoutes,
     ...billingRoutes,
     ...memberRoutes,
-    ...signupRoutes,
     ...settingsRoutes,
     ...publicBrandRoutes,
     ...onboardingRoutes,
@@ -95,6 +94,7 @@ export function allRoutes(config: ApiConfig): AnyRoute[] {
     ...documentTemplateCopyRoutes,
     ...businessDocumentRoutes,
     ...documentPublicRoutes,
+    ...assetTagPublicRoutes,
     ...websiteDataRoutes,
     ...etaSettingsRoutes,
     ...etaDocumentRoutes,

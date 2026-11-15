@@ -46,7 +46,7 @@ x-logging: &logging
 # Adding a setting to the API means adding its name here; compose-env.test.ts
 # in apps/api fails until it is, and fails if a forbidden one appears.
 x-api-env: &api-env
-  environment:
+  environment: &api-environment
     HOST: 0.0.0.0
     PORT: 3000
     # The Auth container, over the compose network. The env file can override
@@ -110,12 +110,14 @@ x-api-env: &api-env
     WEB_APP_URL:
     SYNC_REPLAY_DAYS:
     SYNC_LOG_RETENTION_DAYS:
-    PUBLIC_SIGNUP:
     BUILD_TOKEN:
     APP_BUILDS:
     GITHUB_BUILD_TOKEN:
     GITHUB_BUILD_REPOSITORY:
     GITHUB_BUILD_REF:
+    APP_RELEASES:
+    GITHUB_RELEASES_REPOSITORY:
+    GITHUB_RELEASES_TOKEN:
     WEBSITE_LOOKUP_RATE_LIMIT:
     WEBSITE_LOOKUP_RATE_WINDOW_SECONDS:
     # Files.
@@ -136,12 +138,6 @@ x-api-env: &api-env
     MAPBOX_ACCESS_TOKEN:
     PUSH_SENDER:
     EXPO_ACCESS_TOKEN:
-    BILLING_PROVIDER:
-    STRIPE_SECRET_KEY:
-    STRIPE_WEBHOOK_SECRET:
-    BILLING_RETURN_URL:
-    BILLING_TRIAL_DAYS:
-    BILLING_GRACE_DAYS:
     EMAIL_SENDER:
     RESEND_API_KEY:
     EMAIL_FROM:
@@ -216,6 +212,20 @@ services:
     restart: unless-stopped
     # Shared buffers plus connections.
     mem_limit: 1g
+    # Slow queries show themselves on real data (P41): pg_stat_statements keeps
+    # every statement's count and time (read it with `pnpm --filter @integr8/db
+    # db:plans`, or `select * from pg_stat_statements`), and auto_explain writes
+    # the plan of any statement slower than half a second to the container log.
+    command:
+      - postgres
+      - -c
+      - shared_preload_libraries=pg_stat_statements,auto_explain
+      - -c
+      - pg_stat_statements.max=10000
+      - -c
+      - auto_explain.log_min_duration=500ms
+      - -c
+      - auto_explain.log_format=json
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/.env}
@@ -358,6 +368,32 @@ services:
     volumes:
       - media-local:/app/.data/media
 
+  # Moving one company to another server (P41), run by staff by hand and
+  # never started with the stack (the "tools" profile). The one service that
+  # holds both the API's settings (storage, Auth) and the owner's connection,
+  # which reading and writing a whole company needs. Archives go in
+  # deploy/transfers on the machine. The setup guide's "Moving a company to
+  # another server" has the commands, e.g.
+  #   docker compose -f deploy/compose.yml --env-file deploy/.env --profile tools \
+  #     run --rm transfer node dist/transfer/cli.js export <slug> --out /transfers/<slug>.tar.gz
+  transfer:
+    <<: [*api-image, *logging]
+    profiles: ['tools']
+    command: ['node', 'dist/transfer/cli.js', '--help']
+    environment:
+      <<: *api-environment
+      DATABASE_URL_ADMIN:
+    depends_on:
+      postgres:
+        condition: service_healthy
+      auth:
+        condition: service_healthy
+    volumes:
+      - media-local:/app/.data/media
+      - ./transfers:/transfers
+    restart: 'no'
+    mem_limit: 1g
+
   web:
     <<: *logging
     image: ${WEB_IMAGE:-integr8-web:local}
@@ -370,7 +406,6 @@ services:
         NEXT_PUBLIC_APP_VERSION: ${APP_VERSION:-}
         NEXT_PUBLIC_APP_ENV: ${APP_ENV:-staging}
         NEXT_PUBLIC_SENTRY_DSN: ${WEB_PUBLIC_SENTRY_DSN:-}
-        NEXT_PUBLIC_SIGNUP: ${PUBLIC_SIGNUP:-off}
         NEXT_PUBLIC_CONTACT_EMAIL: ${CONTACT_EMAIL:-}
     restart: unless-stopped
     mem_limit: 768m

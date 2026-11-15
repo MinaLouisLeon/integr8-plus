@@ -1,3 +1,4 @@
+import { PublicAssetTagsLookup } from './repositories/public-asset-tags.js';
 import { type TenantId, toTenantId } from '@integr8/core';
 import { Kysely, PostgresDialect, sql, type Transaction } from 'kysely';
 import pg from 'pg';
@@ -49,6 +50,7 @@ import { LedgerRepository } from './repositories/ledger.js';
 import { LedgerReportsRepository } from './repositories/ledger-reports.js';
 import { MemberGrantsRepository } from './repositories/member-grants.js';
 import { HrEmployeesRepository } from './repositories/hr-employees.js';
+import { FormActionsRepository } from './repositories/form-actions.js';
 import { HrExpensesRepository } from './repositories/hr-expenses.js';
 import { HrPayrollRepository } from './repositories/hr-payroll.js';
 import { ManufacturingRepository } from './repositories/manufacturing.js';
@@ -102,7 +104,6 @@ import { AiConversationsRepository } from './repositories/ai-conversations.js';
 import { AiActionsRepository } from './repositories/ai-actions.js';
 import { AiMemberLimitsRepository } from './repositories/ai-member-limits.js';
 import { AiPlatformRepository } from './repositories/ai-platform.js';
-import { SignupRepository } from './repositories/signup.js';
 import { TenantSettingsRepository, TenantSettingsWriter } from './repositories/tenant-settings.js';
 import {
   StorageMeteringRepository,
@@ -181,6 +182,8 @@ export interface TenantTransaction {
   readonly memberGrants: MemberGrantsRepository;
   readonly hrEmployees: HrEmployeesRepository;
   readonly hrExpenses: HrExpensesRepository;
+  /** What submitted forms' actions did: follow-up links and outcomes (P40). */
+  readonly formActions: FormActionsRepository;
   readonly hrPayroll: HrPayrollRepository;
   readonly manufacturing: ManufacturingRepository;
   readonly customerTimeline: CustomerTimelineRepository;
@@ -305,14 +308,14 @@ export interface PlatformDataSource {
   readonly metering: StorageMeteringRepository;
   /** Subscriptions, and what the billing provider has told us (P17). */
   readonly billing: BillingRepository;
-  /** People asking for a company, and the funnel they move through (P18). */
-  readonly signup: SignupRepository;
   /** Creates a company's settings row when the company is made (P18). */
   readonly tenantSettings: TenantSettingsWriter;
   /** Which company a quote's customer link belongs to (CRM/ERP plan, S1; ADR-0006). */
   readonly publicQuotes: PublicQuotesLookup;
   /** Which company a document's QR code belongs to (documents ADR-0001 D7). */
   readonly publicDocuments: PublicDocumentsLookup;
+  /** Which company a printed asset tag belongs to (P42), for its public page. */
+  readonly publicAssetTags: PublicAssetTagsLookup;
   /** Company websites' keys for the document lookup (D10, D11). */
   readonly websiteKeys: WebsiteKeysRepository;
   /** The worker's nightly delete of spent rate-limit counters, idempotency records and old login attempts. */
@@ -487,6 +490,7 @@ export function buildTenantTransaction(scope: TenantScope): InternalTenantTransa
     memberGrants: new MemberGrantsRepository(scope),
     hrEmployees: new HrEmployeesRepository(scope),
     hrExpenses: new HrExpensesRepository(scope),
+    formActions: new FormActionsRepository(scope),
     hrPayroll: new HrPayrollRepository(scope),
     manufacturing: new ManufacturingRepository(scope),
     customerTimeline: new CustomerTimelineRepository(scope),
@@ -594,10 +598,10 @@ export function getPlatformDataSource(): PlatformDataSource {
     health: new PlatformHealthRepository(db),
     metering: new StorageMeteringRepository(db),
     billing: new BillingRepository(db),
-    signup: new SignupRepository(db),
     tenantSettings: new TenantSettingsWriter(db),
     publicQuotes: new PublicQuotesLookup(db),
     publicDocuments: new PublicDocumentsLookup(db),
+    publicAssetTags: new PublicAssetTagsLookup(db),
     websiteKeys: new WebsiteKeysRepository(db),
     housekeeping: new HousekeepingRepository(db),
     ai: new AiPlatformRepository(db),

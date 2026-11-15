@@ -97,15 +97,6 @@ const allowanceSchema = z.object({
   submissionsPerMonth: z.number().int().nullable(),
   priceCents: z.number().int().nullable(),
   currency: z.string().nullable(),
-  /**
-   * The provider's own price identifiers.
-   *
-   * Held rather than derived, because the mapping from one of our plans to a
-   * price at a provider is a decision somebody makes in the provider's
-   * dashboard and then records here. A plan with neither cannot be bought.
-   */
-  providerPriceMonthly: z.string().nullable(),
-  providerPriceYearly: z.string().nullable(),
   updatedAt: z.iso.datetime(),
 });
 
@@ -302,14 +293,11 @@ export const setAllowanceRoute = defineRoute({
     seats: z.number().int().positive().nullable().optional(),
     submissionsPerMonth: z.number().int().positive().nullable().optional(),
     /**
-     * The list price, in minor units, with its currency. Neither is what the
-     * customer is charged — the provider's price is — but it is what the
-     * pricing page shows, and the two disagreeing is a support ticket.
+     * The list price, in minor units, with its currency: what the pricing page
+     * shows and what Integr8 invoices (P42).
      */
     priceCents: z.number().int().min(0).nullable().optional(),
     currency: z.string().length(3).nullable().optional(),
-    providerPriceMonthly: z.string().max(255).nullable().optional(),
-    providerPriceYearly: z.string().max(255).nullable().optional(),
   }),
   responses: {
     200: { description: 'Changed.', schema: allowanceSchema },

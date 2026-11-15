@@ -8,9 +8,11 @@ import type { Trace, TraceEntry } from './trace.js';
  * Remote and local mode both end here: local mode is the same API booted on
  * this laptop and reached over 127.0.0.1. The staff session is refreshed when
  * its short access token lapses, and each rotated pair is handed to `persist`
- * at once, because a refresh token works only once. Grants are started on
- * first use for each person, reused until they lapse, and ended when the
- * server stops. Every request and answer goes to the trace, secrets hidden.
+ * at once, because a refresh token works only once. A grant's reason is the
+ * only place the company's audit log records why the tool acted, so a grant
+ * is reused only for calls with the same purpose: a new purpose ends that
+ * person's grant and starts one stating it. Every grant still open is ended
+ * when the server stops. Every request and answer goes to the trace, secrets hidden.
  */
 
 export interface StaffTokens {
@@ -37,6 +39,8 @@ interface Grant {
   tenantId: string;
   accessToken: string;
   expiresAt: number;
+  /** The purpose its reason states; a call with another purpose starts a new grant. */
+  purpose: string;
 }
 
 export interface ConnectionOptions {
@@ -206,17 +210,19 @@ export class Connection {
     return this.request({ ...input, as: 'staff', token: this.#tokens.accessToken });
   }
 
-  /** The grant for one person of one company, started when there is none or it lapsed. */
+  /** The grant for one person of one company and one purpose, started when there is none, it lapsed or the purpose changed. */
   async #grantFor(tenantId: string, person: Person, purpose: string): Promise<Grant> {
     const key = `${tenantId}:${person.key}`;
+    const stated = purpose.trim() === '' ? 'testing' : purpose.trim();
     const known = this.#grants.get(key);
-    if (known !== undefined && known.expiresAt - 30_000 > Date.now()) {
+    if (known?.purpose === stated && known.expiresAt - 30_000 > Date.now()) {
       return known;
     }
-    const reason = `${REASON_PREFIX} ${purpose.trim() === '' ? 'testing' : purpose.trim()}`.slice(
-      0,
-      500,
-    );
+    if (known !== undefined) {
+      this.#grants.delete(key);
+      await this.#endGrant(known);
+    }
+    const reason = `${REASON_PREFIX} ${stated}`.slice(0, 500);
     const answer = await this.staff({
       method: 'POST',
       path: `/v1/platform/companies/${tenantId}/impersonate`,
@@ -240,9 +246,18 @@ export class Connection {
       tenantId,
       accessToken: started.tokens.accessToken,
       expiresAt: new Date(started.expiresAt).getTime(),
+      purpose: stated,
     };
     this.#grants.set(key, grant);
     return grant;
+  }
+
+  /** Ends one grant; one already over or ended from the dashboard is no failure. */
+  async #endGrant(grant: Grant): Promise<void> {
+    await this.staff({
+      method: 'POST',
+      path: `/v1/platform/companies/${grant.tenantId}/impersonate/${grant.grantId}/end`,
+    }).catch(() => undefined);
   }
 
   /** A request as one of a test company's people (or the company itself). */
@@ -287,14 +302,7 @@ export class Connection {
   async endGrants(): Promise<void> {
     const grants = [...this.#grants.values()];
     this.#grants.clear();
-    await Promise.all(
-      grants.map((grant) =>
-        this.staff({
-          method: 'POST',
-          path: `/v1/platform/companies/${grant.tenantId}/impersonate/${grant.grantId}/end`,
-        }).catch(() => undefined),
-      ),
-    );
+    await Promise.all(grants.map((grant) => this.#endGrant(grant)));
   }
 
   /** How many grants are open (status). */

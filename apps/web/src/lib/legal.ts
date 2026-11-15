@@ -1,6 +1,6 @@
 import { LEGAL_OPERATOR, type LegalDocument, type LegalOperator } from '@integr8/core';
 import type { TFunction } from '@integr8/i18n';
-import { contactEmail } from './signup';
+import { contactEmail } from './contact';
 
 /**
  * What the legal pages render, in order (High 10).

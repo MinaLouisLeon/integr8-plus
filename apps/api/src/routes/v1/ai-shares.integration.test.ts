@@ -11,7 +11,7 @@ import {
 } from '../../testing/api-harness.js';
 
 /**
- * Dividing the company's assistant allowance (docs/ai/ADR-0002 D6, D7).
+ * Dividing the company's assistant allowance (docs/ai/README.md D6, D7).
  *
  * Owners and admins hand out shares as percentages that total 100 or less;
  * staff cannot; the platform sees the numbers and alone sets a member's dollar

@@ -1,12 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { acceptInvitationUrl, billingUrl, peopleUrl, verifySignupUrl } from './links.js';
+import { acceptInvitationUrl } from './links.js';
 import {
-  dunningEmail,
   hrSuspensionEmail,
   invitationEmail,
   passwordChangedEmail,
   signInCodeEmail,
-  signupVerificationEmail,
 } from './messages.js';
 import { RecordingEmailSender, ResendEmailSender } from './sender.js';
 
@@ -142,8 +140,7 @@ describe('links', () => {
     // A half-right link is worse than none: the person tries it, it fails, and
     // nobody finds out until they give up.
     expect(acceptInvitationUrl(undefined, 'tok')).toBeNull();
-    expect(verifySignupUrl('', 'tok')).toBeNull();
-    expect(billingUrl(undefined)).toBeNull();
+    expect(acceptInvitationUrl('', 'tok')).toBeNull();
   });
 
   it('escapes the token and tolerates a trailing slash on the base', () => {
@@ -171,39 +168,6 @@ describe('the messages', () => {
     // The URL is readable in both parts, not hidden behind "click here".
     expect(message.text).toContain('https://app.example/accept-invitation?token=xyz');
     expect(message.html).toContain('https://app.example/accept-invitation?token=xyz');
-  });
-
-  it('promises nothing has been created yet, because nothing has', () => {
-    const message = signupVerificationEmail({
-      to: 'owner@example.com',
-      companyName: 'Southgate Plumbing',
-      verifyUrl: 'https://app.example/sign-up/verify?token=xyz',
-      expiresAt: EXPIRES,
-    });
-
-    expect(message.text).toContain('Nothing has been created yet');
-  });
-
-  it('says different things before and after the writes stop', () => {
-    const warning = dunningEmail({
-      to: 'owner@example.com',
-      companyName: 'Northwind Gas',
-      billingUrl: 'https://app.example/billing',
-      deadline: EXPIRES,
-      readOnly: false,
-    });
-    expect(warning.text).toContain('2 March 2026');
-    expect(warning.text).not.toContain('is now read-only');
-
-    const stopped = dunningEmail({
-      to: 'owner@example.com',
-      companyName: 'Northwind Gas',
-      billingUrl: 'https://app.example/billing',
-      deadline: null,
-      readOnly: true,
-    });
-    // The promise that matters most, in the message that matters most.
-    expect(stopped.text).toContain('Nothing has been deleted and nothing will be');
   });
 
   it('escapes the company name into the HTML part', () => {
@@ -265,20 +229,20 @@ describe('the sign-in messages (P36)', () => {
 });
 
 describe('the owner\u2019s HR-suspension message (Low 10)', () => {
-  it('names who suspended whom, and links to People, in either language', () => {
+  it('names who suspended whom, and names People instead of linking, in either language', () => {
     const input = {
       to: 'owner@example.com',
       companyName: 'Northwind',
       admin: 'Ahmed Admin',
       person: 'Hala HR',
       when: '1 Nov 2026, 10:15',
-      url: peopleUrl('https://app.example.com/'),
     };
     const english = hrSuspensionEmail({ ...input, locale: 'en' });
     expect(english.subject).toBe('Hala HR was suspended at Northwind');
     expect(english.text).toContain('Ahmed Admin suspended Hala HR');
     expect(english.text).toContain('Only you can let them back in');
-    expect(english.actionUrl).toBe('https://app.example.com/settings/people');
+    expect(english.text).toContain('Open People in your company’s desktop app.');
+    expect(english.actionUrl).toBeUndefined();
 
     const arabic = hrSuspensionEmail({ ...input, locale: 'ar' });
     expect(arabic.html).toContain('dir="rtl"');

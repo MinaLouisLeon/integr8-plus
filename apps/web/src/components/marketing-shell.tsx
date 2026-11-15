@@ -8,8 +8,6 @@ import { LegalLinks } from '~/components/legal-links';
 import { Logo } from '~/components/site/logo';
 import { Eyebrow, Grain, Magnetic, RevealText } from '~/components/site/motion';
 import { LOCALE_COOKIE, rememberCookie } from '~/lib/cookies';
-import { recordFunnelStep } from '~/lib/funnel';
-import { getStartedHref, signupMode } from '~/lib/signup';
 
 /**
  * The public surface's shell (P18), in the Integr8 Media look (Low 3).
@@ -57,24 +55,15 @@ const NAV = [
 
 export function MarketingShell({
   children,
-  step,
   width = 'page',
 }: {
   children: ReactNode;
-  /** Which funnel step this page is. Omitted for pages outside the funnel. */
-  step?: 'landing.viewed' | 'features.viewed' | 'pricing.viewed' | 'signup.opened';
   /**
    * `page` centres the content in the site's column with room for the
    * floating bar; `full` leaves the width to the page's own sections (home).
    */
   width?: 'page' | 'full';
 }) {
-  useEffect(() => {
-    if (step !== undefined) {
-      recordFunnelStep(step);
-    }
-  }, [step]);
-
   return (
     <div data-look="integr8" className="relative flex min-h-dvh flex-col overflow-x-clip">
       <Grain />
@@ -95,19 +84,12 @@ export function MarketingShell({
 }
 
 /**
- * The frame around the sign-in pages (company people, staff, invitations):
- * the same look and faces, a slim bar with the logo, the way back to
- * Integr8 Media and the language, and the page's own form in the middle.
- * Added by those routes' layouts, so the pages themselves keep their markup.
+ * The frame around accepting an invitation, the one page where somebody sets
+ * a password on this site (P42): the same look and faces, a slim bar with the
+ * logo, the way back to Integr8 Media and the language, and the page's own
+ * form in the middle. Added by the route's layout.
  */
-export function AuthShell({
-  children,
-  audience = 'people',
-}: {
-  children: ReactNode;
-  /** `staff` labels the bar for Integr8's own sign-in to the dashboard. */
-  audience?: 'people' | 'staff';
-}) {
+export function AuthShell({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
 
   return (
@@ -129,7 +111,7 @@ export function AuthShell({
           <Logo />
           <div className="flex items-center gap-2">
             <span className="hidden font-mono text-[11px] tracking-[0.15em] text-site-muted uppercase sm:inline rtl:tracking-normal">
-              {audience === 'staff' ? t('site.auth.staffEyebrow') : t('site.auth.peopleEyebrow')}
+              {t('site.auth.peopleEyebrow')}
             </span>
             <a
               href={INTEGR8_MEDIA_URL}
@@ -148,7 +130,7 @@ export function AuthShell({
 }
 
 /**
- * The bar along the top: logo, the four pages, the language, sign-in and the
+ * The bar along the top: logo, the four pages, the language and the
  * lime pill; below `md` a round button opens the same links full screen.
  */
 function SiteHeader() {
@@ -264,12 +246,6 @@ function SiteHeader() {
 
           <div className="flex items-center gap-1.5 sm:gap-2">
             <LanguageToggle />
-            <Link
-              href="/sign-in"
-              className="hidden rounded-full px-3 py-2 text-sm text-site-muted transition-colors hover:text-site-fg lg:block"
-            >
-              {t('site.nav.signIn')}
-            </Link>
             <span className="hidden sm:block">
               <Magnetic>
                 <GetStartedLink className={pillClass('lime', 'sm')} short />
@@ -312,14 +288,6 @@ function SiteHeader() {
             {t(`site.nav.${item.key}`)}
           </Link>
         ))}
-        <Link
-          href="/sign-in"
-          onClick={() => setOpenOn(null)}
-          className="site-menu-link font-display text-4xl font-extrabold text-site-muted"
-          style={{ transitionDelay: open ? '0.48s' : '0s' }}
-        >
-          {t('site.nav.signIn')}
-        </Link>
         <div className="mt-8 flex flex-wrap items-center gap-3">
           <GetStartedLink className={pillClass('lime')} />
         </div>
@@ -376,18 +344,12 @@ function SiteFooter() {
           >
             {t('site.footer.company')}
           </h2>
-          <Link href={getStartedHref()} className={linkClass}>
+          <Link href="/contact" className={linkClass}>
             {t('marketing.nav.contact')}
-          </Link>
-          <Link href="/sign-in" className={linkClass}>
-            {t('site.nav.signIn')}
           </Link>
           <a href={INTEGR8_MEDIA_URL} className={linkClass}>
             {t('site.brand.integr8Media')}
           </a>
-          <Link href="/platform/sign-in" className={linkClass}>
-            {t('site.footer.staff')}
-          </Link>
         </nav>
 
         <div className="flex flex-col gap-3">
@@ -487,11 +449,8 @@ export function PageIntro({
 }
 
 /**
- * The one button every public page ends with.
- *
- * With public sign-up open it starts a trial; with it off — the default, since
- * Integr8 sets companies up — it goes to the contact page. One component, so
- * no page can keep offering a form the API refuses.
+ * The one button every public page ends with: the contact page, since
+ * Integr8 sets every company up (P42 removed self-serve sign-up).
  */
 export function GetStartedLink({
   className,
@@ -501,17 +460,10 @@ export function GetStartedLink({
   short?: boolean;
 }) {
   const { t } = useTranslation();
-  const open = signupMode() === 'open';
 
   return (
-    <Link href={getStartedHref()} className={className ?? pillClass('lime')}>
-      {short
-        ? open
-          ? t('marketing.nav.signUp')
-          : t('marketing.nav.contact')
-        : open
-          ? t('marketing.hero.cta')
-          : t('marketing.hero.ctaClosed')}
+    <Link href="/contact" className={className ?? pillClass('lime')}>
+      {short ? t('marketing.nav.contact') : t('marketing.hero.ctaClosed')}
       {short ? null : (
         <span aria-hidden="true" className="inline-block rtl:-scale-x-100">
           →

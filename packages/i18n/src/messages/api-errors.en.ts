@@ -65,6 +65,7 @@ export const apiErrorsEn = {
   already_set_up: 'The ledger is already set up.',
   already_submitted:
     'This form was submitted from somewhere else while you were offline. Your answers were not sent.',
+  amount_note_required: 'Say why the approved amount differs from the amount claimed.',
   answers_changed:
     'These answers were changed on another device while you were offline. Choose which to keep.',
   app_icon_not_found: 'The app icon must be an image uploaded by this company. Upload it again.',
@@ -100,8 +101,6 @@ export const apiErrorsEn = {
   batch_expired: 'This batch has expired. Confirm to use it anyway and say why.',
   before_due_from: 'The “due by” date must be after the “due from” date.',
   before_start: 'That date is before the ledger starts. Date it on or after the start date.',
-  billing_invoiced: 'Integr8 invoices this company directly. To change the plan, contact Integr8.',
-  billing_not_configured: 'Billing is not set up on this server. Contact Integr8.',
   blocked: 'Waiting for an earlier change to the same record to be sent first.',
   body_too_large: 'What was sent is too large. Send less at a time.',
   breaking_changes_unacknowledged:
@@ -120,6 +119,8 @@ export const apiErrorsEn = {
   code_taken: 'This code is already in use. Choose another.',
   comment_id_taken:
     'This note clashed with another one. Discard the change and write the note again.',
+  company_app_not_built:
+    "This company's desktop app has not been built yet. Build its apps, wait for the release, then invite.",
   company_closed: 'This company is closed. Nothing can be copied to it.',
   completion_blocked: 'This job cannot be completed yet: something it needs is still missing.',
   component_kind: 'A component is a stock or non-stock item. Put labour in the labour cost.',
@@ -174,7 +175,12 @@ export const apiErrorsEn = {
   document_link_needs_website:
     'Add the company’s website first: document links may only point to it.',
   document_link_other_site: 'The document link address must be on the company’s own website.',
+  form_action_needs_module:
+    'This form makes expense claims, which need the HR module. Switch it on for the company first.',
+  invalid_actions:
+    'What this form does on submit has problems to fix before it can be saved or published.',
   not_a_test_company: 'This is not a test company.',
+  releases_unavailable: 'The app releases could not be checked just now. Try again in a minute.',
   session_scope:
     'This staff session can reach test companies only, and this is not something it may do.',
   test_company_no_apps: 'A test company has no phone or desktop apps.',
@@ -285,9 +291,6 @@ export const apiErrorsEn = {
   invalid_definition: 'This form has problems to fix before it can be published or test-filled.',
   invalid_filter: 'A filter cannot be applied. Change it or remove it.',
   invalid_lines: 'Some lines name an account or customer that cannot be used.',
-  invalid_signature: 'The signature did not verify.',
-  invalid_signup_token:
-    'This link is no longer valid. It may have been used already, or it may have expired. Start again and we will send a new one.',
   invalid_submission: 'Some answers cannot be accepted. Check the questions marked.',
   invalid_transition: 'It cannot move there from where it is now. Choose another stage or status.',
   invalid_window: 'Choose a period of up to 62 days that ends after it starts.',
@@ -363,8 +366,6 @@ export const apiErrorsEn = {
     'A line pays less than nothing. Reduce its deductions, or carry them to next month.',
   no_bill:
     'This item has no bill of materials in use. Add one before building it or taking it apart.',
-  no_billing_account:
-    'This company has not subscribed yet, so there is nothing to manage. Start a subscription first.',
   no_confirmed_rules:
     'There is no confirmed rule set in force for this month. Add one in the payroll rules and ask the owner to confirm it.',
   no_due_window: 'This job has no due dates to move.',
@@ -422,7 +423,6 @@ export const apiErrorsEn = {
   photos_missing: 'Photos the job needs are still missing.',
   pipeline_has_open:
     'This pipeline still has open opportunities. Close or move them before archiving it.',
-  plan_not_purchasable: 'This plan cannot be bought online just now. Contact support.',
   posting_account: 'An automatic posting uses this account. Choose another in the settings first.',
   price_overlaps:
     'Another price for this supplier, item, currency and quantity already covers some of these days. Change its dates first.',
@@ -500,8 +500,6 @@ export const apiErrorsEn = {
   shift_unavailable: 'This shift is not yours, or was never started.',
   shortage: 'There is not enough stock at this location to complete it. Nothing was moved.',
   signoff_missing: 'The customer has not signed off yet.',
-  signup_closed: 'Companies are set up by Integr8. Get in touch and we will set yours up with you.',
-  signup_not_configured: 'Signing up is not available here. Contact Integr8.',
   site_not_customers: 'Choose one of the customer’s current sites.',
   site_not_found: 'This site does not exist. Choose another.',
   site_not_job_site:
@@ -510,7 +508,6 @@ export const apiErrorsEn = {
   site_unavailable: 'This site no longer exists.',
   sku_taken: 'Another item already has this SKU.',
   slug_taken: 'Another company already uses this short name. Choose another.',
-  slug_unavailable: 'No free name could be found for this company. Try a different company name.',
   spent_in_future: 'An expense is claimed once it is spent: choose today or an earlier date.',
   staff_exists: 'Somebody already signs in with this address.',
   staff_manager_only: 'Only an account made with the terminal command can do this.',

@@ -40,12 +40,6 @@ export function DashboardRoute() {
     );
   }
 
-  // The assistant's switches have no row in the shared menu model (its
-  // company settings and people pages are web-only), so the seat that may
-  // throw them finds them here, with the rest of the setup.
-  const maySetUpAssistant =
-    me.data.permissions.includes('tenant.update') || me.data.permissions.includes('member.read');
-
   const groups = desktopNavigation(me.data.permissions, me.data.features, {
     ...assistantShown(capabilities.data),
     hidden: me.data.company.hiddenSections,
@@ -83,16 +77,6 @@ export function DashboardRoute() {
                   />
                 </li>
               ))}
-              {group === 'setup' && maySetUpAssistant ? (
-                <li>
-                  <SectionCard
-                    to="/settings/assistant"
-                    icon="sparkles"
-                    title={t('workspace.settings.ai.manage')}
-                    hint={t('workspace.settings.ai.manageHint')}
-                  />
-                </li>
-              ) : null}
             </ul>
           </nav>
         ))}

@@ -52,6 +52,7 @@ const PEOPLE: readonly PersonSeed[] = [
   { key: 'admin', first: 'Omar', last: 'Hassan', role: 'admin' },
   { key: 'hr', first: 'Laila', last: 'Mansour', role: 'hr_manager' },
   { key: 'store', first: 'Karim', last: 'Fathy', role: 'inventory_manager' },
+  { key: 'accounts', first: 'Hana', last: 'Mostafa', role: 'accountant' },
   { key: 'dispatcher', first: 'Nour', last: 'Ibrahim', role: 'dispatcher' },
   { key: 'engineer1', first: 'Youssef', last: 'Adel', role: 'engineer' },
   { key: 'engineer2', first: 'Mariam', last: 'Saeed', role: 'engineer' },
@@ -103,8 +104,7 @@ export async function seedDemoCompany(input: DemoSeedInput): Promise<DemoSeedRes
     };
   }
 
-  // 2. The company, onboarded like a real one: invoiced, so it starts active
-  //    on the top plan with no trial to run out mid-test. Always a test company
+  // 2. The company, onboarded like a real one, on the top plan. Always a test company
   //    (P38): not billed or counted, sends no mail or push, and the only kind
   //    the developer MCP server may reach.
   const owner = people.owner;
@@ -113,16 +113,14 @@ export async function seedDemoCompany(input: DemoSeedInput): Promise<DemoSeedRes
     name: input.name,
     plan: 'enterprise',
     seats: null,
-    billingMode: 'invoiced',
     ownerEmail: owner.email,
     ownerAccess: { kind: 'direct', userId: owner.userId, displayName: owner.displayName },
     websiteUrl: null,
-    aiChannels: { web: true, desktop: true, mobile: true },
+    aiChannels: { desktop: true, mobile: true },
     isTest: true,
     onboardedBy: input.platformUserId as never,
     invitationTtlSeconds: 7 * 24 * 60 * 60,
     media: input.services.media,
-    billing: { provider: 'demo', trialDays: 0 },
   });
   const tenantId = onboarded.tenant.id;
   console.log(`  company ${input.name} (${input.slug}, ${tenantId})`);
@@ -170,7 +168,7 @@ export async function seedDemoCompany(input: DemoSeedInput): Promise<DemoSeedRes
         tenantId: toTenantId(tenantId),
         userId: toUserId(person.userId),
         role: person.role,
-        clientApp: 'web',
+        clientApp: 'desktop',
         deviceLabel: 'Demo company seed',
         signedInWith: 'password',
       }),
@@ -182,7 +180,7 @@ export async function seedDemoCompany(input: DemoSeedInput): Promise<DemoSeedRes
     platformUserId: input.platformUserId as never,
     tenantId: toTenantId(tenantId),
     reason: 'Demo company seed: setting up forms, job types and branding',
-    clientApp: 'web',
+    clientApp: 'desktop',
   });
   tokens.staff = staff.tokens.accessToken;
 

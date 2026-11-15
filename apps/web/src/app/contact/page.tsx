@@ -4,7 +4,7 @@ import { useTranslation } from '@integr8/i18n';
 import Link from 'next/link';
 import { MarketingShell, PageIntro, pillClass } from '~/components/marketing-shell';
 import { Magnetic } from '~/components/site/motion';
-import { contactEmail } from '~/lib/signup';
+import { contactEmail } from '~/lib/contact';
 
 /**
  * How a company gets started (P18, revised; Integr8 Media look, Low 3).
@@ -73,8 +73,8 @@ export default function ContactPage() {
         </div>
         <p className="text-sm text-site-muted">
           {t('marketing.contact.haveAccount')}{' '}
-          <Link href="/sign-in" className="text-lime hover:underline">
-            {t('auth.signIn')}
+          <Link href="/download" className="text-lime hover:underline">
+            {t('site.nav.download')}
           </Link>
         </p>
       </div>

@@ -126,12 +126,6 @@ export interface TenantsTable {
   suspended_reason: string | null;
   onboarded_by: string | null;
   /**
-   * How the company pays (0021). `self_serve` subscribes in the app through the
-   * billing provider; `invoiced` is billed by Integr8 directly, its plan set
-   * from the platform dashboard.
-   */
-  billing_mode: Generated<BillingMode>;
-  /**
    * A test company (0077): left out of billing and totals, sends no mail or
    * push, and the only kind a staff session limited to test companies may
    * reach. Written by the insert; a trigger refuses any later change.
@@ -141,9 +135,6 @@ export interface TenantsTable {
 
 export const TENANT_PLANS = ['trial', 'starter', 'standard', 'enterprise'] as const;
 export type TenantPlan = (typeof TENANT_PLANS)[number];
-
-export const BILLING_MODES = ['self_serve', 'invoiced'] as const;
-export type BillingMode = (typeof BILLING_MODES)[number];
 
 export const PLATFORM_SESSION_REVOCATION_REASONS = [
   'signed_out',
@@ -200,9 +191,6 @@ export const SUBSCRIPTION_STATUSES = [
   'incomplete',
 ] as const;
 export type SubscriptionStatus = (typeof SUBSCRIPTION_STATUSES)[number];
-
-export const BILLING_INTERVALS = ['month', 'year'] as const;
-export type BillingInterval = (typeof BILLING_INTERVALS)[number];
 
 export interface PlatformUsersTable {
   id: Generated<string>;
@@ -416,6 +404,8 @@ export interface ImpersonationGrantsTable {
   target_user_id: string;
   reason: string;
   audit_log_id: string;
+  /** With `audit_log_id`, names the line in the year-partitioned audit log (P41). */
+  audit_log_occurred_at: Date;
   created_at: CreatedAt;
   expires_at: Date;
   ended_at: Date | null;
@@ -556,6 +546,8 @@ export interface FormVersionsTable {
   changes: Jsonb<Record<string, unknown>> | null;
   /** Set at publish: which answers are copied into submission_values. Null on versions published before 0008. */
   reportable_fields: Jsonb<ReportableFieldSpec[]> | null;
+  /** What a submit of this version does (0079, P40); checked by `@integr8/form-package`. */
+  actions: Jsonb<unknown[]>;
 }
 
 export interface ReportableFieldSpec {
@@ -752,6 +744,36 @@ export interface SubmissionFileUsesTable {
   source: ColumnType<SubmissionFileUseSource, never, never>;
 }
 
+/** A follow-up submission a form action opened (0079, P40). Written once. */
+export interface SubmissionLinksTable {
+  id: Generated<string>;
+  tenant_id: string;
+  from_submission_id: string;
+  to_submission_id: string;
+  form_action_id: string;
+  required: boolean;
+  created_at: CreatedAt;
+}
+
+export const SUBMISSION_ACTION_OUTCOMES = ['made', 'skipped', 'failed'] as const;
+export type SubmissionActionOutcome = (typeof SUBMISSION_ACTION_OUTCOMES)[number];
+
+/** The last outcome of each action of a submitted form (0079, P40). */
+export interface SubmissionActionResultsTable {
+  tenant_id: string;
+  submission_id: string;
+  form_action_id: string;
+  kind: 'expense_claim' | 'open_form';
+  outcome: SubmissionActionOutcome;
+  claim_id: string | null;
+  link_id: string | null;
+  reason_code: string | null;
+  reason: string | null;
+  attempts: Generated<number>;
+  attempted_by: string;
+  attempted_at: Generated<Date>;
+}
+
 export const MEDIA_CATEGORIES = ['image', 'video', 'document', 'other'] as const;
 export type MediaCategory = (typeof MEDIA_CATEGORIES)[number];
 
@@ -839,8 +861,6 @@ export interface PlanAllowancesTable {
   /** What it costs, for a screen to show. The provider does the arithmetic. */
   price_cents: number | null;
   currency: string | null;
-  provider_price_monthly: string | null;
-  provider_price_yearly: string | null;
   /** How long media is kept before the retention job takes it. Null is for ever. */
   retention_days: number | null;
   overage: Generated<OveragePolicy>;
@@ -888,37 +908,11 @@ export interface StorageReconciliationsTable {
 
 export interface SubscriptionsTable {
   tenant_id: string;
-  provider: string;
-  /** Null until a checkout completes: a company on a trial has neither yet. */
-  provider_customer_id: string | null;
-  provider_subscription_id: string | null;
   status: Generated<SubscriptionStatus>;
   plan: Generated<TenantPlan>;
-  billing_interval: BillingInterval | null;
-  current_period_start: Date | null;
-  current_period_end: Date | null;
-  cancel_at_period_end: Generated<boolean>;
   trial_ends_at: Date | null;
-  /** Dunning: when the card first failed, and when read-only arrives. */
-  past_due_since: Date | null;
-  grace_ends_at: Date | null;
-  reminders_sent: Generated<number>;
   created_at: CreatedAt;
   updated_at: UpdatedAt;
-}
-
-export interface BillingEventsTable {
-  id: Generated<string>;
-  provider: string;
-  /** The provider's id for the delivery. Unique, which is the whole dedupe. */
-  provider_event_id: string;
-  type: string;
-  /** Null when the event names a customer this deployment does not know. */
-  tenant_id: string | null;
-  payload: Jsonb<Record<string, unknown>>;
-  received_at: CreatedAt;
-  processed_at: Date | null;
-  error: string | null;
 }
 
 export interface ScheduledTaskRunsTable {
@@ -927,53 +921,6 @@ export interface ScheduledTaskRunsTable {
   last_finished_at: Date | null;
   claimed_by: string | null;
   last_error: string | null;
-}
-
-// ---------------------------------------------------------------------------
-// Self-serve onboarding (0018)
-// ---------------------------------------------------------------------------
-
-/**
- * `verifying` (0020) is the claim: one verify has taken the request and is
- * provisioning the company. It lasts seconds, and a failure puts the request
- * back to `pending` so the link still works.
- */
-export const SIGNUP_STATUSES = [
-  'pending',
-  'verifying',
-  'verified',
-  'expired',
-  'abandoned',
-] as const;
-export type SignupStatus = (typeof SIGNUP_STATUSES)[number];
-
-export interface SignupRequestsTable {
-  id: Generated<string>;
-  email: string;
-  company_name: string;
-  /** Only the hash is stored: holding the token grants a company. */
-  token_hash: string;
-  status: Generated<SignupStatus>;
-  expires_at: Date;
-  verified_at: Date | null;
-  /** The company this request created, once it has created one. */
-  tenant_id: string | null;
-  /** How many times the link has been sent again (0019). Capped by the service. */
-  resend_count: Generated<number>;
-  ip_address: string | null;
-  user_agent: string | null;
-  created_at: CreatedAt;
-  updated_at: UpdatedAt;
-}
-
-export interface SignupEventsTable {
-  id: Generated<string>;
-  /** Free text on purpose: a migration to add a funnel step is one nobody writes. */
-  step: string;
-  signup_id: string | null;
-  tenant_id: string | null;
-  metadata: Generated<Jsonb<Record<string, unknown>>>;
-  occurred_at: CreatedAt;
 }
 
 /** The theme a company's apps open in (0022). People in the company do not choose. */
@@ -1004,7 +951,6 @@ export interface TenantSettingsTable {
   /** ISO weekday numbers; 1 is Monday. Empty means the company is closed. */
   working_days: Generated<number[]>;
   /** Which of the company's apps show the assistant (0044; ADR-0001). Narrow the platform grant only. */
-  ai_web_enabled: Generated<boolean>;
   ai_desktop_enabled: Generated<boolean>;
   ai_mobile_enabled: Generated<boolean>;
   website_files_enabled: Generated<boolean>;
@@ -1329,6 +1275,7 @@ export interface ErpStockCountsTable {
 }
 
 export interface ErpStockCountLinesTable {
+  id: Generated<string>;
   tenant_id: string;
   count_id: string;
   item_id: string;
@@ -1974,6 +1921,8 @@ export interface ErpJournalLinesTable {
   id: Generated<string>;
   tenant_id: string;
   journal_id: string;
+  /** The journal's entry date, kept equal by the foreign key; places the line in its year partition (P41). */
+  entry_date: string;
   line_no: number;
   account_id: string;
   /** Decimal string. */
@@ -2112,6 +2061,12 @@ export interface HrExpenseClaimsTable {
   paid_at: Date | null;
   payment_reference: string | null;
   payroll_run_id: string | null;
+  /** The submission whose form action made it (0079), with that action's id. Fixed at insert. */
+  submission_id: Generated<string | null>;
+  form_action_id: Generated<string | null>;
+  /** What the approver settled on, with the reason; set only when approving (0079). */
+  approved_amount: Generated<string | null>;
+  amount_note: Generated<string | null>;
   version: Generated<number>;
   updated_at: Generated<Date>;
 }
@@ -3374,7 +3329,7 @@ export interface AiHelpArticlesTable {
 }
 
 // ---------------------------------------------------------------------------
-// PDF documents (0048; docs/documents/ADR-0001)
+// PDF documents (0048; docs/documents/README.md)
 // ---------------------------------------------------------------------------
 
 export type DocumentStatus = 'pending' | 'ready' | 'failed';
@@ -3686,6 +3641,8 @@ export interface Database {
   submission_events: SubmissionEventsTable;
   submission_values: SubmissionValuesTable;
   submission_file_uses: SubmissionFileUsesTable;
+  submission_links: SubmissionLinksTable;
+  submission_action_results: SubmissionActionResultsTable;
   test_outbox: TestOutboxTable;
   tenant_storage: TenantStorageTable;
   upload_intents: UploadIntentsTable;
@@ -3699,7 +3656,6 @@ export interface Database {
   storage_reconciliations: StorageReconciliationsTable;
   scheduled_task_runs: ScheduledTaskRunsTable;
   subscriptions: SubscriptionsTable;
-  billing_events: BillingEventsTable;
   customers: CustomersTable;
   crm_leads: CrmLeadsTable;
   crm_pipelines: CrmPipelinesTable;
@@ -3833,8 +3789,6 @@ export interface Database {
   form_template_files: FormTemplateFilesTable;
   rate_limit_buckets: RateLimitBucketsTable;
   schema_migrations: SchemaMigrationsTable;
-  signup_requests: SignupRequestsTable;
-  signup_events: SignupEventsTable;
   tenant_settings: TenantSettingsTable;
   ai_tenant_policies: AiTenantPoliciesTable;
   ai_usage_periods: AiUsagePeriodsTable;
@@ -3909,17 +3863,6 @@ export const PLATFORM_TABLES = [
   // the platform that runs it.
   'plan_allowances',
   'scheduled_task_runs',
-  // What the billing provider told us, and when (0017). Its tenant_id is
-  // nullable — an event can name a customer this deployment does not know —
-  // so it cannot be isolated the usual way, and the runtime role holds nothing
-  // on it at all.
-  'billing_events',
-  // Self-serve signup (0018). Both describe people who are not yet customers:
-  // a signup request exists before any company does, and the funnel's whole
-  // purpose is to record the attempts that never became one. `audit_log`
-  // cannot hold either, being tenant-scoped. The runtime role reaches neither.
-  'signup_requests',
-  'signup_events',
   // The assistant (0044; ADR-0001). What a plan allows belongs to the plan; the
   // help it cites belongs to the product; the deployment's own provider budget
   // belongs to nobody's company. The runtime role reaches none of them.
@@ -4020,6 +3963,10 @@ export const SECURITY_DEFINER_FUNCTIONS = [
   'assign_expense_reference',
   'assign_assembly_reference',
   'erp_ledger_backfill_more',
+  // Make year partitions (P41), which only the migration owner may create; the
+  // worker calls the second as the platform role.
+  'create_year_partition',
+  'ensure_year_partitions',
 ] as const;
 export type SecurityDefinerFunction = (typeof SECURITY_DEFINER_FUNCTIONS)[number];
 
@@ -4076,6 +4023,8 @@ const TENANT_SCOPED: Readonly<Record<TenantScopedTable, true>> = {
   submission_events: true,
   submission_values: true,
   submission_file_uses: true,
+  submission_links: true,
+  submission_action_results: true,
   test_outbox: true,
   tenant_storage: true,
   upload_intents: true,

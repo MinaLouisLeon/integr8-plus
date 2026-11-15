@@ -1,12 +1,6 @@
 import { type PlatformUserId, type Role, toTenantId, toUserId } from '@integr8/core';
 import { mintInvitationToken } from '@integr8/auth';
-import {
-  getPlatformDataSource,
-  type Tenant,
-  type TenantPlan,
-  withTenant,
-  type BillingMode,
-} from '@integr8/db';
+import { getPlatformDataSource, type Tenant, type TenantPlan, withTenant } from '@integr8/db';
 import type { MediaStorage } from '../media/storage.js';
 import { provisionTenantStorage } from '../media/tenant-storage.js';
 
@@ -43,17 +37,11 @@ export interface OnboardCompanyInput {
   name: string;
   plan: TenantPlan;
   seats: number | null;
-  /**
-   * How they pay. `self_serve` starts the trial; `invoiced` starts them active
-   * on the plan with no trial, because Integr8 is taking the money (and the
-   * self-serve path never sends this: a stranger is not invoiced).
-   */
-  billingMode?: BillingMode;
   ownerEmail: string;
   /** The company's own website, https only; null when it has none yet (0022). */
   websiteUrl?: string | null;
   /** Which of its apps show the assistant (ADR-0001). Off everywhere when absent. */
-  aiChannels?: { web: boolean; desktop: boolean; mobile: boolean };
+  aiChannels?: { desktop: boolean; mobile: boolean };
   /**
    * A test company (0077, P38): the demo seeder and the dashboard's switch set
    * it. Fixed when the company is created; a trigger refuses any later change.
@@ -62,42 +50,29 @@ export interface OnboardCompanyInput {
   /**
    * How the owner gets in.
    *
-   * `invitation` mints a token for somebody to be emailed — the platform flow,
-   * where the owner is a stranger to whoever is onboarding them. `direct` is
-   * self-serve: the person is already here, has already proved they own the
-   * address, and is made an active owner immediately. Sending somebody an
-   * invitation to a company they have just created themselves would be absurd.
+   * `invitation` mints a token for somebody to be emailed — the staff flow,
+   * where the owner is a stranger to whoever is onboarding them. `direct` makes
+   * an existing sign-in account an active owner at once: the demo seeder, which
+   * has already made the account.
    */
   ownerAccess: { kind: 'invitation' } | { kind: 'direct'; userId: string; displayName: string };
   /** Overrides {@link DEFAULT_JOB_TYPES}; an empty array seeds none. */
   jobTypes?: readonly { name: string; code: string }[];
   /**
-   * The super admin who onboarded them, or null when nobody did (P18).
-   *
-   * Null is self-serve: a stranger signed up and verified their own address,
-   * and there is no platform user to attribute it to. Everything that used to
-   * name the onboarder — the seeded job types, the owner's invitation, the
-   * audit entry — has to cope with that rather than borrow somebody's id,
-   * because attributing a company's first rows to a super admin who never
-   * touched it is a lie in the table people read to work out who did what.
+   * The super admin who onboarded them, or null when nobody did (the demo
+   * seeder run from a terminal). Everything that names the onboarder — the
+   * seeded job types, the owner's invitation, the audit entry — copes with
+   * null rather than borrow somebody's id, because attributing a company's
+   * first rows to a super admin who never touched it is a lie in the table
+   * people read to work out who did what.
    */
   onboardedBy: PlatformUserId | null;
   invitationTtlSeconds: number;
   media: MediaStorage;
-  /**
-   * How long the trial runs, in days, and who will take the money (P17).
-   *
-   * Every company gets a subscription row on its first day, trialing, with the
-   * end date written down. A trial that is inferred from the absence of a row
-   * is a trial nobody can extend, shorten or explain to a customer.
-   */
-  billing: { provider: string; trialDays: number };
 }
 
 export interface OnboardedCompany {
   tenant: Tenant;
-  /** When the trial this company starts on runs out; null for an invoiced company, which has none. */
-  trialEndsAt: Date | null;
   /** Null when the owner was made directly, which is the self-serve path. */
   invitation: { id: string; email: string; expiresAt: Date; token: string } | null;
   jobTypes: number;
@@ -129,11 +104,6 @@ export async function onboardCompany(input: OnboardCompanyInput): Promise<Onboar
     name: input.name,
     plan: input.plan,
     seats: input.seats,
-    // A deployment that takes no card payments invoices every company, so one
-    // made there is invoiced whatever was asked: a self-serve trial would run
-    // out into read-only with no way to pay.
-    billingMode:
-      input.billing.provider === 'none' ? 'invoiced' : (input.billingMode ?? 'self_serve'),
     onboardedBy: input.onboardedBy,
     isTest: input.isTest === true,
   });
@@ -231,23 +201,18 @@ export async function onboardCompany(input: OnboardCompanyInput): Promise<Onboar
 
   // After the transaction, because a failure in there takes the company row
   // back out and a subscription pointing at a deleted company would block it.
-  const invoiced = tenant.billingMode === 'invoiced';
-  const trialEndsAt = invoiced
-    ? null
-    : new Date(Date.now() + input.billing.trialDays * 24 * 60 * 60 * 1000);
+  // Integr8 invoices every company (P42), so it starts active on its plan.
   await platform.billing.start({
     tenantId: tenant.id,
-    provider: input.billing.provider,
     plan: input.plan,
-    trialEndsAt,
-    status: invoiced ? 'active' : 'trialing',
+    trialEndsAt: null,
+    status: 'active',
   });
 
   const storage = await provision(input.media, tenant.id);
 
   return {
     tenant,
-    trialEndsAt,
     invitation,
     jobTypes: seeds.length,
     storage,

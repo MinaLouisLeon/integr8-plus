@@ -8,6 +8,7 @@ import {
   holds,
   ledgerAmountSchema,
   parseExpenseReference,
+  toUnits,
   type Principal,
 } from '@integr8/core';
 import {
@@ -32,6 +33,7 @@ import {
   readableWorkOrder,
 } from './operations.js';
 import { companyToday } from './sales-quotes.js';
+import { detailBody, detailSchema as submissionDetailSchema } from './submissions.js';
 import { iso, isoOrNull } from './schemas.js';
 
 /**
@@ -77,6 +79,13 @@ export const expenseClaimSchema = z.object({
   paidBy: personSchema.nullable(),
   paidAt: z.iso.datetime().nullable(),
   paymentReference: z.string().nullable(),
+  /** What the approver settled on when it differs from `amount` (P40), and why. */
+  approvedAmount: z.string().nullable(),
+  amountNote: z.string().nullable(),
+  /** What is posted and paid back: `approvedAmount` when set, otherwise `amount`. */
+  payableAmount: z.string(),
+  /** The submitted form whose action made this claim (P40). */
+  submission: z.object({ id: z.uuid(), formId: z.uuid(), title: z.string() }).nullable(),
   version: z.number().int(),
 });
 
@@ -112,7 +121,7 @@ async function claimBodies(
   claims: readonly ExpenseClaim[],
   people?: People,
 ): Promise<z.infer<typeof expenseClaimSchema>[]> {
-  const [known, categories, jobs] = await Promise.all([
+  const [known, categories, jobs, sources] = await Promise.all([
     people === undefined ? peopleOf(tx) : Promise.resolve(people),
     tx.hrExpenses.categories({ includeArchived: true }),
     Promise.all(
@@ -122,6 +131,7 @@ async function claimBodies(
         ),
       ].map((id) => tx.workOrders.find(id)),
     ),
+    claimSources(tx, claims),
   ]);
   const categoryName = new Map(categories.map((category) => [category.id, category.name]));
   const jobReference = new Map(
@@ -152,8 +162,48 @@ async function claimBodies(
     paidBy: claim.paidBy === null ? null : personBody(claim.paidBy, known),
     paidAt: isoOrNull(claim.paidAt),
     paymentReference: claim.paymentReference,
+    approvedAmount: claim.approvedAmount,
+    amountNote: claim.amountNote,
+    payableAmount: claim.payableAmount,
+    submission: claim.submissionId === null ? null : (sources.get(claim.submissionId) ?? null),
     version: claim.version,
   }));
+}
+
+/** The submissions form actions made these claims from, with the names they show. */
+async function claimSources(
+  tx: TenantTransaction,
+  claims: readonly ExpenseClaim[],
+): Promise<Map<string, { id: string; formId: string; title: string }>> {
+  const ids = [
+    ...new Set(
+      claims.flatMap((claim) => (claim.submissionId === null ? [] : [claim.submissionId])),
+    ),
+  ];
+  const found = new Map<string, { id: string; formId: string; title: string }>();
+  if (ids.length === 0) {
+    return found;
+  }
+  const submissions = (await Promise.all(ids.map((id) => tx.submissions.findById(id)))).flatMap(
+    (submission) => (submission === undefined ? [] : [submission]),
+  );
+  const forms = new Map(
+    (
+      await Promise.all(
+        [...new Set(submissions.map((submission) => submission.formId))].map((id) =>
+          tx.forms.findForm(id),
+        ),
+      )
+    ).flatMap((form) => (form === undefined ? [] : [[form.id, form.title] as const])),
+  );
+  for (const submission of submissions) {
+    found.set(submission.id, {
+      id: submission.id,
+      formId: submission.formId,
+      title: submission.title ?? forms.get(submission.formId) ?? '',
+    });
+  }
+  return found;
 }
 
 const own = (principal: Principal, claim: ExpenseClaim) => claim.claimantId === principal.userId;
@@ -238,6 +288,12 @@ async function auditClaim(
   await audit(tx, context, action, 'expense_claim', claim.id, {
     reference: formatExpenseReference(claim.reference),
     amount: claim.amount,
+    ...(claim.approvedAmount === null
+      ? {}
+      : { approvedAmount: claim.approvedAmount, amountNote: claim.amountNote }),
+    ...(claim.submissionId === null
+      ? {}
+      : { submissionId: claim.submissionId, formActionId: claim.formActionId }),
     ...extra,
   });
 }
@@ -482,11 +538,15 @@ export const submitClaimBody = z.object({
   clientActionId: z.uuid().optional(),
 });
 
-/** Submits a claim for this person; shared with the phone's outbox. */
+/**
+ * Submits a claim for this person; shared with the phone's outbox and with
+ * form actions (P40), which pass the submission and action that made it.
+ */
 export async function submitClaim(
   tx: TenantTransaction,
   principal: Principal,
   body: z.infer<typeof submitClaimBody>,
+  origin?: { submissionId: string; formActionId: string },
 ): Promise<{ claim: ExpenseClaim; created: boolean }> {
   const category = await tx.hrExpenses.category(body.categoryId);
   if (category?.archivedAt !== null) {
@@ -512,6 +572,8 @@ export async function submitClaim(
     currency: company.currency,
     description: body.description,
     clientActionId: body.clientActionId ?? null,
+    submissionId: origin?.submissionId ?? null,
+    formActionId: origin?.formActionId ?? null,
   });
 }
 
@@ -601,25 +663,51 @@ async function forDecision(
   return claim;
 }
 
+/**
+ * A different approved amount, or none when it is the amount claimed. A
+ * correction always says why, so the claimant and the books can see it.
+ */
+export function approvedCorrection(
+  claim: ExpenseClaim,
+  approvedAmount: string | undefined,
+  note: string | undefined,
+): { amount: string; note: string } | null {
+  if (approvedAmount === undefined || toUnits(approvedAmount) === toUnits(claim.amount)) {
+    return null;
+  }
+  if (note === undefined) {
+    throw unprocessable(
+      'amount_note_required',
+      'Say why the approved amount differs from the claim.',
+      [{ field: 'body.amountNote', code: 'amount_note_required', message: 'Why it differs.' }],
+    );
+  }
+  return { amount: approvedAmount, note };
+}
+
 export const approveExpenseClaimRoute = defineRoute({
   method: 'post',
   path: '/v1/expenses/:claimId/approve',
   operationId: 'approveExpenseClaim',
   summary: 'Approve a claim, to be paid back directly or through payroll',
   description:
-    'By an owner, admin or HR manager who is not the claimant (409 `self_approval`). `settleVia: payroll` needs the payroll module (422 `payroll_off`). Posts to the ledger when it is set up.',
+    'By an approver who is not the claimant (409 `self_approval`). `settleVia: payroll` needs the payroll module (422 `payroll_off`). `approvedAmount` approves a different amount than was claimed, with `amountNote` saying why (422 `amount_note_required`); the claim itself is unchanged, and the approved amount is what is posted and paid back. Posts to the ledger when it is set up.',
   tags: TAGS,
   security: 'authenticated',
   permission: 'expense.approve',
   feature: HR,
   params: claimParams,
   query: noSchema,
-  body: versionBody.extend({ settleVia: expenseSettlementSchema.default('direct') }),
+  body: versionBody.extend({
+    settleVia: expenseSettlementSchema.default('direct'),
+    approvedAmount: ledgerAmountSchema.optional(),
+    amountNote: z.string().trim().min(1).max(1000).optional(),
+  }),
   responses: {
     200: { description: 'The claim.', schema: claimDetailSchema },
     404: { description: 'No such claim.' },
     409: { description: 'One’s own, already decided, or changed elsewhere.' },
-    422: { description: 'Payroll is not switched on.' },
+    422: { description: 'Payroll is not switched on, or a different amount without a note.' },
   },
   handler: async ({ params, body }, context) => {
     const { principal } = context;
@@ -628,11 +716,13 @@ export const approveExpenseClaimRoute = defineRoute({
     }
     const detail = await withTenant(principal.tenantId, async (tx) => {
       const claim = await forDecision(tx, principal, params.claimId);
+      const correction = approvedCorrection(claim, body.approvedAmount, body.amountNote);
       const moved = await tx.hrExpenses.approve(
         claim.id,
         body.expectedVersion,
         principal.userId,
         body.settleVia,
+        correction,
       );
       if (moved === undefined) {
         throw versionConflict();
@@ -730,6 +820,41 @@ export const payExpenseClaimRoute = defineRoute({
   },
 });
 
+export const getExpenseClaimSubmissionRoute = defineRoute({
+  method: 'get',
+  path: '/v1/expenses/:claimId/submission',
+  operationId: 'getExpenseClaimSubmission',
+  summary: 'The submitted form a claim was made from, read-only',
+  description:
+    'For those who approve claims (P40): the one submission whose form action made this claim, even without access to other submissions, so the claim is decided beside the answers it came from. 404 when the claim was not made by a form.',
+  tags: TAGS,
+  security: 'authenticated',
+  permission: 'expense.approve',
+  feature: HR,
+  params: claimParams,
+  query: noSchema,
+  body: noSchema,
+  responses: {
+    200: { description: 'The submission, as its page shows it.', schema: submissionDetailSchema },
+    404: { description: 'No such claim, or it was not made by a form.' },
+  },
+  handler: async ({ params }, context) => {
+    const { principal } = context;
+    const body = await withTenant(principal.tenantId, async (tx) => {
+      const claim = await readableClaim(tx, principal, params.claimId);
+      const submission =
+        claim.submissionId === null ? undefined : await tx.submissions.findById(claim.submissionId);
+      if (submission === undefined) {
+        throw notFound('This claim was not made by a form.');
+      }
+      const detail = await detailBody(tx, principal, submission);
+      // Read-only here, whatever else this person may do with submissions.
+      return { ...detail, can: { edit: false, submit: false, reopen: false } };
+    });
+    return { status: 200, body };
+  },
+});
+
 export const expenseRoutes = [
   listExpenseCategoriesRoute,
   createExpenseCategoryRoute,
@@ -737,6 +862,7 @@ export const expenseRoutes = [
   listExpenseClaimsRoute,
   submitExpenseClaimRoute,
   getExpenseClaimRoute,
+  getExpenseClaimSubmissionRoute,
   withdrawExpenseClaimRoute,
   approveExpenseClaimRoute,
   rejectExpenseClaimRoute,

@@ -5,7 +5,7 @@ import type { Margins } from '@integr8/document-render';
 import type { ApiConfig } from '../config.js';
 
 /**
- * Turns a document's HTML into PDF bytes (docs/documents/ADR-0001 D4).
+ * Turns a document's HTML into PDF bytes (docs/documents/README.md D4).
  *
  * Chromium is the printer because it is the one engine that lays out Arabic,
  * breaks tables across pages and repeats their headers the way the designer's
