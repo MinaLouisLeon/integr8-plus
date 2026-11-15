@@ -343,7 +343,7 @@ const list = (items: readonly string[]) => items.map((item) => `\`${item}\``).jo
 function overview(): string {
   return `# Integr8 forms — overview and workflow
 
-You are building a **form** for Integr8 Plus, a field-service platform used in Egypt in **English and Arabic**. Engineers fill forms on a phone (offline), the office on the web or desktop. A form may have **PDF templates** that print a submission as a certificate or report. Your output is one \`.integr8form\` file that Integr8 staff import into a company (as a new draft) or into the shared library.
+You are building a **form** for Integr8 Plus, a field-service platform used in Egypt in **English and Arabic**. Engineers fill forms on a phone (offline), the office in the company's desktop app. A form may have **PDF templates** that print a submission as a certificate or report. Your output is one \`.integr8form\` file that Integr8 staff import into a company (as a new draft) or into the shared library.
 
 ## Workflow
 

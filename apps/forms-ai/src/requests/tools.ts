@@ -61,7 +61,7 @@ export function registerRequestTools(server: McpServer, deps: RequestToolDeps): 
     {
       title: 'Record a change request for the platform',
       description:
-        "Writes a change request: something the person wants that the Integr8 Plus platform cannot do yet. Ask first, and only record after they agree: what should happen, for whom, on which apps (web, desktop, phone), and today's workaround. It saves the words, the form and PDF templates being built (from the preview window, even if they do not pass the check yet) and pictures of the Form tab and the PDFs when a browser is available. Never put a real customer's data in a request: use sample answers only.",
+        "Writes a change request: something the person wants that the Integr8 Plus platform cannot do yet. Ask first, and only record after they agree: what should happen, for whom, on which apps (the company's desktop app, the staff app, the phone), and today's workaround. It saves the words, the form and PDF templates being built (from the preview window, even if they do not pass the check yet) and pictures of the Form tab and the PDFs when a browser is available. Never put a real customer's data in a request: use sample answers only.",
       inputSchema: {
         title: z
           .string()
