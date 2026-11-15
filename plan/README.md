@@ -95,6 +95,9 @@ For 2.0.0, on each machine (setup guide Stage 11 part AJ):
 
 Still open from earlier releases:
 
+- [ ] The guide on GitHub Pages: Settings → Pages → Source "GitHub Actions"; the
+      `GUIDE_USERNAME` and `GUIDE_PASSWORD` secrets; once this reaches `main`, run
+      "Setup guide on Pages" ([deployment](../docs/deployment/README.md)).
 - [ ] Run `sh deploy/vps/check-env.sh` and replace every value it names.
 - [ ] `INTEGR8_PLATFORM_PASSWORD` and `DATABASE_URL_PLATFORM` in `deploy/.env`; the
       Caddyfile blocks; the heartbeat monitor and `HEALTH_PING_URL`, then delete

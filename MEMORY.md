@@ -91,6 +91,13 @@ the end of any piece of work that changes one of them, and date each section.
   from the repository guide); update it when a setup or update step changes. **2026-11-15:** P42
   changed the guide (staff app instead of `/platform`, no Stripe, Stage 11 part AL); neither
   artifact has been republished yet.
+- **The guide on GitHub Pages (2026-11-15, branch `ccr-982c2137-h4as2m`), as the owner asked:**
+  `.github/workflows/guide-pages.yml` publishes `scripts/guide/build-site.mjs`'s output when the
+  guide reaches `main` or by hand: the guide encrypted (AES-GCM, PBKDF2 600 000 rounds) with the
+  `GUIDE_USERNAME`/`GUIDE_PASSWORD` repository secrets, decrypted in the browser. The owner chose
+  the credentials; they are not in the repository. To do once: Pages source "GitHub Actions", the
+  two secrets, then a run from `main`. GitHub's search API reported the repository **public** on
+  2026-11-15 (MEMORY said private since 2026-11-04), so the guide files are readable there anyway.
 - **Since P42** `app.integr8-media.com` is the public site only (no sign-in): `/download`, `/q`,
   `/d`, `/a/<code>`, `/accept-invitation`, `/desktop-updates`, marketing, help, legal.
 
