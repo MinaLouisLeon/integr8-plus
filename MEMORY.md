@@ -90,7 +90,8 @@ the end of any piece of work that changes one of them, and date each section.
   look: https://claude.ai/artifact/KrY8XQBYC5ehzjG7DU4khX, a hand-written page (not generated
   from the repository guide); update it when a setup or update step changes. **2026-11-15:** P42
   changed the guide (staff app instead of `/platform`, no Stripe, Stage 11 part AL); neither
-  artifact has been republished yet.
+  artifact has been republished yet. **2026-11-16:** the repository guide itself became the
+  short checklist (see Decisions); republish `setup-checklist.html` to the first artifact.
 - **The guide on GitHub Pages (2026-11-15, branch `ccr-982c2137-h4as2m`), as the owner asked:**
   `.github/workflows/guide-pages.yml` publishes `scripts/guide/build-site.mjs`'s output when the
   guide reaches `main` or by hand: the guide encrypted (AES-GCM, PBKDF2 600 000 rounds) with the
@@ -408,6 +409,18 @@ the end of any piece of work that changes one of them, and date each section.
   `call_api` sends public routes (asset tags, quote and document links, accepting an invitation) as a
   visitor with no sign-in; Forms for AI's guides name the staff and company desktop apps. Not checked: real Tauri
   builds, and a real GitHub release lookup.
+- **A short setup guide (2026-11-16, branch `ccr-5b9b85c7-8sidx1` from `main`), as the owner
+  asked:** `docs/deployment/setup-checklist.{md,html,css,js}` rewritten as a steps-only
+  checklist: 11 stages, 89 tick boxes, one line per step with a `laptop`/`machine`/`web`/`app`
+  tag, no per-release parts, in the Integr8 Media look (dark, lime, the violet-cyan-lime
+  gradient, Unbounded/Inter/JetBrains Mono), with per-stage Clear for the update stage. Same
+  file names, so `pnpm guide:check` and the Pages workflow are unchanged; the HTML was
+  generated from the Markdown once and is maintained by hand from here. Dropped from the guide:
+  the per-release parts (Stage 11 A–AL), the test box, destroying the machine, the demo
+  company, code signing, the stores, the AI provider walk-throughs. The occasional ones (HR key
+  change, moving a company, code signing, stores, test box) moved to
+  `docs/deployment/README.md` "Occasional procedures"; references to old stage letters were
+  repointed. The old long edition is in git history.
 - **The demo seeder goes through the API**, in-process with Fastify's `inject`, as the
   company's own people (plus a staff impersonation for staff-only setup). Direct inserts
   were rejected: they skip numbering, stock, ledger postings and audit, and produce data
@@ -420,10 +433,9 @@ Update them together at each release or new migration:
 
 - `README.md`: "Current version" line and the migration table.
 - `PROJECT_INDEX.md` ("Read carefully" line) and `PROJECT_INDEX.json` (`version`).
-- `docs/deployment/setup-checklist.md` **and** `.html`: header line, Stage 0 "Nothing to
-  merge", Stage 3 `APP_VERSION`/`API_RELEASE`, Stage 6 latest release, Stage 7 company
-  release name, Stage 11 example bump and feature parts, Stage 13, footer. References
-  like "included in v1.1.2" are history and stay as they are.
+- `docs/deployment/setup-checklist.md` **and** `.html`: the header line (and the HTML's
+  eyebrow), Stage 4 `APP_VERSION`/`API_RELEASE`, Stage 6 latest release, Stage 8 company
+  release name, Stage 10's example version lines, the "About this page" line.
 - `deploy/.env.example` (`APP_VERSION`, `API_RELEASE`) and `apps/api/src/app-info.ts`
   (`VERSION`; `app-info.test.ts` fails when it differs from the root `package.json`).
 - Released versions: `gh release list`. v1.2.1 (2026-10-27) carries migrations 0051–0053.

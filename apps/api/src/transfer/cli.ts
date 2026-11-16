@@ -32,7 +32,7 @@ inspect  Prints what an archive holds, without importing it.
 
 Runs where both the owner's connection (DATABASE_URL_ADMIN) and the API's
 settings (storage, Auth) are present: the "transfer" service in
-deploy/compose.yml. See the setup guide, "Moving a company to another server".
+deploy/compose.yml. See docs/deployment/README.md, "Moving a company to another server".
 `.trim();
 
 async function main(argv: readonly string[]): Promise<number> {

@@ -372,8 +372,8 @@ services:
   # never started with the stack (the "tools" profile). The one service that
   # holds both the API's settings (storage, Auth) and the owner's connection,
   # which reading and writing a whole company needs. Archives go in
-  # deploy/transfers on the machine. The setup guide's "Moving a company to
-  # another server" has the commands, e.g.
+  # deploy/transfers on the machine. docs/deployment/README.md, "Moving a
+  # company to another server", has the commands, e.g.
   #   docker compose -f deploy/compose.yml --env-file deploy/.env --profile tools \
   #     run --rm transfer node dist/transfer/cli.js export <slug> --out /transfers/<slug>.tar.gz
   transfer:
