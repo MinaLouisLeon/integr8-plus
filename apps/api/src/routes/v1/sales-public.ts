@@ -1,10 +1,8 @@
 import { formatQuoteReference, quoteExpired } from '@integr8/core';
 import { getPlatformDataSource, type TenantTransaction, withTenant } from '@integr8/db';
 import { z } from 'zod';
-import { ApiError, conflict, notFound } from '../../http/errors.js';
-import { isFeatureEnabled } from '../../http/features.js';
+import { conflict, notFound } from '../../http/errors.js';
 import { defineRoute, noSchema, type PublicRequestContext } from '../../http/routes.js';
-import { fill, messageLocale, wordsFor } from '../../notifications/words.js';
 import { addressSchema } from './operations.js';
 import {
   companyToday,
@@ -15,29 +13,25 @@ import {
   winOpportunity,
 } from './sales-quotes.js';
 import { iso, isoOrNull } from './schemas.js';
+import { authorizeWebsite } from './website-data.js';
 
 /**
- * The customer's view of a quote (CRM/ERP plan, phase S1; ADR-0006).
+ * The customer's view of a quote (CRM/ERP plan, phase S1; ADR-0006), through
+ * the company's own website.
  *
- * The link `/q/<token>` the office copied opens here. The token is a 256-bit
- * capability: whoever holds it reads the issued quote and may accept or
- * reject it until the quote's expiry, with no account and no session. It
- * exposes the quote and the company's name and logo, and nothing else: no
- * internal notes, no ids, no people. A token that is spent, revised,
- * cancelled or never existed answers 404 alike, so a stranger learns nothing
- * from guessing. The server's per-address rate limit covers these routes as
- * it covers every other.
- *
- * **With the company's sales module switched off** (Low 13, 1.2.4) a link that
- * would otherwise open answers 410 `quote_unavailable` instead — "no longer
- * available online, contact <company>", in English or Arabic by
- * `Accept-Language`, with the company's name in the details for a page that
- * writes its own words. Nothing is changed: switching sales back on restores
- * the link, which then answers as it always did (expired, answered, or open).
- * A link that is spent, revised or withdrawn stays the same 404 either way.
+ * The customer link opens `<company website>/q/<token>`. The company's server
+ * reads the quote here with its website key, and sends the customer's answer
+ * the same way. The token is a 256-bit capability: whoever holds it, through
+ * that website, reads the issued quote and may accept or reject it until it
+ * expires. It exposes the quote and the company's name and logo, and nothing
+ * else: no internal notes, no ids, no people. A token that is spent, revised,
+ * cancelled, never existed or belongs to another company answers 404 alike.
+ * Integr8 serves no quote page itself, and a company with no website has no
+ * customer link at all. Needs Integr8's `website_quotes` switch, the company's
+ * own and its sales module (`authorizeWebsite`), and is rate-limited per key.
  */
 
-const TAGS = ['sales'];
+const TAGS = ['website'];
 
 const tokenParams = z.object({
   token: z
@@ -82,40 +76,17 @@ export const publicQuoteSchema = z.object({
   canAnswer: z.boolean(),
 });
 
-async function quoteForToken(token: string, context: PublicRequestContext) {
+/** The quote a token names, when it is this website's company's live link. */
+async function quoteForToken(token: string, live: { tenantId: string }) {
   const found = await getPlatformDataSource().publicQuotes.byTokenHash(hashToken(token));
-  if (found === undefined) {
+  if (found?.tenantId !== live.tenantId) {
     throw notFound('This link is not valid.');
   }
   const brand = await getPlatformDataSource().tenantSettings.brandByTenantId(found.tenantId);
   if (brand === undefined) {
     throw notFound('This link is not valid.');
   }
-  if (!(await isFeatureEnabled(found.tenantId, 'sales'))) {
-    // Only a link that would open says so; one that is no longer real stays
-    // a 404, and does not name the company to whoever holds it.
-    const quote = await withTenant(found.tenantId, (tx) => tx.salesQuotes.findQuote(found.quoteId));
-    const opens =
-      quote?.issuedAt != null && ['issued', 'accepted', 'rejected'].includes(quote.status);
-    if (!opens) {
-      throw notFound('This link is not valid.');
-    }
-    throw quoteUnavailable(brand.name, context.acceptLanguage ?? null);
-  }
   return { ...found, brand };
-}
-
-/** 410 `quote_unavailable`, in the reader's language, naming the company. */
-function quoteUnavailable(company: string, acceptLanguage: string | null): ApiError {
-  const words = wordsFor(messageLocale(acceptLanguage)).publicQuote;
-  return new ApiError(410, 'quote_unavailable', fill(words.unavailable, { company }), [
-    {
-      field: 'company',
-      code: 'quote_unavailable',
-      message: company,
-      params: { company },
-    },
-  ]);
 }
 
 async function publicQuoteBody(
@@ -177,26 +148,31 @@ async function publicQuoteBody(
 
 export const getPublicQuoteRoute = defineRoute({
   method: 'get',
-  path: '/v1/public/quotes/:token',
-  operationId: 'getPublicQuote',
-  summary: 'An issued quote, for the customer holding its link',
+  path: '/v1/website/quotes/by-token/:token',
+  operationId: 'getWebsiteQuoteByToken',
+  summary: 'An issued quote, for the company website page its customer link opens',
   description:
-    'Public. The quote as issued — company, customer, lines, totals, terms, expiry — and whether it can still be answered. A link that is spent, revised, withdrawn or unknown is 404.',
+    'For a company’s website server, never a browser: `Authorization: Bearer <website key>`. The quote as issued — company, customer, lines, totals, terms, expiry — and whether it can still be answered. A link that is spent, revised, withdrawn, unknown or another company’s is 404. Needs website quote access on both sides and the sales module (403); rate-limited per key (429).',
   tags: TAGS,
   security: 'public',
+  websiteKeyAuth: true,
+  allowedWhenReadOnly: true,
   params: tokenParams,
   query: noSchema,
   body: noSchema,
   responses: {
     200: { description: 'The quote.', schema: publicQuoteSchema },
-    404: { description: 'This link is not valid.' },
-    410: {
+    401: { description: 'No website key, or not a live one (`website_key_invalid`).' },
+    403: {
       description:
-        'The company’s sales module is switched off, so the quote is no longer available online (`quote_unavailable`; `details[0].params.company` names the company).',
+        'Website quote access or the sales module is off (`feature_disabled`), or the company has no website (`website_missing`).',
     },
+    404: { description: 'This link is not valid.' },
+    429: { description: 'Too many requests with this key; slow down.' },
   },
   handler: async ({ params }, context: PublicRequestContext) => {
-    const { tenantId, quoteId, brand } = await quoteForToken(params.token, context);
+    const live = await authorizeWebsite(context, 'quotes');
+    const { tenantId, quoteId, brand } = await quoteForToken(params.token, live);
     const body = await withTenant(tenantId, (tx) => publicQuoteBody(tx, quoteId, brand));
     return { status: 200, body, headers: { 'cache-control': 'no-store' } };
   },
@@ -204,13 +180,15 @@ export const getPublicQuoteRoute = defineRoute({
 
 export const answerPublicQuoteRoute = defineRoute({
   method: 'post',
-  path: '/v1/public/quotes/:token/answer',
-  operationId: 'answerPublicQuote',
-  summary: 'Accept or reject a quote through its link',
+  path: '/v1/website/quotes/by-token/:token/answer',
+  operationId: 'answerWebsiteQuoteByToken',
+  summary: 'Record the customer’s answer to a quote, from the company website',
   description:
-    'Public. Records the customer’s answer with the name they typed and the moment, spends the link, and — for an acceptance — wins the quote’s opportunity. Refused once the quote has expired (409 `quote_expired`).',
+    'For a company’s website server, never a browser: `Authorization: Bearer <website key>`. Records the customer’s answer with the name they typed and the moment, spends the link, and — for an acceptance — wins the quote’s opportunity. The address recorded is the website server’s. Refused once the quote has expired (409 `quote_expired`). Same switches and rate limit as reading it.',
   tags: TAGS,
   security: 'public',
+  websiteKeyAuth: true,
+  allowedWhenReadOnly: true,
   params: tokenParams,
   query: noSchema,
   body: z.object({
@@ -221,18 +199,21 @@ export const answerPublicQuoteRoute = defineRoute({
   }),
   responses: {
     200: { description: 'The quote, answered.', schema: publicQuoteSchema },
+    401: { description: 'No website key, or not a live one (`website_key_invalid`).' },
+    403: {
+      description:
+        'Website quote access or the sales module is off (`feature_disabled`), or the company has no website (`website_missing`).',
+    },
     404: { description: 'This link is not valid.' },
     409: {
       description:
         'The quote has expired (`quote_expired`) or is no longer open (`quote_not_issued`).',
     },
-    410: {
-      description:
-        'The company’s sales module is switched off, so the quote cannot be answered online (`quote_unavailable`).',
-    },
+    429: { description: 'Too many requests with this key; slow down.' },
   },
   handler: async ({ params, body }, context: PublicRequestContext) => {
-    const { tenantId, quoteId, brand } = await quoteForToken(params.token, context);
+    const live = await authorizeWebsite(context, 'quotes');
+    const { tenantId, quoteId, brand } = await quoteForToken(params.token, live);
     const result = await withTenant(tenantId, async (tx) => {
       const quote = await tx.salesQuotes.lockQuote(quoteId);
       if (quote === undefined) {
@@ -265,7 +246,7 @@ export const answerPublicQuoteRoute = defineRoute({
           .append({
             actorKind: 'system',
             actorId: null,
-            actorLabel: 'customer-link',
+            actorLabel: 'company-website',
             action,
             resourceType,
             resourceId,

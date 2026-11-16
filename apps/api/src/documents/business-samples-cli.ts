@@ -97,8 +97,8 @@ async function main(): Promise<void> {
           timeZone: 'Africa/Cairo',
           qrUrl:
             kind === 'quote'
-              ? 'https://app.integr8-media.com/q/9mXr2kQ8vT0bN4sLwY7cJ1pE5hA3uZ6dG8fK0oR2iV4'
-              : 'https://app.integr8-media.com/d/Qm3vX8kT2pL9sN4wR7yB1c',
+              ? 'https://www.example.com/q/9mXr2kQ8vT0bN4sLwY7cJ1pE5hA3uZ6dG8fK0oR2iV4'
+              : 'https://www.example.com/documents/Qm3vX8kT2pL9sN4wR7yB1c',
           qrOpensQuote: kind === 'quote',
           images: { logo: logo ?? null, media },
           look: { brandColour: '#0e7490', fontKey: 'noto-sans', logo: logo ?? null },

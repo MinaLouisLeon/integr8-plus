@@ -26,7 +26,7 @@ import {
 import { createHash, randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import { ApiError, conflict, notFound, unprocessable } from '../../http/errors.js';
-import { defineRoute, noSchema, type RequestContext } from '../../http/routes.js';
+import { defineRoute, noSchema } from '../../http/routes.js';
 import {
   crmAudit as audit,
   decodeDateCursor,
@@ -41,6 +41,7 @@ import {
   personBody,
   personSchema,
 } from './operations.js';
+import { quoteLink } from '../../documents/render.js';
 import { iso, isoOrNull } from './schemas.js';
 
 /**
@@ -453,10 +454,13 @@ export function hashToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
 }
 
-/** The customer's link, when the API knows where the web app lives. */
-export function acceptUrl(context: RequestContext, token: string): string | null {
-  const base = context.config.WEB_APP_URL;
-  return base === undefined ? null : `${base.replace(/\/+$/u, '')}/q/${token}`;
+/**
+ * The customer's link: a page on the company's own website, whose server reads
+ * the quote with its website key. Null for a company with no website, which
+ * then has no customer link to send; the quote is still issued.
+ */
+export async function acceptUrl(tx: TenantTransaction, token: string): Promise<string | null> {
+  return quoteLink(token, (await tx.settings.get()).websiteUrl);
 }
 
 /**
@@ -734,7 +738,7 @@ export const issueQuoteRoute = defineRoute({
   operationId: 'issueQuote',
   summary: 'Issue a quote to the customer',
   description:
-    "Owners and admins issue. Freezes the customer's name and address and the lines onto the quote, and mints the customer's link, returned once here (`acceptUrl`, when the web app's address is configured; `acceptToken` always). An empty draft cannot be issued (422 `quote_empty`).",
+    "Owners and admins issue. Freezes the customer's name and address and the lines onto the quote, and mints the customer's link, returned once here (`acceptUrl`, a page on the company's own website, null when the company has none; `acceptToken` always). The customer opens it on that website, whose server reads the quote with its website key; Integr8 serves no quote pages. An empty draft cannot be issued (422 `quote_empty`).",
   tags: TAGS,
   security: 'authenticated',
   permission: 'sales.issue',
@@ -791,7 +795,7 @@ export const issueQuoteRoute = defineRoute({
       return {
         ...(await quoteDetail(tx, context.principal, issued)),
         acceptToken: token,
-        acceptUrl: acceptUrl(context, token),
+        acceptUrl: await acceptUrl(tx, token),
       };
     });
     return { status: 200, body: result };

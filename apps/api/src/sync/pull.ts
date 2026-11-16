@@ -98,8 +98,6 @@ export async function pullPage(
     page?: string;
     retentionDays: number;
     now: Date;
-    /** Where the web app lives, for the asset tag links the phone shows. */
-    webAppUrl?: string | undefined;
     /**
      * The `x-client-version` the phone declared: a form whose live version it
      * is too old to open is marked for it (see `form-formats.ts`).
@@ -220,10 +218,7 @@ export async function pullPage(
   const assetSiteIds = (await isFeatureEnabled(principal.tenantId, 'assets'))
     ? [...new Set(jobs.map((job) => job.siteId))]
     : [];
-  const assets = await withCarryOver(
-    tx,
-    await assetsForSites(tx, principal, options.webAppUrl, assetSiteIds),
-  );
+  const assets = await withCarryOver(tx, await assetsForSites(tx, principal, assetSiteIds));
 
   const last = changed.ids.at(-1);
   return {

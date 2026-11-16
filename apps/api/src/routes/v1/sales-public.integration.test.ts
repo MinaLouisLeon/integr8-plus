@@ -8,14 +8,20 @@ import {
 } from '../../testing/api-harness.js';
 
 /**
- * The customer's link (CRM/ERP plan, phase S1; ADR-0006): the token the
- * office copies opens the issued quote with no session, shows the company and
- * nothing internal, takes one answer that spends it and wins the opportunity,
- * refuses an expired quote, and tells a stranger nothing about a bad link.
+ * The customer's link (CRM/ERP plan, phase S1; ADR-0006), on the company's own
+ * website: the link opens `<website>/q/<token>`, whose server reads the issued
+ * quote with its website key. It shows the company and nothing internal, takes
+ * one answer that spends it and wins the opportunity, refuses an expired quote,
+ * and tells a stranger nothing about a bad link. Integr8 serves no quote page,
+ * and a company without a website has no customer link.
  */
+
+const SITE = 'https://www.riverside-services.example';
 
 let api: ApiHarness;
 let admin: PlatformAdmin;
+let manager: PlatformAdmin;
+let websiteKey: string;
 let owner: Member;
 let dispatcher: Member;
 const tokens = new Map<Member, string>();
@@ -48,12 +54,21 @@ async function call(
   });
 }
 
-/** No session at all: what the customer's browser sends. */
-const anonymous = (method: 'GET' | 'POST', url: string, payload?: Record<string, unknown>) =>
+/** The company website's server, holding its key: what reads the quote now. */
+const website = (
+  method: 'GET' | 'POST',
+  token: string,
+  payload?: Record<string, unknown>,
+  key: string | null = websiteKey,
+) =>
   api.app.inject({
     method,
-    url,
-    headers: { 'x-client-version': '1.0.0', 'x-client-app': 'web' },
+    url: `/v1/website/quotes/by-token/${token}${method === 'POST' ? '/answer' : ''}`,
+    headers: {
+      'x-client-version': '1.0.0',
+      'x-client-app': 'web',
+      ...(key === null ? {} : { authorization: `Bearer ${key}` }),
+    },
     ...(payload === undefined ? {} : { payload }),
   });
 
@@ -96,14 +111,34 @@ async function issuedQuote(payload: Record<string, unknown> = {}) {
 beforeAll(async () => {
   api = await startApi();
   admin = await api.platformAdmin('pq-staff');
+  manager = await api.platformAdmin('pq-manager', { manager: true });
   owner = await api.member('owner', 'pq-owner');
   dispatcher = await api.member('dispatcher', 'pq-dispatcher');
-  const flag = await api.call(admin.accessToken, {
-    method: 'PUT',
-    url: `/v1/platform/companies/${api.tenantId}/flags/sales`,
-    payload: { enabled: true },
+  for (const name of ['sales', 'website_quotes']) {
+    const flag = await api.call(admin.accessToken, {
+      method: 'PUT',
+      url: `/v1/platform/companies/${api.tenantId}/flags/${name}`,
+      payload: { enabled: true },
+    });
+    expect(flag.statusCode, flag.body).toBe(200);
+  }
+  const site = await api.call(admin.accessToken, {
+    method: 'PATCH',
+    url: `/v1/platform/companies/${api.tenantId}/settings`,
+    payload: { websiteUrl: SITE },
   });
-  expect(flag.statusCode, flag.body).toBe(200);
+  expect(site.statusCode, site.body).toBe(200);
+  const own = await call(owner, 'PATCH', '/v1/settings/website-access', {
+    websiteQuotesEnabled: true,
+  });
+  expect(own.statusCode, own.body).toBe(200);
+  const key = await api.call(manager.accessToken, {
+    method: 'POST',
+    url: `/v1/platform/companies/${api.tenantId}/website-keys`,
+    payload: { label: 'quote pages' },
+  });
+  expect(key.statusCode, key.body).toBe(201);
+  websiteKey = json<{ secret: string }>(key).secret;
   const customer = await call(dispatcher, 'POST', '/v1/customers', {
     name: 'Riverside Housing',
     address: { line1: '1 River Road', city: 'Cairo', countryCode: 'EG' },
@@ -117,10 +152,28 @@ afterAll(async () => {
 });
 
 describe('the customer’s link', () => {
-  it('opens the issued quote without a session, showing the company and nothing internal', async () => {
+  it('points at the company’s website and is served only through its key', async () => {
+    const issued = await issuedQuote();
+    expect(issued.acceptUrl).toBe(`${SITE}/q/${issued.acceptToken}`);
+    // Integr8 serves no quote page.
+    const integr8 = await api.app.inject({
+      method: 'GET',
+      url: `/v1/public/quotes/${issued.acceptToken}`,
+      headers: { 'x-client-version': '1.0.0', 'x-client-app': 'web' },
+    });
+    expect(integr8.statusCode).toBe(404);
+    // No key, or a made-up one: refused alike.
+    for (const key of [null, `i8wk_${'x'.repeat(43)}`]) {
+      const refused = await website('GET', issued.acceptToken, undefined, key);
+      expect(refused.statusCode).toBe(401);
+      expect(code(refused)).toBe('website_key_invalid');
+    }
+  });
+
+  it('opens the issued quote for the website, showing the company and nothing internal', async () => {
     const issued = await issuedQuote();
     expect(issued.acceptToken).toMatch(/^[A-Za-z0-9_-]{43}$/u);
-    const response = await anonymous('GET', `/v1/public/quotes/${issued.acceptToken}`);
+    const response = await website('GET', issued.acceptToken);
     expect(response.statusCode, response.body).toBe(200);
     const seen = json<PublicQuote>(response);
     expect(seen.quote).toMatchObject({
@@ -139,12 +192,12 @@ describe('the customer’s link', () => {
 
   it('takes one answer, which spends the link and shows in the office', async () => {
     const issued = await issuedQuote();
-    const noName = await anonymous('POST', `/v1/public/quotes/${issued.acceptToken}/answer`, {
+    const noName = await website('POST', issued.acceptToken, {
       status: 'accepted',
     });
     expect(noName.statusCode).toBe(422);
 
-    const accepted = await anonymous('POST', `/v1/public/quotes/${issued.acceptToken}/answer`, {
+    const accepted = await website('POST', issued.acceptToken, {
       status: 'accepted',
       name: 'Mrs Hassan',
     });
@@ -157,12 +210,10 @@ describe('the customer’s link', () => {
     expect(after.canAnswer).toBe(false);
 
     // Spent: the same link now says nothing.
-    expect((await anonymous('GET', `/v1/public/quotes/${issued.acceptToken}`)).statusCode).toBe(
-      404,
-    );
+    expect((await website('GET', issued.acceptToken)).statusCode).toBe(404);
     expect(
       (
-        await anonymous('POST', `/v1/public/quotes/${issued.acceptToken}/answer`, {
+        await website('POST', issued.acceptToken, {
           status: 'rejected',
           name: 'Again',
         })
@@ -183,12 +234,10 @@ describe('the customer’s link', () => {
 
   it('refuses an expired quote but still shows it', async () => {
     const issued = await issuedQuote({ validUntil: '2020-01-01' });
-    const seen = json<PublicQuote>(
-      await anonymous('GET', `/v1/public/quotes/${issued.acceptToken}`),
-    );
+    const seen = json<PublicQuote>(await website('GET', issued.acceptToken));
     expect(seen.quote.expired).toBe(true);
     expect(seen.canAnswer).toBe(false);
-    const late = await anonymous('POST', `/v1/public/quotes/${issued.acceptToken}/answer`, {
+    const late = await website('POST', issued.acceptToken, {
       status: 'accepted',
       name: 'Too late',
     });
@@ -202,17 +251,15 @@ describe('the customer’s link', () => {
       expectedVersion: issued.quote.version,
     });
     expect(revised.statusCode, revised.body).toBe(200);
-    expect((await anonymous('GET', `/v1/public/quotes/${issued.acceptToken}`)).statusCode).toBe(
-      404,
-    );
-    const unknown = await anonymous('GET', `/v1/public/quotes/${randomUUID().replaceAll('-', '')}`);
+    expect((await website('GET', issued.acceptToken)).statusCode).toBe(404);
+    const unknown = await website('GET', randomUUID().replaceAll('-', ''));
     expect(unknown.statusCode).toBe(404);
-    const malformed = await anonymous('GET', '/v1/public/quotes/not%20a%20token');
+    const malformed = await website('GET', 'not%20a%20token');
     expect(malformed.statusCode).toBe(422);
   });
 });
 
-describe('with the sales module switched off (Low 13)', () => {
+describe('when the company cannot show quotes online', () => {
   async function sales(enabled: boolean) {
     const flag = await api.call(admin.accessToken, {
       method: 'PUT',
@@ -222,79 +269,47 @@ describe('with the sales module switched off (Low 13)', () => {
     expect(flag.statusCode, flag.body).toBe(200);
   }
 
-  it('says the quote is no longer online, naming the company, and restores it when on', async () => {
+  it('refuses the website while sales is off, and opens again when it is on', async () => {
     const open = await issuedQuote();
-    const expired = await issuedQuote({ validUntil: '2020-01-01' });
-    const withdrawn = await issuedQuote();
-    const cancelled = await call(owner, 'POST', `/v1/sales/quotes/${withdrawn.quote.id}/cancel`, {
-      expectedVersion: withdrawn.quote.version,
-    });
-    expect(cancelled.statusCode, cancelled.body).toBe(200);
-    const company = json<PublicQuote>(
-      await anonymous('GET', `/v1/public/quotes/${open.acceptToken}`),
-    ).company.name;
-
     await sales(false);
     try {
-      const seen = await anonymous('GET', `/v1/public/quotes/${open.acceptToken}`);
-      expect(seen.statusCode).toBe(410);
-      const error = json<{
-        error: { code: string; message: string; details: { params: { company: string } }[] };
-      }>(seen).error;
-      expect(error.code).toBe('quote_unavailable');
-      expect(error.message).toBe(
-        `This quote is no longer available online. Please contact ${company}.`,
-      );
-      expect(error.details[0]?.params.company).toBe(company);
+      const seen = await website('GET', open.acceptToken);
+      expect(seen.statusCode).toBe(403);
+      expect(code(seen)).toBe('feature_disabled');
       expect(seen.body).not.toContain('Boiler service');
-
-      // In Arabic for a reader whose browser prefers it.
-      const arabic = await api.app.inject({
-        method: 'GET',
-        url: `/v1/public/quotes/${open.acceptToken}`,
-        headers: {
-          'x-client-version': '1.0.0',
-          'x-client-app': 'web',
-          'accept-language': 'ar-EG,ar;q=0.9,en;q=0.8',
-        },
-      });
-      expect(arabic.statusCode).toBe(410);
-      expect(json<{ error: { message: string } }>(arabic).error.message).toContain(company);
-      expect(json<{ error: { message: string } }>(arabic).error.message).toContain(
-        '\u064a\u064f\u0631\u062c\u0649',
-      );
-
-      // Nor can it be answered, and an expired one says the same.
-      const answer = await anonymous('POST', `/v1/public/quotes/${open.acceptToken}/answer`, {
+      const answer = await website('POST', open.acceptToken, {
         status: 'accepted',
         name: 'While off',
       });
-      expect(answer.statusCode).toBe(410);
-      expect(code(answer)).toBe('quote_unavailable');
-      expect((await anonymous('GET', `/v1/public/quotes/${expired.acceptToken}`)).statusCode).toBe(
-        410,
-      );
-
-      // A withdrawn link stays a 404 that names nobody.
-      const gone = await anonymous('GET', `/v1/public/quotes/${withdrawn.acceptToken}`);
-      expect(gone.statusCode).toBe(404);
-      expect(gone.body).not.toContain(company);
+      expect(answer.statusCode).toBe(403);
     } finally {
       await sales(true);
     }
+    expect(json<PublicQuote>(await website('GET', open.acceptToken)).canAnswer).toBe(true);
+  });
 
-    // Back on: the link opens as before; the expired one is still expired.
-    const again = json<PublicQuote>(
-      await anonymous('GET', `/v1/public/quotes/${open.acceptToken}`),
-    );
-    expect(again.canAnswer).toBe(true);
-    const stillExpired = json<PublicQuote>(
-      await anonymous('GET', `/v1/public/quotes/${expired.acceptToken}`),
-    );
-    expect(stillExpired.quote.expired).toBe(true);
-    expect(stillExpired.canAnswer).toBe(false);
-    expect((await anonymous('GET', `/v1/public/quotes/${withdrawn.acceptToken}`)).statusCode).toBe(
-      404,
-    );
+  it('gives no customer link and serves nothing without a website', async () => {
+    const before = await issuedQuote();
+    const settings = `/v1/platform/companies/${api.tenantId}/settings`;
+    const cleared = await api.call(admin.accessToken, {
+      method: 'PATCH',
+      url: settings,
+      payload: { websiteUrl: null },
+    });
+    expect(cleared.statusCode, cleared.body).toBe(200);
+    try {
+      const issued = await issuedQuote();
+      expect(issued.acceptUrl).toBeNull();
+      const refused = await website('GET', before.acceptToken);
+      expect(refused.statusCode).toBe(403);
+      expect(code(refused)).toBe('website_missing');
+    } finally {
+      const restored = await api.call(admin.accessToken, {
+        method: 'PATCH',
+        url: settings,
+        payload: { websiteUrl: SITE },
+      });
+      expect(restored.statusCode, restored.body).toBe(200);
+    }
   });
 });
