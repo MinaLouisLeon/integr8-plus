@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
+  actionProblems,
   check,
   dockerNodeVersions,
   isPinned,
@@ -98,6 +99,23 @@ test('.nvmrc, the Dockerfiles and engines must agree', () => {
       .length,
     1,
   );
+});
+
+test('actions are pinned to a full commit; tags, branches and short shas fail', () => {
+  const sha = 'a'.repeat(40);
+  const workflow = [
+    'steps:',
+    `  - uses: actions/checkout@${sha} # v7.0.1`,
+    '  - uses: ./.github/workflows/verify.yml',
+    "  - uses: 'pnpm/action-setup@v6'",
+    '    uses: dtolnay/rust-toolchain@stable',
+    '  - uses: actions/setup-node@abc1234',
+  ].join('\n');
+  const problems = actionProblems('ci.yml', workflow);
+  assert.equal(problems.length, 3);
+  assert.match(problems[0], /pnpm\/action-setup@v6/u);
+  assert.match(problems[1], /rust-toolchain@stable/u);
+  assert.match(problems[2], /setup-node@abc1234/u);
 });
 
 test('this repository passes', () => {

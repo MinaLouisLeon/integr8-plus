@@ -13,6 +13,12 @@
 //    `node-version-file`), every `FROM node:` in the Dockerfiles is that same
 //    release, and it satisfies the root package.json `engines.node`, which
 //    `engine-strict` in .npmrc makes pnpm enforce on developers' machines.
+// 3. Every GitHub Action a workflow uses is pinned to a full commit
+//    (`owner/repo@<40 hex>  # v1.2.3`), never a tag or a branch (SEC-005). A
+//    tag can be moved by whoever controls the action, and the release jobs
+//    hold the desktop updater's signing key and a token that writes releases.
+//    The comment names the version so Dependabot can still propose updates.
+//    The repository's own reusable workflows (`./.github/...`) are exempt.
 //
 // It prints every problem and exits 1 when there is one. No dependency of its own.
 
@@ -125,6 +131,37 @@ export function nodeProblems({ nvmrc, engines, dockerfiles }) {
   return problems;
 }
 
+const PINNED_ACTION = /^[^@\s]+@[0-9a-f]{40}$/u;
+
+/** Problems with one workflow's `uses:` lines: each must name a full commit. */
+export function actionProblems(file, workflow) {
+  const problems = [];
+  for (const match of workflow.matchAll(/^\s*-?\s*uses:\s*(\S+)/gmu)) {
+    const target = match[1].replace(/^['"]|['"]$/gu, '');
+    if (target.startsWith('./') || target.startsWith('docker://')) {
+      continue;
+    }
+    if (!PINNED_ACTION.test(target)) {
+      problems.push(
+        `${file}: "${target}" is not pinned to a full commit; use owner/repo@<sha> # vX.Y.Z`,
+      );
+    }
+  }
+  return problems;
+}
+
+/** Every workflow file under .github/workflows. */
+function workflows(root) {
+  const dir = join('.github', 'workflows');
+  if (!existsSync(join(root, dir))) {
+    return [];
+  }
+  return readdirSync(join(root, dir))
+    .filter((name) => /\.ya?ml$/u.test(name))
+    .sort()
+    .map((name) => join(dir, name));
+}
+
 /** Every workspace package.json, the root's included. */
 function manifests(root) {
   const files = ['package.json'];
@@ -175,6 +212,9 @@ export function check(root) {
       dockerfiles: Object.fromEntries(dockerfiles(root).map((file) => [file, read(file)])),
     }),
   );
+  for (const file of workflows(root)) {
+    problems.push(...actionProblems(file, read(file)));
+  }
   return problems;
 }
 
@@ -188,5 +228,7 @@ if (process.argv[1] && relative(process.argv[1], fileURLToPath(import.meta.url))
     }
     process.exit(1);
   }
-  console.log('Exact dependency versions; .nvmrc, the Dockerfiles and engines agree on Node.');
+  console.log(
+    'Exact dependency versions; .nvmrc, the Dockerfiles and engines agree on Node; every action pinned to a commit.',
+  );
 }
