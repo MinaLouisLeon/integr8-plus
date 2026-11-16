@@ -121,6 +121,9 @@ jobs:
     needs: [preflight, artifacts]
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Signs the update list with UPDATE_SIGNING_KEY, which lives only in this
+    # protected environment (SEC-004, SEC-005).
+    environment: release
     permissions:
       contents: write
     steps:
@@ -149,6 +152,15 @@ jobs:
           pattern: dev-mcp-*
           path: dist
           merge-multiple: true
+
+      # Integr8's signed list of every file's hash (SEC-004): Forms for AI and
+      # the developer program update themselves only from a release that has
+      # one, signed with the key built into them.
+      - name: Sign the update list
+        env:
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+          VERSION: ${{ needs.preflight.outputs.version }}
+        run: node scripts/releases/sign-updates.mjs --dir dist --version "$VERSION"
 
       - name: Create the release
         env:

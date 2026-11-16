@@ -328,7 +328,17 @@ export interface DevMcpRelease {
   tag: string;
   version: string;
   downloads: DevMcpDownload[];
+  /**
+   * Integr8's signed list of the release's files and hashes, and its
+   * signature (SEC-004), linked like the files; null when the release has
+   * none, which an installed program then refuses to update from.
+   */
+  signedList: { manifestUrl: string; signatureUrl: string } | null;
 }
+
+/** The signed update list's file names in a release (`scripts/releases/sign-updates.mjs`). */
+export const UPDATE_MANIFEST_ASSET = 'integr8-update-manifest.json';
+export const UPDATE_SIGNATURE_ASSET = `${UPDATE_MANIFEST_ASSET}.sig`;
 
 /** What a release file is, when it is one of the developer MCP server's files (not a checksum). */
 export function devMcpAssetOf(
@@ -390,7 +400,20 @@ export function devMcpDownloads(
       KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind),
   );
   const version = /v(\d+\.\d+\.\d+)$/u.exec(release.tag_name)?.[1] ?? release.tag_name;
-  return { tag: release.tag_name, version, downloads };
+  const manifest = release.assets.find((asset) => asset.name === UPDATE_MANIFEST_ASSET);
+  const signature = release.assets.find((asset) => asset.name === UPDATE_SIGNATURE_ASSET);
+  return {
+    tag: release.tag_name,
+    version,
+    downloads,
+    signedList:
+      manifest === undefined || signature === undefined
+        ? null
+        : {
+            manifestUrl: link(manifest.name, manifest.browser_download_url),
+            signatureUrl: link(signature.name, signature.browser_download_url),
+          },
+  };
 }
 
 /**

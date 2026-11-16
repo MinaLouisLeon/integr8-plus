@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, generateKeyPairSync, sign } from 'node:crypto';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -18,8 +18,14 @@ import { KEYRING_FILE, SessionStore } from './store.js';
  * The developer MCP server as an installed program (P43): where it installs,
  * that the installer expects exactly the tools it serves, and that it updates
  * itself from the release list a signed-in API gives, refusing a download
- * that does not match its published checksum.
+ * that Integr8's signed update list does not vouch for (SEC-004).
  */
+
+/** A throwaway update key, standing in for Integr8's. */
+const testKey = generateKeyPairSync('ed25519');
+const TEST_KEYS = [
+  testKey.publicKey.export({ type: 'spki', format: 'der' }).subarray(12).toString('base64'),
+];
 
 const root = mkdtempSync(join(tmpdir(), 'dev-mcp-program-'));
 
@@ -87,7 +93,9 @@ describe('updating itself', () => {
     return store;
   };
 
-  const releaseFetch = (options: { programSum?: string } = {}): typeof fetch =>
+  const releaseFetch = (
+    options: { programSum?: string; signedList?: boolean; signer?: typeof testKey.privateKey } = {},
+  ): typeof fetch =>
     ((url: string | URL) => {
       const path = String(url);
       if (path === 'https://api.example/v1/platform/downloads') {
@@ -115,16 +123,39 @@ describe('updating itself', () => {
                     checksumUrl: 'https://files/k.sha256',
                   },
                 ],
+                signedList:
+                  options.signedList === false
+                    ? null
+                    : {
+                        manifestUrl: 'https://files/m.json',
+                        signatureUrl: 'https://files/m.json.sig',
+                      },
               },
             },
           }),
         );
       }
+      const manifest = Buffer.from(
+        JSON.stringify({
+          format: 1,
+          version: '2.1.0',
+          files: {
+            'integr8-dev-mcp-2.1.0-linux-x64': options.programSum ?? sha(program),
+            'integr8-dev-mcp-keyring-2.1.0-linux-x64.node': sha(keyring),
+          },
+        }),
+      );
       const files: Record<string, string | Uint8Array> = {
         'https://files/p': program,
-        'https://files/p.sha256': `${options.programSum ?? sha(program)}  p`,
+        'https://files/p.sha256': `${sha(program)}  p`,
         'https://files/k': keyring,
         'https://files/k.sha256': sha(keyring),
+        'https://files/m.json': manifest,
+        'https://files/m.json.sig': sign(
+          null,
+          manifest,
+          options.signer ?? testKey.privateKey,
+        ).toString('base64'),
       };
       const body = files[path];
       return Promise.resolve(
@@ -156,19 +187,47 @@ describe('updating itself', () => {
     const target = join(root, 'integr8-dev-mcp');
     writeFileSync(target, 'old program');
     writeFileSync(join(root, KEYRING_FILE), 'old keyring');
-    await applyDevUpdate(offer!, target, { fetch: releaseFetch() });
+    await applyDevUpdate(offer!, target, { fetch: releaseFetch(), keys: TEST_KEYS });
     expect(readFileSync(target, 'utf8')).toBe('new program bytes');
     expect(readFileSync(join(root, KEYRING_FILE), 'utf8')).toBe('new keyring bytes');
   });
 
-  it('changes nothing when a download does not match its checksum', async () => {
+  it('changes nothing when a download does not match the signed list', async () => {
     const store = await signedIn();
     const bad = releaseFetch({ programSum: '0'.repeat(64) });
     const offer = await checkForDevUpdate(linux(), '2.0.0', { store, fetch: bad });
     const target = join(root, 'kept');
     writeFileSync(target, 'old program');
-    await expect(applyDevUpdate(offer!, target, { fetch: bad })).rejects.toThrow(/checksum/u);
+    await expect(applyDevUpdate(offer!, target, { fetch: bad, keys: TEST_KEYS })).rejects.toThrow(
+      /does not match Integr8's signed update list/u,
+    );
     expect(readFileSync(target, 'utf8')).toBe('old program');
+  });
+
+  it('changes nothing when the list is signed by another key', async () => {
+    const store = await signedIn();
+    const forged = releaseFetch({ signer: generateKeyPairSync('ed25519').privateKey });
+    const offer = await checkForDevUpdate(linux(), '2.0.0', { store, fetch: forged });
+    const target = join(root, 'forged');
+    writeFileSync(target, 'old program');
+    await expect(
+      applyDevUpdate(offer!, target, { fetch: forged, keys: TEST_KEYS }),
+    ).rejects.toThrow(/not signed by Integr8/u);
+    // Nor is the test key trusted when the program's own key is used.
+    await expect(applyDevUpdate(offer!, target, { fetch: releaseFetch() })).rejects.toThrow(
+      /not signed by Integr8/u,
+    );
+    expect(readFileSync(target, 'utf8')).toBe('old program');
+  });
+
+  it('offers no update from a release without a signed list', async () => {
+    const store = await signedIn();
+    expect(
+      await checkForDevUpdate(linux(), '2.0.0', {
+        store,
+        fetch: releaseFetch({ signedList: false }),
+      }),
+    ).toBeUndefined();
   });
 });
 

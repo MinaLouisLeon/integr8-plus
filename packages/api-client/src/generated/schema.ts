@@ -8831,7 +8831,7 @@ export interface paths {
         };
         /**
          * The staff app, Integr8 Forms for AI and the developer MCP server, newest release of each
-         * @description Read from the GitHub releases this deployment is set to (`APP_RELEASES=github`). `devMcp` (P43) lists the developer program’s first download (`zip`) and the files an installed program updates itself with (`program`, `keyring`), each with its checksum; a staff session limited to test companies may read it. Each is `found` with its files, `none` when nothing is published (or releases are not read here), or `unavailable` when GitHub could not be asked.
+         * @description Read from the GitHub releases this deployment is set to (`APP_RELEASES=github`). `devMcp` (P43) lists the developer program’s first download (`zip`) and the files an installed program updates itself with (`program`, `keyring`), each with its checksum, and `signedList`, Integr8’s signed list of the release’s hashes that an installed program checks before it updates itself (SEC-004); a staff session limited to test companies may read it. Each is `found` with its files, `none` when nothing is published (or releases are not read here), or `unavailable` when GitHub could not be asked.
          */
         get: operations["getPlatformDownloads"];
         put?: never;
@@ -88829,6 +88829,10 @@ export interface operations {
                                     size: number | null;
                                     checksumUrl: string | null;
                                 }[];
+                                signedList: {
+                                    manifestUrl: string;
+                                    signatureUrl: string;
+                                } | null;
                             };
                         } | {
                             /** @enum {string} */

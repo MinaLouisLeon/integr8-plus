@@ -62,6 +62,10 @@ jobs:
       - name: Exact versions
         run: pnpm pins:check
 
+      # The release's signed update list (scripts/releases/sign-updates.mjs, SEC-004).
+      - name: Update signing
+        run: pnpm releases:check
+
       # The setup guide is kept as Markdown and as HTML, CSS and JavaScript;
       # they must say the same thing (AGENTS.md, "The setup guide").
       - name: Setup guide copies agree
