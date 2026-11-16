@@ -1,4 +1,4 @@
-import type { AppRelease, DesktopUpdateFeed, FormsAiRelease } from './feed.js';
+import type { AppRelease, DesktopUpdateFeed, DevMcpRelease, FormsAiRelease } from './feed.js';
 
 /**
  * What the server found for one app's downloads, for a screen to show. Shared
@@ -13,6 +13,10 @@ export type ReleaseLookup =
 /** Integr8 Forms for AI, from the newest staff release that carries it. */
 export type FormsAiLookup =
   { status: 'found'; release: FormsAiRelease } | { status: 'none' } | { status: 'unavailable' };
+
+/** The developer MCP server's program (P43), from the staff releases. */
+export type DevMcpLookup =
+  { status: 'found'; release: DevMcpRelease } | { status: 'none' } | { status: 'unavailable' };
 
 /** One app's newest installable release. */
 export async function lookupInstallers(
@@ -47,6 +51,23 @@ export async function lookupFormsAi(
     return release === undefined ? { status: 'none' } : { status: 'found', release };
   } catch (error) {
     console.error('downloads', 'forms-ai', error);
+    return { status: 'unavailable' };
+  }
+}
+
+/** The developer MCP server's program files (P43), from the staff releases. */
+export async function lookupDevMcp(
+  feed: DesktopUpdateFeed | undefined,
+  origin = '',
+): Promise<DevMcpLookup> {
+  if (feed === undefined) {
+    return { status: 'none' };
+  }
+  try {
+    const release = await feed.devMcp(origin);
+    return release === undefined ? { status: 'none' } : { status: 'found', release };
+  } catch (error) {
+    console.error('downloads', 'dev-mcp', error);
     return { status: 'unavailable' };
   }
 }
