@@ -152,7 +152,7 @@ export function migrationProblems(statuses: readonly MigrationStatus[]): string[
     return [
       `This database was built by a release before 2.0.0 (it has ${before.version}_${before.name}). ` +
         '2.0.0 starts the schema again from a new baseline, so the database must be created afresh: ' +
-        'see the setup guide, "Moving to 2.0.0".',
+        'see the setup guide, "Start fresh on the machine".',
     ];
   }
 

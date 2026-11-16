@@ -257,8 +257,8 @@ only when given, never written as `($1 is null or col >= $1)`.
 
 ## Moving a company between servers
 
-`apps/api/src/transfer/` (staff only, the `transfer` service in compose; the
-setup guide, Stage 11 part AK, has the commands) writes one company to a
+`apps/api/src/transfer/` (staff only, the `transfer` service in compose; [deployment/](../deployment/README.md#moving-a-company-to-another-server)
+has the commands) writes one company to a
 `.tar.gz` and reads it into another server. The rows come from
 `@integr8/db`'s `transfer/`: every table whose `tenant_id` points at `tenants`,
 worked out from the catalogue, minus `NOT_TRANSFERRED` (sessions, queues and

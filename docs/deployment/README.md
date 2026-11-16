@@ -9,8 +9,9 @@ separate. A home test box (Ubuntu 24.04, Docker) checks out `staging`.
 
 **The operator's procedure is the setup guide**,
 [setup-checklist.md](./setup-checklist.md) (and the same as an interactive
-`setup-checklist.html`): every stage, part and tick box, from an empty machine
-to updates and recovery. Commands on the machine run as
+`setup-checklist.html` in the Integr8 Media look): a short checklist of every
+step, from an empty machine to going live, updates and starting fresh. Jobs
+done rarely are below, under [Occasional procedures](#occasional-procedures). Commands on the machine run as
 `docker compose -f deploy/compose.yml --env-file deploy/.env run --rm api node dist/…`.
 
 **The guide on GitHub Pages**, behind a username and password:
@@ -147,6 +148,93 @@ themselves from `app.integr8-media.com/desktop-updates`; `/download` and the
 updater need `GITHUB_RELEASES_TOKEN` because the repository is private. Builds
 are unsigned until certificates are bought: Windows shows SmartScreen, macOS
 needs right-click → Open, Linux and macOS downloads need `chmod +x`.
+
+## Occasional procedures
+
+Taken out of the setup guide in its short rewrite (the long edition is in git
+history before that commit). Every command runs on the machine from
+`/opt/integr8`; `dc` below stands for
+`docker compose -f deploy/compose.yml --env-file deploy/.env`.
+
+### Changing the HR key
+
+The server seals with `HR_DATA_KEY` and still opens what the keys in
+`HR_DATA_KEYS_PREVIOUS` sealed. Change it if it may have been seen, or on a
+schedule.
+
+1. Make a new key (setup guide, Stage 1). In the password manager save it as
+   current with today's date; relabel the old one "retired", never delete it.
+2. Back up (`sudo deploy/vps/backup-postgres.sh`).
+3. In `deploy/.env`: the old value into `HR_DATA_KEYS_PREVIOUS=` (first, comma
+   before any already there), the new one after `HR_DATA_KEY=`; `dc up -d`.
+4. Re-seal: `dc run --rm api node dist/platform/admin-cli.js hr-reseal`
+   (add a company id to try one first). It ends with "HR_DATA_KEYS_PREVIOUS can
+   be emptied"; a "No key opens" count means a key missing from both lines.
+5. Open an employee with an ID number and **Show** it; then empty
+   `HR_DATA_KEYS_PREVIOUS=` and `dc up -d`. Keep the retired key as long as
+   backups older than today exist: restoring one needs it back, then a re-seal.
+
+### Moving a company to another server
+
+One company's rows, files and sign-in accounts (with password hashes, so
+everyone keeps their password) to a server on the same release or newer. The
+archive is a credential: delete it once the move is done.
+
+```bash
+# old server
+sudo install -d -o 1000 -g 1000 -m 700 deploy/transfers
+dc --profile tools run --rm transfer node dist/transfer/cli.js export SLUG --out /transfers/SLUG.tar.gz
+# copy deploy/transfers/SLUG.tar.gz to the same folder on the new server (owner 1000:1000), then there:
+dc --profile tools run --rm transfer node dist/transfer/cli.js inspect /transfers/SLUG.tar.gz
+dc --profile tools run --rm transfer node dist/transfer/cli.js import /transfers/SLUG.tar.gz
+```
+
+If the import stops after the rows, run it again with `--continue`. Check a
+person signs in with their old password and a job opens with its photos; then
+`shred -u` the archive on both servers and the laptop, and close the company on
+the old server (Suspend, Export their data, Close this company).
+
+### Code signing
+
+Optional; updates work without it. Each set is used only when all its secrets
+exist.
+
+- **Windows, Azure Artifact Signing** (about $10 a month, check Integr8 Media is
+  eligible): secrets `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `AZURE_TENANT_ID`;
+  variables `AZURE_SIGNING_ENDPOINT`, `AZURE_SIGNING_ACCOUNT`,
+  `AZURE_SIGNING_PROFILE`. Or a `.pfx` certificate: `WINDOWS_CERTIFICATE`
+  (base64) and `WINDOWS_CERTIFICATE_PASSWORD`.
+- **macOS, a Developer ID Application certificate** (Apple Developer Program as
+  an organisation): `APPLE_CERTIFICATE` (the `.p12` as base64),
+  `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`; notarisation with
+  `ASC_API_KEY`, `ASC_KEY_ID`, `ASC_ISSUER_ID`, or `APPLE_ID`, `APPLE_PASSWORD`,
+  `APPLE_TEAM_ID`.
+
+The release's "Stamp" step prints which signing it used.
+
+### The app stores
+
+Until the variable `STORE_SUBMIT` is `enabled`, company phone builds are an
+installable `.apk` and nothing is submitted. Google Play: an organisation
+account, an app per company (`com.integr8.plus.<slug>`, the first upload by
+hand), and a service account key as the secret `GOOGLE_SERVICE_ACCOUNT_KEY`.
+Apple: the Developer Program connected to Expo, `EAS_PLATFORMS=all`, an App
+Store Connect key (`ASC_API_KEY`, `ASC_KEY_ID`, `ASC_ISSUER_ID`) and
+`ASC_APP_IDS` (`{"slug":"app id"}`); template apps go out as Custom Apps or
+unlisted apps (guideline 4.2.6). With several companies, move Expo to its
+Production plan.
+
+### The test box
+
+A home Ubuntu 24.04 machine with Docker runs the same stack from `staging`:
+its own generated secrets (never production's), every stand-in on
+(`MEDIA_STORAGE=local`, `GEOCODER=fake`, `PUSH_SENDER=recording`,
+`EMAIL_SENDER=recording`), the names `test.` and `api-test.` served by a
+Cloudflare Tunnel (`cloudflare/cloudflared` with `--network host`) instead of
+Caddy. Update it with `git pull` and `dc up -d --build`; `down -v` gives a clean
+database. Try it with the development desktop build:
+`VITE_API_BASE_URL=https://api-test.integr8-media.com pnpm --filter @integr8/desktop dev`
+(and `http://localhost:3002` in its `API_CORS_ORIGINS`).
 
 ## Not done yet
 
