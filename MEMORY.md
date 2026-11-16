@@ -468,6 +468,11 @@ the end of any piece of work that changes one of them, and date each section.
   runtime role calls must grant EXECUTE. Proven on a local Postgres 16: db (505), auth (97) and API
   (713) integration suites all pass; running the API suites also caught and fixed six test mistakes
   from round 1.
+- **SEC-003 (2026-11-16, branch `ccr-87dc93be-pye3tx`), as the owner agreed:** sharp 0.35.5, and
+  uploads are decoded as real photos only: `apps/api/src/media/photo-decoder.ts` blocks every libvips
+  loader for the process except the JPEG, PNG, WebP and HEIF buffer loaders (`sharp.block`/`unblock`);
+  thumbnails and PDF pictures use it. SVG or PDF bytes uploaded as a photo get no thumbnail. The
+  business samples CLI draws its SVG pictures before the first decode. No database or screen change.
 - **The demo seeder goes through the API**, in-process with Fastify's `inject`, as the
   company's own people (plus a staff impersonation for staff-only setup). Direct inserts
   were rejected: they skip numbering, stock, ledger postings and audit, and produce data

@@ -160,6 +160,11 @@ The application itself calls these correctly (`packages/db/src/repositories/ledg
 
 ## SEC-003 — Uploaded files are decoded by sharp/libvips whatever their declared type; sharp 0.35.4 carries a librsvg advisory
 
+**Status:** Fixed (2026-11-16, uncommitted). sharp is 0.35.5 (`pnpm audit` lists no sharp advisory);
+uploads are decoded through `media/photo-decoder.ts`, which blocks every libvips loader except JPEG,
+PNG, WebP and HEIF from memory, so SVG or PDF bytes dressed as a photo are refused unread. Unit tests
+prove both; the API integration suite (713) passes.
+
 **Severity:** Medium
 **Confidence:** Likely (the advisory's details were not reproduced; reachability confirmed from source)
 **Affected component:** API worker (thumbnails), PDF image preparation
