@@ -28,9 +28,10 @@ decisions (D1–D6), migration 0020 and setup guide Stage 11 part AL. Left:
 - [ ] The owner clicks through the staff app and a company's app in real Tauri
       builds on Windows (and macOS), and signs a new person in through an
       invitation.
-- [ ] On the machine: Stage 11 part AL (settings, `APP_RELEASES=github` with the
-      releases token, install the new staff app, build each company's app before
-      inviting).
+- [ ] On the machine (was the old guide's Stage 11 part AL): delete the
+      `PUBLIC_SIGNUP`, `BILLING_*` and `STRIPE_*` lines from `deploy/.env`, set
+      `APP_RELEASES=github` with the releases token, update (setup guide Stage 10),
+      install the new staff app, build each company's app before inviting.
 
 ### P40 Form actions
 
@@ -85,7 +86,7 @@ each is small to change.
 
 ## Owner steps
 
-For 2.0.0, on each machine (setup guide Stage 11 part AJ):
+For 2.0.0, on each machine (setup guide Stage 11, "Start fresh on the machine"):
 
 - [ ] `down -v`, `up -d --build`, create the super admins again, onboard or seed
       the companies again, delete the old companies' R2 buckets.
