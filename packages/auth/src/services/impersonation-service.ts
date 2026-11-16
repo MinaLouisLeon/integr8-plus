@@ -219,10 +219,10 @@ export class ImpersonationService {
    * customer's account after the customer asked them to stop is fifteen minutes
    * too many.
    */
-  async assertStillPermitted(principal: Principal): Promise<void> {
+  async assertStillPermitted(principal: Principal): Promise<{ limited: boolean }> {
     const impersonation = principal.impersonatedBy;
     if (impersonation === undefined) {
-      return;
+      return { limited: false };
     }
 
     const now = this.#clock();
@@ -236,6 +236,9 @@ export class ImpersonationService {
     if (grant.targetUserId !== principal.userId) {
       throw new ImpersonationDeniedError('Grant does not cover this user');
     }
+    // The grant is the authority, not the token: a token minted before the
+    // `lim` claim existed still carries a limited grant's limits.
+    return { limited: grant.fromLimitedSession || impersonation.lim === true };
   }
 
   /** Every grant against one company. An owner is owed this on request. */
