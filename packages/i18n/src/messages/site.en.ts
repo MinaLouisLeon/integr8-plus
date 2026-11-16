@@ -254,6 +254,11 @@ export const siteEn = {
       warning:
         'Not signed: Windows and macOS warn when it is first opened. On a Mac, right-click it and choose Open.',
     },
+    devMcp: {
+      title: 'Integr8 developer MCP server',
+      body: 'For Integr8’s developers: lets AI coding tools try features on a running API in test companies, build a company’s website against its documents, and build forms like Forms for AI. Unzip the file for your computer into one folder, double-click the program, tick your AI tools and sign in with your staff account.',
+      program: 'Program and keychain module, one zip',
+    },
     general: {
       companyDesktopTitle: 'Your company’s desktop app',
       companyDesktopBody:

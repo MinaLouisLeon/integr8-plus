@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { notFound } from '../../../http/errors.js';
 import { forgetTenantFeatures } from '../../../http/features.js';
 import { defineRoute, noSchema } from '../../../http/routes.js';
+import { sessionScopeRefusal } from '../../../http/session-scope.js';
 import { iso, isoOrNull } from '../schemas.js';
 import { recordPlatformAction } from './audit.js';
 import { announcementSchema, featureFlagSchema, platformListSchema } from './schemas.js';
@@ -103,15 +104,30 @@ export const upsertFlagRoute = defineRoute({
   },
 });
 
+/**
+ * The flags a staff session limited to test companies may set (P43): Integr8's
+ * grants for the company website API, and the documents module they stand on,
+ * for the developer MCP server's website work. Every other flag stays the
+ * dashboard's.
+ */
+export const TEST_SESSION_FLAGS: ReadonlySet<string> = new Set([
+  'documents',
+  'website_files',
+  'website_jobs',
+  'website_quotes',
+  'website_invoices',
+]);
+
 export const setCompanyFlagRoute = defineRoute({
   method: 'put',
   path: '/v1/platform/companies/:tenantId/flags/:key',
   operationId: 'setCompanyFlag',
   summary: 'Turn a flag on or off for one company',
   description:
-    'Sending `null` removes the override, which is different from turning it off: the company goes back to whatever the default is, including when the default later changes.',
+    'Sending `null` removes the override, which is different from turning it off: the company goes back to whatever the default is, including when the default later changes. A staff session limited to test companies may set only `documents` and the `website_*` flags (403 `session_scope` otherwise).',
   tags: ['platform'],
   security: 'platform',
+  platformScopes: ['full', 'test_companies'],
   params: z.object({ tenantId: z.uuid(), key: flagKey }),
   query: noSchema,
   body: z.object({ enabled: z.boolean().nullable() }),
@@ -120,8 +136,18 @@ export const setCompanyFlagRoute = defineRoute({
       description: 'The company’s flags, resolved.',
       schema: z.object({ flags: z.record(z.string(), z.boolean()) }),
     },
+    403: { description: 'A limited staff session setting another flag (`session_scope`).' },
   },
   handler: async ({ params, body }, context) => {
+    if (context.platform.scope === 'test_companies' && !TEST_SESSION_FLAGS.has(params.key)) {
+      throw await sessionScopeRefusal(
+        context,
+        { method: 'put', path: '/v1/platform/companies/:tenantId/flags/:key' },
+        'field',
+        params.tenantId,
+        `the flag ${params.key}`,
+      );
+    }
     const settings = getPlatformDataSource().settings;
     await settings.setFlag({
       tenantId: params.tenantId,

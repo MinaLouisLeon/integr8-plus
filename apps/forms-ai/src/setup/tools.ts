@@ -10,7 +10,6 @@ import {
 } from 'node:fs';
 import { dirname } from 'node:path';
 import { type Host, joinFor, localAppData, roamingAppData } from '../host.js';
-import { SERVER_NAME } from '../version.js';
 import { getEntry, removeEntry, setEntry } from './jsonc.js';
 import type { Runner } from './runner.js';
 import { getTomlServer, removeTomlTable, setTomlTable } from './toml.js';
@@ -19,9 +18,11 @@ import { getTomlServer, removeTomlTable, setTomlTable } from './toml.js';
  * The AI tools the installer connects the server to (decision 15), one small
  * adapter each. A tool with its own command for adding MCP servers is set up
  * with it (Claude Code, Codex, Gemini CLI); the others get their settings
- * file edited — backed up first, with a timestamp, and only the
- * `integr8-forms` entry touched (see `jsonc.ts`, `toml.ts`). Every entry runs
- * the installed program with `serve`; installing twice changes nothing.
+ * file edited — backed up first, with a timestamp, and only the program's
+ * own entry touched (see `jsonc.ts`, `toml.ts`): `integr8-forms` for Forms
+ * for AI, `integr8-dev` for the developer MCP server (P43), which uses these
+ * same adapters. Every entry runs the installed program with `serve`;
+ * installing twice changes nothing.
  */
 
 export type ToolId =
@@ -29,6 +30,8 @@ export type ToolId =
 
 export interface ToolContext {
   host: Host;
+  /** The name AI tools know the server by: the key of its entry in each configuration. */
+  serverName: string;
   /** The installed program every configuration runs. */
   program: string;
   runner: Runner;
@@ -147,7 +150,7 @@ function jsonAdapter(tool: JsonTool): ToolAdapter {
       const text = readText(file) ?? '';
       try {
         return Promise.resolve(
-          stateOf(getEntry(text, tool.section, SERVER_NAME), ctx.program, file),
+          stateOf(getEntry(text, tool.section, ctx.serverName), ctx.program, file),
         );
       } catch {
         return Promise.resolve({ kind: 'not_installed', where: file });
@@ -158,7 +161,7 @@ function jsonAdapter(tool: JsonTool): ToolAdapter {
       const before = readText(file) ?? '';
       let after: string;
       try {
-        after = setEntry(before, tool.section, SERVER_NAME, tool.entry(ctx.program));
+        after = setEntry(before, tool.section, ctx.serverName, tool.entry(ctx.program));
       } catch (error) {
         return Promise.resolve({
           ok: false,
@@ -184,7 +187,7 @@ function jsonAdapter(tool: JsonTool): ToolAdapter {
       }
       let after: string;
       try {
-        after = removeEntry(before, tool.section, SERVER_NAME);
+        after = removeEntry(before, tool.section, ctx.serverName);
       } catch (error) {
         return Promise.resolve({
           ok: false,
@@ -321,7 +324,7 @@ export const CLAUDE_CODE: ToolAdapter = {
     try {
       return Promise.resolve(
         stateOf(
-          getEntry(readText(file) ?? '', 'mcpServers', SERVER_NAME),
+          getEntry(readText(file) ?? '', 'mcpServers', ctx.serverName),
           ctx.program,
           'claude (user scope)',
         ),
@@ -336,13 +339,13 @@ export const CLAUDE_CODE: ToolAdapter = {
       return { ok: false, message: 'The claude command was not found.' };
     }
     // `add` refuses a name that exists, so an old entry is removed first.
-    await ctx.runner.run(claude, ['mcp', 'remove', '--scope', 'user', SERVER_NAME]);
+    await ctx.runner.run(claude, ['mcp', 'remove', '--scope', 'user', ctx.serverName]);
     const added = await ctx.runner.run(claude, [
       'mcp',
       'add',
       '--scope',
       'user',
-      SERVER_NAME,
+      ctx.serverName,
       '--',
       ctx.program,
       ...SERVE,
@@ -356,14 +359,20 @@ export const CLAUDE_CODE: ToolAdapter = {
     if (claude === undefined) {
       return { ok: false, message: 'The claude command was not found.' };
     }
-    const removed = await ctx.runner.run(claude, ['mcp', 'remove', '--scope', 'user', SERVER_NAME]);
+    const removed = await ctx.runner.run(claude, [
+      'mcp',
+      'remove',
+      '--scope',
+      'user',
+      ctx.serverName,
+    ]);
     return removed.code === 0
       ? { ok: true, message: 'Removed with claude mcp remove.' }
       : { ok: true, message: 'Nothing to remove.' };
   },
 };
 
-const CODEX_TABLE = ['mcp_servers', SERVER_NAME];
+const codexTable = (ctx: ToolContext) => ['mcp_servers', ctx.serverName];
 
 export function codexFile(host: Host): string {
   const home = host.env.CODEX_HOME;
@@ -384,7 +393,7 @@ export const CODEX: ToolAdapter = {
       return Promise.resolve({ kind: 'not_found' });
     }
     return Promise.resolve(
-      stateOf(getTomlServer(readText(file) ?? '', CODEX_TABLE), ctx.program, file),
+      stateOf(getTomlServer(readText(file) ?? '', codexTable(ctx)), ctx.program, file),
     );
   },
   async install(ctx) {
@@ -392,16 +401,16 @@ export const CODEX: ToolAdapter = {
     const file = codexFile(ctx.host);
     if (codex !== undefined) {
       if (
-        stateOf(getTomlServer(readText(file) ?? '', CODEX_TABLE), ctx.program, file).kind ===
+        stateOf(getTomlServer(readText(file) ?? '', codexTable(ctx)), ctx.program, file).kind ===
         'installed'
       ) {
         return { ok: true, message: 'Already set up.' };
       }
-      await ctx.runner.run(codex, ['mcp', 'remove', SERVER_NAME]);
+      await ctx.runner.run(codex, ['mcp', 'remove', ctx.serverName]);
       const added = await ctx.runner.run(codex, [
         'mcp',
         'add',
-        SERVER_NAME,
+        ctx.serverName,
         '--',
         ctx.program,
         ...SERVE,
@@ -411,7 +420,7 @@ export const CODEX: ToolAdapter = {
         : { ok: false, message: `codex mcp add failed: ${output(added)}` };
     }
     const before = readText(file) ?? '';
-    const after = setTomlTable(before, CODEX_TABLE, { command: ctx.program, args: [...SERVE] });
+    const after = setTomlTable(before, codexTable(ctx), { command: ctx.program, args: [...SERVE] });
     if (after === before) {
       return { ok: true, message: `Already set up in ${file}.` };
     }
@@ -423,7 +432,7 @@ export const CODEX: ToolAdapter = {
     const codex = ctx.runner.which('codex');
     const file = codexFile(ctx.host);
     if (codex !== undefined) {
-      const removed = await ctx.runner.run(codex, ['mcp', 'remove', SERVER_NAME]);
+      const removed = await ctx.runner.run(codex, ['mcp', 'remove', ctx.serverName]);
       return {
         ok: true,
         message: removed.code === 0 ? 'Removed with codex mcp remove.' : 'Nothing to remove.',
@@ -433,7 +442,7 @@ export const CODEX: ToolAdapter = {
     if (before === undefined) {
       return { ok: true, message: 'Nothing to remove.' };
     }
-    const after = removeTomlTable(before, CODEX_TABLE);
+    const after = removeTomlTable(before, codexTable(ctx));
     if (after === before) {
       return { ok: true, message: 'Nothing to remove.' };
     }
@@ -477,7 +486,7 @@ export const GEMINI: ToolAdapter = {
       'add',
       '--scope',
       'user',
-      SERVER_NAME,
+      ctx.serverName,
       ctx.program,
       ...SERVE,
     ]);
@@ -490,7 +499,13 @@ export const GEMINI: ToolAdapter = {
     if (gemini === undefined) {
       return GEMINI_FILE.remove(ctx);
     }
-    const removed = await ctx.runner.run(gemini, ['mcp', 'remove', '--scope', 'user', SERVER_NAME]);
+    const removed = await ctx.runner.run(gemini, [
+      'mcp',
+      'remove',
+      '--scope',
+      'user',
+      ctx.serverName,
+    ]);
     return {
       ok: true,
       message: removed.code === 0 ? 'Removed with gemini mcp remove.' : 'Nothing to remove.',

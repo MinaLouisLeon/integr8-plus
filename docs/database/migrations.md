@@ -48,7 +48,9 @@ with a message saying to create it afresh (state `before-baseline`). New work
 takes the next number after the highest file, and is immutable once applied
 like any other. The first after the baseline is `0020_desktop_only` (P42): it
 drops what self-serve sign-up, card billing and the web app's assistant switch
-used, in one release, because every row then was test data; the next is `0021`.
+used, in one release, because every row then was test data. `0021_test_company_localhost`
+(P43) lets a test company's website and document links be on `http://localhost`
+(a trigger refuses it for any other company); the next is `0022`.
 
 ### Where the old numbers went
 

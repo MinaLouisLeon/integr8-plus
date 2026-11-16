@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   DesktopUpdateFeed,
   desktopUpdateFeed,
+  devMcpAssetOf,
   type GitHubAsset,
   formsAiAssetOf,
   type GitHubRelease,
@@ -351,6 +352,70 @@ describe('Integr8 Forms for AI on the download page (1.3.0 decision 15)', () => 
       fetch: () => Promise.resolve(Response.json([release('v1.2.4')])),
     });
     expect(await older.formsAi()).toBeUndefined();
+  });
+});
+
+describe('the developer MCP server’s program (P43)', () => {
+  it('knows its files by name, and they are never the staff app’s installers', () => {
+    expect(devMcpAssetOf('integr8-dev-mcp-2.1.0-windows-x64.zip')).toEqual({
+      platform: 'windows',
+      arch: 'x64',
+      kind: 'zip',
+    });
+    expect(devMcpAssetOf('integr8-dev-mcp-2.1.0-windows-x64.exe')?.kind).toBe('program');
+    expect(devMcpAssetOf('integr8-dev-mcp-2.1.0-linux-x64')?.kind).toBe('program');
+    expect(devMcpAssetOf('integr8-dev-mcp-keyring-2.1.0-macos-arm64.node')?.kind).toBe('keyring');
+    for (const name of [
+      'integr8-dev-mcp-2.1.0-linux-x64.zip.sha256',
+      'integr8-dev-mcp-2.1.0-windows-x64',
+      'integr8-dev-mcp-2.1.0-linux-x64.exe',
+      'integr8-dev-mcp-2.1.0-linux-x64.node',
+      'integr8-dev-mcp-keyring-2.1.0-linux-x64',
+    ]) {
+      expect(devMcpAssetOf(name), name).toBeUndefined();
+    }
+    expect(installerOf('integr8-dev-mcp-2.1.0-windows-x64.exe')).toBeUndefined();
+  });
+
+  it('lists the newest staff release’s files with their checksums', async () => {
+    const tag = 'v2.1.0';
+    const files = [
+      'integr8-plus-staff_2.1.0_x64-setup.exe',
+      'integr8-dev-mcp-2.1.0-linux-x64',
+      'integr8-dev-mcp-2.1.0-linux-x64.sha256',
+      'integr8-dev-mcp-keyring-2.1.0-linux-x64.node',
+      'integr8-dev-mcp-keyring-2.1.0-linux-x64.node.sha256',
+      'integr8-dev-mcp-2.1.0-windows-x64.zip',
+      'integr8-dev-mcp-2.1.0-windows-x64.zip.sha256',
+    ];
+    const feed = new DesktopUpdateFeed({
+      repository: 'o/r',
+      token: 't0ken',
+      fetch: () =>
+        Promise.resolve(
+          Response.json([
+            {
+              tag_name: tag,
+              draft: false,
+              prerelease: false,
+              assets: files.map((name) => asset(tag, name)),
+            },
+          ]),
+        ),
+    });
+    const found = await feed.devMcp('https://app.example');
+    expect(found?.version).toBe('2.1.0');
+    expect(found?.downloads.map((file) => `${file.platform}-${file.kind}`)).toEqual([
+      'windows-zip',
+      'linux-program',
+      'linux-keyring',
+    ]);
+    expect(found?.downloads[1]?.checksumUrl).toBe(
+      'https://app.example/desktop-updates/staff/download/v2.1.0/integr8-dev-mcp-2.1.0-linux-x64.sha256',
+    );
+    expect((await feed.installers('staff'))?.installers.map((file) => file.name)).toEqual([
+      'integr8-plus-staff_2.1.0_x64-setup.exe',
+    ]);
   });
 });
 

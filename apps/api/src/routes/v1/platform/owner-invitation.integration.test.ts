@@ -284,6 +284,7 @@ describe('the staff app’s downloads', () => {
     expect(json<unknown>(response)).toEqual({
       staff: { status: 'none' },
       formsAi: { status: 'none' },
+      devMcp: { status: 'none' },
     });
   });
 });

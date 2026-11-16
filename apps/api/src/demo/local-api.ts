@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { createServer } from 'node:net';
 import { totpCode } from '@integr8/auth';
 import { closeDatabase, getPlatformDataSource } from '@integr8/db';
 import { buildServices } from '../composition.js';
@@ -29,9 +30,29 @@ import { buildServer } from '../server.js';
 
 const ACCOUNT = 'dev-mcp@integr8.invalid';
 
+/** A port free on 127.0.0.1 now, so the API can be told its own address before it starts. */
+async function freePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const probe = createServer();
+    probe.once('error', reject);
+    probe.listen(0, '127.0.0.1', () => {
+      const address = probe.address();
+      const port = typeof address === 'object' && address !== null ? address.port : 0;
+      probe.close(() => {
+        resolve(port);
+      });
+    });
+  });
+}
+
 async function main(): Promise<number> {
+  // The port is chosen first: links the API signs for local file storage carry
+  // its own address (API_PUBLIC_URL), so an upload through one reaches it.
+  const port = await freePort();
   const config = loadApiConfig({
     ...process.env,
+    PORT: String(port),
+    API_PUBLIC_URL: process.env.API_PUBLIC_URL ?? `http://127.0.0.1:${String(port)}`,
     // Every request the tool makes comes from this one address.
     API_TENANT_RATE_LIMIT: '1000000',
     API_IP_RATE_LIMIT: '1000000',
@@ -54,9 +75,7 @@ async function main(): Promise<number> {
       release: config.API_RELEASE,
     }),
   });
-  await app.listen({ host: '127.0.0.1', port: 0 });
-  const address = app.server.address();
-  const port = typeof address === 'object' && address !== null ? address.port : 0;
+  await app.listen({ host: '127.0.0.1', port });
 
   const platform = getPlatformDataSource();
   const account =

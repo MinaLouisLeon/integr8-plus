@@ -8747,6 +8747,7 @@ export const en = {
         'The apps for Integr8’s own team. Only signed-in staff see this page; companies download their apps from /download.',
       staffNone: 'No staff release has been published yet.',
       formsAiNone: 'No release carries Integr8 Forms for AI yet.',
+      devMcpNone: 'No release carries the developer MCP server yet.',
     },
     companies: {
       title: 'Companies',

@@ -5,14 +5,20 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { Connection, NotSignedInError, type StaffTokens } from './connection.js';
 import { seedTestCompany, startLocalApi } from './local.js';
 import { RouteIndex } from './openapi.js';
-import { normaliseApi, REPO_ROOT, repoVersion } from './paths.js';
+import { INSTALLED, normaliseApi, OPENAPI_ASSET, REPO_ROOT, repoVersion } from './paths.js';
+import { DEV_PROFILE, PROGRAM_NAME } from './program.js';
 import { ask, askHidden } from './prompt.js';
 import { type DevContext, createDevServer } from './server.js';
-import { SessionStore, type StoredSession } from './store.js';
+import { loadKeyring, memoryVault, SessionStore, type StoredSession } from './store.js';
 import { Trace } from './trace.js';
 
+/** How the person runs this program: from the checkout, or the installed executable (P43). */
+const COMMAND = INSTALLED ? PROGRAM_NAME : 'pnpm dev-mcp';
+
 /**
- * The developer MCP server (P38), run from this repository:
+ * The developer MCP server (P38), run from this repository, or installed as a
+ * single executable (P43; then `integr8-dev-mcp …`, and double-clicking it
+ * opens the installer):
  *
  *   pnpm dev-mcp login --api https://api.example.com [--production] [--file-store]
  *   pnpm dev-mcp logout [--api …]
@@ -25,23 +31,29 @@ import { Trace } from './trace.js';
  * tool that signs in.
  */
 
-const HELP = `Integr8 developer MCP server
+const HELP = `Integr8 developer MCP server ${repoVersion()}
 
-  pnpm dev-mcp login --api <https://api…> [--production] [--file-store]
+  ${COMMAND} login --api <https://api…> [--production] [--file-store]
         Sign in with a staff account (email, password, authenticator code).
         The session reaches test companies only and lasts 8 hours.
         --production   needed when the API is production
         --file-store   keep the session in a file only you can read, for a
                        machine without a keychain
-  pnpm dev-mcp logout [--api <address>]   sign out and forget the session
-  pnpm dev-mcp status                     which APIs, which account, time left
-  pnpm dev-mcp serve [--api <address>]    the MCP server (AI tools start this)
-  pnpm dev-mcp serve --local              against this laptop's API and database
-                                          (APP_ENV development or test only)
+  ${COMMAND} logout [--api <address>]   sign out and forget the session
+  ${COMMAND} status                     which APIs, which account, time left
+  ${COMMAND} serve [--api <address>]    the MCP server (AI tools start this)
+${
+  INSTALLED
+    ? `  ${COMMAND} setup                      the installer: connect AI tools, sign in, update
+  ${COMMAND} update                     look for a newer version (signed in)
+  ${COMMAND} uninstall                  disconnect it from every AI tool
+  ${COMMAND} --version`
+    : `  ${COMMAND} serve --local              against this laptop's API and database
+                                          (APP_ENV development or test only)`
+}
 `;
 
-const SIGNED_OUT =
-  'Not signed in. Ask the person to sign in in a terminal: pnpm dev-mcp login --api <the API address>';
+const SIGNED_OUT = `Not signed in. Ask the person to sign in in a terminal: ${COMMAND} login --api <the API address>`;
 
 interface Me {
   email: string;
@@ -202,9 +214,12 @@ function status() {
 }
 
 async function serve(values: { api?: string; local?: boolean }) {
-  // The Forms tools run from source, but the preview window's page is built.
-  // stderr only: stdout carries the MCP messages.
-  if (!existsSync(join(REPO_ROOT, 'apps', 'forms-ai', 'dist', 'window', 'page.js'))) {
+  if (INSTALLED && values.local === true) {
+    return fail('Local mode runs only from an integr8-plus checkout: pnpm dev-mcp serve --local');
+  }
+  // From a checkout the Forms tools run from source, but the preview window's
+  // page is built. stderr only: stdout carries the MCP messages.
+  if (!INSTALLED && !existsSync(join(REPO_ROOT, 'apps', 'forms-ai', 'dist', 'window', 'page.js'))) {
     process.stderr.write(
       'The Forms preview window is not built yet; open_preview will show an empty page. Run: pnpm --filter @integr8/forms-ai build\n',
     );
@@ -226,6 +241,7 @@ async function serve(values: { api?: string; local?: boolean }) {
           trace,
           clientVersion: repoVersion(),
         }),
+        websiteKeys: memoryVault(),
         createCompany: (input) => seedTestCompany(input),
       };
     }
@@ -238,6 +254,7 @@ async function serve(values: { api?: string; local?: boolean }) {
     const record = store.list().find((candidate) => candidate.api === api);
     return {
       mode: 'remote',
+      websiteKeys: await store.websiteKeys(api),
       connection: new Connection({
         api,
         tokens: session,
@@ -280,8 +297,84 @@ async function serve(values: { api?: string; local?: boolean }) {
   return -1;
 }
 
+/** The installer and the commands that only the installed program has (P43). */
+async function program(command: string, rest: readonly string[]): Promise<number | undefined> {
+  const { runSetup } = await import('@integr8/forms-ai/setup');
+  switch (command) {
+    case 'setup':
+      return runSetup({ args: rest, profile: DEV_PROFILE });
+    case 'update':
+      return runSetup({ args: ['--status'], profile: DEV_PROFILE });
+    case 'uninstall':
+      return runSetup({ args: ['--remove', 'all', '--no-update-check'], profile: DEV_PROFILE });
+    default:
+      return undefined;
+  }
+}
+
+/** What the executable carries besides its code (scripts/build-sea.mjs reads this). */
+async function seaAssets(): Promise<{ key: string; packageName: string; file: string }[]> {
+  const { ASSETS, assetKey } = await import('@integr8/forms-ai/assets');
+  return [
+    ...ASSETS.map((asset) => ({ key: assetKey(asset), ...asset })),
+    { key: OPENAPI_ASSET, packageName: '@integr8/api', file: 'openapi.json' },
+  ];
+}
+
+async function checkAssets(): Promise<number> {
+  const { getAsset } = await import('node:sea');
+  const missing: string[] = [];
+  const assets = await seaAssets();
+  for (const asset of assets) {
+    try {
+      if (getAsset(asset.key).byteLength === 0) {
+        missing.push(asset.key);
+      }
+    } catch {
+      missing.push(asset.key);
+    }
+  }
+  if (missing.length > 0) {
+    process.stderr.write(`Missing: ${missing.join(', ')}\n`);
+    return 1;
+  }
+  process.stdout.write(`${String(assets.length)} assets\n`);
+  return 0;
+}
+
 export async function main(argv: readonly string[]): Promise<number> {
   const [command, ...rest] = argv;
+  switch (command) {
+    case '--version':
+    case '-v':
+    case 'version':
+      // The product's version, as the release and its files are named (P43).
+      process.stdout.write(`${repoVersion()}\n`);
+      return 0;
+    case '--sea-assets':
+      process.stdout.write(`${JSON.stringify(await seaAssets())}\n`);
+      return 0;
+    case '--check-assets':
+      return checkAssets();
+    case '--check-keyring':
+      // For the build: the keychain module loads from beside the program. Only
+      // loaded, never asked: a build machine has no keychain to ask.
+      await loadKeyring();
+      process.stdout.write('keychain module loaded\n');
+      return 0;
+    case 'setup':
+    case 'update':
+    case 'uninstall':
+      return (await program(command, rest)) ?? 2;
+    case undefined:
+      // A double-click on the installed program opens the installer.
+      if (INSTALLED) {
+        return (await program('setup', [])) ?? 2;
+      }
+      break;
+    default:
+      break;
+  }
   const { values } = parseArgs({
     args: rest,
     options: {

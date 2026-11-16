@@ -7898,7 +7898,7 @@ export interface paths {
         head?: never;
         /**
          * Change a company’s website, its document links, or whether its own apps are built
-         * @description The branding facts the dashboard owns. `documentLinkPattern` (0075) points the company’s document links at its own website: an https address with `{code}` in it, on the registered website’s host or one under it (422 `document_link_invalid`, `document_link_needs_website`, `document_link_other_site`); null goes back to Integr8’s page, and codes already printed keep working there either way. The rest of the look — logo, icon, colours, theme — is set from the desktop app while acting as the company, where it can be previewed. Switching `appsEnabled` on puts the company in the list the release pipeline builds for and, when the deployment can start builds (`APP_BUILDS=github`), starts its first build at once; `appBuild` says how that went, and is null when this change did not switch apps on.
+         * @description The branding facts the dashboard owns. `documentLinkPattern` (0075) points the company’s document links at its own website: an https address with `{code}` in it, on the registered website’s host or one under it (422 `document_link_invalid`, `document_link_needs_website`, `document_link_other_site`); a test company may also use `http://localhost` or `http://127.0.0.1` for both (P43), any other company gets 422 `website_url_local_only` or `document_link_invalid`. A staff session limited to test companies may change only `websiteUrl` and `documentLinkPattern` (403 `session_scope` otherwise). Null goes back to Integr8’s page, and codes already printed keep working there either way. The rest of the look — logo, icon, colours, theme — is set from the desktop app while acting as the company, where it can be previewed. Switching `appsEnabled` on puts the company in the list the release pipeline builds for and, when the deployment can start builds (`APP_BUILDS=github`), starts its first build at once; `appBuild` says how that went, and is null when this change did not switch apps on.
          */
         patch: operations["updateCompanySettings"];
         trace?: never;
@@ -8182,7 +8182,7 @@ export interface paths {
         get?: never;
         /**
          * Turn a flag on or off for one company
-         * @description Sending `null` removes the override, which is different from turning it off: the company goes back to whatever the default is, including when the default later changes.
+         * @description Sending `null` removes the override, which is different from turning it off: the company goes back to whatever the default is, including when the default later changes. A staff session limited to test companies may set only `documents` and the `website_*` flags (403 `session_scope` otherwise).
          */
         put: operations["setCompanyFlag"];
         post?: never;
@@ -8783,7 +8783,7 @@ export interface paths {
         put?: never;
         /**
          * Make a website key for a company
-         * @description Only a staff manager (an account the terminal command made) may create a key; anybody else gets 403 `staff_manager_only`. The key is in this answer and nowhere else: put it in the website’s server environment, never in its pages. Refused with 409 `website_key_limit` while the company already has two non-revoked keys.
+         * @description Only a staff manager (an account the terminal command made) may create a key; anybody else gets 403 `staff_manager_only`, except on a test company, where any staff member may (P43). The key is in this answer and nowhere else: put it in the website’s server environment, never in its pages. Refused with 409 `website_key_limit` while the company already has two non-revoked keys.
          */
         post: operations["createWebsiteKey"];
         delete?: never;
@@ -8804,14 +8804,14 @@ export interface paths {
         post?: never;
         /**
          * Permanently delete a company website key
-         * @description Only the terminal-created Integr8 staff admin can permanently delete a key. An audit event records the action; the secret is never retained.
+         * @description Only the terminal-created Integr8 staff admin can permanently delete a key (any staff member, on a test company: P43). An audit event records the action; the secret is never retained.
          */
         delete: operations["deleteWebsiteKey"];
         options?: never;
         head?: never;
         /**
          * Enable or disable a company website key
-         * @description Only a staff manager (an account the terminal command made) may change a key’s state; anybody else gets 403 `staff_manager_only`. Disabling stops requests while retaining the key; enabling resumes it unless revoked.
+         * @description Only a staff manager (an account the terminal command made) may change a key’s state; anybody else gets 403 `staff_manager_only`, except on a test company, where any staff member may (P43). Disabling stops requests while retaining the key; enabling resumes it unless revoked.
          */
         patch: operations["updateWebsiteKey"];
         trace?: never;
@@ -8827,7 +8827,7 @@ export interface paths {
         put?: never;
         /**
          * Revoke a website key
-         * @description Only a staff manager (an account the terminal command made) may revoke a key; anybody else gets 403 `staff_manager_only`. The website using it stops serving immediately. The key stays listed, revoked, for the record.
+         * @description Only a staff manager (an account the terminal command made) may revoke a key; anybody else gets 403 `staff_manager_only`, except on a test company, where any staff member may (P43). The website using it stops serving immediately. The key stays listed, revoked, for the record.
          */
         post: operations["revokeWebsiteKey"];
         delete?: never;
@@ -8864,8 +8864,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * The staff app and Integr8 Forms for AI, newest release of each
-         * @description Read from the GitHub releases this deployment is set to (`APP_RELEASES=github`). Each is `found` with its files, `none` when nothing is published (or releases are not read here), or `unavailable` when GitHub could not be asked.
+         * The staff app, Integr8 Forms for AI and the developer MCP server, newest release of each
+         * @description Read from the GitHub releases this deployment is set to (`APP_RELEASES=github`). `devMcp` (P43) lists the developer program’s first download (`zip`) and the files an installed program updates itself with (`program`, `keyring`), each with its checksum; a staff session limited to test companies may read it. Each is `found` with its files, `none` when nothing is published (or releases are not read here), or `unavailable` when GitHub could not be asked.
          */
         get: operations["getPlatformDownloads"];
         put?: never;
@@ -83174,6 +83174,13 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
+            /** @description A staff session limited to test companies changing anything but the website and document links (`session_scope`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description No such company. */
             404: {
                 headers: {
@@ -83188,7 +83195,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description A document link address that cannot be used. */
+            /** @description A website or document link address that cannot be used. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -84620,6 +84627,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Error"];
                 };
+            };
+            /** @description A limited staff session setting another flag (`session_scope`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description The request failed validation. */
             422: {
@@ -88946,6 +88960,32 @@ export interface operations {
                                     /** @enum {string} */
                                     arch: "x64" | "arm64";
                                     size: number | null;
+                                }[];
+                            };
+                        } | {
+                            /** @enum {string} */
+                            status: "none";
+                        } | {
+                            /** @enum {string} */
+                            status: "unavailable";
+                        };
+                        devMcp: {
+                            /** @enum {string} */
+                            status: "found";
+                            release: {
+                                tag: string;
+                                version: string;
+                                downloads: {
+                                    name: string;
+                                    url: string;
+                                    /** @enum {string} */
+                                    platform: "windows" | "macos" | "linux";
+                                    /** @enum {string} */
+                                    arch: "x64" | "arm64";
+                                    /** @enum {string} */
+                                    kind: "zip" | "program" | "keyring";
+                                    size: number | null;
+                                    checksumUrl: string | null;
                                 }[];
                             };
                         } | {
