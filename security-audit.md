@@ -49,11 +49,11 @@ auditor's estimate from source; none was produced by a scoring tool.
 
 ## SEC-001 — A limited (`test_companies`) staff session escapes to real companies through impersonation
 
-**Status:** Fixed (uncommitted, 2026-11-16). The grant's `from_limited_session` is read on every
+**Status:** Fixed (2026-11-16, pushed on `ccr-87dc93be-pye3tx`). The grant's `from_limited_session` is read on every
 request (and carried as `imp.lim` in new tokens); routes marked `crossTenant` (copy targets, copy to
 company, save to library) refuse a limited seat with 403 `session_scope`, audited; the list is pinned
 in `session-scope.test.ts`. The developer server's `call_api` also sends public routes only for the
-chosen test company. Integration test written (`test-companies.integration.test.ts`), not run here.
+chosen test company. Proven by `test-companies.integration.test.ts`, run on a local Postgres 16.
 
 **Severity:** High
 **Confidence:** Confirmed by source tracing (not executed)
@@ -110,6 +110,11 @@ Three tenant routes act **outside** the impersonated company on the strength of 
 ---
 
 ## SEC-002 — SECURITY DEFINER ledger functions are executable by every role and ignore the caller's tenant
+
+**Status:** Fixed (2026-11-16, migration 0022). Every security-definer function is closed to PUBLIC
+and opened only to the role that calls it; the four ledger functions refuse another company's id on
+the runtime role's connection; new functions start closed. Proven by the database integration suite
+(new tests in `schema-invariants` and `rls-backstop`), run on a local Postgres 16.
 
 **Severity:** Medium
 **Confidence:** Confirmed by source tracing (privileges not queried on a live database)

@@ -26,7 +26,7 @@ the end of any piece of work that changes one of them, and date each section.
   `apps/api/src/app-info.ts` has a copy a test keeps equal. A version bump must also change
   every place listed under "Places that state the version".
 - **Migrations (2.0.0):** a new baseline, **0001_foundation … 0019_assistant**, one per module (P41),
-  then **0020_desktop_only** (P42, unreleased, branch `ccr-982c2137-h4as2m`) and **0021_test_company_localhost** (P43, unreleased, branch `ccr-3cd2290c-d9znqu`); the next one is **0022**. A 1.x database is refused (`before-baseline`) and is created again (setup guide
+  then **0020_desktop_only** (P42, unreleased, branch `ccr-982c2137-h4as2m`), **0021_test_company_localhost** (P43, unreleased, branch `ccr-3cd2290c-d9znqu`) and **0022_definer_functions_closed** (SEC-002, branch `ccr-87dc93be-pye3tx`); the next one is **0023**. A 1.x database is refused (`before-baseline`) and is created again (setup guide
   Stage 11 part AJ). **Before 2.0.0** (history): `packages/db/migrations` reached **0079** (0079 `form_actions`, P40, unreleased,
   branch `ccr-916cc1b1-6sp5my`; 0078 `accountant_role`, unreleased, merged into `dev` in PR #188; 0077 `test_companies`, P38, unreleased, branch
   `ccr-56fb45d1-5mq6bt`). Before that it reached **0076** (0075 merged into `dev`, released
@@ -445,7 +445,7 @@ the end of any piece of work that changes one of them, and date each section.
   (zip + program + keyring, each with `.sha256`), unsigned (D4); separate from Forms for AI
   (D3). Local mode now passes its own port as `API_PUBLIC_URL` (uploads failed before).
   Only Linux x64 was built here; the made-document seeding was not run (needs the worker).
-- **Security audit fixes, round 1 (2026-11-16, uncommitted, branch `ccr-87dc93be-pye3tx`), as the
+- **Security audit fixes, round 1 (2026-11-16, pushed on branch `ccr-87dc93be-pye3tx`), as the
   owner decided them:** the audit's findings are in `security-audit.md` (root; the full reports in
   `security-audit/`). SEC-001: a staff session limited to test companies stays in the test company it
   acts as; routes marked `crossTenant` (form copy targets, copy to company, save to library) refuse
@@ -459,8 +459,15 @@ the end of any piece of work that changes one of them, and date each section.
   public site's `/d`, `/q`, `/a` pages are deleted. A company without a website cannot share (409
   `sharing_needs_website`), gets no quote link and prints bare tag codes; a key whose company has no
   website answers 403 `website_missing`. The developer server's `call_api` sends public routes only
-  for the chosen test company. No migration (data is being wiped). Integration suites updated but not
-  run (no Postgres here).
+  for the chosen test company. No migration for these.
+- **SEC-002 (2026-11-16, branch `ccr-87dc93be-pye3tx`; migration 0022), as the owner agreed:** every
+  security-definer function is closed to PUBLIC and opened only to its callers (pinned in the
+  schema-invariant suite); the ledger's capture/try_post/backfill/backfill_more are wrappers that
+  refuse another company's id on `integr8_app`'s connection, around bodies renamed `_unchecked`;
+  **new functions start closed to PUBLIC** (`ALTER DEFAULT PRIVILEGES`), so a migration adding one the
+  runtime role calls must grant EXECUTE. Proven on a local Postgres 16: db (505), auth (97) and API
+  (713) integration suites all pass; running the API suites also caught and fixed six test mistakes
+  from round 1.
 - **The demo seeder goes through the API**, in-process with Fastify's `inject`, as the
   company's own people (plus a staff impersonation for staff-only setup). Direct inserts
   were rejected: they skip numbering, stock, ledger postings and audit, and produce data
