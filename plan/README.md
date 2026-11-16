@@ -103,7 +103,7 @@ For 2.0.0, on each machine (setup guide Stage 11, "Start fresh on the machine"):
 
 - [ ] `down -v`, `up -d --build`, create the super admins again, onboard or seed
       the companies again, delete the old companies' R2 buckets.
-- [ ] On the Proxmox test machine: `db:volume` at scale 1, click through the app,
+- [ ] On the Proxmox test machine (setup guide Stage 12): `db:volume` at scale 1, click through the app,
       `db:plans`, and one `transfer export`/`import` between two machines (checks
       the real Auth import of password hashes).
 

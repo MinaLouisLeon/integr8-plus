@@ -2,7 +2,7 @@
 
 _Integr8 Plus 2.0.0 · every step, in order · Oracle Cloud_
 
-**From zero to running.** Every step to put Integr8 Plus on its Oracle machine, give each company its own apps, go live, and update it later. One line per step; the commands are ready to copy. Stages 1 to 9 are done once, in order; Stage 10 is every release; Stage 11 only when you want an empty machine again.
+**From zero to running.** Every step to put Integr8 Plus on its Oracle machine, give each company its own apps, go live, and update it later. One line per step; the commands are ready to copy. Stages 1 to 9 are done once, in order; Stage 10 is every release; Stage 11 only when you want an empty machine again; Stage 12 is a test machine at home for finding slow queries.
 
 Each step says where it happens: `laptop` (PowerShell on your Windows laptop), `machine` (the SSH session on the server), `web` (a service's website: Oracle, Cloudflare, GitHub, Expo…) or `app` (the staff desktop app).
 
@@ -22,6 +22,7 @@ Each step says where it happens: `laptop` (PowerShell on your Windows laptop), `
 - Stage 9 — Go live
 - Stage 10 — Update to a new version
 - Stage 11 — Start fresh on the machine
+- Stage 12 — A test machine on Proxmox, with volume
 
 ---
 
@@ -514,6 +515,150 @@ docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build
 
 - [ ] `machine` **Your staff account again**: Stage 6's first step, then onboard the companies again (Stage 7).
 - [ ] `web` **Optional: old companies' files**: their R2 buckets are no longer used. Cloudflare → R2 → each old `integr8-production-…` bucket → Delete (never `integr8-backups`).
+
+---
+
+## Stage 12 — A test machine on Proxmox, with volume
+
+_2 hours the first time, then 30 minutes a run_
+
+A copy of the stack on a Proxmox virtual machine at home, filled with millions of made-up rows, to find the slow queries before real companies do. Nothing here touches the Oracle machine: in this stage `machine` means the test machine, and its passwords and keys are new ones, never production's.
+
+- [ ] `web` **Create the virtual machine**: Proxmox (`https://PROXMOX-IP:8006`) → Create VM: name `integr8-test`, the Ubuntu Server 24.04 ISO, 4 cores with CPU type `host`, 16 GB memory (24 GB to match Oracle), a 120 GB disk with Discard on, network bridge `vmbr0`. Install Ubuntu with OpenSSH server ticked; its address is TEST-IP from now on.
+- [ ] `machine` **Get the code and Docker**: the same as Stage 2 on the Oracle machine. Log in again afterwards, then `docker compose version` answers.
+
+```powershell
+# laptop (PowerShell)
+ssh LOGIN-USER@TEST-IP
+```
+
+```bash
+# machine (SSH session)
+sudo apt-get install -y git
+sudo mkdir -p /opt/integr8 && sudo chown "$USER" /opt/integr8
+git config --global credential.helper store
+git clone https://github.com/MinaLouisLeon/integr8-plus.git /opt/integr8
+bash /opt/integr8/deploy/vps/setup.sh
+exit
+```
+
+- [ ] `machine` **Test settings**: start from the template as in Stage 4, with new passwords and keys made by Stage 1's lines. Keep `APP_ENV=staging` and every stand-in the template already chooses (`MEDIA_STORAGE=local`, `GEOCODER=fake`, `PUSH_SENDER=recording`, `EMAIL_SENDER=recording`), use the local addresses below, and comment out the two `GITHUB_RELEASES_` lines.
+
+```text
+APP_ENV=staging
+PUBLIC_API_URL=http://localhost:3000
+API_PUBLIC_URL=http://localhost:3000
+AUTH_ISSUER=http://localhost:3000
+WEB_APP_URL=http://localhost:3001
+API_CORS_ORIGINS=http://localhost:3001,http://localhost:3002,tauri://localhost,http://tauri.localhost
+APP_RELEASES=off
+```
+
+- [ ] `machine` **Start the stack**: the API answers `"status":"ready"`. The Postgres settings are the same as production's, so what is slow here is slow there.
+
+```bash
+# machine (SSH session)
+cd /opt/integr8
+docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build
+curl -s http://127.0.0.1:3000/health/ready; echo
+```
+
+- [ ] `machine` **A staff account on the test machine**: save the password and authenticator secret it prints; they are separate from production's.
+
+```bash
+# machine (SSH session)
+cd /opt/integr8
+docker compose -f deploy/compose.yml --env-file deploy/.env \
+  run --rm api node dist/platform/admin-cli.js create you@integr8-media.com "Your Name"
+```
+
+- [ ] `web` **Snapshot the empty machine**: Proxmox → `integr8-test` → Snapshots → Take Snapshot, named `empty`. Rolling back to it is the quickest way to start a run again.
+- [ ] `machine` **Load the made-up data**: 20 test companies (`volume-001-…` is the largest, about 20,000 jobs a year) with 5 years of history, about 10 million rows in minutes. `--scale 2` doubles every count; run it again to add more companies. It refuses a database with `APP_ENV` other than development, which the `-e` gives this one run only.
+
+```bash
+# machine (SSH session)
+cd /opt/integr8
+docker compose -f deploy/compose.yml --env-file deploy/.env --profile tools run --rm -e APP_ENV=development \
+  transfer node node_modules/@integr8/db/dist/volume/cli.js --companies 20 --years 5 --scale 1
+```
+
+- [ ] `machine` **See how big it is**: the largest tables, their rows and their size on disk.
+
+```bash
+# machine (SSH session)
+docker compose -f deploy/compose.yml --env-file deploy/.env exec postgres psql -U postgres -d integr8 -c "
+select relname as table, n_live_tup as rows, pg_size_pretty(pg_total_relation_size(relid)) as size
+from pg_stat_user_tables order by pg_total_relation_size(relid) desc limit 20;"
+```
+
+- [ ] `machine` **Start recording from zero**: forgets the statements recorded while loading, so the next steps show only the app's.
+
+```bash
+# machine (SSH session)
+docker compose -f deploy/compose.yml --env-file deploy/.env exec postgres psql -U postgres -d integr8 -c "create extension if not exists pg_stat_statements;" -c "select pg_stat_statements_reset();"
+```
+
+- [ ] `laptop` **Reach the test API from the laptop**: keep this window open while you use the app; it carries the laptop's port 3000 to the test machine.
+
+```powershell
+# laptop (PowerShell)
+ssh -N -L 3000:127.0.0.1:3000 LOGIN-USER@TEST-IP
+```
+
+- [ ] `laptop` **The staff app against the test machine**: in a second window, in the repository folder; it opens on `http://localhost:3002`. Sign in with the test machine's staff account.
+
+```powershell
+# laptop (PowerShell), in the repository folder
+git pull
+$env:VITE_APP_FLAVOR = 'staff'; $env:VITE_API_BASE_URL = 'http://localhost:3000'
+pnpm --filter @integr8/desktop dev
+```
+
+- [ ] `app` **Work like a busy office**: Companies → the `volume-001-…` company → Work inside this company. Open and page through jobs, the schedule, customers, sites, quotes, invoices, the ledger's reports, stock and assets; filter by dates and search. Then the same in a small company. Write down any screen that feels slow.
+- [ ] `machine` **The slowest statements**: the 20 with the longest average time, also saved as a dated file to compare later runs with.
+
+```bash
+# machine (SSH session)
+cd /opt/integr8 && mkdir -p deploy/transfers && sudo chown 1000:1000 deploy/transfers
+docker compose -f deploy/compose.yml --env-file deploy/.env exec -T postgres psql -U postgres -d integr8 --csv -c "
+select round(mean_exec_time::numeric, 1) as avg_ms, calls, round(total_exec_time::numeric) as total_ms, rows, left(regexp_replace(query, '\s+', ' ', 'g'), 300) as query
+from pg_stat_statements where dbid = (select oid from pg_database where datname = 'integr8')
+order by mean_exec_time desc limit 20;" | sudo tee deploy/transfers/slowest-$(date +%Y%m%d).csv
+```
+
+- [ ] `machine` **Plans that read whole tables**: plans every recorded statement as the app's own role, acting for the largest company, and lists each one that reads a large table whole (it ends with `0 finding(s).` when none does). The full report goes beside the file above.
+
+```bash
+# machine (SSH session)
+cd /opt/integr8
+docker compose -f deploy/compose.yml --env-file deploy/.env --profile tools run --rm \
+  transfer node node_modules/@integr8/db/dist/volume/plans-cli.js --json /transfers/plans-$(date +%Y%m%d).json
+```
+
+- [ ] `machine` **Slow statements' plans in the log**: Postgres writes the plan of every statement slower than half a second to its log.
+
+```bash
+# machine (SSH session)
+docker compose -f deploy/compose.yml --env-file deploy/.env logs --no-log-prefix postgres | grep 'duration:' | tail -20
+```
+
+- [ ] `laptop` **Keep the results**: copy the dated files to the laptop. Give them, with the screens you wrote down, to whoever improves the queries; a fix arrives as a new migration or code change, never by editing the test machine's database by hand.
+
+```powershell
+# laptop (PowerShell)
+scp -r LOGIN-USER@TEST-IP:/opt/integr8/deploy/transfers .\integr8-test-results
+```
+
+- [ ] `machine` **Check a fix**: put the branch with the fix on the test machine, then repeat from "Start recording from zero" and compare the new files with the old ones.
+
+```bash
+# machine (SSH session)
+cd /opt/integr8
+git fetch origin BRANCH-NAME && git checkout BRANCH-NAME
+docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build
+```
+
+- [ ] `web` **Back to empty**: shut the machine down, then Proxmox → `integr8-test` → Snapshots → `empty` → Rollback, and start it again. Untick this stage (its Clear button) before the next run.
 
 ---
 

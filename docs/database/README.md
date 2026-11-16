@@ -248,7 +248,8 @@ with `EXPLAIN (GENERIC_PLAN)` as the runtime role acting for the largest
 company, and lists every plan that reads a large table whole. Postgres must be
 started with `shared_preload_libraries=pg_stat_statements`; the compose
 `postgres` service is, and also logs the plan of any statement slower than
-500 ms (`auto_explain`).
+500 ms (`auto_explain`). On a deployed stack (the Proxmox test machine) the
+same two tools run from the `transfer` service: setup guide Stage 12.
 
 The rules the plans hold the code to: indexes on tenant tables lead with
 `tenant_id`; lists page by cursor and always have a limit; history tables are
