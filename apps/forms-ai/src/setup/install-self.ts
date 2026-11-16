@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, statSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync } from 'node:fs';
+import { basename, dirname, join, resolve } from 'node:path';
 import { isSea } from 'node:sea';
 import { type Host, installedProgram } from '../host.js';
 import { replaceProgram } from './update.js';
@@ -49,8 +49,39 @@ export function installedVersion(program: string): string | undefined {
   return result.status === 0 && version !== '' ? version : undefined;
 }
 
-export function installSelf(host: Host, options: { replace: boolean }): SelfInstall {
-  const program = installedProgram(host);
+export interface InstallSelfOptions {
+  replace: boolean;
+  /** Where the copy goes; Forms for AI's own place unless another program says (P43). */
+  program?: string;
+  /**
+   * Files that must sit beside the executable, copied from beside the running
+   * one into the install folder (the developer MCP server's keychain module).
+   */
+  companions?: readonly string[];
+}
+
+/** Copies the companion files from beside `self` into `folder`; a missing one is reported. */
+function copyCompanions(self: string, folder: string, names: readonly string[]): string[] {
+  const missing: string[] = [];
+  for (const name of names) {
+    const from = join(dirname(self), basename(name));
+    const to = join(folder, basename(name));
+    if (!existsSync(from)) {
+      if (!existsSync(to)) {
+        missing.push(name);
+      }
+      continue;
+    }
+    if (!samePath(from, to)) {
+      copyFileSync(from, to);
+    }
+  }
+  return missing;
+}
+
+export function installSelf(host: Host, options: InstallSelfOptions): SelfInstall {
+  const program = options.program ?? installedProgram(host);
+  const companions = options.companions ?? [];
   if (!isSea()) {
     return {
       program,
@@ -69,6 +100,12 @@ export function installSelf(host: Host, options: { replace: boolean }): SelfInst
       message: `Running the installed copy at ${program}.`,
     };
   }
+  const companionNote = () => {
+    const missing = copyCompanions(self, dirname(program), companions);
+    return missing.length === 0
+      ? ''
+      : ` ${missing.join(', ')} was not found beside the downloaded program: unpack the whole download into one folder and run it from there.`;
+  };
   if (
     existsSync(program) &&
     statSync(program).size === statSync(self).size &&
@@ -78,7 +115,7 @@ export function installSelf(host: Host, options: { replace: boolean }): SelfInst
       program,
       executable: true,
       copied: false,
-      message: `Already installed at ${program}.`,
+      message: `Already installed at ${program}.${companionNote()}`,
     };
   }
   if (existsSync(program) && !options.replace) {
@@ -91,5 +128,10 @@ export function installSelf(host: Host, options: { replace: boolean }): SelfInst
   }
   mkdirSync(dirname(program), { recursive: true });
   replaceProgram(program, new Uint8Array(readFileSync(self)));
-  return { program, executable: true, copied: true, message: `Installed at ${program}.` };
+  return {
+    program,
+    executable: true,
+    copied: true,
+    message: `Installed at ${program}.${companionNote()}`,
+  };
 }

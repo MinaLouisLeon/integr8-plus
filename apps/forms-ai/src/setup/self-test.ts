@@ -45,8 +45,14 @@ export interface SelfTestResult {
 export async function selfTest(
   command: string,
   args: readonly string[] = ['serve'],
-  options: { timeoutMs?: number; env?: Record<string, string> } = {},
+  options: {
+    timeoutMs?: number;
+    env?: Record<string, string>;
+    /** The tools the server must list; Forms for AI's by default (the developer server has more, P43). */
+    expected?: readonly string[];
+  } = {},
 ): Promise<SelfTestResult> {
+  const expected = options.expected ?? EXPECTED_TOOLS;
   const transport = new StdioClientTransport({
     command,
     args: [...args],
@@ -65,7 +71,7 @@ export async function selfTest(
         name: 'get_format_guide',
         arguments: { section: 'limits' },
       });
-      const missing = EXPECTED_TOOLS.filter((name) => !tools.includes(name));
+      const missing = expected.filter((name) => !tools.includes(name));
       return {
         ok: missing.length === 0 && guide.isError !== true,
         serverVersion: client.getServerVersion()?.version,
@@ -86,7 +92,7 @@ export async function selfTest(
       ok: false,
       serverVersion: undefined,
       tools: [],
-      missing: [...EXPECTED_TOOLS],
+      missing: [...expected],
       error: error instanceof Error ? error.message : String(error),
     };
   } finally {

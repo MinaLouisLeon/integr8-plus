@@ -5,7 +5,7 @@ replaces the phase files written before 2.0.0 (P01–P41, in git history before
 the 2.0.0 docs commit). What is built is described in [`docs/`](../docs/README.md);
 this file holds only what is **not finished**: work in progress, the owner's
 open decisions and steps, and the phases not started. Phase numbers carry on
-from the old plan; P42 is the last used, so the next new phase is **P43**.
+from the old plan; P43 is the last used, so the next new phase is **P44**.
 
 ## What 2.0.0 is
 
@@ -32,6 +32,19 @@ decisions (D1–D6), migration 0020 and setup guide Stage 11 part AL. Left:
       `PUBLIC_SIGNUP`, `BILLING_*` and `STRIPE_*` lines from `deploy/.env`, set
       `APP_RELEASES=github` with the releases token, update (setup guide Stage 10),
       install the new staff app, build each company's app before inviting.
+
+### P43 Developer MCP server: company websites, and an installable program
+
+[P43](./2.1.0/P43-dev-mcp-website-and-installer.md): built 2026-11-16 (decisions
+D1–D4, migration 0021). The developer MCP server sets a test company up for its
+website (key written to `.env.local`, switches, localhost link pattern), calls
+`/v1/website` with the key (`call_website_api`), seeds shared documents, and ships
+as an installable program (`integr8-dev-mcp`, unsigned). Left:
+
+- [ ] The first release run builds it on every runner (only Linux x64 was built).
+- [ ] Seeding a document printed from a submission, with the worker running.
+- [ ] The owner, on Windows: download from the staff app, install, connect Claude
+      Code, sign in, and run the website workflow from the website's repository.
 
 ### P40 Form actions
 

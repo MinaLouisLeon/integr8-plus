@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { z } from 'zod';
-import { OPENAPI_FILE } from './paths.js';
+import { readOpenApi } from './paths.js';
 
 /**
  * The API's routes, read from `apps/api/openapi.json` (generated from the
@@ -112,8 +112,11 @@ export class RouteIndex {
     );
   }
 
-  static load(file: string = OPENAPI_FILE): RouteIndex {
-    return new RouteIndex(JSON.parse(readFileSync(file, 'utf8')) as Json);
+  /** The document in a file, or the one this server describes (the checkout's, or the one built in). */
+  static load(file?: string): RouteIndex {
+    return new RouteIndex(
+      JSON.parse(file === undefined ? readOpenApi() : readFileSync(file, 'utf8')) as Json,
+    );
   }
 
   /** Routes matching every word, best first: operation id, path, summary, tags, description. */

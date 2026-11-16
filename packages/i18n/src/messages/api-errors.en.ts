@@ -175,6 +175,8 @@ export const apiErrorsEn = {
   document_link_needs_website:
     'Add the company’s website first: document links may only point to it.',
   document_link_other_site: 'The document link address must be on the company’s own website.',
+  website_url_local_only:
+    'Only a test company may use a website on this computer (localhost). Use the company’s https address.',
   form_action_needs_module:
     'This form makes expense claims, which need the HR module. Switch it on for the company first.',
   invalid_actions:

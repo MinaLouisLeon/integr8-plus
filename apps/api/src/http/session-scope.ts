@@ -32,6 +32,37 @@ export function companyInPath(params: unknown): string | undefined {
   return typeof tenantId === 'string' ? tenantId : undefined;
 }
 
+/**
+ * Records a refusal in the platform audit log and returns the 403 to throw.
+ * `field` is a route open to the limited session whose handler limits what
+ * that session may change on it (P43): some flags, some settings.
+ */
+export async function sessionScopeRefusal(
+  context: PlatformRequestContext,
+  route: Pick<AnyRoute, 'method' | 'path'>,
+  why: 'route' | 'company' | 'field',
+  tenantId: string | null,
+  detail?: string,
+): Promise<ApiError> {
+  const scope = context.platform.scope;
+  await recordPlatformAction(context, {
+    action: 'platform.session_scope_refused',
+    tenantId,
+    targetKind: 'route',
+    targetId: `${route.method.toUpperCase()} ${route.path}`,
+    metadata: { scope, why, ...(detail === undefined ? {} : { detail }) },
+  });
+  return new ApiError(
+    403,
+    'session_scope',
+    why === 'route'
+      ? 'This staff session is limited to test companies and may not use this route.'
+      : why === 'company'
+        ? 'This staff session is limited to test companies, and this company is not one.'
+        : `This staff session is limited to test companies and may not change ${detail ?? 'this'}.`,
+  );
+}
+
 export async function assertWithinSessionScope(
   route: Pick<AnyRoute, 'platformScopes' | 'method' | 'path'>,
   params: unknown,
@@ -41,24 +72,8 @@ export async function assertWithinSessionScope(
   if (scope === 'full') {
     return;
   }
-  const refuse = async (why: 'route' | 'company', tenantId: string | null) => {
-    await recordPlatformAction(context, {
-      action: 'platform.session_scope_refused',
-      tenantId,
-      targetKind: 'route',
-      targetId: `${route.method.toUpperCase()} ${route.path}`,
-      metadata: { scope, why },
-    });
-    return new ApiError(
-      403,
-      'session_scope',
-      why === 'route'
-        ? 'This staff session is limited to test companies and may not use this route.'
-        : 'This staff session is limited to test companies, and this company is not one.',
-    );
-  };
   if (!routeAllows(route, scope)) {
-    throw await refuse('route', null);
+    throw await sessionScopeRefusal(context, route, 'route', null);
   }
   const tenantId = companyInPath(params);
   if (tenantId === undefined) {
@@ -68,6 +83,11 @@ export async function assertWithinSessionScope(
   if (tenant?.isTest !== true) {
     // A company that does not exist is refused the same way, so the answer
     // does not say which real companies exist.
-    throw await refuse('company', tenant === undefined ? null : tenant.id);
+    throw await sessionScopeRefusal(
+      context,
+      route,
+      'company',
+      tenant === undefined ? null : tenant.id,
+    );
   }
 }

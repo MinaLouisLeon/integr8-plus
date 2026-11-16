@@ -18,10 +18,26 @@ import { z } from 'zod';
 import { type ApiAnswer, type Connection, NotSignedInError, type Person } from './connection.js';
 import type { SeededCompany } from './local.js';
 import { checkRequest, type RouteIndex, routeLine } from './openapi.js';
-import { serverVersion } from './paths.js';
+import { isAbsolute as isAbsolutePath, join as joinPath } from 'node:path';
+import {
+  INSTALLED,
+  isRepository,
+  readSettings,
+  repoVersion,
+  serverVersion,
+  writeSettings,
+} from './paths.js';
 import { redact } from './redact.js';
-import { addReadmeRow, getRepoRequest, listRepoRequests, REQUESTS_DIR } from './requests.js';
+import {
+  addReadmeRow,
+  getRepoRequest,
+  listRepoRequests,
+  NO_REPOSITORY,
+  requestsDir,
+} from './requests.js';
+import type { WebsiteKeyVault } from './store.js';
 import type { Trace } from './trace.js';
+import { registerWebsiteTools } from './website.js';
 
 /**
  * The developer MCP server's tools (P38): find a route, call it as one of a
@@ -39,6 +55,8 @@ import type { Trace } from './trace.js';
 export interface DevContext {
   mode: 'remote' | 'local';
   connection: Connection;
+  /** Where website keys made by create_website_key are kept (P43). */
+  websiteKeys?: WebsiteKeyVault;
   /** Only in local mode: runs the seeder. */
   createCompany?: (input: {
     ownerEmail: string;
@@ -69,7 +87,8 @@ export const DRAFT_REQUEST_TOOLS = {
 
 const DEV_INSTRUCTIONS = `Integr8 developer tools: try features of this repository on a running Integr8 Plus API, as the people of a TEST company. You never sign in and never see a password, an authenticator code or a token: the person signs in in a terminal (pnpm dev-mcp login --api <address>); if a tool says the session is missing or over, ask them to do that, and never ask them for a password or code.
 Rules: test companies only (the API refuses anything else). On production (status says the environment), say what you are about to do before any write, and start with read-only calls. Everything you do is audited under the person's staff account and appears in the company's audit log under an impersonation grant whose reason is your stated purpose (a call with a new purpose starts a new grant), so give each call a purpose that says what it tests.
-Workflow: status → list_test_companies (create_test_company in local mode) → use_company → find_route / get_route → call_api as a role, a person or "company" (public routes go as a visitor with no sign-in) → get_trace, get_audit, read_outbox to see what it did. import_form_package and submit_form cover the form flow in one call each.`;
+Workflow: status → list_test_companies (create_test_company in local mode) → use_company → find_route / get_route → call_api as a role, a person or "company" (public routes go as a visitor with no sign-in) → get_trace, get_audit, read_outbox to see what it did. import_form_package and submit_form cover the form flow in one call each.
+A company website (its own repository, reaching Integr8 only through /v1/website with a website key from its server): use_company → create_website_key with the website's .env.local (the key is written there and never shown to you) → set_website_access (files: true, websiteUrl and documentLinkPattern on http://localhost:<port> while it runs on this machine) → seed_shared_documents → call_website_api to see exactly what the website's server will get → get_website_guide / check_website_integration for the pages themselves.`;
 
 const BRIDGE = `This server also has every Integr8 Forms for AI tool, below. They are offline and need no sign-in, so use them even when the session is missing. In this server two of them are renamed: the change requests recorded on this computer are listed with ${DRAFT_REQUEST_TOOLS.list} and read with ${DRAFT_REQUEST_TOOLS.get}; list_change_requests and get_change_request read the repository's plan/requests/, and hand_over_change_request copies a recorded request there. To try a form you built on a running API: save_package, then use_company, import_form_package (publish: true) with the saved path, and submit_form as an engineer.`;
 
@@ -144,6 +163,22 @@ function describeAnswer(answer: ApiAnswer, extra: string[] = []): string {
   ].join('\n');
 }
 
+/**
+ * The API's release beside the one this server describes (P43): the installed
+ * program carries the route list of its own release, so on another release a
+ * route may differ from what find_route says.
+ */
+export function releaseLine(apiRelease: string | undefined): string {
+  const described = repoVersion();
+  if (apiRelease === undefined || !/^\d+\.\d+\.\d+$/u.test(apiRelease)) {
+    return `API release: ${apiRelease ?? 'not reported'} (this server describes ${described})`;
+  }
+  if (apiRelease === described) {
+    return `API release: ${apiRelease} (the routes this server describes)`;
+  }
+  return `API release: ${apiRelease}, but this server describes ${described}: some routes may differ from find_route. ${INSTALLED ? 'Update it (integr8-dev-mcp update).' : 'Pull the matching integr8-plus branch.'}`;
+}
+
 export function createDevServer(options: DevServerOptions): McpServer {
   const { routes, trace } = options;
   let company: Company | undefined;
@@ -181,6 +216,40 @@ export function createDevServer(options: DevServerOptions): McpServer {
     }
     return company;
   };
+
+  /**
+   * The plan/requests/ folder to use: the one the server was given, the
+   * repository named in this call (remembered for the next ones; P43), or the
+   * checkout's (or the remembered one).
+   */
+  const requestsTarget = (repository: string | undefined): string => {
+    if (options.requestsFolder !== undefined) {
+      return options.requestsFolder;
+    }
+    if (repository !== undefined) {
+      if (!isAbsolutePath(repository) || !isRepository(repository)) {
+        throw new Error(
+          `${repository} is not an integr8-plus folder (it needs plan/requests/ and apps/api/openapi.json).`,
+        );
+      }
+      writeSettings({ ...readSettings(), repository });
+      return joinPath(repository, 'plan', 'requests');
+    }
+    const found = requestsDir();
+    if (found === undefined) {
+      throw new Error(NO_REPOSITORY);
+    }
+    return found;
+  };
+
+  const repositoryInput = z
+    .string()
+    .min(1)
+    .max(1000)
+    .optional()
+    .describe(
+      'Only for the installed program: the absolute path of your integr8-plus checkout, remembered after the first time.',
+    );
 
   const personFor = (as: string): Person => {
     if (as === 'company') {
@@ -246,6 +315,7 @@ export function createDevServer(options: DevServerOptions): McpServer {
             `Session ends in: ${String(Math.floor(minutes / 60))} h ${String(minutes % 60)} min`,
             `Company: ${company === undefined ? 'none chosen (use_company)' : `${company.name} (${company.slug}, ${company.id})`}`,
             `Open impersonation grants: ${String(context.connection.openGrants)}`,
+            releaseLine(me.headers['x-api-release']),
             `Trace file: ${trace.file ?? '(not written)'}`,
           ].join('\n'),
         );
@@ -475,6 +545,13 @@ export function createDevServer(options: DevServerOptions): McpServer {
         const route = routes.find({ method: input.method, path });
         if (route === undefined) {
           return failure(`No route ${input.method} ${path}. See find_route.`);
+        }
+        if (route.security === 'website_key') {
+          // A person's token is refused there (401 website_key_invalid): the
+          // website's server sends a website key and nothing else.
+          return failure(
+            `${route.operationId} takes a website key, not a person. Use call_website_api (create_website_key first).`,
+          );
         }
         const query = input.query ?? {};
         if (input.skipCheck !== true) {
@@ -771,16 +848,23 @@ export function createDevServer(options: DevServerOptions): McpServer {
       }),
   );
 
+  registerWebsiteTools(server, { routes, guarded, needCompany, describeAnswer });
+
   server.registerTool(
     'list_change_requests',
     {
       title: 'List the change requests handed to the repository',
       description: `The change requests handed to the repository, in plan/requests/ (copied there from a recorded request, or written by hand; the ones recorded on this computer are in ${DRAFT_REQUEST_TOOLS.list}): code, title, kind and status. Start planning one with docs/contributing/planning-a-change-request.md.`,
-      inputSchema: {},
+      inputSchema: { repository: repositoryInput },
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
-    () => {
-      const found = listRepoRequests(options.requestsFolder);
+    ({ repository }) => {
+      let found: ReturnType<typeof listRepoRequests>;
+      try {
+        found = listRepoRequests(requestsTarget(repository));
+      } catch (error) {
+        return Promise.resolve(failure(error instanceof Error ? error.message : String(error)));
+      }
       return Promise.resolve(
         text(
           found.length === 0
@@ -804,11 +888,17 @@ export function createDevServer(options: DevServerOptions): McpServer {
         'One change request from plan/requests/ in full, by its code (CR-0001) or number, with the files beside it (its example .integr8form opens with open_package; import it with import_form_package).',
       inputSchema: {
         request: z.union([z.string().regex(/^CR-\d{4}$/iu), z.number().int().min(1).max(9999)]),
+        repository: repositoryInput,
       },
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
-    ({ request }) => {
-      const found = getRepoRequest(request, options.requestsFolder);
+    ({ request, repository }) => {
+      let found: ReturnType<typeof getRepoRequest>;
+      try {
+        found = getRepoRequest(request, requestsTarget(repository));
+      } catch (error) {
+        return Promise.resolve(failure(error instanceof Error ? error.message : String(error)));
+      }
       return Promise.resolve(
         found === undefined
           ? failure(`No ${String(request)} in plan/requests/. See list_change_requests.`)
@@ -831,13 +921,14 @@ export function createDevServer(options: DevServerOptions): McpServer {
       description: `Copies a change request recorded on this computer (see ${DRAFT_REQUEST_TOOLS.list}) into the repository's plan/requests/, as plan/requests/README.md describes: it keeps its number when that is free there and takes the next free one otherwise (its request.md keeps the number it has on this computer), adds its row to the README as "received", and marks it handed over on this computer. Only an open request is handed over; nothing in plan/requests/ is overwritten. Afterwards, run Prettier on the README so its table lines up, and plan it with list_change_requests and docs/contributing/planning-a-change-request.md.`,
       inputSchema: {
         number: z.number().int().min(1).max(9999).describe('Its number on this computer.'),
+        repository: repositoryInput,
       },
       annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     },
-    ({ number }) =>
+    ({ number, repository }) =>
       Promise.resolve().then(() => {
         try {
-          const target = options.requestsFolder ?? REQUESTS_DIR;
+          const target = requestsTarget(repository);
           const drafts = requestsFolder(outputFolder(options.forms?.host ?? currentHost()));
           const handed = handOverRequest(drafts, number, target);
           const request = listRepoRequests(target).find((entry) => entry.code === handed.code);

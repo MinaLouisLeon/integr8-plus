@@ -196447,7 +196447,7 @@
                     "nullable": true,
                     "type": "string",
                     "maxLength": 2048,
-                    "pattern": "^https:\\/\\/\\S+$"
+                    "pattern": "^(https:\\/\\/\\S+|http:\\/\\/(localhost|127\\.0\\.0\\.1)(:\\d{1,5})?([/?#]\\S*)?)$"
                   },
                   "aiChannels": {
                     "default": {
@@ -197836,7 +197836,7 @@
       "patch": {
         "operationId": "updateCompanySettings",
         "summary": "Change a company’s website, its document links, or whether its own apps are built",
-        "description": "The branding facts the dashboard owns. `documentLinkPattern` (0075) points the company’s document links at its own website: an https address with `{code}` in it, on the registered website’s host or one under it (422 `document_link_invalid`, `document_link_needs_website`, `document_link_other_site`); null goes back to Integr8’s page, and codes already printed keep working there either way. The rest of the look — logo, icon, colours, theme — is set from the desktop app while acting as the company, where it can be previewed. Switching `appsEnabled` on puts the company in the list the release pipeline builds for and, when the deployment can start builds (`APP_BUILDS=github`), starts its first build at once; `appBuild` says how that went, and is null when this change did not switch apps on.",
+        "description": "The branding facts the dashboard owns. `documentLinkPattern` (0075) points the company’s document links at its own website: an https address with `{code}` in it, on the registered website’s host or one under it (422 `document_link_invalid`, `document_link_needs_website`, `document_link_other_site`); a test company may also use `http://localhost` or `http://127.0.0.1` for both (P43), any other company gets 422 `website_url_local_only` or `document_link_invalid`. A staff session limited to test companies may change only `websiteUrl` and `documentLinkPattern` (403 `session_scope` otherwise). Null goes back to Integr8’s page, and codes already printed keep working there either way. The rest of the look — logo, icon, colours, theme — is set from the desktop app while acting as the company, where it can be previewed. Switching `appsEnabled` on puts the company in the list the release pipeline builds for and, when the deployment can start builds (`APP_BUILDS=github`), starts its first build at once; `appBuild` says how that went, and is null when this change did not switch apps on.",
         "tags": [
           "platform"
         ],
@@ -197863,7 +197863,7 @@
                     "nullable": true,
                     "type": "string",
                     "maxLength": 2048,
-                    "pattern": "^https:\\/\\/\\S+$"
+                    "pattern": "^(https:\\/\\/\\S+|http:\\/\\/(localhost|127\\.0\\.0\\.1)(:\\d{1,5})?([/?#]\\S*)?)$"
                   },
                   "appsEnabled": {
                     "type": "boolean"
@@ -198017,6 +198017,9 @@
               }
             }
           },
+          "403": {
+            "description": "A staff session limited to test companies changing anything but the website and document links (`session_scope`)."
+          },
           "404": {
             "description": "No such company."
           },
@@ -198024,7 +198027,7 @@
             "description": "`test_company_no_apps`: a test company cannot switch its apps on."
           },
           "422": {
-            "description": "A document link address that cannot be used."
+            "description": "A website or document link address that cannot be used."
           },
           "429": {
             "description": "Rate limit exceeded.",
@@ -198061,6 +198064,10 @@
           {
             "bearerAuth": []
           }
+        ],
+        "x-integr8-platform-scopes": [
+          "full",
+          "test_companies"
         ]
       }
     },
@@ -200512,7 +200519,7 @@
       "put": {
         "operationId": "setCompanyFlag",
         "summary": "Turn a flag on or off for one company",
-        "description": "Sending `null` removes the override, which is different from turning it off: the company goes back to whatever the default is, including when the default later changes.",
+        "description": "Sending `null` removes the override, which is different from turning it off: the company goes back to whatever the default is, including when the default later changes. A staff session limited to test companies may set only `documents` and the `website_*` flags (403 `session_scope` otherwise).",
         "tags": [
           "platform"
         ],
@@ -200591,6 +200598,9 @@
               }
             }
           },
+          "403": {
+            "description": "A limited staff session setting another flag (`session_scope`)."
+          },
           "422": {
             "description": "The request failed validation.",
             "content": {
@@ -200636,6 +200646,10 @@
           {
             "bearerAuth": []
           }
+        ],
+        "x-integr8-platform-scopes": [
+          "full",
+          "test_companies"
         ]
       }
     },
@@ -208962,12 +208976,16 @@
           {
             "bearerAuth": []
           }
+        ],
+        "x-integr8-platform-scopes": [
+          "full",
+          "test_companies"
         ]
       },
       "post": {
         "operationId": "createWebsiteKey",
         "summary": "Make a website key for a company",
-        "description": "Only a staff manager (an account the terminal command made) may create a key; anybody else gets 403 `staff_manager_only`. The key is in this answer and nowhere else: put it in the website’s server environment, never in its pages. Refused with 409 `website_key_limit` while the company already has two non-revoked keys.",
+        "description": "Only a staff manager (an account the terminal command made) may create a key; anybody else gets 403 `staff_manager_only`, except on a test company, where any staff member may (P43). The key is in this answer and nowhere else: put it in the website’s server environment, never in its pages. Refused with 409 `website_key_limit` while the company already has two non-revoked keys.",
         "tags": [
           "platform"
         ],
@@ -209150,6 +209168,10 @@
           {
             "bearerAuth": []
           }
+        ],
+        "x-integr8-platform-scopes": [
+          "full",
+          "test_companies"
         ]
       }
     },
@@ -209157,7 +209179,7 @@
       "patch": {
         "operationId": "updateWebsiteKey",
         "summary": "Enable or disable a company website key",
-        "description": "Only a staff manager (an account the terminal command made) may change a key’s state; anybody else gets 403 `staff_manager_only`. Disabling stops requests while retaining the key; enabling resumes it unless revoked.",
+        "description": "Only a staff manager (an account the terminal command made) may change a key’s state; anybody else gets 403 `staff_manager_only`, except on a test company, where any staff member may (P43). Disabling stops requests while retaining the key; enabling resumes it unless revoked.",
         "tags": [
           "platform"
         ],
@@ -209333,12 +209355,16 @@
           {
             "bearerAuth": []
           }
+        ],
+        "x-integr8-platform-scopes": [
+          "full",
+          "test_companies"
         ]
       },
       "delete": {
         "operationId": "deleteWebsiteKey",
         "summary": "Permanently delete a company website key",
-        "description": "Only the terminal-created Integr8 staff admin can permanently delete a key. An audit event records the action; the secret is never retained.",
+        "description": "Only the terminal-created Integr8 staff admin can permanently delete a key (any staff member, on a test company: P43). An audit event records the action; the secret is never retained.",
         "tags": [
           "platform"
         ],
@@ -209496,6 +209522,10 @@
           {
             "bearerAuth": []
           }
+        ],
+        "x-integr8-platform-scopes": [
+          "full",
+          "test_companies"
         ]
       }
     },
@@ -209503,7 +209533,7 @@
       "post": {
         "operationId": "revokeWebsiteKey",
         "summary": "Revoke a website key",
-        "description": "Only a staff manager (an account the terminal command made) may revoke a key; anybody else gets 403 `staff_manager_only`. The website using it stops serving immediately. The key stays listed, revoked, for the record.",
+        "description": "Only a staff manager (an account the terminal command made) may revoke a key; anybody else gets 403 `staff_manager_only`, except on a test company, where any staff member may (P43). The website using it stops serving immediately. The key stays listed, revoked, for the record.",
         "tags": [
           "platform"
         ],
@@ -209661,6 +209691,10 @@
           {
             "bearerAuth": []
           }
+        ],
+        "x-integr8-platform-scopes": [
+          "full",
+          "test_companies"
         ]
       }
     },
@@ -209943,8 +209977,8 @@
     "/v1/platform/downloads": {
       "get": {
         "operationId": "getPlatformDownloads",
-        "summary": "The staff app and Integr8 Forms for AI, newest release of each",
-        "description": "Read from the GitHub releases this deployment is set to (`APP_RELEASES=github`). Each is `found` with its files, `none` when nothing is published (or releases are not read here), or `unavailable` when GitHub could not be asked.",
+        "summary": "The staff app, Integr8 Forms for AI and the developer MCP server, newest release of each",
+        "description": "Read from the GitHub releases this deployment is set to (`APP_RELEASES=github`). `devMcp` (P43) lists the developer program’s first download (`zip`) and the files an installed program updates itself with (`program`, `keyring`), each with its checksum; a staff session limited to test companies may read it. Each is `found` with its files, `none` when nothing is published (or releases are not read here), or `unavailable` when GitHub could not be asked.",
         "tags": [
           "platform"
         ],
@@ -210191,11 +210225,136 @@
                           "additionalProperties": false
                         }
                       ]
+                    },
+                    "devMcp": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "found"
+                              ]
+                            },
+                            "release": {
+                              "type": "object",
+                              "properties": {
+                                "tag": {
+                                  "type": "string"
+                                },
+                                "version": {
+                                  "type": "string"
+                                },
+                                "downloads": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "name": {
+                                        "type": "string"
+                                      },
+                                      "url": {
+                                        "type": "string"
+                                      },
+                                      "platform": {
+                                        "type": "string",
+                                        "enum": [
+                                          "windows",
+                                          "macos",
+                                          "linux"
+                                        ]
+                                      },
+                                      "arch": {
+                                        "type": "string",
+                                        "enum": [
+                                          "x64",
+                                          "arm64"
+                                        ]
+                                      },
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "zip",
+                                          "program",
+                                          "keyring"
+                                        ]
+                                      },
+                                      "size": {
+                                        "nullable": true,
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      "checksumUrl": {
+                                        "nullable": true,
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "name",
+                                      "url",
+                                      "platform",
+                                      "arch",
+                                      "kind",
+                                      "size",
+                                      "checksumUrl"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                }
+                              },
+                              "required": [
+                                "tag",
+                                "version",
+                                "downloads"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "status",
+                            "release"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "none"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "status"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "unavailable"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "status"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
                     }
                   },
                   "required": [
                     "staff",
-                    "formsAi"
+                    "formsAi",
+                    "devMcp"
                   ],
                   "additionalProperties": false
                 }
@@ -210257,6 +210416,10 @@
           {
             "bearerAuth": []
           }
+        ],
+        "x-integr8-platform-scopes": [
+          "full",
+          "test_companies"
         ]
       }
     }

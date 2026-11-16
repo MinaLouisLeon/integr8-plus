@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { configDir, type HostInfo, currentHostInfo } from './paths.js';
+import { dirname, join } from 'node:path';
+import { configDir, type HostInfo, currentHostInfo, INSTALLED } from './paths.js';
 
 /**
  * Where a signed-in staff session is kept between runs (P38).
@@ -40,9 +40,45 @@ export interface SecretBox {
 
 const SERVICE = 'integr8-dev-mcp';
 
+/**
+ * The keychain module's file beside the installed program (P43). A single
+ * executable cannot load a native module from inside itself, so the release
+ * ships `@napi-rs/keyring`'s file for that computer next to it, under this
+ * name, and the installer copies both.
+ */
+export const KEYRING_FILE = 'integr8-keyring.node';
+
+interface KeyringEntry {
+  getPassword(): string | null | undefined;
+  setPassword(secret: string): void;
+  deletePassword(): unknown;
+}
+
+interface KeyringModule {
+  Entry: new (service: string, account: string) => KeyringEntry;
+}
+
+/** The keychain module: beside the installed program, or the package from a checkout. */
+export async function loadKeyring(): Promise<KeyringModule> {
+  if (INSTALLED) {
+    const file = join(dirname(process.execPath), KEYRING_FILE);
+    const loaded: { exports: unknown } = { exports: {} };
+    try {
+      process.dlopen(loaded, file);
+    } catch (error) {
+      throw new Error(
+        `The keychain module (${KEYRING_FILE}) could not be loaded from beside the program: ${error instanceof Error ? error.message : String(error)}. Install again from the whole download, or sign in with --file-store.`,
+        { cause: error },
+      );
+    }
+    return loaded.exports as KeyringModule;
+  }
+  return import('@napi-rs/keyring');
+}
+
 /** The keychain, through `@napi-rs/keyring`. Throws when the machine has none. */
 export async function keychainBox(): Promise<SecretBox> {
-  const { Entry } = await import('@napi-rs/keyring');
+  const { Entry } = await loadKeyring();
   // Proves a keychain answers at all before anything is written.
   new Entry(SERVICE, '__probe__').getPassword();
   return {
@@ -143,9 +179,18 @@ export class SessionStore {
   async remove(api: string): Promise<void> {
     const record = this.list().find((candidate) => candidate.api === api);
     if (record !== undefined) {
-      (await this.#box(record.store)).delete(api);
+      const box = await this.#box(record.store);
+      box.delete(api);
+      // Signing out forgets the test companies' website keys too (P43).
+      box.delete(websiteKeysEntry(api));
     }
     this.#writeIndex(this.list().filter((candidate) => candidate.api !== api));
+  }
+
+  /** The website keys kept for an API, in the same box as its session (P43). */
+  async websiteKeys(api: string): Promise<WebsiteKeyVault> {
+    const record = this.list().find((candidate) => candidate.api === api);
+    return boxVault(await this.#box(record?.store ?? 'keychain'), api);
   }
 
   /** A box for writing a new session: the keychain, or the file when asked. */
@@ -156,4 +201,82 @@ export class SessionStore {
     await keychainBox();
     return 'keychain';
   }
+}
+
+/**
+ * A test company's website key, as `create_website_key` made it (P43). The
+ * secret is kept where the staff session is (keychain, or the file when the
+ * session is), so `call_website_api` can send it; it never reaches the AI.
+ */
+export interface StoredWebsiteKey {
+  tenantId: string;
+  keyId: string;
+  hint: string;
+  label: string | null;
+  secret: string;
+  createdAt: string;
+}
+
+export interface WebsiteKeyVault {
+  list(tenantId?: string): Promise<StoredWebsiteKey[]>;
+  put(key: StoredWebsiteKey): Promise<void>;
+  remove(tenantId: string, keyId: string): Promise<void>;
+}
+
+/** Keys held for the life of this process only: local mode and the tests. */
+export function memoryVault(): WebsiteKeyVault {
+  const keys: StoredWebsiteKey[] = [];
+  return {
+    list: (tenantId) =>
+      Promise.resolve(keys.filter((key) => tenantId === undefined || key.tenantId === tenantId)),
+    put: (key) => {
+      keys.push(key);
+      return Promise.resolve();
+    },
+    remove: (tenantId, keyId) => {
+      const at = keys.findIndex((key) => key.tenantId === tenantId && key.keyId === keyId);
+      if (at >= 0) {
+        keys.splice(at, 1);
+      }
+      return Promise.resolve();
+    },
+  };
+}
+
+/** The entry an API's website keys are kept under, beside its session. */
+export const websiteKeysEntry = (api: string) => `${api}#website-keys`;
+
+/** Every website key for one API, as one entry in a box. */
+export function boxVault(box: SecretBox, api: string): WebsiteKeyVault {
+  const entry = websiteKeysEntry(api);
+  const read = (): StoredWebsiteKey[] => {
+    const secret = box.get(entry);
+    if (secret === undefined) {
+      return [];
+    }
+    try {
+      return JSON.parse(secret) as StoredWebsiteKey[];
+    } catch {
+      return [];
+    }
+  };
+  const write = (keys: StoredWebsiteKey[]) => {
+    if (keys.length === 0) {
+      box.delete(entry);
+    } else {
+      box.set(entry, JSON.stringify(keys));
+    }
+  };
+  return {
+    list: (tenantId) =>
+      Promise.resolve(read().filter((key) => tenantId === undefined || key.tenantId === tenantId)),
+    put: (key) => {
+      write([...read().filter((known) => known.keyId !== key.keyId), key]);
+      return Promise.resolve();
+    },
+    remove: (tenantId, keyId) => {
+      write(read().filter((key) => !(key.tenantId === tenantId && key.keyId === keyId)));
+      return Promise.resolve();
+    },
+  };
 }

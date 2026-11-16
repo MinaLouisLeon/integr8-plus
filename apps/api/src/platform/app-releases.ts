@@ -1,6 +1,8 @@
 import {
   DesktopUpdateFeed,
+  type DevMcpLookup,
   type FormsAiLookup,
+  lookupDevMcp,
   lookupFormsAi,
   lookupInstallers,
   type ReleaseLookup,
@@ -33,6 +35,8 @@ export type CompanyAppState =
 export interface StaffDownloads {
   staff: ReleaseLookup;
   formsAi: FormsAiLookup;
+  /** The developer MCP server's program (P43). */
+  devMcp: DevMcpLookup;
 }
 
 export interface AppReleases {
@@ -52,7 +56,11 @@ export class NoAppReleases implements AppReleases {
   }
 
   staffDownloads(): Promise<StaffDownloads> {
-    return Promise.resolve({ staff: { status: 'none' }, formsAi: { status: 'none' } });
+    return Promise.resolve({
+      staff: { status: 'none' },
+      formsAi: { status: 'none' },
+      devMcp: { status: 'none' },
+    });
   }
 }
 
@@ -70,7 +78,11 @@ export class RecordingAppReleases implements AppReleases {
   }
 
   staffDownloads(): Promise<StaffDownloads> {
-    return Promise.resolve({ staff: { status: 'none' }, formsAi: { status: 'none' } });
+    return Promise.resolve({
+      staff: { status: 'none' },
+      formsAi: { status: 'none' },
+      devMcp: { status: 'none' },
+    });
   }
 }
 
@@ -112,10 +124,11 @@ export class GitHubAppReleases implements AppReleases {
   }
 
   async staffDownloads(): Promise<StaffDownloads> {
-    const [staff, formsAi] = await Promise.all([
+    const [staff, formsAi, devMcp] = await Promise.all([
       lookupInstallers(this.#feed, 'staff', this.#origin),
       lookupFormsAi(this.#feed, this.#origin),
+      lookupDevMcp(this.#feed, this.#origin),
     ]);
-    return { staff, formsAi };
+    return { staff, formsAi, devMcp };
   }
 }

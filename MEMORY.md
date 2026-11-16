@@ -26,7 +26,7 @@ the end of any piece of work that changes one of them, and date each section.
   `apps/api/src/app-info.ts` has a copy a test keeps equal. A version bump must also change
   every place listed under "Places that state the version".
 - **Migrations (2.0.0):** a new baseline, **0001_foundation … 0019_assistant**, one per module (P41),
-  then **0020_desktop_only** (P42, unreleased, branch `ccr-982c2137-h4as2m`); the next one is **0021**. A 1.x database is refused (`before-baseline`) and is created again (setup guide
+  then **0020_desktop_only** (P42, unreleased, branch `ccr-982c2137-h4as2m`) and **0021_test_company_localhost** (P43, unreleased, branch `ccr-3cd2290c-d9znqu`); the next one is **0022**. A 1.x database is refused (`before-baseline`) and is created again (setup guide
   Stage 11 part AJ). **Before 2.0.0** (history): `packages/db/migrations` reached **0079** (0079 `form_actions`, P40, unreleased,
   branch `ccr-916cc1b1-6sp5my`; 0078 `accountant_role`, unreleased, merged into `dev` in PR #188; 0077 `test_companies`, P38, unreleased, branch
   `ccr-56fb45d1-5mq6bt`). Before that it reached **0076** (0075 merged into `dev`, released
@@ -53,7 +53,7 @@ the end of any piece of work that changes one of them, and date each section.
 - **Plan (2026-11-15):** the phase files P01–P41 were removed with the old docs; `plan/README.md`
   now lists only what is unfinished: P40 (form actions; server side built, screens, phone, Forms
   for AI and the owner's six decisions open), the tooling and sign-in runs still to do, the owner's
-  steps, and the phases not started (P20, P21, P28–P31, P33–P35). P42 (desktop only) is in progress; the next new phase is P43.
+  steps, and the phases not started (P20, P21, P28–P31, P33–P35). P42 (desktop only) is in progress; P43 (developer MCP server for company websites, and as an installable program) is built (2026-11-16), waiting for a release run and the owner's Windows run; the next new phase is P44.
 - **P36 self-hosted sign-in**: merged into
   `main` in PRs #130 and #135; CI's database job, real Auth included, is green. Auth container in
   `deploy/compose.yml` (`supabase/auth:v2.197.0`, private ports, memory caps), bootstrap's
@@ -421,6 +421,27 @@ the end of any piece of work that changes one of them, and date each section.
   change, moving a company, code signing, stores, test box) moved to
   `docs/deployment/README.md` "Occasional procedures"; references to old stage letters were
   repointed. The old long edition is in git history.
+- **The developer MCP server for company websites, and as a program, P43 (2026-11-16,
+  unreleased, branch `ccr-3cd2290c-d9znqu`; migration 0021), as the owner chose it (D1–D4):**
+  a company's website is built in its own repository. The limited `test_companies`
+  staff session may now use the five website-key routes, set `documents` and the
+  `website_*` flags (no other) and change only `websiteUrl` and `documentLinkPattern`, on
+  test companies only (`session-scope.test.ts` list); a test company's keys need no staff
+  manager. A test company (only) may use `http://localhost:<port>` / `127.0.0.1` for its
+  website and link pattern (0021, a trigger backs the API's 422 `website_url_local_only`).
+  Seven new tools (45 in all): `create_website_key` writes the key into the website's
+  `.env*.local` and never shows it, `write_website_env`, `list_website_keys`,
+  `revoke_website_key`, `set_website_access`, `call_website_api` (the key, no person or
+  grant; `call_api` refuses website routes), `seed_shared_documents` (uploaded PDFs made in
+  `src/pdf.ts`, or printed from a submission). The server is also an installed program,
+  `integr8-dev-mcp`: Forms for AI's installer, now driven by a `SetupProfile`
+  (`@integr8/forms-ai/setup`), with `DEV_PROFILE` (`src/program.ts`); `@napi-rs/keyring`'s
+  file ships beside it as `integr8-keyring.node` (D1); OpenAPI built in, `status` warns
+  when the API's `x-api-release` differs; updates through `GET /v1/platform/downloads`
+  (now open to the limited session, with a `devMcp` entry); release job `dev-mcp`
+  (zip + program + keyring, each with `.sha256`), unsigned (D4); separate from Forms for AI
+  (D3). Local mode now passes its own port as `API_PUBLIC_URL` (uploads failed before).
+  Only Linux x64 was built here; the made-document seeding was not run (needs the worker).
 - **The demo seeder goes through the API**, in-process with Fastify's `inject`, as the
   company's own people (plus a staff impersonation for staff-only setup). Direct inserts
   were rejected: they skip numbering, stock, ledger postings and audit, and produce data
@@ -441,6 +462,11 @@ Update them together at each release or new migration:
 - Released versions: `gh release list`. v1.2.1 (2026-10-27) carries migrations 0051–0053.
 
 ## Open items
+
+- **Owner steps for P43 (2026-11-16):** after the next release, download the developer
+  program from the staff app on Windows, install it, connect Claude Code, sign in, and run
+  the website workflow from the website's repository (`docs/contributing/developer-tools.md`).
+  Not run here: the Windows/macOS builds and seeding a printed (made) document.
 
 - **Owner steps for P42 (2026-11-15):** click through the staff app and a company's app in real
   Tauri builds on Windows (and macOS) and sign a new person in through an invitation; on the

@@ -25,3 +25,10 @@ eec9d4520cf963c08e01c4325601a2df3a094bc7:apps/api/src/check-env-script.test.ts:g
 # by hand) reaches the commits that added them.
 58046f42a518ea3231bbeffb10c94303dead7aad:packages/operations-dom/src/announcements.tsx:generic-api-key:42
 a863fca053eafb2ebdcfcfd7816fcb5302e90d8b:packages/operations-dom/src/schedule/schedule-screen.tsx:generic-api-key:88
+
+# apps/dev-mcp/src/website.test.ts (P43) as first committed held two made-up
+# JWT-shaped strings (`STAFF`, `GRANT`) that the stand-in API accepts and the
+# redaction test proves hidden; they sign nothing and reach no server. The next
+# commit builds them at runtime instead; these cover the commit already pushed.
+feb67841c7610c57ee0141d8a9609f09d7c1e77b:apps/dev-mcp/src/website.test.ts:jwt:29
+feb67841c7610c57ee0141d8a9609f09d7c1e77b:apps/dev-mcp/src/website.test.ts:jwt:30

@@ -2,9 +2,10 @@ import { shownTabs, toPlatformUserId, toTenantId } from '@integr8/core';
 import { getPlatformDataSource, TENANT_PLANS, type TenantSummary, withTenant } from '@integr8/db';
 import { z } from 'zod';
 import { conflict, notFound, unprocessable } from '../../../http/errors.js';
-import { documentLinkPatternProblem } from '../../../documents/render.js';
+import { documentLinkPatternProblem, isLocalWebAddress } from '../../../documents/render.js';
 import { applyTabChoice, assertKnownTabs } from '../../../platform/company-tabs.js';
 import { defineRoute, noSchema, type PlatformRequestContext } from '../../../http/routes.js';
+import { sessionScopeRefusal } from '../../../http/session-scope.js';
 import { forgetTenantStatus } from '../../../http/suspension.js';
 import { onboardCompany } from '../../../platform/onboarding.js';
 import { assertCompanyAppReady, companyAppReadiness } from '../../../platform/company-app-gate.js';
@@ -34,11 +35,33 @@ import {
  * are the actions somebody will one day need to account for.
  */
 
-/** https only, bounded; the phone app hands it to a web view. */
+/**
+ * https, bounded; the phone app hands it to a web view. `http://localhost` or
+ * `http://127.0.0.1` passes the schema too, but only a test company may keep
+ * one (P43: the website being built on the developer's machine); the handlers
+ * refuse it for every other company (422 `website_url_local_only`).
+ */
 const websiteUrlSchema = z
   .string()
   .max(2048)
-  .regex(/^https:\/\/\S+$/u);
+  .regex(/^(https:\/\/\S+|http:\/\/(localhost|127\.0\.0\.1)(:\d{1,5})?([/?#]\S*)?)$/u);
+
+function refuseLocalWebsite(websiteUrl: string | null | undefined, isTest: boolean): void {
+  if (!isTest && typeof websiteUrl === 'string' && isLocalWebAddress(websiteUrl)) {
+    throw unprocessable(
+      'website_url_local_only',
+      'Only a test company may use a website on this machine (localhost).',
+      [{ field: 'body.websiteUrl', code: 'website_url_local_only', message: websiteUrl }],
+    );
+  }
+}
+
+/**
+ * What a staff session limited to test companies may change on a company's
+ * settings (P43): its website and document links, for the developer MCP
+ * server's website work. Apps and the assistant stay the dashboard's.
+ */
+const TEST_SESSION_SETTINGS = new Set(['websiteUrl', 'documentLinkPattern']);
 
 export const listCompaniesRoute = defineRoute({
   method: 'get',
@@ -213,7 +236,7 @@ export const onboardCompanyRoute = defineRoute({
     // A real address check, not just a length: the invitations table has one
     // too, and reaching it would mean a 500 after the company row committed.
     ownerEmail: z.email().max(320),
-    /** The company's own website, https only. Its phone app opens on this page. */
+    /** The company's own website, https (a test company may use localhost). Its phone app opens on this page. */
     websiteUrl: websiteUrlSchema.nullable().optional(),
     /**
      * Which of the company's apps show the assistant (ADR-0001). Off everywhere
@@ -262,6 +285,7 @@ export const onboardCompanyRoute = defineRoute({
     if ((await platform.tenants.findBySlug(body.slug)) !== undefined) {
       throw conflict('slug_taken', `A company already uses the slug "${body.slug}"`);
     }
+    refuseLocalWebsite(body.websiteUrl, body.isTest);
     if (body.tabs !== undefined) {
       // Before anything is made, so a wrong key leaves no half-made company.
       assertKnownTabs(body.tabs);
@@ -518,9 +542,10 @@ export const updateCompanySettingsRoute = defineRoute({
   operationId: 'updateCompanySettings',
   summary: 'Change a company’s website, its document links, or whether its own apps are built',
   description:
-    'The branding facts the dashboard owns. `documentLinkPattern` (0075) points the company’s document links at its own website: an https address with `{code}` in it, on the registered website’s host or one under it (422 `document_link_invalid`, `document_link_needs_website`, `document_link_other_site`); null goes back to Integr8’s page, and codes already printed keep working there either way. The rest of the look — logo, icon, colours, theme — is set from the desktop app while acting as the company, where it can be previewed. Switching `appsEnabled` on puts the company in the list the release pipeline builds for and, when the deployment can start builds (`APP_BUILDS=github`), starts its first build at once; `appBuild` says how that went, and is null when this change did not switch apps on.',
+    'The branding facts the dashboard owns. `documentLinkPattern` (0075) points the company’s document links at its own website: an https address with `{code}` in it, on the registered website’s host or one under it (422 `document_link_invalid`, `document_link_needs_website`, `document_link_other_site`); a test company may also use `http://localhost` or `http://127.0.0.1` for both (P43), any other company gets 422 `website_url_local_only` or `document_link_invalid`. A staff session limited to test companies may change only `websiteUrl` and `documentLinkPattern` (403 `session_scope` otherwise). Null goes back to Integr8’s page, and codes already printed keep working there either way. The rest of the look — logo, icon, colours, theme — is set from the desktop app while acting as the company, where it can be previewed. Switching `appsEnabled` on puts the company in the list the release pipeline builds for and, when the deployment can start builds (`APP_BUILDS=github`), starts its first build at once; `appBuild` says how that went, and is null when this change did not switch apps on.',
   tags: ['platform'],
   security: 'platform',
+  platformScopes: ['full', 'test_companies'],
   params: z.object({ tenantId: z.uuid() }),
   query: noSchema,
   body: z.object({
@@ -533,8 +558,12 @@ export const updateCompanySettingsRoute = defineRoute({
   responses: {
     200: { description: 'Changed.', schema: companySettingsChangeSchema },
     404: { description: 'No such company.' },
+    403: {
+      description:
+        'A staff session limited to test companies changing anything but the website and document links (`session_scope`).',
+    },
     409: { description: '`test_company_no_apps`: a test company cannot switch its apps on.' },
-    422: { description: 'A document link address that cannot be used.' },
+    422: { description: 'A website or document link address that cannot be used.' },
   },
   handler: async ({ params, body }, context) => {
     const platform = getPlatformDataSource();
@@ -542,6 +571,19 @@ export const updateCompanySettingsRoute = defineRoute({
     if (tenant?.deletedAt !== null) {
       throw notFound(`No company with id ${params.tenantId}`);
     }
+    if (context.platform.scope === 'test_companies') {
+      const other = Object.keys(body).filter((field) => !TEST_SESSION_SETTINGS.has(field));
+      if (other.length > 0) {
+        throw await sessionScopeRefusal(
+          context,
+          { method: 'patch', path: '/v1/platform/companies/:tenantId/settings' },
+          'field',
+          tenant.id,
+          other.join(', '),
+        );
+      }
+    }
+    refuseLocalWebsite(body.websiteUrl, tenant.isTest);
     if (tenant.isTest && body.appsEnabled === true) {
       throw conflict('test_company_no_apps', 'A test company has no phone or desktop apps.');
     }
@@ -554,7 +596,7 @@ export const updateCompanySettingsRoute = defineRoute({
       const website = body.websiteUrl === undefined ? current.websiteUrl : body.websiteUrl;
       const checked = pattern === undefined ? current.documentLinkPattern : pattern;
       if (checked !== null) {
-        const problem = documentLinkPatternProblem(checked, website);
+        const problem = documentLinkPatternProblem(checked, website, tenant.isTest);
         if (problem !== null) {
           throw unprocessable(problem, DOCUMENT_LINK_PROBLEMS[problem], [
             { field: 'body.documentLinkPattern', code: problem, message: checked },
