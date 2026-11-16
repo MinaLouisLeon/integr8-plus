@@ -222,6 +222,12 @@ The Tauri desktop updater, by contrast, verifies a minisign signature against `u
 
 ## SEC-005 — Release workflows run third-party actions pinned to mutable tags next to signing secrets
 
+**Status:** Fixed in the repository (2026-11-16, uncommitted); one owner step left. Every
+third-party action is pinned to a full commit (`pins:check` fails otherwise), `ci.yml` and
+`verify.yml` are read-only by default, and the three signing jobs name the `release` environment.
+**Owner step:** create the `release` environment in GitHub, move the signing secrets into it
+(setup guide), and optionally require a reviewer.
+
 **Severity:** Medium
 **Confidence:** Confirmed by source tracing
 **Affected component:** `.github/workflows/*.yml`

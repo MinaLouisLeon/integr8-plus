@@ -82,6 +82,15 @@ runs `pnpm typecheck` and `pnpm test`.
 and the release. Runner minutes are finite: set `DESKTOP_BUILDS=disabled` while
 desktop builds are unsigned.
 
+**Workflow safety (SEC-005).** Every third-party action is pinned to a full
+commit with its version as a comment (`actions/checkout@<40 hex> # v7.0.1`);
+`pins:check` fails on a tag or a branch, and Dependabot (`github-actions`)
+proposes the next commit. Workflows are read-only unless a job asks for more.
+The signing keys (desktop updater, Apple, Windows, Expo, Google) live in the
+`release` GitHub environment, which only the signing jobs name
+(`environment: release`); never move them back to repository secrets, and give a
+new job that signs the same line.
+
 ## The rules lint and tests enforce
 
 - **Only `@integr8/db` touches Postgres** (`kysely`/`pg` elsewhere is a lint

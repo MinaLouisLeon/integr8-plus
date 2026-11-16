@@ -94,7 +94,9 @@ the end of any piece of work that changes one of them, and date each section.
   short checklist (see Decisions); republish `setup-checklist.html` to the first artifact.
   **2026-11-16 (branch `ccr-4623ab69-s5teku`):** the guide gained Stage 12, a Proxmox test
   machine filled by `db:volume` and read with `pg_stat_statements`, `db:plans` and
-  `auto_explain` (12 stages, 107 tick boxes); not republished yet.
+  `auto_explain` (12 stages, 107 tick boxes); not republished yet. **2026-11-16 (branch
+  `ccr-87dc93be-pye3tx`):** two more steps, 109 in all: Stage 1's own "GitHub: the `release`
+  environment" (SEC-005) and Stage 8's "Back up its Android signing key" (Expo keystore per company).
 - **The guide on GitHub Pages (2026-11-15, branch `ccr-982c2137-h4as2m`), as the owner asked:**
   `.github/workflows/guide-pages.yml` publishes `scripts/guide/build-site.mjs`'s output when the
   guide reaches `main` or by hand: the guide encrypted (AES-GCM, PBKDF2 600 000 rounds) with the
@@ -473,6 +475,14 @@ the end of any piece of work that changes one of them, and date each section.
   loader for the process except the JPEG, PNG, WebP and HEIF buffer loaders (`sharp.block`/`unblock`);
   thumbnails and PDF pictures use it. SVG or PDF bytes uploaded as a photo get no thumbnail. The
   business samples CLI draws its SVG pictures before the first decode. No database or screen change.
+- **SEC-005 (2026-11-16, branch `ccr-87dc93be-pye3tx`), as the owner asked:** every third-party
+  GitHub Action is pinned to a full commit with its version as a comment; `pnpm pins:check` now fails
+  on a tag or branch (`actionProblems` in `scripts/pins/check.mjs`). `ci.yml` and `verify.yml` are
+  `contents: read` by default. The signing jobs (`build-company-apps.yml` desktop and mobile,
+  `build-release-artifacts.yml` desktop) run in the `release` environment; the owner must create it
+  and move `EXPO_TOKEN`, `TAURI_SIGNING_PRIVATE_KEY(_PASSWORD)` and any Apple/Windows/Google signing
+  secrets into it (setup guide), optionally with required reviewers (then dashboard-started builds
+  wait for approval too). Not run here: a real workflow run.
 - **The demo seeder goes through the API**, in-process with Fastify's `inject`, as the
   company's own people (plus a staff impersonation for staff-only setup). Direct inserts
   were rejected: they skip numbering, stock, ledger postings and audit, and produce data
@@ -493,6 +503,13 @@ Update them together at each release or new migration:
 - Released versions: `gh release list`. v1.2.1 (2026-10-27) carries migrations 0051–0053.
 
 ## Open items
+
+- **Owner step for SEC-005 (2026-11-16):** GitHub → Settings → Environments → `release`; move
+  `EXPO_TOKEN`, `TAURI_SIGNING_PRIVATE_KEY`, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` and any Apple,
+  Windows or Google signing secrets there from the repository secrets; optionally require a reviewer.
+  Also (2026-11-16): download a backup of each company's Android keystore from expo.dev and keep it
+  in the password manager; find or regenerate the desktop updater key (`updater.key`). None of the
+  apps is code-signed by Microsoft or Apple yet; that waits on buying certificates, no code change.
 
 - **Owner steps for P43 (2026-11-16):** after the next release, download the developer
   program from the staff app on Windows, install it, connect Claude Code, sign in, and run
