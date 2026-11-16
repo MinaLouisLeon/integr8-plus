@@ -8791,6 +8791,7 @@ export const ar: Catalogue<Messages> = {
         'تطبيقات فريق Integr8. لا يرى هذه الصفحة إلا فريق العمل بعد تسجيل الدخول؛ أما الشركات فتنزّل تطبيقاتها من ‎/download.',
       staffNone: 'لم يُنشر إصدار لتطبيق فريق العمل بعد.',
       formsAiNone: 'لا يحتوي أي إصدار على Integr8 Forms for AI بعد.',
+      devMcpNone: 'لا يحتوي أي إصدار على خادم MCP للمطورين بعد.',
     },
     companies: {
       title: 'الشركات',

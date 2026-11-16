@@ -95,15 +95,35 @@ export function documentLink(
 /** Where the code goes in a company's document link address (0075). */
 export const DOCUMENT_CODE_PLACEHOLDER = '{code}';
 
+/** The developer's own machine, as a test company's website may be (P43). */
+const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1']);
+
+/**
+ * Whether an address is a website running on the developer's own machine
+ * (`http://localhost:<port>` or `http://127.0.0.1:<port>`): allowed as a test
+ * company's website and document links (P43), so a site being built can be
+ * opened from a test document's QR code; refused for every real company.
+ */
+export function isLocalWebAddress(address: string): boolean {
+  try {
+    const url = new URL(address);
+    return url.protocol === 'http:' && LOCAL_HOSTS.has(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Why a document link address cannot be used, or null when it can: https, with
  * `{code}` in its path or query, and on the company's registered website (the
  * same host, or one under it), so a link never sends a customer somewhere the
- * company did not register with Integr8.
+ * company did not register with Integr8. `allowLocal` (a test company only,
+ * P43) also accepts `http://localhost` and `http://127.0.0.1`.
  */
 export function documentLinkPatternProblem(
   pattern: string,
   websiteUrl: string | null,
+  allowLocal = false,
 ): 'document_link_invalid' | 'document_link_needs_website' | 'document_link_other_site' | null {
   if (pattern.length > 500 || !pattern.includes(DOCUMENT_CODE_PLACEHOLDER) || /\s/u.test(pattern)) {
     return 'document_link_invalid';
@@ -114,11 +134,12 @@ export function documentLinkPatternProblem(
   } catch {
     return 'document_link_invalid';
   }
-  if (url.protocol !== 'https:' || url.username !== '' || url.password !== '') {
+  const local = allowLocal && url.protocol === 'http:' && LOCAL_HOSTS.has(url.hostname);
+  if ((url.protocol !== 'https:' && !local) || url.username !== '' || url.password !== '') {
     return 'document_link_invalid';
   }
   // The code goes in the path or the query, never in the host name.
-  const authority = pattern.replace(/^https:\/\//u, '').split(/[/?#]/u)[0] ?? '';
+  const authority = pattern.replace(/^https?:\/\//u, '').split(/[/?#]/u)[0] ?? '';
   if (authority.includes(DOCUMENT_CODE_PLACEHOLDER)) {
     return 'document_link_invalid';
   }
