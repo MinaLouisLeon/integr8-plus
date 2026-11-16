@@ -6,6 +6,7 @@ import {
   type Principal,
 } from '@integr8/core';
 import { AuthError, InvalidTokenError, type LiveSession, SessionRevokedError } from '@integr8/auth';
+import { getPlatformDataSource } from '@integr8/db';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import { createHash, randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
@@ -266,7 +267,12 @@ export function buildServer(options: BuildServerOptions): FastifyInstance {
           // request, so ending a session takes effect immediately rather than
           // whenever the access token happens to lapse.
           if (principal.impersonatedBy !== undefined) {
-            await services.impersonation.assertStillPermitted(principal);
+            const { limited } = await services.impersonation.assertStillPermitted(principal);
+            // A seat from a session limited to test companies stays in the
+            // company it acts in: no route that reaches beyond it.
+            if (limited && route.crossTenant === true) {
+              throw await limitedSeatRefusal(context, route, principal);
+            }
           }
 
           // 5a. Is the token's session still live? After the impersonation
@@ -537,6 +543,41 @@ async function authenticatePlatform(
     }
     throw error;
   }
+}
+
+/**
+ * The answer, and the platform audit line, when a seat acting under a grant
+ * from a session limited to test companies calls a `crossTenant` route: the
+ * same 403 `session_scope` the platform routes give that session.
+ */
+async function limitedSeatRefusal(
+  context: PublicRequestContext,
+  route: AnyRoute,
+  principal: Principal,
+): Promise<ApiError> {
+  const staff = principal.impersonatedBy;
+  if (staff !== undefined) {
+    const platform = getPlatformDataSource();
+    const account = await platform.platformUsers.findById(staff.pid);
+    await platform.platformAudit.append({
+      platformUserId: staff.pid,
+      actorLabel: account?.email ?? staff.pid,
+      action: 'platform.session_scope_refused',
+      tenantId: principal.tenantId,
+      targetKind: 'route',
+      targetId: `${route.method.toUpperCase()} ${route.path}`,
+      reason: null,
+      metadata: { scope: 'test_companies', why: 'cross_tenant', grantId: staff.gid },
+      ipAddress: context.ipAddress,
+      userAgent: context.userAgent,
+      requestId: context.requestId,
+    });
+  }
+  return new ApiError(
+    403,
+    'session_scope',
+    'This staff session is limited to test companies and may not use a route that reaches other companies.',
+  );
 }
 
 function toApiError(error: unknown): ApiError {

@@ -103,6 +103,7 @@ export const listCopyTargetsRoute = defineRoute({
   tags: TAGS,
   security: 'authenticated',
   permission: 'form.manage',
+  crossTenant: true,
   params: noSchema,
   query: z.object({ search: z.string().trim().max(100).optional() }),
   body: noSchema,
@@ -111,7 +112,10 @@ export const listCopyTargetsRoute = defineRoute({
       description: 'The companies.',
       schema: z.object({ items: z.array(companyChoiceSchema) }),
     },
-    403: { description: 'Not Integr8 staff.' },
+    403: {
+      description:
+        'Not Integr8 staff, or staff acting from a session limited to test companies (`session_scope`).',
+    },
   },
   handler: async ({ query }, context) => {
     staffOf(context);
@@ -154,6 +158,7 @@ export const copyFormToCompanyRoute = defineRoute({
   tags: TAGS,
   security: 'authenticated',
   permission: 'form.manage',
+  crossTenant: true,
   idempotent: true,
   params: formParams,
   query: noSchema,
@@ -166,7 +171,10 @@ export const copyFormToCompanyRoute = defineRoute({
   }),
   responses: {
     201: { description: 'The copy, in the other company.', schema: copiedSchema },
-    403: { description: 'Not Integr8 staff, or PDF templates without `document.design`.' },
+    403: {
+      description:
+        'Not Integr8 staff, PDF templates without `document.design`, or staff acting from a session limited to test companies (`session_scope`).',
+    },
     404: { description: 'No such form or company.' },
     409: {
       description:
@@ -354,6 +362,7 @@ export const saveToLibraryRoute = defineRoute({
   tags: TAGS,
   security: 'authenticated',
   permission: 'form.manage',
+  crossTenant: true,
   idempotent: true,
   params: formParams,
   query: noSchema,
@@ -368,7 +377,10 @@ export const saveToLibraryRoute = defineRoute({
   }),
   responses: {
     201: { description: 'The library template.', schema: libraryTemplateSchema },
-    403: { description: 'Not Integr8 staff, or PDF templates without `document.design`.' },
+    403: {
+      description:
+        'Not Integr8 staff, PDF templates without `document.design`, or staff acting from a session limited to test companies (`session_scope`).',
+    },
     404: { description: 'No such form.' },
     409: { description: 'The key is taken, or the form was never published.' },
   },
