@@ -6,8 +6,9 @@ import { platformClient } from '~/features/platform/session';
 import { formatBytes } from '~/lib/platform-format';
 
 /**
- * The staff apps, for Integr8's own team: the staff desktop app and Integr8
- * Forms for AI, from the API's `/v1/platform/downloads` (P42), which reads the
+ * The staff apps, for Integr8's own team: the staff desktop app, Integr8
+ * Forms for AI and the developer MCP server (P43, its first-download zip
+ * only), from the API's `/v1/platform/downloads` (P42), which reads the
  * GitHub releases. The file links stay plain links (through the public site
  * for a private repository) and open in the system's browser.
  */
@@ -112,6 +113,43 @@ export function DownloadsRoute() {
                   downloads.data.formsAi.status === 'unavailable'
                     ? t('site.download.unavailable')
                     : t('platform.downloads.formsAiNone')
+                }
+              />
+            )}
+          </Card>
+
+          <Card
+            title={t('site.download.devMcp.title')}
+            body={t('site.download.devMcp.body')}
+            version={
+              downloads.data.devMcp.status === 'found'
+                ? downloads.data.devMcp.release.version
+                : null
+            }
+          >
+            {downloads.data.devMcp.status === 'found' ? (
+              <>
+                <FileGroup title={t('site.download.devMcp.program')}>
+                  {downloads.data.devMcp.release.downloads
+                    .filter((file) => file.kind === 'zip')
+                    .map((file) => (
+                      <FileLink
+                        key={file.name}
+                        url={file.url}
+                        name={file.name}
+                        label={t(`site.download.platforms.${file.platform}`)}
+                        detail={[t(`site.download.architecture.${file.arch}`), file.size]}
+                      />
+                    ))}
+                </FileGroup>
+                <p className="text-xs text-content-muted">{t('site.download.formsAi.warning')}</p>
+              </>
+            ) : (
+              <Missing
+                text={
+                  downloads.data.devMcp.status === 'unavailable'
+                    ? t('site.download.unavailable')
+                    : t('platform.downloads.devMcpNone')
                 }
               />
             )}

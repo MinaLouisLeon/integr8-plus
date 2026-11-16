@@ -2,7 +2,7 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { getPlatformDataSource, MAX_LIVE_WEBSITE_KEYS, type WebsiteKey } from '@integr8/db';
 import { z } from 'zod';
 import { conflict, notFound } from '../../../http/errors.js';
-import { defineRoute, noSchema } from '../../../http/routes.js';
+import { defineRoute, noSchema, type PlatformRequestContext } from '../../../http/routes.js';
 import { hashWebsiteKey } from '../documents-public.js';
 import { iso, isoOrNull } from '../schemas.js';
 import { recordPlatformAction } from './audit.js';
@@ -19,6 +19,11 @@ import { requireStaffManager } from './staff.js';
  * is held as tightly as who may add staff. The key itself is shown once, when
  * it is made, and stored only as its SHA-256. Two may be live at a time, so a
  * website can move to a new key before the old one is revoked.
+ *
+ * A staff session limited to test companies (the developer MCP server, P43)
+ * may use every route here, on test companies only (`http/session-scope.ts`),
+ * so a website being built can be tried against a test company's documents.
+ * The staff-manager rule applies to real companies only.
  */
 
 const TAGS = ['platform'];
@@ -66,6 +71,18 @@ function keyBody(key: WebsiteKey, known: Map<string, string>): z.infer<typeof we
   };
 }
 
+/**
+ * A test company's keys reach only test data, which any staff session may
+ * already read through an impersonation grant, so the staff-manager rule
+ * guards real companies' keys only (P43): the developer MCP server, signed
+ * in with any staff account, can make and revoke a test company's keys.
+ */
+async function requireManagerUnlessTest(context: PlatformRequestContext, isTest: boolean) {
+  if (!isTest) {
+    await requireStaffManager(context, MANAGERS_ONLY);
+  }
+}
+
 async function company(tenantId: string) {
   const tenant = await getPlatformDataSource().tenants.findById(tenantId);
   if (tenant === undefined) {
@@ -83,6 +100,7 @@ export const listWebsiteKeysRoute = defineRoute({
     'Every key, revoked ones included, with its last characters and use. Never the key itself. Any staff member may list them. `canManage` (create, enable, disable, revoke) and `canDelete` are both true only for a staff manager, an account the terminal command made.',
   tags: TAGS,
   security: 'platform',
+  platformScopes: ['full', 'test_companies'],
   params: companyParams,
   query: noSchema,
   body: noSchema,
@@ -99,7 +117,7 @@ export const listWebsiteKeysRoute = defineRoute({
     404: { description: 'No such company.' },
   },
   handler: async ({ params }, context) => {
-    await company(params.tenantId);
+    const tenant = await company(params.tenantId);
     const platform = getPlatformDataSource();
     const [keys, known, me] = await Promise.all([
       platform.websiteKeys.listForTenant(params.tenantId),
@@ -110,8 +128,8 @@ export const listWebsiteKeysRoute = defineRoute({
       status: 200,
       body: {
         items: keys.map((key) => keyBody(key, known)),
-        canManage: me?.canManageStaff === true && me.isActive,
-        canDelete: me?.canManageStaff === true && me.isActive,
+        canManage: (me?.canManageStaff === true || tenant.isTest) && me?.isActive === true,
+        canDelete: (me?.canManageStaff === true || tenant.isTest) && me?.isActive === true,
         maxLive: MAX_LIVE_WEBSITE_KEYS,
       },
     };
@@ -124,9 +142,10 @@ export const createWebsiteKeyRoute = defineRoute({
   operationId: 'createWebsiteKey',
   summary: 'Make a website key for a company',
   description:
-    'Only a staff manager (an account the terminal command made) may create a key; anybody else gets 403 `staff_manager_only`. The key is in this answer and nowhere else: put it in the website’s server environment, never in its pages. Refused with 409 `website_key_limit` while the company already has two non-revoked keys.',
+    'Only a staff manager (an account the terminal command made) may create a key; anybody else gets 403 `staff_manager_only`, except on a test company, where any staff member may (P43). The key is in this answer and nowhere else: put it in the website’s server environment, never in its pages. Refused with 409 `website_key_limit` while the company already has two non-revoked keys.',
   tags: TAGS,
   security: 'platform',
+  platformScopes: ['full', 'test_companies'],
   params: companyParams,
   query: noSchema,
   body: z.object({ label: z.string().trim().min(1).max(80).nullable().default(null) }),
@@ -140,8 +159,8 @@ export const createWebsiteKeyRoute = defineRoute({
     409: { description: 'Two keys are already live (`website_key_limit`).' },
   },
   handler: async ({ params, body }, context) => {
-    await requireStaffManager(context, MANAGERS_ONLY);
     const tenant = await company(params.tenantId);
+    await requireManagerUnlessTest(context, tenant.isTest);
     const platform = getPlatformDataSource();
     if ((await platform.websiteKeys.liveCount(tenant.id)) >= MAX_LIVE_WEBSITE_KEYS) {
       throw conflict(
@@ -180,9 +199,10 @@ export const revokeWebsiteKeyRoute = defineRoute({
   operationId: 'revokeWebsiteKey',
   summary: 'Revoke a website key',
   description:
-    'Only a staff manager (an account the terminal command made) may revoke a key; anybody else gets 403 `staff_manager_only`. The website using it stops serving immediately. The key stays listed, revoked, for the record.',
+    'Only a staff manager (an account the terminal command made) may revoke a key; anybody else gets 403 `staff_manager_only`, except on a test company, where any staff member may (P43). The website using it stops serving immediately. The key stays listed, revoked, for the record.',
   tags: TAGS,
   security: 'platform',
+  platformScopes: ['full', 'test_companies'],
   params: companyParams.extend({ keyId: z.uuid() }),
   query: noSchema,
   body: noSchema,
@@ -192,8 +212,8 @@ export const revokeWebsiteKeyRoute = defineRoute({
     404: { description: 'No such live key for this company.' },
   },
   handler: async ({ params }, context) => {
-    await requireStaffManager(context, MANAGERS_ONLY);
     const tenant = await company(params.tenantId);
+    await requireManagerUnlessTest(context, tenant.isTest);
     const revoked = await getPlatformDataSource().websiteKeys.revoke(
       tenant.id,
       params.keyId,
@@ -220,9 +240,10 @@ export const updateWebsiteKeyRoute = defineRoute({
   operationId: 'updateWebsiteKey',
   summary: 'Enable or disable a company website key',
   description:
-    'Only a staff manager (an account the terminal command made) may change a key’s state; anybody else gets 403 `staff_manager_only`. Disabling stops requests while retaining the key; enabling resumes it unless revoked.',
+    'Only a staff manager (an account the terminal command made) may change a key’s state; anybody else gets 403 `staff_manager_only`, except on a test company, where any staff member may (P43). Disabling stops requests while retaining the key; enabling resumes it unless revoked.',
   tags: TAGS,
   security: 'platform',
+  platformScopes: ['full', 'test_companies'],
   params: companyParams.extend({ keyId: z.uuid() }),
   query: noSchema,
   body: z.object({ enabled: z.boolean() }),
@@ -232,8 +253,8 @@ export const updateWebsiteKeyRoute = defineRoute({
     404: { description: 'No such active key for this company.' },
   },
   handler: async ({ params, body }, context) => {
-    await requireStaffManager(context, MANAGERS_ONLY);
     const tenant = await company(params.tenantId);
+    await requireManagerUnlessTest(context, tenant.isTest);
     const updated = await getPlatformDataSource().websiteKeys.setEnabled(
       tenant.id,
       params.keyId,
@@ -258,9 +279,10 @@ export const deleteWebsiteKeyRoute = defineRoute({
   operationId: 'deleteWebsiteKey',
   summary: 'Permanently delete a company website key',
   description:
-    'Only the terminal-created Integr8 staff admin can permanently delete a key. An audit event records the action; the secret is never retained.',
+    'Only the terminal-created Integr8 staff admin can permanently delete a key (any staff member, on a test company: P43). An audit event records the action; the secret is never retained.',
   tags: TAGS,
   security: 'platform',
+  platformScopes: ['full', 'test_companies'],
   params: companyParams.extend({ keyId: z.uuid() }),
   query: noSchema,
   body: noSchema,
@@ -270,8 +292,8 @@ export const deleteWebsiteKeyRoute = defineRoute({
     404: { description: 'No such key for this company.' },
   },
   handler: async ({ params }, context) => {
-    await requireStaffManager(context, MANAGERS_ONLY);
     const tenant = await company(params.tenantId);
+    await requireManagerUnlessTest(context, tenant.isTest);
     const removed = await getPlatformDataSource().websiteKeys.delete(tenant.id, params.keyId);
     if (removed === undefined) throw notFound('No such key for this company.');
     await recordPlatformAction(context, {

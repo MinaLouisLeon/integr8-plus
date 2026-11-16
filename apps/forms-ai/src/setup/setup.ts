@@ -1,8 +1,8 @@
 import { mkdirSync } from 'node:fs';
 import { isAbsolute } from 'node:path';
-import { currentHost, defaultOutputDir, type Host, installDir } from '../host.js';
+import { currentHost, defaultOutputDir, type Host, installDir, installedProgram } from '../host.js';
 import { outputFolder, readSettings, writeSettings } from '../settings.js';
-import { VERSION } from '../version.js';
+import { SERVER_NAME, VERSION } from '../version.js';
 import { installedVersion, installSelf } from './install-self.js';
 import {
   type Choice,
@@ -13,7 +13,7 @@ import {
   TerminalPrompter,
 } from './prompt.js';
 import { systemRunner } from './runner.js';
-import { selfTest } from './self-test.js';
+import { EXPECTED_TOOLS, selfTest } from './self-test.js';
 import { type ToolAdapter, type ToolContext, type ToolState, TOOLS } from './tools.js';
 import { applyUpdate, checkForUpdate, cleanUpAfterUpdate, compareVersions } from './update.js';
 
@@ -109,11 +109,100 @@ function pick(spec: string, tools: readonly ToolAdapter[]): ToolAdapter[] {
   return tools.filter((tool) => ids.includes(tool.id));
 }
 
+/** A newer release the installer can offer. */
+export interface UpdateOffer {
+  version: string;
+  /** What is downloaded, for the screen. */
+  name: string;
+}
+
+/** What the installer needs to say to and do for one person on the screen. */
+export interface SetupIo {
+  host: Host;
+  prompter: Prompter;
+  paint: Paint;
+  say: (text?: string) => void;
+}
+
+/**
+ * What differs between the programs this installer installs (P43): Forms for
+ * AI, and the developer MCP server, which reuses the same screens, AI-tool
+ * adapters, self-install and self-test with its own name, place and extras.
+ */
+export interface SetupProfile {
+  title: string;
+  version: string;
+  /** One line under the title. */
+  tagline: string;
+  /** The key of its entry in every AI tool's configuration. */
+  serverName: string;
+  installedProgram: (host: Host) => string;
+  installDir: (host: Host) => string;
+  /** Files that must sit beside the executable (copied with it). */
+  companions?: readonly string[];
+  /** How to build the executable, when this run is not it. */
+  buildHint: string;
+  expectedTools: readonly string[];
+  /** Said after connecting, with an example request. */
+  afterConnect: (io: SetupIo) => void;
+  /** Whether it has the output folder for .integr8form files (Forms for AI). */
+  outputFolder: boolean;
+  checkForUpdate: (host: Host, current: string) => Promise<UpdateOffer | undefined>;
+  applyUpdate: (offer: UpdateOffer, target: string) => Promise<void>;
+  /** More menu entries, shown before "Show version and paths". */
+  extraMenu?: readonly { label: string; run: (io: SetupIo) => Promise<void> }[];
+  /** More lines for "Show version and paths". */
+  versionLines?: (host: Host) => string[];
+}
+
+/** Forms for AI: the installer as it has always been. */
+export const FORMS_PROFILE: SetupProfile = (() => {
+  const offers = new Map<string, Awaited<ReturnType<typeof checkForUpdate>>>();
+  return {
+    title: 'Integr8 Forms for AI',
+    version: VERSION,
+    tagline:
+      'Lets AI coding tools build Integr8 forms and PDF templates as .integr8form files. Works offline.',
+    serverName: SERVER_NAME,
+    installedProgram,
+    installDir,
+    buildHint: 'pnpm --filter @integr8/forms-ai sea',
+    expectedTools: EXPECTED_TOOLS,
+    afterConnect: ({ say, paint, host }) => {
+      say('Restart each AI tool you connected (or start a new chat), then ask it, for example:');
+      say(
+        paint.cyan(
+          '  "Use integr8-forms to build a boiler service form with a PDF certificate, in English and Arabic."',
+        ),
+      );
+      say(`Finished files are saved in ${outputFolder(host)}.`);
+    },
+    outputFolder: true,
+    checkForUpdate: async (host, current) => {
+      const update = await checkForUpdate(host, current);
+      if (update === undefined) {
+        return undefined;
+      }
+      offers.set(update.version, update);
+      return { version: update.version, name: update.asset.name };
+    },
+    applyUpdate: async (offer, target) => {
+      const update = offers.get(offer.version);
+      if (update === undefined) {
+        throw new Error('That update is no longer known; check again.');
+      }
+      await applyUpdate(update, target);
+    },
+  };
+})();
+
 export interface SetupOptions {
   args: readonly string[];
   host?: Host;
   prompter?: Prompter;
   tools?: readonly ToolAdapter[];
+  /** Forms for AI unless another program says. */
+  profile?: SetupProfile;
 }
 
 class Setup {
@@ -121,15 +210,39 @@ class Setup {
   readonly #prompter: Prompter;
   readonly #paint: Paint;
   readonly #tools: readonly ToolAdapter[];
+  readonly #profile: SetupProfile;
   #ctx: ToolContext;
   #executable = false;
 
-  constructor(host: Host, prompter: Prompter, tools: readonly ToolAdapter[]) {
+  constructor(
+    host: Host,
+    prompter: Prompter,
+    tools: readonly ToolAdapter[],
+    profile: SetupProfile,
+  ) {
     this.#host = host;
     this.#prompter = prompter;
     this.#paint = prompter.interactive ? colours : plainStyle;
     this.#tools = tools;
-    this.#ctx = { host, program: '', runner: systemRunner(host), now: () => new Date() };
+    this.#profile = profile;
+    this.#ctx = {
+      host,
+      serverName: profile.serverName,
+      program: '',
+      runner: systemRunner(host),
+      now: () => new Date(),
+    };
+  }
+
+  get io(): SetupIo {
+    return {
+      host: this.#host,
+      prompter: this.#prompter,
+      paint: this.#paint,
+      say: (text) => {
+        this.#say(text);
+      },
+    };
   }
 
   #say(text = ''): void {
@@ -139,23 +252,26 @@ class Setup {
   /** Copies the program into place and works out the path every configuration uses. */
   async prepare(): Promise<void> {
     const paint = this.#paint;
-    this.#say(paint.bold(`Integr8 Forms for AI ${VERSION}`));
-    this.#say(
-      'Lets AI coding tools build Integr8 forms and PDF templates as .integr8form files. Works offline.',
-    );
+    const { version } = this.#profile;
+    this.#say(paint.bold(`${this.#profile.title} ${version}`));
+    this.#say(this.#profile.tagline);
     this.#say();
-    let installed = installSelf(this.#host, { replace: false });
+    const place = {
+      program: this.#profile.installedProgram(this.#host),
+      companions: this.#profile.companions ?? [],
+    };
+    let installed = installSelf(this.#host, { replace: false, ...place });
     if (installed.executable && !installed.copied && installed.message.includes('different copy')) {
       const theirs = installedVersion(installed.program);
-      const newer = theirs !== undefined && compareVersions(theirs, VERSION) > 0;
+      const newer = theirs !== undefined && compareVersions(theirs, version) > 0;
       const replace = await this.#prompter.confirm(
         newer
-          ? `Version ${theirs} is installed, newer than this one (${VERSION}). Replace it with this older version?`
-          : `Version ${theirs ?? 'unknown'} is installed. Replace it with this one (${VERSION})?`,
+          ? `Version ${theirs} is installed, newer than this one (${version}). Replace it with this older version?`
+          : `Version ${theirs ?? 'unknown'} is installed. Replace it with this one (${version})?`,
         !newer,
       );
       if (replace) {
-        installed = installSelf(this.#host, { replace: true });
+        installed = installSelf(this.#host, { replace: true, ...place });
       }
     }
     cleanUpAfterUpdate(installed.program);
@@ -165,7 +281,7 @@ class Setup {
   }
 
   async offerUpdate(): Promise<void> {
-    const update = await checkForUpdate(this.#host, VERSION);
+    const update = await this.#profile.checkForUpdate(this.#host, this.#profile.version);
     if (update === undefined) {
       return;
     }
@@ -179,8 +295,8 @@ class Setup {
       return;
     }
     try {
-      this.#say(`Downloading ${update.asset.name}…`);
-      await applyUpdate(update, this.#ctx.program);
+      this.#say(`Downloading ${update.name}…`);
+      await this.#profile.applyUpdate(update, this.#ctx.program);
       this.#say(
         this.#paint.green(
           `Updated to ${update.version} at ${this.#ctx.program}. AI tools use it from their next start.`,
@@ -204,7 +320,9 @@ class Setup {
       const state = states[index] ?? { kind: 'not_found' };
       this.#say(`  ${tool.name.padEnd(26)} ${describe(state, this.#paint)}`);
     });
-    this.#say(`  Output folder: ${outputFolder(this.#host)}`);
+    if (this.#profile.outputFolder) {
+      this.#say(`  Output folder: ${outputFolder(this.#host)}`);
+    }
     return states;
   }
 
@@ -212,7 +330,7 @@ class Setup {
     if (!this.#executable) {
       this.#say(
         this.#paint.yellow(
-          'This is not the single executable, so AI tools cannot be pointed at it. Build it with `pnpm --filter @integr8/forms-ai sea`.',
+          `This is not the single executable, so AI tools cannot be pointed at it. Build it with \`${this.#profile.buildHint}\`.`,
         ),
       );
       return false;
@@ -238,15 +356,7 @@ class Setup {
     }
     const ready = await this.runSelfTest();
     this.#say();
-    this.#say(
-      'Restart each AI tool you connected (or start a new chat), then ask it, for example:',
-    );
-    this.#say(
-      this.#paint.cyan(
-        '  "Use integr8-forms to build a boiler service form with a PDF certificate, in English and Arabic."',
-      ),
-    );
-    this.#say(`Finished files are saved in ${outputFolder(this.#host)}.`);
+    this.#profile.afterConnect(this.io);
     return ready;
   }
 
@@ -270,7 +380,7 @@ class Setup {
     const args = this.#executable
       ? ['serve']
       : [...process.execArgv, process.argv[1] ?? '', 'serve'];
-    const result = await selfTest(command, args);
+    const result = await selfTest(command, args, { expected: this.#profile.expectedTools });
     if (!result.ok) {
       this.#say(
         this.#paint.red(
@@ -324,10 +434,15 @@ class Setup {
 
   showVersion(): void {
     this.#say();
-    this.#say(`Integr8 Forms for AI ${VERSION}`);
+    this.#say(`${this.#profile.title} ${this.#profile.version}`);
     this.#say(`  Program:       ${this.#ctx.program}`);
-    this.#say(`  Install folder: ${installDir(this.#host)}`);
-    this.#say(`  Output folder: ${outputFolder(this.#host)}`);
+    this.#say(`  Install folder: ${this.#profile.installDir(this.#host)}`);
+    if (this.#profile.outputFolder) {
+      this.#say(`  Output folder: ${outputFolder(this.#host)}`);
+    }
+    for (const line of this.#profile.versionLines?.(this.#host) ?? []) {
+      this.#say(`  ${line}`);
+    }
     this.#say(`  Platform:      ${this.#host.platform} ${this.#host.arch}`);
   }
 
@@ -362,44 +477,56 @@ class Setup {
   }
 
   async menu(): Promise<void> {
+    const extra = this.#profile.extraMenu ?? [];
     for (;;) {
       await this.showStatus();
       this.#say();
+      const entries: { label: string; run: () => Promise<void> }[] = [
+        {
+          label: 'Connect to AI tools (install or update)',
+          run: async () => {
+            const tools = await this.chooseTools('Connect which AI tools?', 'install');
+            if (tools !== undefined && tools.length > 0) {
+              await this.install(tools);
+            }
+          },
+        },
+        {
+          label: 'Disconnect from AI tools (remove)',
+          run: async () => {
+            const tools = await this.chooseTools('Disconnect which AI tools?', 'remove');
+            if (tools !== undefined && tools.length > 0) {
+              await this.remove(tools);
+            }
+          },
+        },
+        {
+          label: 'Self-test',
+          run: async () => {
+            await this.runSelfTest();
+          },
+        },
+        ...(this.#profile.outputFolder
+          ? [{ label: 'Change output folder', run: () => this.changeOutput() }]
+          : []),
+        ...extra.map((entry) => ({ label: entry.label, run: () => entry.run(this.io) })),
+        {
+          label: 'Show version and paths',
+          run: () => {
+            this.showVersion();
+            return Promise.resolve();
+          },
+        },
+      ];
       const choice = await this.#prompter.select('What would you like to do?', [
-        { label: 'Connect to AI tools (install or update)' },
-        { label: 'Disconnect from AI tools (remove)' },
-        { label: 'Self-test' },
-        { label: 'Change output folder' },
-        { label: 'Show version and paths' },
+        ...entries.map((entry) => ({ label: entry.label })),
         { label: 'Quit' },
       ]);
-      switch (choice) {
-        case 0: {
-          const tools = await this.chooseTools('Connect which AI tools?', 'install');
-          if (tools !== undefined && tools.length > 0) {
-            await this.install(tools);
-          }
-          break;
-        }
-        case 1: {
-          const tools = await this.chooseTools('Disconnect which AI tools?', 'remove');
-          if (tools !== undefined && tools.length > 0) {
-            await this.remove(tools);
-          }
-          break;
-        }
-        case 2:
-          await this.runSelfTest();
-          break;
-        case 3:
-          await this.changeOutput();
-          break;
-        case 4:
-          this.showVersion();
-          break;
-        default:
-          return;
+      const chosen = choice === undefined ? undefined : entries[choice];
+      if (chosen === undefined) {
+        return;
       }
+      await chosen.run();
     }
   }
 }
@@ -410,7 +537,7 @@ export async function runSetup(options: SetupOptions): Promise<number> {
   const prompter =
     options.prompter ??
     (process.stdin.isTTY && process.stdout.isTTY ? new TerminalPrompter() : new LinePrompter());
-  const setup = new Setup(host, prompter, options.tools ?? TOOLS);
+  const setup = new Setup(host, prompter, options.tools ?? TOOLS, options.profile ?? FORMS_PROFILE);
   const scripted =
     flags.status ||
     flags.install !== undefined ||

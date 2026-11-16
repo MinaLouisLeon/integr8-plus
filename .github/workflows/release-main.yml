@@ -144,6 +144,11 @@ jobs:
           pattern: forms-ai-*
           path: dist
           merge-multiple: true
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: dev-mcp-*
+          path: dist
+          merge-multiple: true
 
       - name: Create the release
         env:

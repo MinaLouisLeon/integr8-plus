@@ -476,6 +476,7 @@ export const API_ERROR_CODES = [
   'waits_for_invoice',
   'website_key_invalid',
   'website_key_limit',
+  'website_url_local_only',
   'work_order_changed',
   'work_order_closed',
   'work_order_invoiced',

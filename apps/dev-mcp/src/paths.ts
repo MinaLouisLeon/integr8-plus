@@ -1,15 +1,46 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join, posix, win32 } from 'node:path';
+import { getAsset, isSea } from 'node:sea';
 import { fileURLToPath } from 'node:url';
 
-/** The repository this runs from: the server reads its OpenAPI document and version. */
+/**
+ * Where the server finds what it describes, run two ways (P43):
+ *
+ * - **From a checkout** (`pnpm dev-mcp …`): the repository it runs from, for
+ *   `apps/api/openapi.json`, the versions and `plan/requests/`.
+ * - **As the installed program** (a Node single executable): the OpenAPI
+ *   document and versions it was built with are inside it, and
+ *   `plan/requests/` is in the integr8-plus folder the person names once
+ *   (`settings.json`'s `repository`), when they have one.
+ */
+
+declare const __DEV_MCP_VERSION__: string | undefined;
+declare const __DEV_MCP_PRODUCT_VERSION__: string | undefined;
+
+/** Whether this run is the installed single executable. */
+export const INSTALLED: boolean = isSea();
+
+/** The repository this runs from; in the installed program, meaningless (see `repositoryRoot`). */
 export const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 
 export const OPENAPI_FILE = join(REPO_ROOT, 'apps', 'api', 'openapi.json');
 
-/** The version sent as `x-client-version`: the repository's own. */
+/** The key the OpenAPI document is stored under in the executable. */
+export const OPENAPI_ASSET = 'openapi.json';
+
+/** The API's OpenAPI document, from the checkout or from inside the executable. */
+export function readOpenApi(): string {
+  return INSTALLED
+    ? Buffer.from(getAsset(OPENAPI_ASSET)).toString('utf8')
+    : readFileSync(OPENAPI_FILE, 'utf8');
+}
+
+/** The version sent as `x-client-version`: the product's (the root package.json's). */
 export function repoVersion(): string {
+  if (typeof __DEV_MCP_PRODUCT_VERSION__ === 'string') {
+    return __DEV_MCP_PRODUCT_VERSION__;
+  }
   try {
     return (
       JSON.parse(readFileSync(join(REPO_ROOT, 'package.json'), 'utf8')) as { version: string }
@@ -21,9 +52,13 @@ export function repoVersion(): string {
 
 /**
  * This server's own version, from apps/dev-mcp/package.json: the one place
- * it is written, so the MCP handshake cannot drift from the package.
+ * it is written (the build writes it into the executable), so the MCP
+ * handshake cannot drift from the package.
  */
 export function serverVersion(): string {
+  if (typeof __DEV_MCP_VERSION__ === 'string') {
+    return __DEV_MCP_VERSION__;
+  }
   try {
     return (
       JSON.parse(readFileSync(join(REPO_ROOT, 'apps', 'dev-mcp', 'package.json'), 'utf8')) as {
@@ -86,4 +121,44 @@ export function normaliseApi(address: string): string {
     throw new Error('A remote API must be reached over https.');
   }
   return `${url.protocol}//${url.host}`.toLowerCase();
+}
+
+/** The program's own settings, beside the APIs it is signed in to (no secrets). */
+export interface DevSettings {
+  /** The integr8-plus folder, for plan/requests/ when this is the installed program. */
+  repository?: string;
+}
+
+export function settingsFile(host: HostInfo = currentHostInfo()): string {
+  return join(configDir(host), 'settings.json');
+}
+
+export function readSettings(host: HostInfo = currentHostInfo()): DevSettings {
+  try {
+    return JSON.parse(readFileSync(settingsFile(host), 'utf8')) as DevSettings;
+  } catch {
+    return {};
+  }
+}
+
+/** Whether a folder is an integr8-plus checkout: it has plan/requests/ and the API's OpenAPI document. */
+export function isRepository(folder: string): boolean {
+  return (
+    existsSync(join(folder, 'plan', 'requests')) &&
+    existsSync(join(folder, 'apps', 'api', 'openapi.json'))
+  );
+}
+
+/** The integr8-plus folder: the checkout this runs from, or the one named in the settings. */
+export function repositoryRoot(host: HostInfo = currentHostInfo()): string | undefined {
+  if (!INSTALLED) {
+    return REPO_ROOT;
+  }
+  const named = readSettings(host).repository;
+  return named !== undefined && isRepository(named) ? named : undefined;
+}
+
+export function writeSettings(settings: DevSettings, host: HostInfo = currentHostInfo()): void {
+  mkdirSync(configDir(host), { recursive: true, mode: 0o700 });
+  writeFileSync(settingsFile(host), `${JSON.stringify(settings, null, 2)}\n`, { mode: 0o600 });
 }

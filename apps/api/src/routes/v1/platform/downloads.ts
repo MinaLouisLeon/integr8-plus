@@ -3,7 +3,9 @@ import { defineRoute, noSchema } from '../../../http/routes.js';
 
 /**
  * The staff apps' downloads, for the staff app's Downloads screen (P42): the
- * staff desktop app and Integr8 Forms for AI.
+ * staff desktop app, Integr8 Forms for AI and the developer MCP server (P43),
+ * which also reads this to update itself, signed in with a session limited to
+ * test companies.
  *
  * Before P42 the web dashboard asked its own server for these. The list is
  * read from GitHub releases (`APP_RELEASES`); the file links themselves stay
@@ -28,6 +30,16 @@ const formsAiDownloadSchema = z.object({
   size: z.number().int().nullable(),
 });
 
+const devMcpDownloadSchema = z.object({
+  name: z.string(),
+  url: z.string(),
+  platform: z.enum(['windows', 'macos', 'linux']),
+  arch: z.enum(['x64', 'arm64']),
+  kind: z.enum(['zip', 'program', 'keyring']),
+  size: z.number().int().nullable(),
+  checksumUrl: z.string().nullable(),
+});
+
 /** `none`: nothing published (or no releases read here); `unavailable`: GitHub did not answer. */
 const lookupSchema = <T extends z.ZodType>(release: T) =>
   z.discriminatedUnion('status', [
@@ -43,17 +55,22 @@ const downloadsSchema = z.object({
   formsAi: lookupSchema(
     z.object({ tag: z.string(), version: z.string(), downloads: z.array(formsAiDownloadSchema) }),
   ),
+  devMcp: lookupSchema(
+    z.object({ tag: z.string(), version: z.string(), downloads: z.array(devMcpDownloadSchema) }),
+  ),
 });
 
 export const platformDownloadsRoute = defineRoute({
   method: 'get',
   path: '/v1/platform/downloads',
   operationId: 'getPlatformDownloads',
-  summary: 'The staff app and Integr8 Forms for AI, newest release of each',
+  summary:
+    'The staff app, Integr8 Forms for AI and the developer MCP server, newest release of each',
   description:
-    'Read from the GitHub releases this deployment is set to (`APP_RELEASES=github`). Each is `found` with its files, `none` when nothing is published (or releases are not read here), or `unavailable` when GitHub could not be asked.',
+    'Read from the GitHub releases this deployment is set to (`APP_RELEASES=github`). `devMcp` (P43) lists the developer program’s first download (`zip`) and the files an installed program updates itself with (`program`, `keyring`), each with its checksum; a staff session limited to test companies may read it. Each is `found` with its files, `none` when nothing is published (or releases are not read here), or `unavailable` when GitHub could not be asked.',
   tags: ['platform'],
   security: 'platform',
+  platformScopes: ['full', 'test_companies'],
   params: noSchema,
   query: noSchema,
   body: noSchema,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ApiConfig } from '../config.js';
-import { documentLink, documentLinkPatternProblem } from './render.js';
+import { documentLink, documentLinkPatternProblem, isLocalWebAddress } from './render.js';
 
 const config = { WEB_APP_URL: 'https://app.integr8-media.com/' } as ApiConfig;
 
@@ -54,5 +54,41 @@ describe('a document link address', () => {
     expect(documentLinkPatternProblem('https://example.com/a b/{code}', site)).toBe(
       'document_link_invalid',
     );
+  });
+});
+
+describe('a test company on the developer’s machine (P43)', () => {
+  const local = 'http://localhost:3000';
+
+  it('may point its links at localhost or 127.0.0.1', () => {
+    expect(
+      documentLinkPatternProblem('http://localhost:3000/documents/{code}', local, true),
+    ).toBeNull();
+    expect(
+      documentLinkPatternProblem('http://127.0.0.1:3000/d/{code}', 'http://127.0.0.1:3000', true),
+    ).toBeNull();
+  });
+
+  it('still needs the same website, and no other http address', () => {
+    expect(
+      documentLinkPatternProblem('http://localhost:3000/{code}', 'https://example.com', true),
+    ).toBe('document_link_other_site');
+    expect(
+      documentLinkPatternProblem('http://example.com/{code}', 'https://example.com', true),
+    ).toBe('document_link_invalid');
+  });
+
+  it('is refused for every other company', () => {
+    expect(documentLinkPatternProblem('http://localhost:3000/documents/{code}', local)).toBe(
+      'document_link_invalid',
+    );
+  });
+
+  it('is told apart from a real address', () => {
+    expect(isLocalWebAddress('http://localhost:3000')).toBe(true);
+    expect(isLocalWebAddress('http://127.0.0.1')).toBe(true);
+    expect(isLocalWebAddress('https://localhost:3000')).toBe(false);
+    expect(isLocalWebAddress('http://localhost.example.com')).toBe(false);
+    expect(isLocalWebAddress('not an address')).toBe(false);
   });
 });

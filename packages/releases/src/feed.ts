@@ -165,8 +165,9 @@ const INSTALLER_KINDS: readonly {
 export function installerOf(
   name: string,
 ): { platform: InstallerPlatform; kind: InstallerKind; arch: InstallerArch | null } | undefined {
-  // Integr8 Forms for AI rides in the staff release but is not the staff app.
-  if (formsAiAssetOf(name) !== undefined) {
+  // Integr8 Forms for AI and the developer MCP server ride in the staff
+  // release but are not the staff app.
+  if (formsAiAssetOf(name) !== undefined || devMcpAssetOf(name) !== undefined) {
     return undefined;
   }
   const found = INSTALLER_KINDS.find((entry) => entry.test.test(name));
@@ -298,6 +299,101 @@ export function formsAiDownloads(
 }
 
 /**
+ * The developer MCP server's program (P43), attached to the staff release
+ * `vX.Y.Z` beside Forms for AI (`apps/dev-mcp/scripts/build-sea.mjs`), each
+ * file with a `.sha256` beside it:
+ *
+ * - `integr8-dev-mcp-<version>-<os>-<arch>.zip`: the program and its keychain
+ *   module, what a person downloads the first time;
+ * - `integr8-dev-mcp-<version>-<os>-<arch>[.exe]`: the program alone, and
+ * - `integr8-dev-mcp-keyring-<version>-<os>-<arch>.node`: the keychain module
+ *   alone, which an installed program downloads to update itself.
+ */
+const DEV_MCP_ASSET =
+  /^integr8-dev-mcp-(keyring-)?(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)-(windows|macos|linux)-(x64|arm64)(\.exe|\.zip|\.node)?$/u;
+
+export interface DevMcpDownload {
+  name: string;
+  url: string;
+  platform: Exclude<InstallerPlatform, 'android'>;
+  arch: 'x64' | 'arm64';
+  /** `zip`: the first download; `program` and `keyring`: what an update replaces. */
+  kind: 'zip' | 'program' | 'keyring';
+  size: number | null;
+  /** The `.sha256` beside it, linked like the file; null when the release lacks one. */
+  checksumUrl: string | null;
+}
+
+export interface DevMcpRelease {
+  tag: string;
+  version: string;
+  downloads: DevMcpDownload[];
+}
+
+/** What a release file is, when it is one of the developer MCP server's files (not a checksum). */
+export function devMcpAssetOf(
+  name: string,
+): Pick<DevMcpDownload, 'platform' | 'arch' | 'kind'> | undefined {
+  const match = DEV_MCP_ASSET.exec(name);
+  if (match === null) {
+    return undefined;
+  }
+  const platform = match[3] as DevMcpDownload['platform'];
+  const arch = match[4] as DevMcpDownload['arch'];
+  const ending = match[5];
+  if (match[1] !== undefined) {
+    return ending === '.node' ? { platform, arch, kind: 'keyring' } : undefined;
+  }
+  if (ending === '.zip') {
+    return { platform, arch, kind: 'zip' };
+  }
+  // The program alone: only Windows builds end in .exe, and they always do.
+  if (ending === '.node' || (platform === 'windows') !== (ending === '.exe')) {
+    return undefined;
+  }
+  return { platform, arch, kind: 'program' };
+}
+
+/** A staff release with the developer MCP server in it. */
+export function hasDevMcp(release: GitHubRelease): boolean {
+  return release.assets.some((asset) => devMcpAssetOf(asset.name) !== undefined);
+}
+
+/** The developer MCP server's files of one release, linked like the installers. */
+export function devMcpDownloads(
+  release: GitHubRelease,
+  options: { proxyBase?: string | undefined },
+): DevMcpRelease {
+  const link = (name: string, direct: string) =>
+    options.proxyBase === undefined
+      ? direct
+      : `${options.proxyBase.replace(/\/+$/u, '')}/desktop-updates/staff/download/${encodeURIComponent(release.tag_name)}/${encodeURIComponent(name)}`;
+  const downloads: DevMcpDownload[] = [];
+  for (const asset of release.assets) {
+    const kind = devMcpAssetOf(asset.name);
+    if (kind === undefined) continue;
+    const checksum = release.assets.find((candidate) => candidate.name === `${asset.name}.sha256`);
+    downloads.push({
+      name: asset.name,
+      url: link(asset.name, asset.browser_download_url),
+      ...kind,
+      size: typeof asset.size === 'number' ? asset.size : null,
+      checksumUrl:
+        checksum === undefined ? null : link(checksum.name, checksum.browser_download_url),
+    });
+  }
+  const KIND_ORDER = ['zip', 'program', 'keyring'];
+  downloads.sort(
+    (a, b) =>
+      PLATFORM_ORDER.indexOf(a.platform) - PLATFORM_ORDER.indexOf(b.platform) ||
+      a.arch.localeCompare(b.arch) ||
+      KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind),
+  );
+  const version = /v(\d+\.\d+\.\d+)$/u.exec(release.tag_name)?.[1] ?? release.tag_name;
+  return { tag: release.tag_name, version, downloads };
+}
+
+/**
  * Points every download in a manifest at this server, for a private
  * repository, whose GitHub links an installed app could not open.
  */
@@ -379,6 +475,15 @@ export class DesktopUpdateFeed {
       return undefined;
     }
     return formsAiDownloads(release, { proxyBase: this.#token === undefined ? undefined : origin });
+  }
+
+  /** The newest staff release with the developer MCP server in it (P43). */
+  async devMcp(origin = ''): Promise<DevMcpRelease | undefined> {
+    const release = newestRelease(await this.#listReleases(), 'staff', hasDevMcp);
+    if (release === undefined) {
+      return undefined;
+    }
+    return devMcpDownloads(release, { proxyBase: this.#token === undefined ? undefined : origin });
   }
 
   /**

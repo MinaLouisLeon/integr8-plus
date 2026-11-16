@@ -406,3 +406,60 @@ jobs:
           path: forms-ai-out/*
           if-no-files-found: error
           retention-days: 30
+
+  # ---------------------------------------------------------------------------
+  # The developer MCP server: one program per operating system (P43)
+  # ---------------------------------------------------------------------------
+  # The same way as Forms for AI, plus the keychain module (@napi-rs/keyring's
+  # native file), which a single executable cannot carry inside itself: each
+  # runner publishes a zip with both (the first download, from the staff app's
+  # Downloads screen) and each alone (what an installed program updates itself
+  # with, through the API's release list). Unsigned, like Forms for AI.
+  dev-mcp:
+    name: Developer MCP server (${{ matrix.label }})
+    if: vars.DEV_MCP_BUILDS != 'disabled'
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { runner: windows-latest, label: windows-x64 }
+          - { runner: macos-latest, label: macos-arm64 }
+          - { runner: macos-15-intel, label: macos-x64 }
+          - { runner: ubuntu-latest, label: linux-x64 }
+          - { runner: ubuntu-24.04-arm, label: linux-arm64 }
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Install Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Forms for AI itself too: its preview page and fonts become the
+      # program's assets.
+      - name: Build the packages it bundles
+        run: pnpm turbo run build --filter=@integr8/dev-mcp^... --filter=@integr8/forms-ai
+
+      - name: Build the single executable
+        shell: bash
+        env:
+          DEV_MCP_PRODUCT_VERSION: ${{ inputs.version }}
+        run: node apps/dev-mcp/scripts/build-sea.mjs --out dev-mcp-out
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dev-mcp-${{ matrix.label }}-${{ inputs.version }}
+          path: dev-mcp-out/*
+          if-no-files-found: error
+          retention-days: 30
