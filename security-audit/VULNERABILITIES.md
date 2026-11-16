@@ -5,26 +5,26 @@ read-only tooling. No integration suite, no live database and no running API wer
 "Confirmed" here means **confirmed by source tracing**, not by executing an exploit. Each finding
 says how to prove it at runtime.
 
-| ID | Title | Severity | Confidence |
-| --- | --- | --- | --- |
-| SEC-001 | A limited (`test_companies`) staff session escapes to real companies through impersonation | High | Confirmed (source) |
-| SEC-002 | SECURITY DEFINER ledger functions are executable by every role and ignore the caller's tenant | Medium | Confirmed (source) |
-| SEC-003 | Uploaded files are decoded by sharp/libvips whatever their declared type; sharp 0.35.4 carries a librsvg advisory | Medium | Likely |
-| SEC-004 | Forms for AI and the developer MCP program update themselves from unsigned binaries | Medium | Confirmed (source) |
-| SEC-005 | Release workflows run third-party actions pinned to mutable tags next to signing secrets | Medium | Confirmed (source) |
-| SEC-006 | Runtime dependencies with published advisories | Low | Confirmed (scanner), reachability assessed |
-| SEC-007 | Staff sign-in reveals which staff addresses exist through the lockout answer, and lets anyone lock staff out | Low | Confirmed (source) |
-| SEC-008 | Staff authenticator codes can be replayed inside their 90-second window | Low | Confirmed (source) |
-| SEC-009 | Capability tokens (quote links, document codes) are written to the API's request logs | Low | Confirmed (source) |
-| SEC-010 | The public site's content-security policy is report-only and allows inline script | Low | Confirmed (source) |
-| SEC-011 | Desktop hardening gaps: one keychain entry for every build, a localhost origin in the release CSP, form drafts in localStorage | Low | Confirmed (source) |
-| SEC-012 | The developer MCP server lets the model choose the environment variable name a website key is written under | Low | Potential |
-| SEC-013 | Off-machine database backups are not encrypted before they leave the machine | Low | Confirmed (source) |
-| SEC-014 | The API trusts every `X-Forwarded-For` hop | Informational | Confirmed (source) |
-| SEC-015 | A refreshed impersonation token silently loses its `imp` claim if the grant row is missing | Informational | Potential |
-| SEC-016 | Staff accounts are all equal: any full staff session can create staff and reset another staff member's credentials | Informational | Confirmed (source) |
-| SEC-017 | Website-key routes answer for any job/invoice by id and return invoice `notes` | Informational | Potential |
-| SEC-018 | Smaller hardening items (mutable `postgres:16` tag, sandbox-less Chromium, fail-open rate limiter) | Informational | Confirmed (source) |
+| ID      | Title                                                                                                                          | Severity      | Confidence                                 |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------- | ------------------------------------------ |
+| SEC-001 | A limited (`test_companies`) staff session escapes to real companies through impersonation                                     | High          | Confirmed (source)                         |
+| SEC-002 | SECURITY DEFINER ledger functions are executable by every role and ignore the caller's tenant                                  | Medium        | Confirmed (source)                         |
+| SEC-003 | Uploaded files are decoded by sharp/libvips whatever their declared type; sharp 0.35.4 carries a librsvg advisory              | Medium        | Likely                                     |
+| SEC-004 | Forms for AI and the developer MCP program update themselves from unsigned binaries                                            | Medium        | Confirmed (source)                         |
+| SEC-005 | Release workflows run third-party actions pinned to mutable tags next to signing secrets                                       | Medium        | Confirmed (source)                         |
+| SEC-006 | Runtime dependencies with published advisories                                                                                 | Low           | Confirmed (scanner), reachability assessed |
+| SEC-007 | Staff sign-in reveals which staff addresses exist through the lockout answer, and lets anyone lock staff out                   | Low           | Confirmed (source)                         |
+| SEC-008 | Staff authenticator codes can be replayed inside their 90-second window                                                        | Low           | Confirmed (source)                         |
+| SEC-009 | Capability tokens (quote links, document codes) are written to the API's request logs                                          | Low           | Confirmed (source)                         |
+| SEC-010 | The public site's content-security policy is report-only and allows inline script                                              | Low           | Confirmed (source)                         |
+| SEC-011 | Desktop hardening gaps: one keychain entry for every build, a localhost origin in the release CSP, form drafts in localStorage | Low           | Confirmed (source)                         |
+| SEC-012 | The developer MCP server lets the model choose the environment variable name a website key is written under                    | Low           | Potential                                  |
+| SEC-013 | Off-machine database backups are not encrypted before they leave the machine                                                   | Low           | Confirmed (source)                         |
+| SEC-014 | The API trusts every `X-Forwarded-For` hop                                                                                     | Informational | Confirmed (source)                         |
+| SEC-015 | A refreshed impersonation token silently loses its `imp` claim if the grant row is missing                                     | Informational | Potential                                  |
+| SEC-016 | Staff accounts are all equal: any full staff session can create staff and reset another staff member's credentials             | Informational | Confirmed (source)                         |
+| SEC-017 | Website-key routes answer for any job/invoice by id and return invoice `notes`                                                 | Informational | Potential                                  |
+| SEC-018 | Smaller hardening items (mutable `postgres:16` tag, sandbox-less Chromium, fail-open rate limiter)                             | Informational | Confirmed (source)                         |
 
 CVSS v4.0 vectors are given where the preconditions are clear enough to score. They are the
 auditor's estimate from source; none was produced by a scoring tool.
@@ -37,6 +37,7 @@ auditor's estimate from source; none was produced by a scoring tool.
 **Confidence:** Confirmed by source tracing (not executed)
 **Affected component:** API (`apps/api`), auth (`packages/auth`), developer MCP server (`apps/dev-mcp`)
 **Affected location:**
+
 - `apps/api/src/routes/v1/form-copy.ts:53-61` (`staffOf` checks only that an impersonation claim exists)
 - `apps/api/src/routes/v1/form-copy.ts:96-131` (`GET /v1/forms/copy-targets`: every company that is not closed)
 - `apps/api/src/routes/v1/form-copy.ts:147-…` (`POST /v1/forms/:formId/copy-to-company`: writes into the company named in the body)
@@ -60,6 +61,7 @@ Three tenant routes act **outside** the impersonated company on the strength of 
 `form.manage` and `document.design` are staff-only permissions, and an impersonation seat holds them, so the permission check passes.
 
 **Evidence.**
+
 - `form-copy.ts:53-61`: `staffOf` returns `principal.impersonatedBy` and refuses only when it is undefined.
 - `form-copy.ts:119-130`: `getPlatformDataSource().tenants.list()` filtered by status and search only.
 - `form-copy.ts:189-197`: target company fetched by `body.tenantId`; refused only if deleted or cancelled.
@@ -75,6 +77,7 @@ Three tenant routes act **outside** the impersonated company on the strength of 
 **CVSS v4.0 (estimate):** `CVSS:4.0/AV:N/AC:L/AT:P/PR:H/UI:N/VC:L/VI:L/VA:N/SC:L/SI:L/SA:N`, about 5.1 base. Rated **High** here despite that number because it defeats an explicit security boundary built for an AI-operated credential, where prompt injection supplies the "attacker" without needing a malicious insider.
 
 **Remediation.**
+
 1. Carry the limitation into the tenant token: add a claim (for example `imp.lim: true`) when the grant has `from_limited_session`, or look the grant up in `assertStillPermitted` (it is already read there) and expose `limited` on the principal.
 2. In every route that acts outside the principal's own tenant (`copy-targets`, `copy-to-company`, `library-template`, and any future one), refuse a limited impersonation, or require the target to be a test company (`tenants.is_test`) and refuse library writes outright.
 3. Add a registry-level flag (for example `crossTenant: true`) on such routes so `server.ts` refuses limited impersonations centrally, and pin the list in `session-scope.test.ts` the way platform routes are pinned.
@@ -90,6 +93,7 @@ Three tenant routes act **outside** the impersonated company on the strength of 
 **Confidence:** Confirmed by source tracing (privileges not queried on a live database)
 **Affected component:** `packages/db` migrations
 **Affected location:**
+
 - `packages/db/migrations/0010_inventory.up.sql:27` `erp_ledger_capture(p_tenant, …)`
 - `packages/db/migrations/0010_inventory.up.sql:238` `erp_ledger_try_post(p_posting, p_actor, p_force)`
 - `packages/db/migrations/0013_finance.up.sql:209` `erp_ledger_backfill(p_tenant)`
@@ -117,6 +121,7 @@ The application itself calls these correctly (`packages/db/src/repositories/ledg
 **CVSS v4.0 (estimate):** `CVSS:4.0/AV:N/AC:H/AT:P/PR:H/UI:N/VC:N/VI:H/VA:N/SC:N/SI:H/SA:N`.
 
 **Remediation.**
+
 1. New migration (0022): `REVOKE ALL ON FUNCTION … FROM PUBLIC;` for every security-definer function, then `GRANT EXECUTE` only to the role that needs it (`integr8_app` for `erp_ledger_try_post` and `erp_ledger_backfill`; trigger functions need no grant).
 2. Inside each function that takes a tenant or posting id, refuse a mismatch when called by the runtime role, as the stock locks do: `if current_user = 'integr8_app' and p_tenant is distinct from app_current_tenant_id() then raise …`; for `erp_ledger_try_post`, compare the posting's `tenant_id`.
 3. Consider `ALTER DEFAULT PRIVILEGES … REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC` in role bootstrap so new functions start closed.
@@ -132,6 +137,7 @@ The application itself calls these correctly (`packages/db/src/repositories/ledg
 **Confidence:** Likely (the advisory's details were not reproduced; reachability confirmed from source)
 **Affected component:** API worker (thumbnails), PDF image preparation
 **Affected location:**
+
 - `apps/api/src/media/thumbnails.ts:23` `sharp(original, { failOn: 'error', limitInputPixels })`
 - `apps/api/src/documents/images.ts:52` `sharp(bytes, { limitInputPixels })`
 - `apps/api/src/media/storage.ts:219-232` (`isAcceptableMediaType` refuses `image/svg+xml` by **declared** type only)
@@ -148,6 +154,7 @@ The application itself calls these correctly (`packages/db/src/repositories/ledg
 **Business impact.** Depends on the CVE: at least worker crashes/resource exhaustion; possibly memory corruption in the worker, which holds the platform database connection (BYPASSRLS).
 
 **Remediation.**
+
 1. Upgrade sharp to ≥ 0.35.5 (exact pin, per `pnpm pins:check`).
 2. Before resizing, read `await sharp(bytes).metadata()` and continue only for `jpeg`, `png`, `webp`, `heif`/`avif` (whatever the product supports); refuse everything else, SVG and PDF included.
 3. Optionally verify magic bytes at upload completion and refuse a mismatch with the declared type.
@@ -208,17 +215,17 @@ Positive: untrusted inputs reach `run:` steps through `env:` rather than `${{ }}
 
 `pnpm audit`: 1 critical, 26 high, 31 moderate, 13 low. Most sit in build or development tooling:
 
-| Package (version) | Where | Reachable in production? |
-| --- | --- | --- |
-| shell-quote 1.10.0 (critical) | `react-native > react-devtools-core` | No — developer tooling, not in the shipped bundle |
-| node-forge 1.4.0 (many) | `expo > @expo/cli` | No — build CLI |
-| vite 8.2.2, undici 8.10.2, source-map-js | desktop dev server / jsdom tests | No — dev and test only |
-| @hono/node-server 2.1.5 | `@modelcontextprotocol/sdk` in dev-mcp | No — the server uses stdio, not HTTP |
-| kysely 0.28.9 (3 high) | `packages/db` | Not as used: no `JSONPathBuilder.key()/.at()` with input, no `Kysely<any>`, the MySQL issue does not apply to Postgres. Upgrade anyway |
-| sharp 0.35.4 | `apps/api` | **Yes** — see SEC-003 |
-| zod 4.6.1 (memory exhaustion on oversized constrained collections) | API validation | Bounded by `API_MAX_BODY_BYTES` and per-route `bodyLimit`; upgrade |
-| fastify 5.12.3 (HTTP/2 trailer DoS; header `propertyNames`) | `apps/api` | HTTP/2 is not enabled; routes validate with zod. Upgrade |
-| fast-uri (via ajv) | fastify / eta | Low relevance |
+| Package (version)                                                  | Where                                  | Reachable in production?                                                                                                               |
+| ------------------------------------------------------------------ | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| shell-quote 1.10.0 (critical)                                      | `react-native > react-devtools-core`   | No — developer tooling, not in the shipped bundle                                                                                      |
+| node-forge 1.4.0 (many)                                            | `expo > @expo/cli`                     | No — build CLI                                                                                                                         |
+| vite 8.2.2, undici 8.10.2, source-map-js                           | desktop dev server / jsdom tests       | No — dev and test only                                                                                                                 |
+| @hono/node-server 2.1.5                                            | `@modelcontextprotocol/sdk` in dev-mcp | No — the server uses stdio, not HTTP                                                                                                   |
+| kysely 0.28.9 (3 high)                                             | `packages/db`                          | Not as used: no `JSONPathBuilder.key()/.at()` with input, no `Kysely<any>`, the MySQL issue does not apply to Postgres. Upgrade anyway |
+| sharp 0.35.4                                                       | `apps/api`                             | **Yes** — see SEC-003                                                                                                                  |
+| zod 4.6.1 (memory exhaustion on oversized constrained collections) | API validation                         | Bounded by `API_MAX_BODY_BYTES` and per-route `bodyLimit`; upgrade                                                                     |
+| fastify 5.12.3 (HTTP/2 trailer DoS; header `propertyNames`)        | `apps/api`                             | HTTP/2 is not enabled; routes validate with zod. Upgrade                                                                               |
+| fast-uri (via ajv)                                                 | fastify / eta                          | Low relevance                                                                                                                          |
 
 **Remediation.** Upgrade kysely ≥ 0.28.17, zod ≥ 4.6.6, fastify ≥ 5.12.6, sharp ≥ 0.35.5, and refresh the Expo/RN toolchain on its normal cadence. Add `pnpm audit --prod --audit-level high` to CI so production advisories fail the build while dev-only ones are reported.
 
@@ -293,6 +300,7 @@ Positive: untrusted inputs reach `run:` steps through `env:` rather than `${{ }}
 **Severity:** Low
 **Confidence:** Confirmed by source tracing
 **Affected location:**
+
 - `apps/desktop/src-tauri/src/lib.rs:18-19` — service `"Integr8 Plus"`, account `"session"` for every build
 - `apps/desktop/src-tauri/tauri.conf.json` (`security.csp`) — `http://localhost:3000` stays in `img-src`/`connect-src`; `scripts/stamp.mjs:100-104` replaces only the placeholder API host
 - `apps/desktop/src/features/forms/model/recovery.ts:92-108` — form drafts in `localStorage`

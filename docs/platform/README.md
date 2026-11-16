@@ -43,7 +43,13 @@ only `websiteUrl` and `documentLinkPattern` in its settings; pinned by
 for any company that is not a test company, starts impersonation only with a
 reason beginning `Developer MCP:`, and gets 403 `session_scope` elsewhere,
 audited as `platform.session_scope_refused`. New platform routes are closed to it
-unless they list the scope.
+unless they list the scope. **Acting as a test company it stays there**: its
+grant is marked `from_limited_session` (and its tokens carry `imp.lim`), and
+the company routes that reach other companies, marked `crossTenant` (the form
+copy targets, copying a form to another company, saving a library template;
+pinned in `session-scope.test.ts`), refuse it with the same 403 `session_scope`
+and audit line. The grant itself is read on every request, so the limit holds
+whatever the token says.
 
 ## Staff
 
@@ -172,7 +178,9 @@ role, the schema owner included, and both are split by year.
 Built-in form templates are code (`pnpm --filter @integr8/db db:templates`
 syncs them); staff-made ones are saved from a company's form or imported from a
 `.integr8form` file on the **Templates** page, with their PDF templates and
-pictures. See [form-engine/](../form-engine/README.md#the-builder).
+pictures. The library is for Integr8 staff only: a company's own
+people never see it (`GET /v1/form-templates` needs the staff-only `form.manage`,
+so only staff acting as a company list, preview or start from a template). See [form-engine/](../form-engine/README.md#the-builder).
 
 ## Downloads
 

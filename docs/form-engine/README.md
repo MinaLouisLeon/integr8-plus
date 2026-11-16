@@ -88,7 +88,8 @@ Desktop app, staff only (`form.manage`, through impersonation), on the
 - **The template library.** Built-in templates (kept by `pnpm --filter
 @integr8/db db:templates`) and staff-made ones (`form_templates.source =
 'staff'`, managed on the dashboard's Templates page, pictures in a
-  `platform-library` bucket). A company starts a form from either.
+  `platform-library` bucket). Staff only: staff acting as a company start a
+  form from either; a company's own people never see the library.
 - **Copying.** Staff copy a form to another company as a draft, optionally with
   its PDF templates and pictures, or save it to the library.
 - **Files.** A form with its PDF templates and pictures travels as one

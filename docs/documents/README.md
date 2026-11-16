@@ -77,15 +77,19 @@ into a document.
   (`PUT /v1/documents/{id}/fields`). The QR code's place is chosen by dragging on
   a pdf.js view of the page (`qr_placement`, page fractions).
 - **Sharing.** A switch per document; **new documents start not shared**.
-  Unshared, the QR page and the website answer exactly as for a code that never
-  existed. Sharing queues `documents.reprint`: a generated document is printed
+  A shared document is shown **only on the company's own website**, whose
+  server reads it with its website key; Integr8's site serves no document. A
+  company with no website (`websiteUrl`) cannot share at all: the API refuses
+  turning sharing on (409 `sharing_needs_website`), its documents have no link,
+  and the screens say a website is needed. Unshared, the website answers
+  exactly as for a code that never existed. Sharing queues `documents.reprint`: a generated document is printed
   again from its `printed_design` with its code; an uploaded one is stamped
   with pdf-lib (the original is kept). Stopping sharing keeps the code. The
   register's rows have Share (copy, email, WhatsApp, QR), Stop sharing and
   Delete.
-- **Links.** `WEB_APP_URL/d/<code>` by default, or the company's own site when
-  staff set its `document_link_pattern` (`https://<site>/documents/{code}`, same
-  host or below). **Stop the link** and an expiry date stop it at once (undoable);
+- **Links.** On the company's website only: `<websiteUrl>/documents/<code>`,
+  or staff's `document_link_pattern` (same host or below). None without a
+  website. **Stop the link** and an expiry date stop it at once (undoable);
   **Delete** removes it and the file goes through `MEDIA_RESTORE_DAYS`. A stopped
   link says "no longer available"; any other bad code "not valid".
 - **In the desktop app** links open through the operating system
@@ -99,7 +103,8 @@ Quotes, invoices, purchase orders and a job report in the company's look
 (**PDFs** panel), listed in the register with their kind (`/v1/business-documents`,
 queue `documents.render_business`). They need the documents module and the
 record's module. They start not shared like every document (a quote PDF made
-from the issue dialog links to the quote page instead). They can be **emailed**
+from the issue dialog links to the quote page on the company's website instead;
+both need a website). They can be **emailed**
 from the dialog (up to 10 MB; replies go to the sender; audit
 `document.emailed`). Drafts are refused (`business_document_draft`). The job
 report lists the job's forms rather than every answer.
@@ -122,14 +127,16 @@ built on a developer's computer opens from a test document's QR code; any other
 company is refused (422 `website_url_local_only`, `document_link_invalid`), and
 the database refuses it too.
 
-| Route                                           | Needs (Integr8's grant **and** the company's switch in Settings → Website access)                                                               |
-| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `POST /v1/website/documents/lookup` (`{ "q" }`) | `website_files` + documents module. Exact match on the reference and search fields (never the customer's name), up to 10 shared, live documents |
-| `GET /v1/website/documents/by-code/{code}`      | `website_files`: serves the document page on the company's own site                                                                             |
-| `GET /v1/website/files/{documentId}`            | `website_files`                                                                                                                                 |
-| `GET /v1/website/jobs/{workOrderId}`            | `website_jobs`                                                                                                                                  |
-| `GET /v1/website/quotes/{quoteId}`              | `website_quotes` + sales module                                                                                                                 |
-| `GET /v1/website/invoices/{invoiceId}`          | `website_invoices` + finance module                                                                                                             |
+| Route                                                         | Needs (Integr8's grant **and** the company's switch in Settings → Website access)                                                               |
+| ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /v1/website/documents/lookup` (`{ "q" }`)               | `website_files` + documents module. Exact match on the reference and search fields (never the customer's name), up to 10 shared, live documents |
+| `GET /v1/website/documents/by-code/{code}`                    | `website_files`: serves the document page on the company's own site                                                                             |
+| `GET /v1/website/files/{documentId}`                          | `website_files`                                                                                                                                 |
+| `GET /v1/website/jobs/{workOrderId}`                          | `website_jobs`                                                                                                                                  |
+| `GET /v1/website/quotes/{quoteId}`                            | `website_quotes` + sales module                                                                                                                 |
+| `GET /v1/website/invoices/{invoiceId}`                        | `website_invoices` + finance module                                                                                                             |
+| `GET /v1/website/quotes/by-token/{token}` and `POST …/answer` | `website_quotes` + sales module: the customer's quote link (`<websiteUrl>/q/<token>`), read and answered by the company's server                |
+| `GET /v1/website/asset-tags/{code}`                           | assets module only (it answers whose tag it is, nothing about the asset): the page a printed tag opens (`<websiteUrl>/a/<code>`)                |
 
 All eight switches start off. The website must sign in its own customers before
 showing a job, quote or invoice: the key identifies the website, not a person.
@@ -139,8 +146,11 @@ languages, and a check for a leaked key; the developer MCP server also sets a
 test company up and calls these routes with its key
 ([contributing/developer-tools.md](../contributing/developer-tools.md)).
 
-Without a session, also: `GET /v1/public/documents/{code}` (the QR page) and
-`GET /v1/public/quotes/{token}` with `POST …/answer` (the customer's quote link).
+Every website route also needs the company to have a website: a key whose
+company has none answers 403 `website_missing`. **Integr8 serves no document,
+quote or tag page itself**: there is no keyless public route for any of them,
+and a company without a website has no outside links (documents cannot be
+shared, a quote has no customer link, a tag prints the bare code).
 
 ## Settings
 

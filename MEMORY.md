@@ -445,6 +445,22 @@ the end of any piece of work that changes one of them, and date each section.
   (zip + program + keyring, each with `.sha256`), unsigned (D4); separate from Forms for AI
   (D3). Local mode now passes its own port as `API_PUBLIC_URL` (uploads failed before).
   Only Linux x64 was built here; the made-document seeding was not run (needs the worker).
+- **Security audit fixes, round 1 (2026-11-16, uncommitted, branch `ccr-87dc93be-pye3tx`), as the
+  owner decided them:** the audit's findings are in `security-audit.md` (root; the full reports in
+  `security-audit/`). SEC-001: a staff session limited to test companies stays in the test company it
+  acts as; routes marked `crossTenant` (form copy targets, copy to company, save to library) refuse
+  it (grant's `from_limited_session`, token claim `imp.lim`, pinned in `session-scope.test.ts`); a
+  refresh whose impersonation grant is gone is refused (SEC-015). Form templates are staff-only
+  (`form.manage`). **Outside links live on the company's own website only:** shared documents
+  (`<websiteUrl>/documents/<code>` or the link pattern), quote links (`<websiteUrl>/q/<token>`) and
+  asset tags (`<websiteUrl>/a/<code>`); the company's server reads them with its website key
+  (`/v1/website/documents/by-code`, `/v1/website/quotes/by-token/:token` + `/answer`,
+  `/v1/website/asset-tags/:code`). The keyless `/v1/public/documents|quotes|asset-tags` routes and the
+  public site's `/d`, `/q`, `/a` pages are deleted. A company without a website cannot share (409
+  `sharing_needs_website`), gets no quote link and prints bare tag codes; a key whose company has no
+  website answers 403 `website_missing`. The developer server's `call_api` sends public routes only
+  for the chosen test company. No migration (data is being wiped). Integration suites updated but not
+  run (no Postgres here).
 - **The demo seeder goes through the API**, in-process with Fastify's `inject`, as the
   company's own people (plus a staff impersonation for staff-only setup). Direct inserts
   were rejected: they skip numbering, stock, ledger postings and audit, and produce data

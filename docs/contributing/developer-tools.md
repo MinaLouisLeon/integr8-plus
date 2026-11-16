@@ -58,7 +58,10 @@ Three rules, enforced by the API rather than the tool: **test companies only**
 type the password and code in a terminal, the session lives in the keychain
 through `@napi-rs/keyring`, the trace hides tokens, codes and signed links, and
 its folder is `0700`); **everything is audited** under your staff account, every
-impersonation reason starting `Developer MCP:`.
+impersonation reason starting `Developer MCP:`. Acting as a test company, it is refused every
+route that reaches other companies (form copies, the template library), and
+`call_api` sends a public route only for the chosen test company (its own
+brand, or an invitation from its outbox), never a real company's.
 
 ```bash
 pnpm dev-mcp login --api https://api.example.com   # email, password, code; 8 hours (--production for production)
@@ -71,16 +74,16 @@ database (`APP_ENV` development or test) and signs in a tool account with a
 limited session. Use a separate staff account for it on real servers; test
 companies there are made by the seeder on the machine.
 
-| Tools                                                                                | Do                                                                                                                                    |
-| ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `status`, `list_test_companies`, `create_test_company`, `use_company`                | Which API and session; pick or make a test company (local mode)                                                                       |
-| `find_route`, `get_route`, `call_api`, `get_trace`                                   | Search the OpenAPI document (with who may call each route); call as a member, or as a visitor for a public route; read the trace      |
-| `get_audit`, `read_outbox`                                                           | What a call changed; the mail and push the company would have sent                                                                    |
-| `import_form_package`, `submit_form`                                                 | Put a `.integr8form` into the company (publish optional; refuses anything but a `.integr8form` ZIP); fill and submit as a member      |
-| `list_change_requests`, `get_change_request`, `hand_over_change_request`             | Read `plan/requests/`; copy a recorded request there and add its row                                                                  |
-| `create_website_key`, `write_website_env`, `list_website_keys`, `revoke_website_key` | A test company's website key (P43): made, kept here, written into the website's `.env.local`, never shown                             |
-| `set_website_access`, `call_website_api`, `seed_shared_documents`                    | Switch website access on and point links at `http://localhost:<port>`; call `/v1/website` with the key; make shared documents to find |
-| the 23 Forms for AI tools                                                            | As above; `list_draft_change_requests` and `get_draft_change_request` are Forms for AI's own two renamed                              |
+| Tools                                                                                | Do                                                                                                                                                |
+| ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `status`, `list_test_companies`, `create_test_company`, `use_company`                | Which API and session; pick or make a test company (local mode)                                                                                   |
+| `find_route`, `get_route`, `call_api`, `get_trace`                                   | Search the OpenAPI document (with who may call each route); call as a member, or as a visitor for the test company's public route; read the trace |
+| `get_audit`, `read_outbox`                                                           | What a call changed; the mail and push the company would have sent                                                                                |
+| `import_form_package`, `submit_form`                                                 | Put a `.integr8form` into the company (publish optional; refuses anything but a `.integr8form` ZIP); fill and submit as a member                  |
+| `list_change_requests`, `get_change_request`, `hand_over_change_request`             | Read `plan/requests/`; copy a recorded request there and add its row                                                                              |
+| `create_website_key`, `write_website_env`, `list_website_keys`, `revoke_website_key` | A test company's website key (P43): made, kept here, written into the website's `.env.local`, never shown                                         |
+| `set_website_access`, `call_website_api`, `seed_shared_documents`                    | Switch website access on and point links at `http://localhost:<port>`; call `/v1/website` with the key; make shared documents to find             |
+| the 23 Forms for AI tools                                                            | As above; `list_draft_change_requests` and `get_draft_change_request` are Forms for AI's own two renamed                                          |
 
 A grant is reused only for the same purpose, so each call's purpose reaches the
 audit log. From building to testing in one server: `save_package` →

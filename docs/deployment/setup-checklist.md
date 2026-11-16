@@ -303,7 +303,7 @@ _45 minutes per company_
 
 You create every company and make it ready before its owner arrives. Repeat this stage for each new company.
 
-- [ ] `app` **Onboard it**: Companies → Onboard a company: name, short name, plan, seats, the owner's email, its website and the menu tabs it gets. The owner's invitation waits until the company's own desktop app exists.
+- [ ] `app` **Onboard it**: Companies → Onboard a company: name, short name, plan, seats, the owner's email, its website (without one it cannot share documents, quote links or asset tags: they open only on its own site) and the menu tabs it gets. The owner's invitation waits until the company's own desktop app exists.
 - [ ] `app` **Switch on its modules**: the company's page → Features: only what it bought (`crm`, `sales`, `finance`, `ledger`, `inventory`, `purchasing`, `assets`, `hr`, `payroll`, `manufacturing`, `documents`). Leave `e_invoicing` off: it is test-only.
 - [ ] `app` **Work inside the company**: the company's page → Work inside this company → a reason → Start. A red banner shows you are acting as the company; Back to the dashboard leaves.
 - [ ] `app` **Give it its look**: Set-up → Company branding: logo, a square app icon of at least 512 × 512, colours and theme. The company's apps wear them.

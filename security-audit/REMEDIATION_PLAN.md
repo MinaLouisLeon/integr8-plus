@@ -5,6 +5,7 @@ Ordered by priority. Each task follows the repository's rules (CLAUDE.md / AGENT
 ## 1. Immediate critical fixes
 
 ### R1 — Confine limited staff sessions on cross-tenant tenant routes
+
 - **Findings:** SEC-001
 - **Priority:** P0
 - **Changes:**
@@ -22,6 +23,7 @@ Ordered by priority. Each task follows the repository's rules (CLAUDE.md / AGENT
 - **Acceptance:** a limited session's impersonation gets 403 on the three routes (or only test companies, per decision 6); full sessions behave as before; the refusal appears in the platform audit log.
 
 ### R2 — Close the SECURITY DEFINER ledger functions
+
 - **Findings:** SEC-002
 - **Priority:** P0
 - **Changes:** migration `0022_definer_execute` (`up` + `down`):
@@ -39,6 +41,7 @@ Ordered by priority. Each task follows the repository's rules (CLAUDE.md / AGENT
 ## 2. High-priority fixes
 
 ### R3 — Image decoding: upgrade and restrict formats
+
 - **Findings:** SEC-003, part of SEC-006
 - **Priority:** P1
 - **Changes:** sharp → ≥ 0.35.5 (exact pin); in `apps/api/src/media/thumbnails.ts` and `apps/api/src/documents/images.ts`, read `metadata()` first and continue only for the supported raster formats; mark the thumbnail failed otherwise. Optionally check magic bytes at `/v1/media/:id/complete` against the declared type.
@@ -47,6 +50,7 @@ Ordered by priority. Each task follows the repository's rules (CLAUDE.md / AGENT
 - **Acceptance:** SVG/PDF bytes declared as JPEG produce no decode and a failed thumbnail.
 
 ### R4 — Pin GitHub Actions and protect signing secrets
+
 - **Findings:** SEC-005
 - **Priority:** P1
 - **Changes:** replace every `uses: owner/repo@tag` with a full SHA plus a version comment; add `github-actions` to Dependabot; put the Tauri signing key, EAS/Apple/Google credentials and release token in a `release` environment with required reviewers; minimal `permissions:` per job.
@@ -55,6 +59,7 @@ Ordered by priority. Each task follows the repository's rules (CLAUDE.md / AGENT
 - **Acceptance:** no tag-pinned third-party action remains.
 
 ### R5 — Signed self-updates for Forms for AI and the developer program
+
 - **Findings:** SEC-004
 - **Priority:** P1
 - **Changes:** release workflow signs a manifest (version, file name, SHA-256) with a minisign/Ed25519 key kept in the protected environment; `apps/forms-ai/src/setup/update.ts` verifies the signature with an embedded public key before replacing itself; same for the `integr8-dev-mcp` profile. Code signing when certificates exist.
@@ -63,6 +68,7 @@ Ordered by priority. Each task follows the repository's rules (CLAUDE.md / AGENT
 - **Acceptance:** an update with a matching checksum but no or wrong signature is refused.
 
 ### R6 — Dependency upgrades
+
 - **Findings:** SEC-006
 - **Priority:** P1
 - **Changes:** kysely ≥ 0.28.17, zod ≥ 4.6.6, fastify ≥ 5.12.6, sharp (R3); later the Expo/RN toolchain. Add `pnpm audit --prod --audit-level high` to CI.
@@ -71,27 +77,27 @@ Ordered by priority. Each task follows the repository's rules (CLAUDE.md / AGENT
 
 ## 3. Medium-priority improvements
 
-| Task | Findings | Change | Tests |
-| --- | --- | --- | --- |
-| R7 Staff lockout answers uniformly | SEC-007 | Return the same 401 for a locked account; log the lock; consider throttling instead of hard lock | T-AUTH-5 |
-| R8 TOTP replay guard | SEC-008 | Store last accepted counter per staff account (`platform_users.totp_last_counter`, new migration), refuse ≤ | T-AUTH-6 |
-| R9 Mask capability paths in logs | SEC-009 | Log `request.routeOptions.url` instead of `request.url` | T-API-5 |
-| R10 Enforce the web CSP | SEC-010 | Nonce-based `script-src`, switch from report-only after the observation period | T-WEB-1 |
-| R11 Desktop hardening | SEC-011 | Per-build keychain service name (bundle identifier); strip localhost from release CSP in `stamp.mjs`; encrypt or move form drafts, clear on sign-out | T-DESK-1..2 |
-| R12 Website key env names | SEC-012 | Refuse public prefixes in `envfile.ts` | T-MCP-4 |
-| R13 Encrypted off-machine backups | SEC-013 | `age` or rclone `crypt` before upload; update `restore-drill.sh`, setup guide (both copies), `deploy/.env.example` | restore drill |
+| Task                               | Findings | Change                                                                                                                                               | Tests         |
+| ---------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| R7 Staff lockout answers uniformly | SEC-007  | Return the same 401 for a locked account; log the lock; consider throttling instead of hard lock                                                     | T-AUTH-5      |
+| R8 TOTP replay guard               | SEC-008  | Store last accepted counter per staff account (`platform_users.totp_last_counter`, new migration), refuse ≤                                          | T-AUTH-6      |
+| R9 Mask capability paths in logs   | SEC-009  | Log `request.routeOptions.url` instead of `request.url`                                                                                              | T-API-5       |
+| R10 Enforce the web CSP            | SEC-010  | Nonce-based `script-src`, switch from report-only after the observation period                                                                       | T-WEB-1       |
+| R11 Desktop hardening              | SEC-011  | Per-build keychain service name (bundle identifier); strip localhost from release CSP in `stamp.mjs`; encrypt or move form drafts, clear on sign-out | T-DESK-1..2   |
+| R12 Website key env names          | SEC-012  | Refuse public prefixes in `envfile.ts`                                                                                                               | T-MCP-4       |
+| R13 Encrypted off-machine backups  | SEC-013  | `age` or rclone `crypt` before upload; update `restore-drill.sh`, setup guide (both copies), `deploy/.env.example`                                   | restore drill |
 
 ## 4. Long-term security hardening
 
-| Task | Findings | Change |
-| --- | --- | --- |
-| R14 Narrow proxy trust | SEC-014 | `trustProxy` set to the Caddy/Docker addresses actually in front of the API |
-| R15 Fail closed on missing grant | SEC-015 | Refuse/revoke when a session's grant cannot be read; refuse refresh after the grant ends |
-| R16 Staff management | SEC-016 | Staff creation/reset from the CLI only, or a fresh second factor plus notification to all staff |
-| R17 Website data minimisation | SEC-017 | Confirm or drop `notes`; optional per-record website visibility for jobs |
-| R18 Infra hygiene | SEC-018 | Pin `postgres:16.x@sha256:…`; consider an in-memory first tier for the per-IP limit |
-| R19 Branch protection | report §10 | Apply rulesets (private repositories need a paid plan) so releases do not rest on a local hook |
-| R20 Dynamic testing | report §2 | Run the integration suites with the new tests; external penetration test |
+| Task                             | Findings   | Change                                                                                          |
+| -------------------------------- | ---------- | ----------------------------------------------------------------------------------------------- |
+| R14 Narrow proxy trust           | SEC-014    | `trustProxy` set to the Caddy/Docker addresses actually in front of the API                     |
+| R15 Fail closed on missing grant | SEC-015    | Refuse/revoke when a session's grant cannot be read; refuse refresh after the grant ends        |
+| R16 Staff management             | SEC-016    | Staff creation/reset from the CLI only, or a fresh second factor plus notification to all staff |
+| R17 Website data minimisation    | SEC-017    | Confirm or drop `notes`; optional per-record website visibility for jobs                        |
+| R18 Infra hygiene                | SEC-018    | Pin `postgres:16.x@sha256:…`; consider an in-memory first tier for the per-IP limit             |
+| R19 Branch protection            | report §10 | Apply rulesets (private repositories need a paid plan) so releases do not rest on a local hook  |
+| R20 Dynamic testing              | report §2  | Run the integration suites with the new tests; external penetration test                        |
 
 ## Dependency graph
 
