@@ -73,8 +73,9 @@ start on any of them. The database settings are in
 
 Postgres 16, one schema shared by every company, each row keyed by `tenant_id`
 with row-level security as the backstop. 2.0.0 started the migrations again from
-one per module; 0020 removed sign-up and card billing (P42); a new feature adds
-the next number after `0020`.
+one per module; 0020 removed sign-up and card billing (P42); 0021 lets a test
+company's website run on localhost (P43); a new feature adds the next number
+after `0021`.
 
 | Migration | Module                                                                               |
 | --------- | ------------------------------------------------------------------------------------ |
@@ -98,6 +99,7 @@ the next number after `0020`.
 | 0018      | E-invoicing: the Egyptian Tax Authority                                              |
 | 0019      | The AI assistant: conversations, actions, usage and cost                             |
 | 0020      | Desktop only (P42): drops sign-up, card billing and the web assistant switch         |
+| 0021      | A test company's website and document links may be on localhost (P43)                |
 
 See [`docs/database/`](./docs/database/README.md).
 

@@ -109,9 +109,18 @@ report lists the job's forms rather than every answer.
 The company's website **server** calls `/v1/website/…` with a website key
 (`i8wk_…`, shown once, kept in the server's environment as
 `INTEGR8_WEBSITE_KEY`, never in a page). Only a staff manager (an account made
-with `admin-cli create`) makes, enables, disables, revokes or deletes keys, on
-the dashboard's company page; two may be live at once for rotation; each makes
-`WEBSITE_LOOKUP_RATE_LIMIT` (60) lookups a minute.
+with `admin-cli create`) makes, enables, disables, revokes or deletes a real
+company's keys, on the dashboard's company page; for a test company any staff
+member may, and so may the developer MCP server's limited session (P43). Two may
+be live at once for rotation; each makes `WEBSITE_LOOKUP_RATE_LIMIT` (60) lookups
+a minute.
+
+The company's website (`websiteUrl`) and its document link pattern are https,
+on the registered website. A **test company** may also use `http://localhost:<port>`
+or `http://127.0.0.1:<port>` for both (migration 0021, P43), so a website being
+built on a developer's computer opens from a test document's QR code; any other
+company is refused (422 `website_url_local_only`, `document_link_invalid`), and
+the database refuses it too.
 
 | Route                                           | Needs (Integr8's grant **and** the company's switch in Settings → Website access)                                                               |
 | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -126,7 +135,8 @@ All eight switches start off. The website must sign in its own customers before
 showing a job, quote or invoice: the key identifies the website, not a person.
 Integr8 Forms for AI gives an AI tool the guide, the exact contract (held to
 `openapi.json` by `contract.test.ts`), a ready Next.js search page in both
-languages, and a check for a leaked key
+languages, and a check for a leaked key; the developer MCP server also sets a
+test company up and calls these routes with its key
 ([contributing/developer-tools.md](../contributing/developer-tools.md)).
 
 Without a session, also: `GET /v1/public/documents/{code}` (the QR page) and

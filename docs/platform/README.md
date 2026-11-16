@@ -36,7 +36,10 @@ staff sign in each time it starts, and closing it ends the session.
 dashboard never asks for it) ends 8 hours after sign-in whatever happens, may
 call only routes listing `test_companies` in `platformScopes` (me, sign-out, the
 companies list of test companies, one company's page, impersonation, a test
-company's outbox and audit lines; pinned by `session-scope.test.ts`), is refused
+company's outbox and audit lines, the staff downloads list, and for a company's
+website (P43) its website keys, the `documents` and `website_*` flags only, and
+only `websiteUrl` and `documentLinkPattern` in its settings; pinned by
+`session-scope.test.ts`), is refused
 for any company that is not a test company, starts impersonation only with a
 reason beginning `Developer MCP:`, and gets 403 `session_scope` elsewhere,
 audited as `platform.session_scope_refused`. New platform routes are closed to it
