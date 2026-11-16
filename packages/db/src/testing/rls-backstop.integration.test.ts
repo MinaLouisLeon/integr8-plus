@@ -251,6 +251,63 @@ describe('tables the runtime role must not reach at all', () => {
   });
 });
 
+describe('functions that run as their owner (SEC-002)', () => {
+  const OTHER = () => southgate.id;
+  const ANY_ID = '00000000-0000-4000-8000-0000000000c1';
+
+  it('refuse to write another company’s ledger', async () => {
+    const calls: [string, unknown[]][] = [
+      [
+        'select erp_ledger_capture($1, $2, $3, current_date, $4, $5)',
+        [OTHER(), 'invoice', ANY_ID, 'EGP', NORTHWIND_USER],
+      ],
+      ['select erp_ledger_backfill($1)', [OTHER()]],
+    ];
+    for (const [text, values] of calls) {
+      await expect(
+        asTenant(app, northwind.id, () => app.query(text, values)),
+        text,
+      ).rejects.toThrow(/another company/iu);
+    }
+  });
+
+  it('refuse without a company set on the runtime role’s connection', async () => {
+    await expect(
+      asTenant(app, null, () => app.query('select erp_ledger_backfill($1)', [northwind.id])),
+    ).rejects.toThrow(/No company is set/iu);
+  });
+
+  it('accept the transaction’s own company', async () => {
+    const added = await asTenant(
+      app,
+      northwind.id,
+      async () =>
+        (
+          await app.query<{ added: number }>('select erp_ledger_backfill($1) as added', [
+            northwind.id,
+          ])
+        ).rows[0]?.added,
+    );
+    // No ledger is set up for this company, so nothing is queued.
+    expect(added).toBe(0);
+  });
+
+  it('cannot be called at all under the unchecked names, or the purge', async () => {
+    for (const text of [
+      'select erp_ledger_backfill_unchecked($1)',
+      'select erp_ledger_backfill_more($1, current_date, $2)',
+      'select purge_tenant($1)',
+    ]) {
+      await expect(
+        asTenant(app, northwind.id, () =>
+          app.query(text, text.includes('$2') ? [northwind.id, 'Africa/Cairo'] : [northwind.id]),
+        ),
+        text,
+      ).rejects.toThrow(/permission denied/iu);
+    }
+  });
+});
+
 describe('the tenant context itself', () => {
   it('does not survive its transaction, which is what transaction pooling requires', async () => {
     await asTenant(app, northwind.id, async () => {
