@@ -1,6 +1,6 @@
 import { apiMediaAdapter } from '@integr8/form-renderer-dom/screens';
 import { useTranslation } from '@integr8/i18n';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useId, useMemo, useState } from 'react';
 import { type Customer, type DocumentDetail, keys, useOperations } from '../api.js';
 import { CustomerPicker } from '../crm/opportunity-parts.js';
@@ -45,6 +45,13 @@ export function UploadDocumentDialog({
   const [reference, setReference] = useState('');
   const [customer, setCustomer] = useState<Pick<Customer, 'id' | 'name'> | null>(null);
   const [share, setShare] = useState(false);
+  // Sharing shows a document on the company's own website only, so a company
+  // without one is not offered it (the API refuses it too).
+  const settings = useQuery({
+    queryKey: ['settings'],
+    queryFn: async () => (await client.GET('/v1/settings')).data!,
+  });
+  const canShare = (settings.data?.websiteUrl ?? '').trim() !== '';
   const [fields, setFields] = useState<TypedField[]>([]);
   // The share QR code stamped in once the document is shared (0075).
   const [withQr, setWithQr] = useState(false);
@@ -87,7 +94,7 @@ export function UploadDocumentDialog({
             title: title.trim(),
             reference: reference.trim(),
             ...(customer === null ? {} : { customerId: customer.id }),
-            shareable: share,
+            shareable: share && canShare,
             fields: completeFields(fields),
             qrPlacement: withQr ? placement : null,
           },
@@ -208,15 +215,19 @@ export function UploadDocumentDialog({
           </span>
         </label>
         {withQr ? <QrPlacer bytes={bytes} value={placement} onChange={setPlacement} /> : null}
-        <label className="flex items-start gap-2 text-sm text-content">
-          <input
-            type="checkbox"
-            className="mt-1"
-            checked={share}
-            onChange={(event) => setShare(event.target.checked)}
-          />
-          {t('documents.upload.shareNow')}
-        </label>
+        {canShare ? (
+          <label className="flex items-start gap-2 text-sm text-content">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={share}
+              onChange={(event) => setShare(event.target.checked)}
+            />
+            {t('documents.upload.shareNow')}
+          </label>
+        ) : (
+          <p className="text-sm text-content-muted">{t('documents.sharing.needsWebsite')}</p>
+        )}
         {upload.isError ? <Failure error={upload.error} /> : null}
       </form>
     </Dialog>

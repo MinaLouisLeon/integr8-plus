@@ -225,7 +225,7 @@ describe('one document', () => {
     const { container } = renderScreen(<DocumentScreen documentId={DOCUMENT} />, client);
     expect(
       await screen.findByText(
-        'Not shared: the QR code link and your company website answer as if it did not exist. Your company still sees it here.',
+        'Not shared: your company website answers as if it did not exist. Your company still sees it here.',
       ),
     ).toBeInTheDocument();
     expect(
@@ -306,7 +306,7 @@ describe('one document', () => {
     renderScreen(<DocumentScreen documentId={DOCUMENT} />, client);
     expect(
       await screen.findByText(
-        'Shared: the QR code link and your company website can show this document.',
+        'Shared: your company website can show this document to whoever has its QR code or link.',
       ),
     ).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Stop sharing' })).not.toBeInTheDocument();
