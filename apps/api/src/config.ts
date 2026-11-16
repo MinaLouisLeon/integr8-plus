@@ -729,7 +729,7 @@ export function startupWarnings(config: ApiConfig, env: NodeJS.ProcessEnv = proc
     config.CLOUDFLARE_API_TOKEN === undefined
   ) {
     warnings.push(
-      "CLOUDFLARE_API_TOKEN is not set: the nightly storage check against Cloudflare's bill will say 'unavailable' for every company, and no operations are counted. Create an Account Analytics: Read token (setup guide, Stage 0 part D).",
+      "CLOUDFLARE_API_TOKEN is not set: the nightly storage check against Cloudflare's bill will say 'unavailable' for every company, and no operations are counted. Create an Account Analytics: Read token (setup guide, Stage 1).",
     );
   }
   return warnings;
