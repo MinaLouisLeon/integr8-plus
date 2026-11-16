@@ -26,8 +26,19 @@ import { Trace } from './trace.js';
 const TENANT = '11111111-1111-4111-8111-111111111111';
 const KEY_ID = '77777777-7777-4777-8777-777777777777';
 const SECRET = 'i8wk_secret-website-key-value-abcdefghijklmnopqrstu';
-const STAFF = 'eyJhbGciOiJFZERTQSJ9.eyJzdWIiOiJzdGFmZi1vbmUifQ.c3RhZmYtc2lnbmF0dXJl';
-const GRANT = 'eyJhbGciOiJFZERTQSJ9.eyJzdWIiOiJncmFudC1vbmUifQ.Z3JhbnQtc2lnbmF0dXJl';
+/**
+ * Made-up tokens in the shape of a JWT (three base64url parts), built here so
+ * no line of the file looks like a real one to the secret scan; the redaction
+ * under test must still recognise them.
+ */
+const fakeJwt = (subject: string) =>
+  [{ alg: 'EdDSA' }, { sub: subject }, `${subject}-signature`]
+    .map((part) =>
+      Buffer.from(typeof part === 'string' ? part : JSON.stringify(part)).toString('base64url'),
+    )
+    .join('.');
+const STAFF = fakeJwt('staff-one');
+const GRANT = fakeJwt('grant-one');
 const MEDIA = '88888888-8888-4888-8888-888888888888';
 const DOCUMENT = '99999999-9999-4999-8999-999999999999';
 
