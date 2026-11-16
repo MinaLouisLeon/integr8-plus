@@ -206,7 +206,7 @@ export async function previewTemplate(
     locale,
     facts,
     fields: resolved.ok ? resolved.fields : [],
-    qrUrl: 'https://app.integr8-media.com/d/SAMPLE',
+    qrUrl: 'https://www.example.com/documents/SAMPLE',
     images: { logo: SAMPLE_LOGO, files, media },
     mode: 'pdf',
     today,

@@ -134,8 +134,8 @@ async function handle(request: IncomingMessage, response: ServerResponse) {
       });
     case 'POST /v1/forms/import':
       return reply(response, 201, { formId: '66666666-6666-4666-8666-666666666666' });
-    case 'GET /v1/public/asset-tags/TAG-0001':
-      return reply(response, 200, { company: { name: 'Nile Test Co', slug: 'nile-test' } });
+    case 'GET /v1/public/companies/nile-test/brand':
+      return reply(response, 200, { name: 'Nile Test Co', slug: 'nile-test' });
     case 'POST /v1/customers':
       return reply(response, 201, { id: 'c1', name: 'Acme', portalToken: GRANT_TOKEN });
     default:
@@ -339,21 +339,55 @@ describe('the developer tools', () => {
     expect(seen.length).toBe(before);
   });
 
-  it('sends a public route as a visitor, with no grant and no sign-in', async () => {
+  it('sends the test company’s own public route as a visitor, with no grant and no sign-in', async () => {
     const grants = () => seen.filter((entry) => entry.path.endsWith('/impersonate')).length;
     const before = grants();
     const answer = await call('call_api', {
       method: 'GET',
-      path: '/v1/public/asset-tags/TAG-0001',
+      path: '/v1/public/companies/nile-test/brand',
       as: 'engineer',
-      purpose: 'opening a printed asset tag',
+      purpose: 'reading the company brand',
     });
     expect(answer.text).toMatch(/^200 in \d+ ms .*as visitor \(no sign-in\)/u);
     expect(answer.text).toMatch(/Sent as a visitor/u);
-    const sent = seen.find((entry) => entry.path === '/v1/public/asset-tags/TAG-0001');
+    const sent = seen.find((entry) => entry.path === '/v1/public/companies/nile-test/brand');
     expect(sent?.headers.authorization).toBeUndefined();
     expect(sent?.headers['x-client-app']).toBe('api');
     expect(grants()).toBe(before);
+  });
+
+  it('never sends a public route for another company, or one that belongs to none', async () => {
+    const before = seen.length;
+    const other = await call('call_api', {
+      method: 'GET',
+      path: '/v1/public/companies/real-customer/brand',
+      as: 'company',
+      purpose: 'reading another brand',
+    });
+    expect(other.error).toBe(true);
+    expect(other.text).toMatch(/never another company/u);
+    const signIn = await call('call_api', {
+      method: 'POST',
+      path: '/v1/auth/sign-in',
+      as: 'company',
+      purpose: 'signing in',
+      body: { email: 'someone@real.example', password: 'not-a-real-password' },
+      skipCheck: true,
+    });
+    expect(signIn.error).toBe(true);
+    expect(signIn.text).toMatch(/belongs to no test company/u);
+    const invitation = await call('call_api', {
+      method: 'POST',
+      path: '/v1/invitations/inspect',
+      as: 'company',
+      purpose: 'inspecting an invitation',
+      body: { token: 'x'.repeat(43) },
+      skipCheck: true,
+    });
+    expect(invitation.error).toBe(true);
+    expect(invitation.text).toMatch(/not in its outbox/u);
+    // Nothing reached the API but the outbox read.
+    expect(seen.slice(before).every((entry) => entry.path.endsWith('/test-outbox'))).toBe(true);
   });
 
   it('refuses staff routes through call_api', async () => {
