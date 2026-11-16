@@ -7,10 +7,12 @@
   "description": "Developer MCP server: lets an AI coding tool in this repository act as the people of a test company on a running API. Run from source; never built into a download.",
   "scripts": {
     "start": "tsx src/cli.ts",
-    "clean": "rm -rf .turbo *.tsbuildinfo",
+    "clean": "rm -rf dist .turbo *.tsbuildinfo",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "vitest run"
+    "test": "vitest run",
+    "build": "node scripts/bundle.mjs",
+    "sea": "node scripts/build-sea.mjs"
   },
   "dependencies": {
     "@integr8/api-client": "workspace:*",

@@ -8,6 +8,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { NotSignedInError } from './connection.js';
 import { RouteIndex } from './openapi.js';
 import { createDevServer, DRAFT_REQUEST_TOOLS } from './server.js';
+import { DEV_TOOLS } from './program.js';
 import { Trace } from './trace.js';
 
 /**
@@ -27,24 +28,6 @@ const host: Host = {
   env: { INTEGR8_FORMS_OUTPUT: output, INTEGR8_FORMS_HOME: join(root, 'install') },
 };
 const client = new Client({ name: 'test', version: '1.0.0' });
-
-const DEV_TOOLS = [
-  'status',
-  'list_test_companies',
-  'create_test_company',
-  'use_company',
-  'find_route',
-  'get_route',
-  'call_api',
-  'get_trace',
-  'get_audit',
-  'read_outbox',
-  'import_form_package',
-  'submit_form',
-  'list_change_requests',
-  'get_change_request',
-  'hand_over_change_request',
-];
 
 beforeAll(async () => {
   const server = createDevServer({

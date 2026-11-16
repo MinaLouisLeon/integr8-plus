@@ -164,6 +164,52 @@ export class Connection {
     return { status, body, headers: responseHeaders, trace };
   }
 
+  /**
+   * Sends a file's bytes to the signed upload link `/v1/media` returned (P43):
+   * no sign-in, only the headers the link was signed for. The trace names the
+   * link without its query, where the signature is.
+   */
+  async upload(input: {
+    as: string;
+    url: string;
+    headers: Record<string, string>;
+    bytes: Uint8Array;
+  }): Promise<{ status: number }> {
+    const started = performance.now();
+    const where = new URL(input.url);
+    let status = 0;
+    let error: string | undefined;
+    try {
+      const response = await this.#fetch(input.url, {
+        method: 'PUT',
+        headers: input.headers,
+        body: new Blob([new Uint8Array(input.bytes)]),
+      });
+      status = response.status;
+      await response.arrayBuffer();
+    } catch (failure) {
+      error = failure instanceof Error ? failure.message : String(failure);
+    }
+    this.#trace.record({
+      as: input.as,
+      method: 'PUT',
+      path: `${where.origin}${where.pathname}`,
+      query: {},
+      requestHeaders: input.headers,
+      requestBody: `(${String(input.bytes.length)} bytes)`,
+      status,
+      responseHeaders: {},
+      responseBody: null,
+      durationMs: Math.round(performance.now() - started),
+      requestId: null,
+      ...(error === undefined ? {} : { error }),
+    });
+    if (error !== undefined) {
+      throw new Error(`The upload link could not be reached: ${error}`);
+    }
+    return { status };
+  }
+
   async #refresh(): Promise<void> {
     this.#refreshing ??= (async () => {
       const answer = await this.request({

@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
-import { REPO_ROOT } from './paths.js';
+import { repositoryRoot } from './paths.js';
 
 /**
  * The change requests handed over to the repository (P39): `plan/requests/`,
@@ -15,7 +15,26 @@ import { REPO_ROOT } from './paths.js';
  * README's table and in the request itself.
  */
 
-export const REQUESTS_DIR = join(REPO_ROOT, 'plan', 'requests');
+/**
+ * The repository's plan/requests/, or undefined when the installed program
+ * has not been told where integr8-plus is (P43).
+ */
+export function requestsDir(): string | undefined {
+  const root = repositoryRoot();
+  return root === undefined ? undefined : join(root, 'plan', 'requests');
+}
+
+/** Said when there is no repository to read or write change requests in. */
+export const NO_REPOSITORY =
+  'This program does not know where your integr8-plus folder is, so it has no plan/requests/. Give the folder once as `repository` (the absolute path of your integr8-plus checkout).';
+
+function folderOrThrow(folder: string | undefined): string {
+  const found = folder ?? requestsDir();
+  if (found === undefined) {
+    throw new Error(NO_REPOSITORY);
+  }
+  return found;
+}
 
 export interface RepoRequest {
   code: string;
@@ -63,7 +82,8 @@ function read(entry: string, folder: string): RepoRequest | undefined {
   };
 }
 
-export function listRepoRequests(folder: string = REQUESTS_DIR): RepoRequest[] {
+export function listRepoRequests(given?: string): RepoRequest[] {
+  const folder = folderOrThrow(given);
   if (!existsSync(folder)) {
     return [];
   }
@@ -75,11 +95,11 @@ export function listRepoRequests(folder: string = REQUESTS_DIR): RepoRequest[] {
 /** One request by its code (`CR-0001`) or number, with its full text. */
 export function getRepoRequest(
   which: string | number,
-  folder: string = REQUESTS_DIR,
+  given?: string,
 ): (RepoRequest & { text: string }) | undefined {
   const code =
     typeof which === 'number' ? `CR-${String(which).padStart(4, '0')}` : which.toUpperCase().trim();
-  const found = listRepoRequests(folder).find((request) => request.code === code);
+  const found = listRepoRequests(given).find((request) => request.code === code);
   return found === undefined ? undefined : { ...found, text: readFileSync(found.file, 'utf8') };
 }
 
@@ -91,9 +111,9 @@ export function getRepoRequest(
  */
 export function addReadmeRow(
   entry: { code: string; folder: string; title: string; kind: string },
-  folder: string = REQUESTS_DIR,
+  given?: string,
 ): boolean {
-  const readme = join(folder, 'README.md');
+  const readme = join(folderOrThrow(given), 'README.md');
   if (!existsSync(readme)) {
     return false;
   }

@@ -20,12 +20,18 @@ const CODE_KEYS = /^(code|signincode)$/iu;
 const JWT = /\beyJ[\w-]{6,}\.[\w-]{6,}\.[\w-]{6,}\b/gu;
 /** Integr8's own refresh tokens and invitation tokens carry a prefix. */
 const INTEGR8_TOKEN = /\bi8[a-z]\d\.[\w.-]{16,}/gu;
+/** A company website key (P43): `i8wk_` and 43 base64url characters. */
+const WEBSITE_KEY = /\bi8wk_[\w-]{16,}/gu;
 /** A signed link (R2/S3 presigned, or a token in the query). */
 const SIGNED_LINK =
   /https?:\/\/[^\s"']*[?&](?:X-Amz-Signature|X-Amz-Credential|Signature|signature|sig|token|key)=[^\s"']*/gu;
 
 function redactString(value: string): string {
-  return value.replace(SIGNED_LINK, HIDDEN).replace(JWT, HIDDEN).replace(INTEGR8_TOKEN, HIDDEN);
+  return value
+    .replace(SIGNED_LINK, HIDDEN)
+    .replace(JWT, HIDDEN)
+    .replace(INTEGR8_TOKEN, HIDDEN)
+    .replace(WEBSITE_KEY, HIDDEN);
 }
 
 /**
