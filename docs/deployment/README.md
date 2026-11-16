@@ -236,6 +236,9 @@ database. Try it with the development desktop build:
 `VITE_API_BASE_URL=https://api-test.integr8-media.com pnpm --filter @integr8/desktop dev`
 (and `http://localhost:3002` in its `API_CORS_ORIGINS`).
 
+A test machine on Proxmox filled with made-up volume, to find slow queries
+(`db:volume`, `pg_stat_statements`, `db:plans`), is setup guide Stage 12.
+
 ## Not done yet
 
 A restore rehearsed on the real machine, code-signed desktop builds,

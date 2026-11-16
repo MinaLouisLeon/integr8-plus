@@ -92,6 +92,9 @@ the end of any piece of work that changes one of them, and date each section.
   changed the guide (staff app instead of `/platform`, no Stripe, Stage 11 part AL); neither
   artifact has been republished yet. **2026-11-16:** the repository guide itself became the
   short checklist (see Decisions); republish `setup-checklist.html` to the first artifact.
+  **2026-11-16 (branch `ccr-4623ab69-s5teku`):** the guide gained Stage 12, a Proxmox test
+  machine filled by `db:volume` and read with `pg_stat_statements`, `db:plans` and
+  `auto_explain` (12 stages, 107 tick boxes); not republished yet.
 - **The guide on GitHub Pages (2026-11-15, branch `ccr-982c2137-h4as2m`), as the owner asked:**
   `.github/workflows/guide-pages.yml` publishes `scripts/guide/build-site.mjs`'s output when the
   guide reaches `main` or by hand: the guide encrypted (AES-GCM, PBKDF2 600 000 rounds) with the
