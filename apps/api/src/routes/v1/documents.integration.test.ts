@@ -583,6 +583,11 @@ describe('sharing', () => {
         payload: { websiteUrl: SITE },
       });
       expect(restored.statusCode, restored.body).toBe(200);
+      // Shared again, as the website lookups below expect.
+      const reshared = await as(owner, 'POST', `/v1/documents/${document.id}/share`, {
+        shareable: true,
+      });
+      expect(reshared.statusCode, reshared.body).toBe(200);
     }
   });
 });

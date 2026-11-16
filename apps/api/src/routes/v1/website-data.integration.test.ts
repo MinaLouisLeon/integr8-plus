@@ -331,6 +331,7 @@ describe('the website data routes', () => {
     }
     await withTenant(southgate.id, (tx) =>
       tx.settings.update({
+        websiteUrl: 'https://www.southgate.example',
         websiteJobsEnabled: true,
         websiteQuotesEnabled: true,
         websiteInvoicesEnabled: true,
