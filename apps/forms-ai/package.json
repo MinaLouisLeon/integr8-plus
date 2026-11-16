@@ -6,7 +6,9 @@
   "license": "UNLICENSED",
   "description": "Integr8 Forms for AI: an offline MCP server that AI coding tools use to build .integr8form files, with a terminal installer.",
   "exports": {
-    "./tools": "./src/tools.ts"
+    "./tools": "./src/tools.ts",
+    "./setup": "./src/setup/index.ts",
+    "./assets": "./src/assets.ts"
   },
   "scripts": {
     "build": "node scripts/bundle.mjs",

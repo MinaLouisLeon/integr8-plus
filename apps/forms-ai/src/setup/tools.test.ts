@@ -50,7 +50,13 @@ function context(
     home,
     env: { ...env, XDG_CONFIG_HOME: join(home, '.config') },
   };
-  return { host, program: PROGRAM, runner, now: () => new Date('2026-11-01T09:30:00Z') };
+  return {
+    host,
+    serverName: 'integr8-forms',
+    program: PROGRAM,
+    runner,
+    now: () => new Date('2026-11-01T09:30:00Z'),
+  };
 }
 
 function write(path: string, text: string): void {
@@ -288,5 +294,30 @@ describe('Gemini CLI', () => {
       file: '/usr/bin/gemini',
       args: ['mcp', 'remove', '--scope', 'user', 'integr8-forms'],
     });
+  });
+});
+
+describe('another program using the same adapters (P43)', () => {
+  it('writes and removes its own entry, beside Forms for AI’s', async () => {
+    const file = join(home, '.cursor', 'mcp.json');
+    mkdirSync(join(home, '.cursor'), { recursive: true });
+    const forms = context('linux');
+    await CURSOR.install(forms);
+    const dev = { ...context('linux'), serverName: 'integr8-dev', program: '/opt/integr8-dev-mcp' };
+    expect((await CURSOR.status(dev)).kind).toBe('not_installed');
+    await CURSOR.install(dev);
+    const text = readFileSync(file, 'utf8');
+    expect(getEntry(text, 'mcpServers', 'integr8-dev')).toEqual({
+      command: '/opt/integr8-dev-mcp',
+      args: ['serve'],
+    });
+    expect(getEntry(text, 'mcpServers', 'integr8-forms')).toEqual({
+      command: PROGRAM,
+      args: ['serve'],
+    });
+    await CURSOR.remove(dev);
+    const after = readFileSync(file, 'utf8');
+    expect(getEntry(after, 'mcpServers', 'integr8-dev')).toBeUndefined();
+    expect(getEntry(after, 'mcpServers', 'integr8-forms')).toBeDefined();
   });
 });
