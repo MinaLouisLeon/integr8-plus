@@ -483,6 +483,16 @@ the end of any piece of work that changes one of them, and date each section.
   and move `EXPO_TOKEN`, `TAURI_SIGNING_PRIVATE_KEY(_PASSWORD)` and any Apple/Windows/Google signing
   secrets into it (setup guide), optionally with required reviewers (then dashboard-started builds
   wait for approval too). Not run here: a real workflow run.
+- **SEC-004 (2026-11-16, branch `ccr-87dc93be-pye3tx`), as the owner agreed:** signed self-updates
+  for Forms for AI and the developer program. The release job (`release-main.yml` publish, now in the
+  `release` environment) runs `scripts/releases/sign-updates.mjs`: `integr8-update-manifest.json`
+  (format 1, version, every file's SHA-256) and `.sig` (Ed25519 over its exact bytes) with secret
+  `UPDATE_SIGNING_KEY`; no key = a warning and an unsigned release, which installed programs do not
+  update from. Public key(s) in `apps/forms-ai/src/setup/signature.ts` (`UPDATE_PUBLIC_KEYS`, key of
+  2026-11-16); `update.ts` (Forms for AI, GitHub) and `apps/dev-mcp/src/program.ts` (through the API's
+  `/v1/platform/downloads`, which now returns `devMcp.release.signedList`) check the signed hash for
+  the offered version before replacing anything. `pnpm releases:check` runs in verify. Rotation: add
+  the new public key, release, then sign with the new private key.
 - **The demo seeder goes through the API**, in-process with Fastify's `inject`, as the
   company's own people (plus a staff impersonation for staff-only setup). Direct inserts
   were rejected: they skip numbering, stock, ledger postings and audit, and produce data
@@ -503,6 +513,11 @@ Update them together at each release or new migration:
 - Released versions: `gh release list`. v1.2.1 (2026-10-27) carries migrations 0051–0053.
 
 ## Open items
+
+- **Owner step for SEC-004 (2026-11-16):** add the secret `UPDATE_SIGNING_KEY` (the PEM file
+  Claude generated in its scratchpad, `update-signing-key/UPDATE_SIGNING_KEY.pem`) to the GitHub
+  `release` environment and keep a copy in the password manager; without it releases are unsigned and
+  installed Forms for AI / developer programs stop offering updates.
 
 - **Owner step for SEC-005 (2026-11-16):** GitHub → Settings → Environments → `release`; move
   `EXPO_TOKEN`, `TAURI_SIGNING_PRIVATE_KEY`, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` and any Apple,

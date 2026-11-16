@@ -21,7 +21,8 @@ unsigned: Windows "More info → Run anyway", macOS `chmod +x` then right-click 
 Open, Linux `chmod +x`). Double-clicked it opens a terminal installer that copies
 itself to a fixed place, connects the AI tools it finds (Claude Code, Codex,
 Claude Desktop, Cursor, VS Code, Windsurf, Gemini CLI) under the name
-`integr8-forms` with `serve`, runs a self-test, and later offers updates. Files
+`integr8-forms` with `serve`, runs a self-test, and later offers updates, installing one only when Integr8's
+signed update list names its exact hash (SEC-004). Files
 are saved in `Documents/Integr8 forms` (changeable) and imported from the
 company's Forms page or the dashboard's Templates page.
 
@@ -131,8 +132,9 @@ then `pnpm --filter @integr8/dev-mcp sea`; the release job `dev-mcp` builds it f
 Windows, macOS and Linux, unsigned). A single executable cannot load a native
 module from inside itself, so `@napi-rs/keyring`'s file ships beside it as
 `integr8-keyring.node`. Each release carries, per computer, a `.zip` with both (the
-first download, on the staff app's Downloads screen) and each alone with its
-`.sha256` (what the program updates itself with).
+first download, on the staff app's Downloads screen) and each alone (what the
+program updates itself with), plus `integr8-update-manifest.json` and its `.sig`:
+every file's SHA-256, signed with Integr8's update key.
 
 Unzip into one folder and double-click `integr8-dev-mcp`: Forms for AI's
 installer, with this program's profile (`src/program.ts`), copies both files to
@@ -146,8 +148,10 @@ from a terminal too.
 Without a checkout it carries the OpenAPI document of its own release: `status`
 says when the API runs another release. It updates itself from
 `GET /v1/platform/downloads` with your signed-in session (the repository is
-private, so GitHub's public API finds nothing), checking each file against its
-published SHA-256. `--local` is only for a checkout.
+private, so GitHub's public API finds nothing), checking each file against the
+hash Integr8's signed update list gives it for that version (SEC-004,
+`apps/forms-ai/src/setup/signature.ts`); a release without a signed list is not
+offered. `--local` is only for a checkout.
 
 ## Change requests
 

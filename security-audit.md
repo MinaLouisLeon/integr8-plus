@@ -197,6 +197,14 @@ prove both; the API integration suite (713) passes.
 
 ## SEC-004 — Forms for AI and the developer MCP program update themselves from unsigned binaries
 
+**Status:** Fixed in the repository (2026-11-16, uncommitted); one owner step left. Each release
+gets `integr8-update-manifest.json` (every file's SHA-256) and an Ed25519 signature made with
+`UPDATE_SIGNING_KEY` in the release job (`scripts/releases/sign-updates.mjs`); both programs carry
+the public key (`apps/forms-ai/src/setup/signature.ts`) and replace themselves only when the signed
+list names the file's exact hash for that version. A release without the list is not offered.
+**Owner step:** add `UPDATE_SIGNING_KEY` to the `release` environment and keep a copy safe. Still not
+covered: the very first download (needs Microsoft/Apple code signing).
+
 **Severity:** Medium
 **Confidence:** Confirmed by source tracing
 **Affected component:** `apps/forms-ai` (installer/updater), `apps/dev-mcp` (installed program, uses the same setup profile), release workflow

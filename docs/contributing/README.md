@@ -86,10 +86,16 @@ desktop builds are unsigned.
 commit with its version as a comment (`actions/checkout@<40 hex> # v7.0.1`);
 `pins:check` fails on a tag or a branch, and Dependabot (`github-actions`)
 proposes the next commit. Workflows are read-only unless a job asks for more.
-The signing keys (desktop updater, Apple, Windows, Expo, Google) live in the
+The signing keys (desktop updater, `UPDATE_SIGNING_KEY`, Apple, Windows, Expo, Google) live in the
 `release` GitHub environment, which only the signing jobs name
 (`environment: release`); never move them back to repository secrets, and give a
-new job that signs the same line.
+new job that signs the same line. **Signed updates (SEC-004):** the release job
+signs `integr8-update-manifest.json` (every file's SHA-256) with
+`UPDATE_SIGNING_KEY` (`scripts/releases/sign-updates.mjs`, tested by
+`pnpm releases:check`); Forms for AI and the developer program update
+themselves only when that list, checked against the public key in
+`apps/forms-ai/src/setup/signature.ts`, names the file's exact hash. To change
+the key, add the new public key there and release before signing with it.
 
 ## The rules lint and tests enforce
 
