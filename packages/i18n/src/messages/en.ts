@@ -9477,6 +9477,21 @@ export const en = {
       resetSyncDone: 'Done. Their phones will download everything again on the next sync.',
       reason: 'Reason',
     },
+    testTwin: {
+      title: 'Test twin',
+      description:
+        'A new test company with this company’s setup (settings, branding, modules, tabs, roles, job types, forms and PDF templates) and none of its business: no customers, people, jobs, submissions, money or HR. The developer MCP server builds there; finished forms are copied back to this company from the form screen, as drafts.',
+      reason: 'Reason (whose build this is for)',
+      make: 'Make a test twin',
+      making: 'Making the twin…',
+      made: 'Made {name} ({slug}).',
+      open: 'Open the twin',
+      copied:
+        'Copied — forms: {forms}, PDF templates: {templates}, job types: {jobTypes}, company roles: {roles}. Its made-up people, one per role, cannot sign in.',
+      droppedActions:
+        '“Open the next form” steps left out because their form is archived: {steps}.',
+      storageProblem: 'The pictures were left out (logo, app icon and PDF templates): {problem}',
+    },
   },
 } as const;
 

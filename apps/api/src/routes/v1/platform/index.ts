@@ -14,6 +14,7 @@ import { platformSupportRoutes } from './support.js';
 import { platformTemplatePackageRoutes } from './template-packages.js';
 import { platformTemplateRoutes } from './templates.js';
 import { platformTestCompanyRoutes } from './test-companies.js';
+import { platformTestTwinRoutes } from './test-twin.js';
 import { platformWebsiteKeyRoutes } from './website-keys.js';
 
 /**
@@ -30,6 +31,7 @@ export const platformRoutes: AnyRoute[] = [
   ...platformCompanyRoutes,
   ...platformImpersonationRoutes,
   ...platformTestCompanyRoutes,
+  ...platformTestTwinRoutes,
   ...platformLifecycleRoutes,
   ...platformAuditRoutes,
   ...platformSettingsRoutes,

@@ -7,7 +7,7 @@ the end of any piece of work that changes one of them, and date each section.
 
 ## Snapshot (2026-11-01, after the form builder and PDF builder round)
 
-- **Version:** root `package.json` is **2.0.0** (2026-11-14, branch `ccr-c6dc87d8-3hlhaw` from `dev`: P41's clean database restart, see Decisions). Before it, **1.4.0** (2026-11-10, branch `ccr-56fb45d1-5mq6bt`: carries the AI tooling stage P37–P39 and migration 0077; history below starts at 1.3.1). 1.3.0 reached `main` (PR #148) but its
+- **Version:** root `package.json` is **2.1.0** (2026-11-20, branch `feat/test-twin` from `dev`: carries P42–P44, the security audit fixes and migrations 0020–0022; no migration of its own). Before it, **2.0.0** (2026-11-14, branch `ccr-c6dc87d8-3hlhaw` from `dev`: P41's clean database restart, see Decisions). Before that, **1.4.0** (2026-11-10, branch `ccr-56fb45d1-5mq6bt`: carries the AI tooling stage P37–P39 and migration 0077; history below starts at 1.3.1). 1.3.0 reached `main` (PR #148) but its
   release never published: the publish job attached the secret scan's report folder
   (`dist/work`) and failed, so there is no v1.3.0 tag. The owner bumped `main` to 1.3.1 on
   GitHub (PR #151, `package.json` only, which failed `app-info.test.ts`); branch
@@ -53,7 +53,7 @@ the end of any piece of work that changes one of them, and date each section.
 - **Plan (2026-11-15):** the phase files P01–P41 were removed with the old docs; `plan/README.md`
   now lists only what is unfinished: P40 (form actions; server side built, screens, phone, Forms
   for AI and the owner's six decisions open), the tooling and sign-in runs still to do, the owner's
-  steps, and the phases not started (P20, P21, P28–P31, P33–P35). P42 (desktop only) is in progress; P43 (developer MCP server for company websites, and as an installable program) is built (2026-11-16), waiting for a release run and the owner's Windows run; the next new phase is P44.
+  steps, and the phases not started (P20, P21, P28–P31, P33–P35). P42 (desktop only) is in progress; P43 (developer MCP server for company websites, and as an installable program) is built (2026-11-16), waiting for a release run and the owner's Windows run; P44 (test twins) is built (2026-11-20, branch `feat/test-twin`); the next new phase is P45.
 - **P36 self-hosted sign-in**: merged into
   `main` in PRs #130 and #135; CI's database job, real Auth included, is green. Auth container in
   `deploy/compose.yml` (`supabase/auth:v2.197.0`, private ports, memory caps), bootstrap's
@@ -493,6 +493,17 @@ the end of any piece of work that changes one of them, and date each section.
   `/v1/platform/downloads`, which now returns `devMcp.release.signedList`) check the signed hash for
   the offered version before replacing anything. `pnpm releases:check` runs in verify. Rotation: add
   the new public key, release, then sign with the new private key.
+- **Test twins, P44 option A (2026-11-20, unreleased, branch `feat/test-twin` from `dev`), as the
+  owner chose it:** the developer MCP server still never reaches a real company (what an AI tool
+  reads goes to its model provider). Staff make a real company's **test twin** from the staff app's
+  company page (`POST /v1/platform/companies/{id}/test-twin`, full session only, reason required,
+  audited in the platform log and both companies' logs): a new test company `<slug>-twin` with its
+  setup (settings, branding pictures, modules, tabs, roles, qualification types, job types, deadline
+  rules, expense categories, forms with PDF templates; form actions remapped) and no business, plus
+  one made-up member per built-in role (`@<slug>.test-twin.example.com`, no sign-in). Work goes back
+  through **Copy to another company** (drafts). No migration. Defaults D1–D5 in the phase file wait
+  for the owner; the integration suite was written but not run (no Postgres here). Option B (a
+  session bound to one real company) was left for later.
 - **The demo seeder goes through the API**, in-process with Fastify's `inject`, as the
   company's own people (plus a staff impersonation for staff-only setup). Direct inserts
   were rejected: they skip numbering, stock, ledger postings and audit, and produce data

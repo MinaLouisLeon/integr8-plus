@@ -86,6 +86,16 @@ companies there are made by the seeder on the machine.
 | `set_website_access`, `call_website_api`, `seed_shared_documents`                    | Switch website access on and point links at `http://localhost:<port>`; call `/v1/website` with the key; make shared documents to find             |
 | the 23 Forms for AI tools                                                            | As above; `list_draft_change_requests` and `get_draft_change_request` are Forms for AI's own two renamed                                          |
 
+**Building for a real company: use its test twin (P44).** The server never
+reaches a real company. Instead a super admin makes the company's twin in the
+staff app (company page → **Test twin**,
+[platform/](../platform/README.md#test-twins-p44)): a new test company,
+`<slug>-twin`, with the real company's settings, branding, modules, roles, job
+types, forms and PDF templates, one made-up person per role, and no customers,
+people or records. Pick it with `use_company`, build and test there, then the
+super admin copies the finished forms to the real company from the staff app
+(they arrive as drafts to check and publish).
+
 A grant is reused only for the same purpose, so each call's purpose reaches the
 audit log. From building to testing in one server: `save_package` →
 `use_company` → `import_form_package` (`publish: true`) → `submit_form` →

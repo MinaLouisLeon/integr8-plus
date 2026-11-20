@@ -5,7 +5,7 @@ replaces the phase files written before 2.0.0 (P01–P41, in git history before
 the 2.0.0 docs commit). What is built is described in [`docs/`](../docs/README.md);
 this file holds only what is **not finished**: work in progress, the owner's
 open decisions and steps, and the phases not started. Phase numbers carry on
-from the old plan; P43 is the last used, so the next new phase is **P44**.
+from the old plan; P44 is the last used, so the next new phase is **P45**.
 
 ## What 2.0.0 is
 
@@ -45,6 +45,19 @@ as an installable program (`integr8-dev-mcp`, unsigned). Left:
 - [ ] Seeding a document printed from a submission, with the worker running.
 - [ ] The owner, on Windows: download from the staff app, install, connect Claude
       Code, sign in, and run the website workflow from the website's repository.
+
+### P44 Test twins
+
+[P44](./2.1.0/P44-test-twin.md): built 2026-11-20 (option A). Staff make a
+real company's **test twin** from the staff app: a new test company with its
+setup (settings, branding, modules, roles, job types, forms, PDF templates) and
+none of its business, so the developer MCP server can build for a real company
+without reaching it. Left:
+
+- [ ] Run its integration suite against a disposable Postgres.
+- [ ] Make a twin in the staff app, build in it with the developer MCP server,
+      copy a form back.
+- [ ] The owner's decisions D1–D5 (taken by default, in the phase file).
 
 ### P40 Form actions
 
