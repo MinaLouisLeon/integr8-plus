@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { chmodSync, existsSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import type { Host } from '../host.js';
 import { PROGRAM_NAME } from '../version.js';
+import { signedHashOf, UPDATE_MANIFEST, UPDATE_SIGNATURE, verifiedManifest } from './signature.js';
 
 /**
  * The installer's update check: is there a newer release of the app on
@@ -9,7 +10,10 @@ import { PROGRAM_NAME } from '../version.js';
  * (decision 15), so its releases are the app's `vX.Y.Z` releases, and the
  * assets are named by `assetName`. The repository is public; the check is
  * one unauthenticated request with a short timeout, silent when offline, and
- * nothing is downloaded or replaced unless the person says yes.
+ * nothing is downloaded or replaced unless the person says yes. A release is
+ * offered only when it carries Integr8's signed update list, and the download
+ * replaces the program only when that list, signed with Integr8's update key,
+ * names its exact hash (SEC-004, `signature.ts`).
  */
 
 export const DEFAULT_REPOSITORY = 'MinaLouisLeon/integr8-plus';
@@ -31,7 +35,9 @@ export interface AvailableUpdate {
   version: string;
   tag: string;
   asset: ReleaseAsset;
-  checksum: ReleaseAsset;
+  /** The release's signed list of files and hashes, and its signature (SEC-004). */
+  manifest: ReleaseAsset;
+  signature: ReleaseAsset;
 }
 
 /** `windows`, `macos` or `linux`, as the release names them. */
@@ -76,7 +82,7 @@ export function compareVersions(a: string, b: string): number {
   return 0;
 }
 
-/** The newest release newer than `current` that has this computer's file and its checksum. */
+/** The newest release newer than `current` that has this computer's file and a signed update list. */
 export function findUpdate(
   releases: readonly Release[],
   current: string,
@@ -95,12 +101,13 @@ export function findUpdate(
     }
     const name = assetName(version, platform, arch);
     const asset = release.assets.find((candidate) => candidate.name === name);
-    const checksum = release.assets.find((candidate) => candidate.name === `${name ?? ''}.sha256`);
-    if (asset === undefined || checksum === undefined) {
+    const manifest = release.assets.find((candidate) => candidate.name === UPDATE_MANIFEST);
+    const signature = release.assets.find((candidate) => candidate.name === UPDATE_SIGNATURE);
+    if (asset === undefined || manifest === undefined || signature === undefined) {
       continue;
     }
     if (best === undefined || compareVersions(version, best.version) > 0) {
-      best = { version, tag: release.tag_name, asset, checksum };
+      best = { version, tag: release.tag_name, asset, manifest, signature };
     }
   }
   return best;
@@ -143,30 +150,61 @@ export function parseChecksum(text: string): string | undefined {
 }
 
 /**
- * Downloads the update, checks it against its published SHA-256, and puts it
- * at `target` (the installed program's own path), so every AI tool's
- * configuration keeps working. The running file is moved aside rather than
- * overwritten: Windows will not overwrite a program that is running, but it
- * will rename one. The old copy is deleted on the next start.
+ * The SHA-256 Integr8's signed update list gives `file` in release `version`,
+ * read from the release's manifest and signature links. Throws, saying why,
+ * when either is missing, the signature is not Integr8's, or the list is for
+ * another release or does not name the file (SEC-004).
+ */
+export async function signedHash(
+  links: { manifest: string; signature: string },
+  version: string,
+  file: string,
+  get: typeof fetch,
+  options: { signal?: AbortSignal; keys?: readonly string[] } = {},
+): Promise<string> {
+  const init = {
+    headers: { 'user-agent': PROGRAM_NAME },
+    ...(options.signal === undefined ? {} : { signal: options.signal }),
+  };
+  const [manifest, signature] = await Promise.all([
+    get(links.manifest, init),
+    get(links.signature, init),
+  ]);
+  if (!manifest.ok || !signature.ok) {
+    throw new Error('The signed update list could not be downloaded; nothing was changed.');
+  }
+  const verified = verifiedManifest(
+    new Uint8Array(await manifest.arrayBuffer()),
+    await signature.text(),
+    options.keys,
+  );
+  return signedHashOf(verified, version, file);
+}
+
+/**
+ * Downloads the update, checks it against the hash Integr8's signed update
+ * list gives it, and puts it at `target` (the installed program's own path),
+ * so every AI tool's configuration keeps working. The running file is moved
+ * aside rather than overwritten: Windows will not overwrite a program that is
+ * running, but it will rename one. The old copy is deleted on the next start.
  */
 export async function applyUpdate(
   update: AvailableUpdate,
   target: string,
-  options: { fetch?: typeof fetch; timeoutMs?: number } = {},
+  options: { fetch?: typeof fetch; timeoutMs?: number; keys?: readonly string[] } = {},
 ): Promise<void> {
   const get = options.fetch ?? fetch;
   const signal = AbortSignal.timeout(options.timeoutMs ?? 10 * 60 * 1000);
-  const sums = await get(update.checksum.browser_download_url, {
-    headers: { 'user-agent': PROGRAM_NAME },
-    signal,
-  });
-  if (!sums.ok) {
-    throw new Error(`GitHub answered ${String(sums.status)} for the checksum.`);
-  }
-  const expected = parseChecksum(await sums.text());
-  if (expected === undefined) {
-    throw new Error('The published checksum could not be read.');
-  }
+  const expected = await signedHash(
+    {
+      manifest: update.manifest.browser_download_url,
+      signature: update.signature.browser_download_url,
+    },
+    update.version,
+    update.asset.name,
+    get,
+    { signal, ...(options.keys === undefined ? {} : { keys: options.keys }) },
+  );
   const response = await get(update.asset.browser_download_url, {
     headers: { 'user-agent': PROGRAM_NAME },
     signal,
@@ -177,7 +215,9 @@ export async function applyUpdate(
   const bytes = new Uint8Array(await response.arrayBuffer());
   const actual = createHash('sha256').update(bytes).digest('hex');
   if (actual !== expected) {
-    throw new Error('The download does not match its published checksum; nothing was changed.');
+    throw new Error(
+      "The download does not match Integr8's signed update list; nothing was changed.",
+    );
   }
   replaceProgram(target, bytes);
 }

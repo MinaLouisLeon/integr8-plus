@@ -1,4 +1,4 @@
-import sharp from 'sharp';
+import { photoDecoder } from '../media/photo-decoder.js';
 import type { BackgroundImage } from './backgrounds.js';
 
 /**
@@ -49,7 +49,8 @@ async function prepare(
   box: { width: number; height: number },
 ): Promise<BackgroundImage | undefined> {
   try {
-    const image = sharp(bytes, { limitInputPixels: 80_000_000 }).rotate().resize({
+    // Real photos only: an SVG or PDF dressed as one is refused unread (SEC-003).
+    const image = photoDecoder()(bytes, { limitInputPixels: 80_000_000 }).rotate().resize({
       width: box.width,
       height: box.height,
       fit: 'inside',

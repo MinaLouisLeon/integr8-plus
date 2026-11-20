@@ -47,6 +47,12 @@ templates' pictures live in a `<prefix>-platform-library` bucket.
 - A submission naming a file not in the ledger, deleted, or described with a
   different size or type is refused.
 - Thumbnails: the `media.thumbnail` job writes a 320 px WebP with `sharp`.
+  Uploads are decoded as **real photos only** (`media/photo-decoder.ts`, SEC-003):
+  every libvips loader is blocked for the process except JPEG, PNG, WebP and HEIF
+  (HEIC/AVIF) from memory, so a file is refused unread when its bytes are SVG, PDF or
+  anything else, whatever type it was uploaded as; it simply gets no thumbnail (and
+  no picture in a PDF). Code that decodes SVG on purpose must do it before the first
+  upload is decoded in that process.
 
 ## The ledger
 

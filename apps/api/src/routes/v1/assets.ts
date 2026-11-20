@@ -2,7 +2,6 @@ import {
   assetConditionSchema,
   assetEventKindSchema,
   assetStatusSchema,
-  assetTagLink,
   ASSET_STATUSES,
   formatAssetReference,
   holds,
@@ -13,6 +12,7 @@ import {
   warrantyState,
 } from '@integr8/core';
 import { type Asset, type AssetEvent, type TenantTransaction, withTenant } from '@integr8/db';
+import { assetTagLinkFor } from '../../documents/render.js';
 import { z } from 'zod';
 import { ApiError, conflict, notFound, unprocessable } from '../../http/errors.js';
 import { defineRoute, noSchema, type RequestContext } from '../../http/routes.js';
@@ -218,13 +218,13 @@ export async function readableAsset(
 export async function assetSummaries(
   tx: TenantTransaction,
   assets: readonly Asset[],
-  webAppUrl: string | undefined,
 ): Promise<z.infer<typeof assetSummarySchema>[]> {
-  const [customers, sites, settings, today] = await Promise.all([
+  const [customers, sites, settings, today, company] = await Promise.all([
     tx.customers.findMany([...new Set(assets.map((asset) => asset.customerId))]),
     tx.sites.findMany([...new Set(assets.map((asset) => asset.siteId))]),
     tx.assets.settings(),
     companyToday(tx),
+    tx.settings.get(),
   ]);
   const customer = new Map(customers.map((row) => [row.id, row.name]));
   const site = new Map(sites.map((row) => [row.id, row.name]));
@@ -246,7 +246,8 @@ export async function assetSummaries(
         ? 'none'
         : warrantyState(asset.warrantyExpiresOn, today, settings.warrantyAlertDays),
     tagCode: asset.tagCode,
-    tagLink: webAppUrl === undefined ? null : assetTagLink(webAppUrl, asset.tagCode),
+    // On the company's own website; none without one, and the tag prints the bare code.
+    tagLink: assetTagLinkFor(asset.tagCode, company.websiteUrl),
     version: asset.version,
   }));
 }
@@ -256,18 +257,17 @@ async function assetDetail(
   context: RequestContext,
   asset: Asset,
 ): Promise<z.infer<typeof assetDetailSchema>> {
-  return assetDetailFor(tx, context.principal, context.config.WEB_APP_URL, asset);
+  return assetDetailFor(tx, context.principal, asset);
 }
 
 /** The asset as the detail screen and the phone show it. */
 export async function assetDetailFor(
   tx: TenantTransaction,
   principal: Principal,
-  webAppUrl: string | undefined,
   asset: Asset,
 ): Promise<z.infer<typeof assetDetailSchema>> {
   const [[summary], people, items, links] = await Promise.all([
-    assetSummaries(tx, [asset], webAppUrl),
+    assetSummaries(tx, [asset]),
     peopleOf(tx),
     asset.itemId === null ? Promise.resolve([]) : tx.inventoryCatalogue.findItems([asset.itemId]),
     tx.assets.linksOfAsset(asset.id),
@@ -622,7 +622,6 @@ export const assetSyncSchema = assetDetailSchema.extend({
 export async function assetsForSites(
   tx: TenantTransaction,
   principal: Principal,
-  webAppUrl: string | undefined,
   siteIds: readonly string[],
 ): Promise<Omit<z.infer<typeof assetSyncSchema>, 'carryOver'>[]> {
   if (siteIds.length === 0 || !holds(principal, 'asset.read')) {
@@ -635,7 +634,7 @@ export async function assetsForSites(
   const bodies = [];
   for (const asset of assets) {
     bodies.push({
-      ...(await assetDetailFor(tx, principal, webAppUrl, asset)),
+      ...(await assetDetailFor(tx, principal, asset)),
       timeline: await assetTimeline(tx, asset),
     });
   }
@@ -715,7 +714,7 @@ export const listAssetsRoute = defineRoute({
         limit: query.limit,
       });
       return {
-        items: await assetSummaries(tx, page.items, context.config.WEB_APP_URL),
+        items: await assetSummaries(tx, page.items),
         nextCursor: page.next === undefined ? null : String(page.next),
       };
     });
@@ -1237,12 +1236,10 @@ export const jobAssetsRoute = defineRoute({
             const asset = byId.get(link.assetId);
             return asset === undefined ? [] : [asset];
           }),
-          context.config.WEB_APP_URL,
         ),
         atSite: await assetSummaries(
           tx,
           site.items.filter((asset) => !linked.has(asset.id)),
-          context.config.WEB_APP_URL,
         ),
         can: { link: records, unlink: holds(principal, 'asset.manage'), register: records },
       };

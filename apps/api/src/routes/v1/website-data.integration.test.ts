@@ -196,6 +196,13 @@ beforeAll(async () => {
   for (const name of ['websiteJobsEnabled', 'websiteQuotesEnabled', 'websiteInvoicesEnabled']) {
     await companySwitch(name, true);
   }
+  // A website key serves only a company that has a website.
+  const site = await api.call(manager.accessToken, {
+    method: 'PATCH',
+    url: `/v1/platform/companies/${api.tenantId}/settings`,
+    payload: { websiteUrl: 'https://www.website-test.example' },
+  });
+  expect(site.statusCode, site.body).toBe(200);
   ({ id: keyId, secret } = await makeKey(api.tenantId));
 });
 
@@ -324,6 +331,7 @@ describe('the website data routes', () => {
     }
     await withTenant(southgate.id, (tx) =>
       tx.settings.update({
+        websiteUrl: 'https://www.southgate.example',
         websiteJobsEnabled: true,
         websiteQuotesEnabled: true,
         websiteInvoicesEnabled: true,

@@ -7,7 +7,7 @@ import {
   type Host,
   localAppData,
   osName,
-  parseChecksum,
+  signedHash,
   replaceProgram,
   type SetupProfile,
   type UpdateOffer,
@@ -119,9 +119,16 @@ interface DevMcpFile {
   checksumUrl: string | null;
 }
 
+interface SignedList {
+  manifestUrl: string;
+  signatureUrl: string;
+}
+
 interface DevMcpOffer extends UpdateOffer {
   program: DevMcpFile;
   keyring: DevMcpFile | undefined;
+  /** Integr8's signed list of the release's hashes (SEC-004): what each file is checked against. */
+  signedList: SignedList;
 }
 
 const offers = new Map<string, DevMcpOffer>();
@@ -166,13 +173,24 @@ export async function checkForDevUpdate(
     const answer = await connection.staff({ method: 'GET', path: '/v1/platform/downloads' });
     const devMcp = (
       answer.body as {
-        devMcp?: { status: string; release?: { version: string; downloads: DevMcpFile[] } };
+        devMcp?: {
+          status: string;
+          release?: {
+            version: string;
+            downloads: DevMcpFile[];
+            signedList?: SignedList | null;
+          };
+        };
       } | null
     )?.devMcp;
     if (answer.status !== 200 || devMcp?.status !== 'found' || devMcp.release === undefined) {
       return undefined;
     }
-    const { version, downloads } = devMcp.release;
+    const { version, downloads, signedList } = devMcp.release;
+    // A release without Integr8's signed list is never offered (SEC-004).
+    if (signedList == null) {
+      return undefined;
+    }
     if (compareVersions(version, current) <= 0) {
       return undefined;
     }
@@ -181,10 +199,16 @@ export async function checkForDevUpdate(
         (file) => file.kind === kind && file.platform === os && file.arch === host.arch,
       );
     const program = mine('program');
-    if (program?.checksumUrl == null) {
+    if (program === undefined) {
       return undefined;
     }
-    const offer: DevMcpOffer = { version, name: program.name, program, keyring: mine('keyring') };
+    const offer: DevMcpOffer = {
+      version,
+      name: program.name,
+      program,
+      keyring: mine('keyring'),
+      signedList,
+    };
     offers.set(version, offer);
     return offer;
   } catch {
@@ -192,24 +216,34 @@ export async function checkForDevUpdate(
   }
 }
 
-/** Downloads one file and checks it against its published SHA-256. */
-async function verifiedDownload(file: DevMcpFile, get: typeof fetch): Promise<Uint8Array> {
-  if (file.checksumUrl === null) {
-    throw new Error(`${file.name} has no published checksum; nothing was changed.`);
-  }
+/**
+ * Downloads one file and checks it against the hash Integr8's signed update
+ * list gives it for this release (SEC-004): a file the list does not name, or
+ * a list not signed with Integr8's update key, changes nothing.
+ */
+async function verifiedDownload(
+  file: DevMcpFile,
+  offer: DevMcpOffer,
+  get: typeof fetch,
+  keys?: readonly string[],
+): Promise<Uint8Array> {
   const signal = AbortSignal.timeout(10 * 60 * 1000);
-  const sums = await get(file.checksumUrl, { headers: { 'user-agent': PROGRAM_NAME }, signal });
-  const expected = sums.ok ? parseChecksum(await sums.text()) : undefined;
-  if (expected === undefined) {
-    throw new Error(`The checksum of ${file.name} could not be read.`);
-  }
+  const expected = await signedHash(
+    { manifest: offer.signedList.manifestUrl, signature: offer.signedList.signatureUrl },
+    offer.version,
+    file.name,
+    get,
+    { signal, ...(keys === undefined ? {} : { keys }) },
+  );
   const response = await get(file.url, { headers: { 'user-agent': PROGRAM_NAME }, signal });
   if (!response.ok) {
     throw new Error(`The download of ${file.name} answered ${String(response.status)}.`);
   }
   const bytes = new Uint8Array(await response.arrayBuffer());
   if (createHash('sha256').update(bytes).digest('hex') !== expected) {
-    throw new Error(`${file.name} does not match its published checksum; nothing was changed.`);
+    throw new Error(
+      `${file.name} does not match Integr8's signed update list; nothing was changed.`,
+    );
   }
   return bytes;
 }
@@ -218,7 +252,7 @@ async function verifiedDownload(file: DevMcpFile, get: typeof fetch): Promise<Ui
 export async function applyDevUpdate(
   offer: UpdateOffer,
   target: string,
-  options: { fetch?: typeof fetch } = {},
+  options: { fetch?: typeof fetch; keys?: readonly string[] } = {},
 ): Promise<void> {
   const known = offers.get(offer.version);
   if (known === undefined) {
@@ -226,9 +260,11 @@ export async function applyDevUpdate(
   }
   const get = options.fetch ?? fetch;
   // Both are downloaded and checked before either is replaced.
-  const program = await verifiedDownload(known.program, get);
+  const program = await verifiedDownload(known.program, known, get, options.keys);
   const keyring =
-    known.keyring === undefined ? undefined : await verifiedDownload(known.keyring, get);
+    known.keyring === undefined
+      ? undefined
+      : await verifiedDownload(known.keyring, known, get, options.keys);
   if (keyring !== undefined) {
     replaceProgram(join(dirname(target), KEYRING_FILE), keyring);
   }

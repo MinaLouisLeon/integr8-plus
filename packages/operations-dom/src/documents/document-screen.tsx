@@ -218,6 +218,9 @@ export function DocumentScreen({ documentId }: { documentId: string }) {
                 : t('documents.qrPlace.stateWaiting')}
             </p>
           ) : null}
+          {access.upload && document.link === null && !document.shareable ? (
+            <p className="mt-1 text-sm text-content-muted">{t('documents.sharing.needsWebsite')}</p>
+          ) : null}
           {access.upload ? (
             <div className="mt-3 flex flex-wrap gap-2">
               {document.link === null ? null : (

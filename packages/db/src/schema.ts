@@ -3957,12 +3957,19 @@ export const SECURITY_DEFINER_FUNCTIONS = [
   'assign_journal_reference',
   // Capture documents into the ledger's queue, which the runtime role cannot
   // insert into, and post them; see 0034.
+  // Since 0022 (SEC-002) these four are wrappers that refuse another company's
+  // id on the runtime role's connection, then call the body kept under an
+  // `_unchecked` name, which no role may call directly.
   'erp_ledger_capture',
   'erp_ledger_try_post',
   'erp_ledger_backfill',
   'assign_expense_reference',
   'assign_assembly_reference',
   'erp_ledger_backfill_more',
+  'erp_ledger_capture_unchecked',
+  'erp_ledger_try_post_unchecked',
+  'erp_ledger_backfill_unchecked',
+  'erp_ledger_backfill_more_unchecked',
   // Make year partitions (P41), which only the migration owner may create; the
   // worker calls the second as the platform role.
   'create_year_partition',

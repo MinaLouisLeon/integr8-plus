@@ -43,6 +43,14 @@ export const impersonationClaimSchema = z.object({
   pid: platformUserIdSchema,
   /** The `impersonation_grants.id` this token was minted under. */
   gid: z.uuid(),
+  /**
+   * Present when the grant was started by a staff session limited to test
+   * companies (the developer MCP server, P38). Such a seat may not use a route
+   * that reaches beyond the company it acts in (`crossTenant`). The API also
+   * reads the grant itself on every request, so a token without this claim is
+   * not trusted to mean "not limited".
+   */
+  lim: z.literal(true).optional(),
 });
 
 export type ImpersonationClaim = z.infer<typeof impersonationClaimSchema>;

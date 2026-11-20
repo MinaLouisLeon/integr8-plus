@@ -43,7 +43,13 @@ only `websiteUrl` and `documentLinkPattern` in its settings; pinned by
 for any company that is not a test company, starts impersonation only with a
 reason beginning `Developer MCP:`, and gets 403 `session_scope` elsewhere,
 audited as `platform.session_scope_refused`. New platform routes are closed to it
-unless they list the scope.
+unless they list the scope. **Acting as a test company it stays there**: its
+grant is marked `from_limited_session` (and its tokens carry `imp.lim`), and
+the company routes that reach other companies, marked `crossTenant` (the form
+copy targets, copying a form to another company, saving a library template;
+pinned in `session-scope.test.ts`), refuse it with the same 403 `session_scope`
+and audit line. The grant itself is read on every request, so the limit holds
+whatever the token says.
 
 ## Staff
 
@@ -103,6 +109,36 @@ always make test companies; the onboarding form has a **Test company** switch.
 
 `GET /v1/platform/companies/{id}/test-audit` reads a test company's audit log, so
 the developer tool can read back what a call changed.
+
+### Test twins (P44)
+
+To build for a real company with the developer MCP server, staff make its **test
+twin** from the company page (**Test twin**, a reason required):
+`POST /v1/platform/companies/{id}/test-twin` creates a new test company,
+`<slug>-twin` (then `-twin-2`, …), with the real company's **setup** and none of
+its business. A full staff session only: a session limited to test companies is
+refused (403 `session_scope`), because the twin is read from a real company.
+Everything an AI tool reads goes to its model provider, which is why the tool
+never reaches the real company itself.
+
+| Copied                                                                                                                                                                                                                           | Never copied                                                                                                                                                                                         |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Settings and branding (logo and app icon copied), modules, hidden tabs, company roles, qualification types, job types with their forms and required qualifications, deadline rules, expense categories (without ledger accounts) | People, customers, sites, jobs, submissions, documents, stock, money, the ledger, HR, payroll, contracts, website keys, the website address and link pattern, e-invoicing settings, sign-in accounts |
+| Every form not archived: its last published version published again (version 1 in the twin), its draft kept as a draft, form actions pointed at the twin's forms; its PDF templates and pictures                                 | An `open_form` action whose form is archived (left out, counted in `droppedActions`)                                                                                                                 |
+
+The twin gets one made-up active member per built-in role
+(`<role>@<slug>.test-twin.example.com`, no sign-in account), so the developer MCP
+server can act as each; its apps are off and the assistant is off. The platform
+audit log (`tenant.test_twin_made`, with the reason) and the real company's own
+audit log both record it.
+
+What is built in the twin goes back by a person in the staff app: open the twin,
+**Work inside this company**, and on the form use **Copy to another company**
+(with its PDF templates). It arrives in the real company as an unpublished draft;
+check it there and publish. Job types and other settings are changed by hand. A
+twin is closed like any company (suspend, export, close). If storage could not
+take the pictures, the twin is made without its logo, app icon and PDF templates,
+and the answer's `storageProblem` says why.
 
 ## Plans and billing
 
@@ -172,7 +208,9 @@ role, the schema owner included, and both are split by year.
 Built-in form templates are code (`pnpm --filter @integr8/db db:templates`
 syncs them); staff-made ones are saved from a company's form or imported from a
 `.integr8form` file on the **Templates** page, with their PDF templates and
-pictures. See [form-engine/](../form-engine/README.md#the-builder).
+pictures. The library is for Integr8 staff only: a company's own
+people never see it (`GET /v1/form-templates` needs the staff-only `form.manage`,
+so only staff acting as a company list, preview or start from a template). See [form-engine/](../form-engine/README.md#the-builder).
 
 ## Downloads
 

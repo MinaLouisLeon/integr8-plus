@@ -134,11 +134,8 @@ export const apiErrorsAr: Catalogue<typeof apiErrorsEn> = {
   description_required: 'صِف السطر: السطر الذي لا يحمل صنفًا يحتاج إلى وصف.',
   developer_reason_required:
     'يجب أن تذكر أداة المطوّرين ما تختبره: ابدأ السبب بـ «Developer MCP:».',
-  document_expired: 'أوقفت الشركة التي أصدرت هذا المستند رابطه.',
   document_expiry_past: 'تاريخ الانتهاء قد مضى. اختر تاريخًا لاحقًا.',
   document_fields_invalid: 'بعض حقول المستند ناقصة أو أطول من المسموح. راجع الحقول المحددة أدناه.',
-  document_link_unavailable:
-    'لا يمكن إنشاء المستندات بعد: لا يوجد لهذا الخادم عنوان ويب لرمز QR. تواصل مع Integr8.',
   document_preview_failed: 'تعذرت طباعة المعاينة الآن. حاول مرة أخرى بعد دقيقة.',
   document_not_pdf: 'لا يمكن رفع مستند إلا بصيغة PDF. اختر ملف PDF.',
   document_not_uploaded: 'المستندات المرفوعة وحدها لها حقول إضافية يمكن تغييرها.',
@@ -154,6 +151,9 @@ export const apiErrorsAr: Catalogue<typeof apiErrorsEn> = {
   not_a_test_company: 'هذه ليست شركة تجريبية.',
   releases_unavailable: 'تعذّر التحقق من إصدارات التطبيقات الآن. حاول مرة أخرى بعد دقيقة.',
   session_scope: 'جلسة الموظف هذه لا تصل إلا إلى الشركات التجريبية، ولا يُسمح لها بهذا الإجراء.',
+  sharing_needs_website:
+    'تحتاج المشاركة إلى موقع شركتك: تُعرض المستندات وروابط عروض الأسعار والملصقات هناك فقط. اطلب من Integr8 إعداد موقعك.',
+  website_missing: 'لا يوجد موقع لهذه الشركة، لذا لا يخدم مفتاح موقعها شيئًا. تواصل مع Integr8.',
   test_company_no_apps: 'لا توجد تطبيقات هاتف أو حاسوب للشركة التجريبية.',
   unknown_tab: 'أحد هذه ليس تبويبًا يمكن تشغيله أو إيقافه. أعد تحميل الصفحة وحاول مرة أخرى.',
   document_not_ready: 'ملف PDF ليس جاهزًا بعد. انتظر قليلًا ثم حاول مرة أخرى.',
@@ -401,8 +401,6 @@ export const apiErrorsAr: Catalogue<typeof apiErrorsEn> = {
   quote_converted: 'أصبح عرض السعر هذا طلب بيع بالفعل.',
   quote_empty: 'أضف سطرًا واحدًا على الأقل قبل الإصدار.',
   quote_link_invalid: 'لم يعد هذا رابط العرض الفعّال. أنشئ ملف PDF بدونه.',
-  quote_unavailable:
-    'لم يعد عرض السعر هذا متاحًا على الإنترنت. يُرجى التواصل مع الشركة التي أرسلته.',
   quote_expired: 'انتهت صلاحية عرض السعر هذا. يجب إصدار عرض جديد.',
   quote_not_accepted: 'لا يصبح طلب بيع إلا عرض سعر مقبول.',
   quote_not_draft: 'لا يتغير إلا عرض السعر المسودة. راجع هذا العرض لتعديله.',

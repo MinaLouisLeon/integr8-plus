@@ -327,7 +327,7 @@ export function createDevServer(options: DevServerOptions): McpServer {
     {
       title: 'List the test companies',
       description:
-        'The test companies this session can use: name, slug, id, status, people and when they were created. Real companies are never listed (the API leaves them out for this session).',
+        'The test companies this session can use: name, slug, id, status, people and when they were created. Real companies are never listed (the API leaves them out for this session). To build for a real company, use its test twin: Integr8 staff make one in the staff app (the company page, Test twin) with the real company’s setup and none of its business, listed here as <slug>-twin with one made-up person per role. Finished forms go back to the real company through the staff app, not from here.',
       inputSchema: {},
       annotations: { readOnlyHint: true, openWorldHint: true },
     },
@@ -337,8 +337,8 @@ export function createDevServer(options: DevServerOptions): McpServer {
         if (items.length === 0) {
           return text(
             context.mode === 'local'
-              ? 'No test company yet. Make one with create_test_company.'
-              : 'No test company on this API yet. One is made on the machine with the seeder (see create_test_company).',
+              ? 'No test company yet. Make one with create_test_company, or ask the person for a test twin of a real company (staff app, company page).'
+              : 'No test company on this API yet. One is made on the machine with the seeder (see create_test_company), or Integr8 staff make a test twin of a real company in the staff app (company page).',
           );
         }
         return text(
@@ -513,7 +513,7 @@ export function createDevServer(options: DevServerOptions): McpServer {
     {
       title: 'Call the API as one of the company’s people',
       description:
-        'Sends one request to the chosen test company as "company", a role (the first active member with it), an email or a user id. Checks the request against the route’s schema first, adds the client headers and an Idempotency-Key where the route takes one, and acts through an audited impersonation grant whose reason is "Developer MCP: <purpose>": the same person’s grant is reused only while the purpose stays the same, so the audit log states why each call was made. A public route (the public site’s quote, document and asset-tag links, accepting an invitation) is sent as a visitor with no sign-in, whatever "as" says. Returns the status, body, timing, request id and the audit lines the call wrote. Platform (staff) routes are not called this way.',
+        'Sends one request to the chosen test company as "company", a role (the first active member with it), an email or a user id. Checks the request against the route’s schema first, adds the client headers and an Idempotency-Key where the route takes one, and acts through an audited impersonation grant whose reason is "Developer MCP: <purpose>": the same person’s grant is reused only while the purpose stays the same, so the audit log states why each call was made. A public route is sent as a visitor with no sign-in, whatever "as" says, and only for the chosen test company: its own public brand, or an invitation it sent (from read_outbox); never a real company’s. Returns the status, body, timing, request id and the audit lines the call wrote. Platform (staff) routes are not called this way.',
       inputSchema: {
         method: z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']),
         path: z.string().min(1).max(500).describe('A concrete path, e.g. /v1/work-orders/<id>.'),
@@ -564,9 +564,20 @@ export function createDevServer(options: DevServerOptions): McpServer {
         }
         const since = new Date(Date.now() - 2000).toISOString();
         if (route.security === 'public') {
-          // A public route (the public site's quote, document and asset-tag
-          // links, accepting an invitation) is what a visitor with no sign-in
-          // sends, so it goes without a grant and "as" does not apply.
+          // A public route is what a visitor with no sign-in sends, so it goes
+          // without a grant and "as" does not apply. It names its company by
+          // what it carries rather than by a session, so it is sent only when
+          // that is the chosen test company: never a real company's data.
+          const refused = await publicRouteRefusal(
+            context,
+            chosen,
+            route.operationId,
+            path,
+            input.body,
+          );
+          if (refused !== undefined) {
+            return failure(refused);
+          }
           const visit = await context.connection.request({
             as: 'visitor (no sign-in)',
             method: input.method,
@@ -611,6 +622,44 @@ export function createDevServer(options: DevServerOptions): McpServer {
         );
       }),
   );
+
+  /**
+   * Why a public route may not be sent for the chosen test company, or
+   * undefined when it may: its public brand by its own slug, or an invitation
+   * whose token the test company's outbox holds. Every other public route
+   * (sign-in, the build list) has nothing to do with a test company.
+   */
+  const publicRouteRefusal = async (
+    context: DevContext,
+    chosen: Company,
+    operationId: string,
+    path: string,
+    body: unknown,
+  ): Promise<string | undefined> => {
+    const brand = /^\/v1\/public\/companies\/([^/]+)\//u.exec(path);
+    if (brand !== null) {
+      return decodeURIComponent(brand[1] ?? '') === chosen.slug
+        ? undefined
+        : `Only ${chosen.name}'s own public brand (slug ${chosen.slug}) is called from here: never another company's.`;
+    }
+    if (operationId === 'inspectInvitation' || operationId === 'acceptInvitation') {
+      const token = (body as { token?: unknown } | undefined)?.token;
+      if (typeof token !== 'string' || token.length < 16) {
+        return 'Give the invitation token from the test company’s outbox (read_outbox).';
+      }
+      const outbox = await context.connection.staff({
+        method: 'GET',
+        path: `/v1/platform/companies/${chosen.id}/test-outbox`,
+        query: { limit: '200' },
+      });
+      const entries =
+        outbox.status === 200 ? (outbox.body as { items: { body: unknown }[] }).items : [];
+      return entries.some((entry) => JSON.stringify(entry.body).includes(token))
+        ? undefined
+        : `That invitation was not sent by ${chosen.name} (it is not in its outbox): only a test company's own invitations are accepted from here.`;
+    }
+    return `${operationId} is a public route that belongs to no test company, so it is not sent from here. Public routes are called only for the chosen test company: its public brand, or an invitation it sent (read_outbox).`;
+  };
 
   const auditLines = async (
     context: DevContext,

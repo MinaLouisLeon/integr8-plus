@@ -683,9 +683,21 @@ describe('the template library', () => {
     await syncFormTemplates();
   });
 
-  it('is listed and previewable by anyone, and cloned only by builders', async () => {
+  it('is shown to Integr8 staff only, never to a company’s own people', async () => {
+    for (const token of [ownerToken, engineerToken]) {
+      expect((await api.call(token, { method: 'GET', url: '/v1/form-templates' })).statusCode).toBe(
+        403,
+      );
+      expect(
+        (await api.call(token, { method: 'GET', url: '/v1/form-templates/boiler_service' }))
+          .statusCode,
+      ).toBe(403);
+    }
+  });
+
+  it('is listed, previewed and cloned by staff acting as the company', async () => {
     const list = json<{ items: { key: string; fieldCount: number; source: string }[] }>(
-      await api.call(engineerToken, { method: 'GET', url: '/v1/form-templates' }),
+      await api.call(builderToken, { method: 'GET', url: '/v1/form-templates' }),
     );
     // Every shipped template is listed. Asserted as a set rather than an
     // ordered array: the order is the query's, not a promise, and pinning it
@@ -697,13 +709,13 @@ describe('the template library', () => {
     );
     expect(list.items.every((item) => item.fieldCount > 0)).toBe(true);
 
-    const preview = await api.call(engineerToken, {
+    const preview = await api.call(builderToken, {
       method: 'GET',
       url: '/v1/form-templates/boiler_service',
     });
     expect(preview.statusCode).toBe(200);
     expect(
-      (await api.call(engineerToken, { method: 'GET', url: '/v1/form-templates/nope' })).statusCode,
+      (await api.call(builderToken, { method: 'GET', url: '/v1/form-templates/nope' })).statusCode,
     ).toBe(404);
 
     expect(

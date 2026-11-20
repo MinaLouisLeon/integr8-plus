@@ -1057,7 +1057,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The global template library */
+        /**
+         * The global template library
+         * @description Integr8 staff only, acting as a company (`form.manage` is staff-only): the library is not shown to a company’s own people.
+         */
         get: operations["listFormTemplates"];
         put?: never;
         post?: never;
@@ -1074,7 +1077,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** One template, to preview */
+        /**
+         * One template, to preview
+         * @description Integr8 staff only, acting as a company, like the list.
+         */
         get: operations["getFormTemplate"];
         put?: never;
         post?: never;
@@ -1441,7 +1447,7 @@ export interface paths {
         put?: never;
         /**
          * Make a PDF document from a submission
-         * @description Needs `document.create` and the right to read the submission. `fields` are the values typed for the template’s typed document fields; the others are taken from the submission. Answers 202 with the document pending: the worker prints it, and it becomes `ready` or `failed` with a reason. Refused for a draft (409 `submission_draft`), an archived template (409 `document_template_archived`), missing or overlong fields (422 `document_fields_invalid`), a server with no web address for the QR link (503 `document_link_unavailable`) or a company past its storage allowance (409 `storage_quota_exceeded`).
+         * @description Needs `document.create` and the right to read the submission. `fields` are the values typed for the template’s typed document fields; the others are taken from the submission. Answers 202 with the document pending: the worker prints it, and it becomes `ready` or `failed` with a reason. Refused for a draft (409 `submission_draft`), an archived template (409 `document_template_archived`), missing or overlong fields (422 `document_fields_invalid`) or a company past its storage allowance (409 `storage_quota_exceeded`).
          */
         post: operations["createDocument"];
         delete?: never;
@@ -1465,7 +1471,7 @@ export interface paths {
         put?: never;
         /**
          * Add a PDF the company already has to the register
-         * @description Needs `document.upload`. Upload the PDF first (`/v1/media`, as `application/pdf`, at most 20 MB), then name it here with a title and its reference number (a certificate number, say), and optionally the customer it is for. The bytes are checked to be a PDF (422 `document_not_pdf`). It is ready at once, with its own public code and link like a generated document, and starts not shareable unless `shareable` is true. The website lookup finds it by its reference, and by the customer’s name as the second value when a customer is given. Honours `Idempotency-Key`.
+         * @description Needs `document.upload`. Upload the PDF first (`/v1/media`, as `application/pdf`, at most 20 MB), then name it here with a title and its reference number (a certificate number, say), and optionally the customer it is for. The bytes are checked to be a PDF (422 `document_not_pdf`). It is ready at once, with its own public code like a generated document, and starts not shareable unless `shareable` is true (a company with no website cannot share: 409 `sharing_needs_website`). The website lookup finds it by its reference, and by the customer’s name as the second value when a customer is given. Honours `Idempotency-Key`.
          */
         post: operations["uploadDocument"];
         delete?: never;
@@ -1550,7 +1556,7 @@ export interface paths {
         put?: never;
         /**
          * Let a document be shown outside the company, or stop it
-         * @description Needs `document.upload`. `shareable: false` stops the QR code’s link (it answers as if the code did not exist) and the website lookup at once; `true` lets them show it again, while it is not expired. A document with a place for its share QR code that does not carry it yet gets it now (0075): the worker re-prints it, or stamps an uploaded PDF, within seconds, and the PDF served meanwhile is the one it had; stopping sharing keeps the code. Each change is recorded in the audit log. Works the same for generated and uploaded documents.
+         * @description Needs `document.upload`. A shared document is shown only on the company’s own website, through its website key; Integr8 serves none. A company with no website cannot share (409 `sharing_needs_website`); stopping sharing always works. `shareable: false` stops the company website’s lookups at once; `true` lets them show it again, while it is not expired. A document with a place for its share QR code that does not carry it yet gets it now (0075): the worker re-prints it, or stamps an uploaded PDF, within seconds, and the PDF served meanwhile is the one it had; stopping sharing keeps the code. Each change is recorded in the audit log. Works the same for generated and uploaded documents.
          */
         post: operations["setDocumentShareable"];
         delete?: never;
@@ -1654,7 +1660,7 @@ export interface paths {
         put?: never;
         /**
          * Print a quote, invoice, purchase order or job report as a PDF
-         * @description Takes the record as this seat sees it now and asks the worker to print it in the company’s look: answers 202 with the document pending, which becomes `ready` or `failed` like any document, and is kept in the register. `language` defaults to the company’s. A draft is refused (409 `business_document_draft`). The QR code opens the PDF’s own page, which shows it only once it is shareable; `shareable: true` needs `document.upload`. For a quote, `quoteLinkToken` (the token the issue step returned) prints the customer’s quote page in the QR code instead, if it is still the quote’s live link (422 `quote_link_invalid` if not). Honours `Idempotency-Key`.
+         * @description Takes the record as this seat sees it now and asks the worker to print it in the company’s look: answers 202 with the document pending, which becomes `ready` or `failed` like any document, and is kept in the register. `language` defaults to the company’s. A draft is refused (409 `business_document_draft`). The QR code opens the PDF’s page on the company’s own website, which shows it only once it is shareable (a company with no website cannot share: 409 `sharing_needs_website`); `shareable: true` needs `document.upload`. For a quote, `quoteLinkToken` (the token the issue step returned) prints the customer’s quote page in the QR code instead, if it is still the quote’s live link (422 `quote_link_invalid` if not). Honours `Idempotency-Key`.
          */
         post: operations["createBusinessDocument"];
         delete?: never;
@@ -1703,46 +1709,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/public/documents/{code}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * A document, for whoever holds its QR code
-         * @description Public. The company, the form, the title and the date. 404 for a code that is unknown, deleted, not ready or not shareable; 410 `document_expired` for one the company stopped.
-         */
-        get: operations["getPublicDocument"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/public/documents/{code}/file": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * The PDF, for whoever holds its QR code
-         * @description Public. Redirects (302) to a five-minute link to the PDF: `download=true` saves it under its title, otherwise it opens in the browser. A link to put behind a button, not to keep.
-         */
-        get: operations["getPublicDocumentFile"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/v1/website/documents/lookup": {
         parameters: {
             query?: never;
@@ -1783,7 +1749,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/public/asset-tags/{code}": {
+    "/v1/website/asset-tags/{code}": {
         parameters: {
             query?: never;
             header?: never;
@@ -1791,10 +1757,10 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Whose a printed asset tag is
-         * @description Public. The company a tag code belongs to, for the page its QR code opens; nothing about the asset. 404 for a code that is unknown, malformed, or belongs to a company without the assets module.
+         * Whose a printed asset tag is, for the company website
+         * @description For a company’s website server, never a browser: `Authorization: Bearer <website key>`. The company a tag code belongs to, for the page its QR code opens; nothing about the asset. 404 for a code that is unknown, malformed or another company’s. Needs the assets module and a company website (403); rate-limited per key (429).
          */
-        get: operations["getPublicAssetTag"];
+        get: operations["getWebsiteAssetTag"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4466,7 +4432,7 @@ export interface paths {
         put?: never;
         /**
          * Issue a quote to the customer
-         * @description Owners and admins issue. Freezes the customer's name and address and the lines onto the quote, and mints the customer's link, returned once here (`acceptUrl`, when the web app's address is configured; `acceptToken` always). An empty draft cannot be issued (422 `quote_empty`).
+         * @description Owners and admins issue. Freezes the customer's name and address and the lines onto the quote, and mints the customer's link, returned once here (`acceptUrl`, a page on the company's own website, null when the company has none; `acceptToken` always). The customer opens it on that website, whose server reads the quote with its website key; Integr8 serves no quote pages. An empty draft cannot be issued (422 `quote_empty`).
          */
         post: operations["issueQuote"];
         delete?: never;
@@ -4720,7 +4686,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/public/quotes/{token}": {
+    "/v1/website/quotes/by-token/{token}": {
         parameters: {
             query?: never;
             header?: never;
@@ -4728,10 +4694,10 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * An issued quote, for the customer holding its link
-         * @description Public. The quote as issued — company, customer, lines, totals, terms, expiry — and whether it can still be answered. A link that is spent, revised, withdrawn or unknown is 404.
+         * An issued quote, for the company website page its customer link opens
+         * @description For a company’s website server, never a browser: `Authorization: Bearer <website key>`. The quote as issued — company, customer, lines, totals, terms, expiry — and whether it can still be answered. A link that is spent, revised, withdrawn, unknown or another company’s is 404. Needs website quote access on both sides and the sales module (403); rate-limited per key (429).
          */
-        get: operations["getPublicQuote"];
+        get: operations["getWebsiteQuoteByToken"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4740,7 +4706,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/public/quotes/{token}/answer": {
+    "/v1/website/quotes/by-token/{token}/answer": {
         parameters: {
             query?: never;
             header?: never;
@@ -4750,10 +4716,10 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Accept or reject a quote through its link
-         * @description Public. Records the customer’s answer with the name they typed and the moment, spends the link, and — for an acceptance — wins the quote’s opportunity. Refused once the quote has expired (409 `quote_expired`).
+         * Record the customer’s answer to a quote, from the company website
+         * @description For a company’s website server, never a browser: `Authorization: Bearer <website key>`. Records the customer’s answer with the name they typed and the moment, spends the link, and — for an acceptance — wins the quote’s opportunity. The address recorded is the website server’s. Refused once the quote has expired (409 `quote_expired`). Same switches and rate limit as reading it.
          */
-        post: operations["answerPublicQuote"];
+        post: operations["answerWebsiteQuoteByToken"];
         delete?: never;
         options?: never;
         head?: never;
@@ -8040,6 +8006,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/platform/companies/{tenantId}/test-twin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Make a test twin of a company
+         * @description Creates a new test company with this company’s setup and none of its business: settings and branding (logo and app icon copied), modules and tabs, company roles, qualification types, job types with their forms and required qualifications, deadline rules, expense categories, and every form that is not archived (its last published version published again, its draft kept) with its PDF templates and their pictures. Never copied: people, customers, sites, jobs, submissions, documents, stock, money, the ledger, HR, payroll, contracts, website keys, the website address, e-invoicing settings, sign-in accounts. The twin gets one made-up member per built-in role (addresses under example.com, no sign-in), so the developer MCP server can act as each. Full staff session only; audited in the platform audit log and in both companies’ own logs.
+         */
+        post: operations["makeTestTwin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/platform/companies/{tenantId}/exports": {
         parameters: {
             query?: never;
@@ -8865,7 +8851,7 @@ export interface paths {
         };
         /**
          * The staff app, Integr8 Forms for AI and the developer MCP server, newest release of each
-         * @description Read from the GitHub releases this deployment is set to (`APP_RELEASES=github`). `devMcp` (P43) lists the developer program’s first download (`zip`) and the files an installed program updates itself with (`program`, `keyring`), each with its checksum; a staff session limited to test companies may read it. Each is `found` with its files, `none` when nothing is published (or releases are not read here), or `unavailable` when GitHub could not be asked.
+         * @description Read from the GitHub releases this deployment is set to (`APP_RELEASES=github`). `devMcp` (P43) lists the developer program’s first download (`zip`) and the files an installed program updates itself with (`program`, `keyring`), each with its checksum, and `signedList`, Integr8’s signed list of the release’s hashes that an installed program checks before it updates itself (SEC-004); a staff session limited to test companies may read it. Each is `found` with its files, `none` when nothing is published (or releases are not read here), or `unavailable` when GitHub could not be asked.
          */
         get: operations["getPlatformDownloads"];
         put?: never;
@@ -15521,7 +15507,7 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description Not Integr8 staff. */
+            /** @description Not Integr8 staff, or staff acting from a session limited to test companies (`session_scope`). */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -15621,7 +15607,7 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description Not Integr8 staff, or PDF templates without `document.design`. */
+            /** @description Not Integr8 staff, PDF templates without `document.design`, or staff acting from a session limited to test companies (`session_scope`). */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -15753,7 +15739,7 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description Not Integr8 staff, or PDF templates without `document.design`. */
+            /** @description Not Integr8 staff, PDF templates without `document.design`, or staff acting from a session limited to test companies (`session_scope`). */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -18369,12 +18355,14 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description No web address for the QR link (`document_link_unavailable`). */
+            /** @description This client build is older than the minimum supported. */
             503: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
             };
         };
     };
@@ -18672,7 +18660,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description The file is already used by something else (`media_in_use`). */
+            /** @description The file is already used by something else (`media_in_use`), or `shareable` for a company with no website (`sharing_needs_website`). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -18704,12 +18692,14 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description No web address for the QR link (`document_link_unavailable`). */
+            /** @description This client build is older than the minimum supported. */
             503: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
             };
         };
     };
@@ -19455,6 +19445,13 @@ export interface operations {
             };
             /** @description No such document. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The company has no website (`sharing_needs_website`). */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -20306,7 +20303,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description A draft (`business_document_draft`), or storage full (`storage_quota_exceeded`). */
+            /** @description A draft (`business_document_draft`), storage full (`storage_quota_exceeded`), or `shareable`/`quoteLinkToken` for a company with no website (`sharing_needs_website`). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -20338,12 +20335,14 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description No web address for the QR link (`document_link_unavailable`). */
+            /** @description This client build is older than the minimum supported. */
             503: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
             };
         };
     };
@@ -20508,165 +20507,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
-            };
-            /** @description Rate limit exceeded. */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Something went wrong on our side. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description This client build is older than the minimum supported. */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    getPublicDocument: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                code: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The document. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        company: {
-                            name: string;
-                            logoPath: string | null;
-                            brandColour: string | null;
-                        };
-                        document: {
-                            title: string;
-                            formTitle: string;
-                            reference: string | null;
-                            /** Format: date-time */
-                            createdAt: string;
-                            pageCount: number | null;
-                            byteSize: number | null;
-                        };
-                    };
-                };
-            };
-            /** @description This link is not valid. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The company stopped this link (`document_expired`). */
-            410: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The request failed validation. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Rate limit exceeded. */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Something went wrong on our side. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description This client build is older than the minimum supported. */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    getPublicDocumentFile: {
-        parameters: {
-            query?: {
-                download?: "true" | "false";
-            };
-            header?: never;
-            path: {
-                code: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description To the PDF. */
-            302: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description This link is not valid. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The company stopped this link (`document_expired`). */
-            410: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The request failed validation. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
             };
             /** @description Rate limit exceeded. */
             429: {
@@ -20915,7 +20755,7 @@ export interface operations {
             };
         };
     };
-    getPublicAssetTag: {
+    getWebsiteAssetTag: {
         parameters: {
             query?: never;
             header?: never;
@@ -20941,7 +20781,21 @@ export interface operations {
                     };
                 };
             };
-            /** @description No company has this tag. */
+            /** @description No website key, or not a live one (`website_key_invalid`). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The assets module is off (`feature_disabled`), or the company has no website (`website_missing`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description This company has no such tag. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -20957,14 +20811,12 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description Rate limit exceeded. */
+            /** @description Too many requests with this key; slow down. */
             429: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
+                content?: never;
             };
             /** @description Something went wrong on our side. */
             500: {
@@ -47988,7 +47840,7 @@ export interface operations {
             };
         };
     };
-    getPublicQuote: {
+    getWebsiteQuoteByToken: {
         parameters: {
             query?: never;
             header?: never;
@@ -48072,15 +47924,22 @@ export interface operations {
                     };
                 };
             };
-            /** @description This link is not valid. */
-            404: {
+            /** @description No website key, or not a live one (`website_key_invalid`). */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description The company’s sales module is switched off, so the quote is no longer available online (`quote_unavailable`; `details[0].params.company` names the company). */
-            410: {
+            /** @description Website quote access or the sales module is off (`feature_disabled`), or the company has no website (`website_missing`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description This link is not valid. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -48095,14 +47954,12 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description Rate limit exceeded. */
+            /** @description Too many requests with this key; slow down. */
             429: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
+                content?: never;
             };
             /** @description Something went wrong on our side. */
             500: {
@@ -48124,7 +47981,7 @@ export interface operations {
             };
         };
     };
-    answerPublicQuote: {
+    answerWebsiteQuoteByToken: {
         parameters: {
             query?: never;
             header?: never;
@@ -48217,6 +48074,20 @@ export interface operations {
                     };
                 };
             };
+            /** @description No website key, or not a live one (`website_key_invalid`). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Website quote access or the sales module is off (`feature_disabled`), or the company has no website (`website_missing`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description This link is not valid. */
             404: {
                 headers: {
@@ -48231,13 +48102,6 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description The company’s sales module is switched off, so the quote cannot be answered online (`quote_unavailable`). */
-            410: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
             /** @description The request failed validation. */
             422: {
                 headers: {
@@ -48247,14 +48111,12 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description Rate limit exceeded. */
+            /** @description Too many requests with this key; slow down. */
             429: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
+                content?: never;
             };
             /** @description Something went wrong on our side. */
             500: {
@@ -83872,6 +83734,137 @@ export interface operations {
             };
         };
     };
+    makeTestTwin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                    name?: string;
+                    slug?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The twin, and what was copied into it. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        source: {
+                            /** Format: uuid */
+                            id: string;
+                            slug: string;
+                            name: string;
+                        };
+                        twin: {
+                            /** Format: uuid */
+                            id: string;
+                            slug: string;
+                            name: string;
+                        };
+                        people: {
+                            /** @enum {string} */
+                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
+                            email: string;
+                            /** Format: uuid */
+                            userId: string;
+                        }[];
+                        copied: {
+                            people: number;
+                            roles: number;
+                            qualificationTypes: number;
+                            jobTypes: number;
+                            deadlineRules: number;
+                            expenseCategories: number;
+                            forms: number;
+                            publishedForms: number;
+                            documentTemplates: number;
+                            pictures: number;
+                            modules: number;
+                            droppedActions: number;
+                        };
+                        storageProblem: string | null;
+                    };
+                };
+            };
+            /** @description A platform session is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description A staff session limited to test companies (`session_scope`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such company. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The company is closed (`company_closed`), the slug is taken (`slug_taken`), or a picture its PDF templates use is gone from storage (`document_template_image_missing`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     listCompanyExports: {
         parameters: {
             query?: never;
@@ -88987,6 +88980,10 @@ export interface operations {
                                     size: number | null;
                                     checksumUrl: string | null;
                                 }[];
+                                signedList: {
+                                    manifestUrl: string;
+                                    signatureUrl: string;
+                                } | null;
                             };
                         } | {
                             /** @enum {string} */

@@ -33,9 +33,11 @@ import {
   DOCUMENT_RENDER_ATTEMPTS,
   DOCUMENT_RENDER_QUEUE,
   documentLink,
+  hasCompanySite,
   printDesign,
   queueReprintIfNeeded,
   RenderFailed,
+  sharingNeedsWebsite,
 } from '../../documents/render.js';
 import { qrPlacementSchema } from '../../documents/stamp.js';
 import { dayIn, documentSources } from '../../documents/sources.js';
@@ -279,7 +281,7 @@ export async function templateBodies(
 
 export async function documentBodies(
   tx: TenantTransaction,
-  context: RequestContext,
+  _context: RequestContext,
   documents: readonly DocumentRecord[],
 ): Promise<z.infer<typeof documentSchema>[]> {
   const people = new Map(
@@ -292,7 +294,7 @@ export async function documentBodies(
   const customers = new Map(
     (await tx.customers.findMany(customerIds)).map((customer) => [customer.id, customer.name]),
   );
-  const { documentLinkPattern } = await tx.settings.get();
+  const site = await tx.settings.get();
   const now = new Date();
   return documents.map((document) => ({
     id: document.id,
@@ -317,7 +319,7 @@ export async function documentBodies(
     status: document.status,
     failureCode: document.failureCode,
     linkOpens: linkOpens(document, now),
-    link: documentLink(context.config, document.publicCode, documentLinkPattern),
+    link: documentLink(document.publicCode, site),
     publicCode: document.publicCode,
     pageCount: document.pageCount,
     byteSize: document.byteSize,
@@ -834,7 +836,10 @@ export const previewDocumentTemplateRoute = defineRoute({
         locale: sources.locale,
         facts: sources.facts,
         fields: resolved.ok ? resolved.fields : [],
-        qrUrl: documentLink(context.config, 'preview'),
+        // A preview shows where the code would lead: the company's site, or an example.
+        qrUrl:
+          documentLink('preview', brand ?? { websiteUrl: null }) ??
+          'https://example.com/documents/preview',
         today: sources.today,
         logoMediaId: brand?.logoMediaId ?? null,
         brandColour: brand?.brandColour ?? null,
@@ -877,7 +882,7 @@ export const createDocumentRoute = defineRoute({
   operationId: 'createDocument',
   summary: 'Make a PDF document from a submission',
   description:
-    'Needs `document.create` and the right to read the submission. `fields` are the values typed for the template’s typed document fields; the others are taken from the submission. Answers 202 with the document pending: the worker prints it, and it becomes `ready` or `failed` with a reason. Refused for a draft (409 `submission_draft`), an archived template (409 `document_template_archived`), missing or overlong fields (422 `document_fields_invalid`), a server with no web address for the QR link (503 `document_link_unavailable`) or a company past its storage allowance (409 `storage_quota_exceeded`).',
+    'Needs `document.create` and the right to read the submission. `fields` are the values typed for the template’s typed document fields; the others are taken from the submission. Answers 202 with the document pending: the worker prints it, and it becomes `ready` or `failed` with a reason. Refused for a draft (409 `submission_draft`), an archived template (409 `document_template_archived`), missing or overlong fields (422 `document_fields_invalid`) or a company past its storage allowance (409 `storage_quota_exceeded`).',
   tags: TAGS,
   security: 'authenticated',
   permission: 'document.create',
@@ -899,17 +904,9 @@ export const createDocumentRoute = defineRoute({
         'A draft (`submission_draft`), an archived template (`document_template_archived`), a template for another form (`document_template_wrong_form`), or storage full (`storage_quota_exceeded`).',
     },
     422: { description: 'Document fields missing or wrong (`document_fields_invalid`).' },
-    503: { description: 'No web address for the QR link (`document_link_unavailable`).' },
   },
   handler: async ({ params, body }, context) => {
-    const { principal, config } = context;
-    if (config.WEB_APP_URL === undefined) {
-      throw new ApiError(
-        503,
-        'document_link_unavailable',
-        'This server has no WEB_APP_URL, so a document’s QR code would have nowhere to point.',
-      );
-    }
+    const { principal } = context;
     const expiresAt = body.expiresAt == null ? null : new Date(body.expiresAt);
     if (expiresAt !== null && expiresAt.getTime() <= Date.now()) {
       throw unprocessable('document_expiry_past', 'The expiry date has already passed.', [
@@ -1339,13 +1336,18 @@ export function looksLikePdf(bytes: Uint8Array): boolean {
   return Buffer.from(bytes.subarray(0, 1024)).includes(PDF_SIGNATURE);
 }
 
+/** Whether the company has a website for its shared documents to be shown on. */
+async function companyHasSite(tenantId: string): Promise<boolean> {
+  return hasCompanySite(await withTenant(tenantId, (tx) => tx.settings.get()));
+}
+
 export const uploadDocumentRoute = defineRoute({
   method: 'post',
   path: '/v1/documents',
   operationId: 'uploadDocument',
   summary: 'Add a PDF the company already has to the register',
   description:
-    'Needs `document.upload`. Upload the PDF first (`/v1/media`, as `application/pdf`, at most 20 MB), then name it here with a title and its reference number (a certificate number, say), and optionally the customer it is for. The bytes are checked to be a PDF (422 `document_not_pdf`). It is ready at once, with its own public code and link like a generated document, and starts not shareable unless `shareable` is true. The website lookup finds it by its reference, and by the customer’s name as the second value when a customer is given. Honours `Idempotency-Key`.',
+    'Needs `document.upload`. Upload the PDF first (`/v1/media`, as `application/pdf`, at most 20 MB), then name it here with a title and its reference number (a certificate number, say), and optionally the customer it is for. The bytes are checked to be a PDF (422 `document_not_pdf`). It is ready at once, with its own public code like a generated document, and starts not shareable unless `shareable` is true (a company with no website cannot share: 409 `sharing_needs_website`). The website lookup finds it by its reference, and by the customer’s name as the second value when a customer is given. Honours `Idempotency-Key`.',
   tags: TAGS,
   security: 'authenticated',
   permission: 'document.upload',
@@ -1376,21 +1378,19 @@ export const uploadDocumentRoute = defineRoute({
   responses: {
     201: { description: 'The document, ready.', schema: documentSchema },
     404: { description: 'No such file uploaded by this person, or no such customer.' },
-    409: { description: 'The file is already used by something else (`media_in_use`).' },
     422: {
       description:
         'Not a PDF (`document_not_pdf`), larger than 20 MB (`document_too_large`), or an expiry already past (`document_expiry_past`).',
     },
-    503: { description: 'No web address for the QR link (`document_link_unavailable`).' },
+    409: {
+      description:
+        'The file is already used by something else (`media_in_use`), or `shareable` for a company with no website (`sharing_needs_website`).',
+    },
   },
   handler: async ({ body }, context) => {
-    const { principal, config } = context;
-    if (config.WEB_APP_URL === undefined) {
-      throw new ApiError(
-        503,
-        'document_link_unavailable',
-        'This server has no WEB_APP_URL, so a document’s QR code would have nowhere to point.',
-      );
+    const { principal } = context;
+    if (body.shareable && !(await companyHasSite(principal.tenantId))) {
+      throw sharingNeedsWebsite();
     }
     const expiresAt = body.expiresAt == null ? null : new Date(body.expiresAt);
     if (expiresAt !== null && expiresAt.getTime() <= Date.now()) {
@@ -1496,7 +1496,7 @@ export const setDocumentShareableRoute = defineRoute({
   operationId: 'setDocumentShareable',
   summary: 'Let a document be shown outside the company, or stop it',
   description:
-    'Needs `document.upload`. `shareable: false` stops the QR code’s link (it answers as if the code did not exist) and the website lookup at once; `true` lets them show it again, while it is not expired. A document with a place for its share QR code that does not carry it yet gets it now (0075): the worker re-prints it, or stamps an uploaded PDF, within seconds, and the PDF served meanwhile is the one it had; stopping sharing keeps the code. Each change is recorded in the audit log. Works the same for generated and uploaded documents.',
+    'Needs `document.upload`. A shared document is shown only on the company’s own website, through its website key; Integr8 serves none. A company with no website cannot share (409 `sharing_needs_website`); stopping sharing always works. `shareable: false` stops the company website’s lookups at once; `true` lets them show it again, while it is not expired. A document with a place for its share QR code that does not carry it yet gets it now (0075): the worker re-prints it, or stamps an uploaded PDF, within seconds, and the PDF served meanwhile is the one it had; stopping sharing keeps the code. Each change is recorded in the audit log. Works the same for generated and uploaded documents.',
   tags: TAGS,
   security: 'authenticated',
   permission: 'document.upload',
@@ -1507,9 +1507,13 @@ export const setDocumentShareableRoute = defineRoute({
   responses: {
     200: { description: 'The document.', schema: documentSchema },
     404: { description: 'No such document.' },
+    409: { description: 'The company has no website (`sharing_needs_website`).' },
   },
   handler: async ({ params, body }, context) => {
     const document = await withTenant(context.principal.tenantId, async (tx) => {
+      if (body.shareable && !hasCompanySite(await tx.settings.get())) {
+        throw sharingNeedsWebsite();
+      }
       const result = await tx.documents.setShareable(params.documentId, body.shareable);
       if (result === undefined) {
         throw notFound('This document does not exist.');

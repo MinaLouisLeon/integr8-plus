@@ -12,6 +12,7 @@ import { defineRoute, noSchema, type PublicRequestContext } from '../../http/rou
 import { assertTenantServable } from '../../http/suspension.js';
 import { companyToday, lineBodies, quoteSummaries } from './sales-quotes.js';
 import { invoiceSummaries } from './finance-invoices.js';
+import { hasCompanySite, websiteMissing } from '../../documents/render.js';
 import { documentFileLink } from './documents.js';
 import { hashWebsiteKey, WEBSITE_KEY_PATTERN } from './documents-public.js';
 import { iso } from './schemas.js';
@@ -23,10 +24,20 @@ const capabilities = {
   jobs: { setting: 'websiteJobsEnabled', grant: 'website_jobs', module: undefined },
   quotes: { setting: 'websiteQuotesEnabled', grant: 'website_quotes', module: 'sales' },
   invoices: { setting: 'websiteInvoicesEnabled', grant: 'website_invoices', module: 'finance' },
+  /**
+   * Printed asset tags: the page a tag's QR code opens says only whose tag it
+   * is, so no switch of its own beyond the key, the website and the module.
+   */
+  tags: { setting: undefined, grant: undefined, module: 'assets' },
 } as const;
 type Capability = keyof typeof capabilities;
 
-async function authorize(
+/**
+ * The company behind a website key, for one kind of website access: the key is
+ * live, within its rate, the company is served and has a website, and both
+ * Integr8's switch and the company's own are on for this kind.
+ */
+export async function authorizeWebsite(
   context: PublicRequestContext,
   capability: Capability,
 ): Promise<{ id: string; tenantId: string }> {
@@ -47,7 +58,7 @@ async function authorize(
   await assertTenantServable(live.tenantId);
   const control = capabilities[capability];
   const platformFlags = await getPlatformDataSource().settings.flagsFor(live.tenantId);
-  if (platformFlags[control.grant] !== true) {
+  if (control.grant !== undefined && platformFlags[control.grant] !== true) {
     throw new ApiError(
       403,
       'feature_disabled',
@@ -55,7 +66,10 @@ async function authorize(
     );
   }
   const company = await withTenant(live.tenantId, (tx) => tx.settings.get());
-  if (!company[control.setting]) {
+  if (!hasCompanySite(company)) {
+    throw websiteMissing();
+  }
+  if (control.setting !== undefined && !company[control.setting]) {
     throw new ApiError(
       403,
       'feature_disabled',
@@ -98,7 +112,7 @@ export const websiteJobRoute = defineRoute({
     404: { description: 'No such job.' },
   },
   handler: async ({ params }, context: PublicRequestContext) => {
-    const live = await authorize(context, 'jobs');
+    const live = await authorizeWebsite(context, 'jobs');
     const job = await withTenant(live.tenantId, (tx) => tx.workOrders.find(params.workOrderId));
     await getPlatformDataSource().websiteKeys.recordUse(live.id, job !== undefined);
     if (job === undefined) throw notFound('No such job.');
@@ -167,7 +181,7 @@ export const websiteQuoteRoute = defineRoute({
     404: { description: 'No issued quote.' },
   },
   handler: async ({ params }, context: PublicRequestContext) => {
-    const live = await authorize(context, 'quotes');
+    const live = await authorizeWebsite(context, 'quotes');
     const result = await withTenant(live.tenantId, async (tx) => {
       const quote = await tx.salesQuotes.findQuote(params.quoteId);
       if (quote?.issuedAt == null || quote.status === 'draft') return undefined;
@@ -238,7 +252,7 @@ export const websiteInvoiceRoute = defineRoute({
     404: { description: 'No issued invoice.' },
   },
   handler: async ({ params }, context: PublicRequestContext) => {
-    const live = await authorize(context, 'invoices');
+    const live = await authorizeWebsite(context, 'invoices');
     const result = await withTenant(live.tenantId, async (tx) => {
       const invoice = await tx.financeInvoices.findInvoice(params.invoiceId);
       if (invoice?.issuedAt == null || invoice.reference === null) return undefined;
@@ -294,7 +308,7 @@ export const websiteFileRoute = defineRoute({
     404: { description: 'No available customer document.' },
   },
   handler: async ({ params }, context: PublicRequestContext) => {
-    const live = await authorize(context, 'files');
+    const live = await authorizeWebsite(context, 'files');
     const document = await withTenant(live.tenantId, (tx) => tx.documents.find(params.documentId));
     const available = document?.status === 'ready' && document.shareable && linkOpens(document);
     await getPlatformDataSource().websiteKeys.recordUse(live.id, available);

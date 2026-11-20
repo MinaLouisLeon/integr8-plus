@@ -1,8 +1,13 @@
 import { createHash } from 'node:crypto';
 import { type DocumentRecord, getPlatformDataSource, linkOpens, withTenant } from '@integr8/db';
 import { z } from 'zod';
-import { documentLink } from '../../documents/render.js';
-import { ApiError, notFound } from '../../http/errors.js';
+import {
+  type CompanySite,
+  documentLink,
+  hasCompanySite,
+  websiteMissing,
+} from '../../documents/render.js';
+import { ApiError } from '../../http/errors.js';
 import { isFeatureEnabled } from '../../http/features.js';
 import { createRateLimiter } from '../../http/rate-limit.js';
 import {
@@ -16,163 +21,20 @@ import { documentFileLink } from './documents.js';
 import { iso } from './schemas.js';
 
 /**
- * The two doors to a document from outside the company (docs/documents
- * ADR-0001).
+ * A document from outside the company: only through the company's own website.
  *
- * **The QR code's link** (D7): `/d/<code>` on the web app reads these. The code
- * is a 128-bit capability: whoever holds it sees the company, the form, the
- * date, and may view and download the PDF, with no account. A code that is
- * unknown, deleted, not yet printed, not shareable (0067), or whose company is
- * not active answers 404 alike; one the company expired answers 410, which
- * tells the holder nothing they did not already have.
- *
- * **The website lookup** (D10): a company's own server, holding a website key
- * issued from the dashboard, asks for one document by its reference (the
- * template's lookup field, or an uploaded document's reference number) and,
- * where the document has one, a second value; or, since 0075, with the one
- * search box's text, matched against every searchable field and answered with
- * up to ten documents. An expired or unshared document is never found. Its
- * page on the company's site (`/documents/<code>`, 0075) asks for one document
- * by its code.
+ * Integr8 serves no document to anybody without a key. A shared document's QR
+ * code and link open a page on the company's website (`/documents/<code>`, or
+ * the company's link pattern, 0075), whose server asks for it here with the
+ * website key Integr8 issued: one document by its code, or the documents a
+ * visitor's search matches (D10, 0075). A company with no website set has no
+ * key that answers (403 `website_missing`) and cannot share in the first place.
+ * An expired, unshared or unfinished document is never found.
  */
 
 const TAGS = ['documents'];
 
 const codeParams = z.object({ code: z.string().regex(/^[A-Za-z0-9_-]{22}$/u) });
-
-const publicDocumentSchema = z.object({
-  company: z.object({
-    name: z.string(),
-    /** A path on this API that answers with the logo, or null. */
-    logoPath: z.string().nullable(),
-    brandColour: z.string().nullable(),
-  }),
-  document: z.object({
-    title: z.string(),
-    /** The form it was made from; empty for an uploaded document. */
-    formTitle: z.string(),
-    /** An uploaded document's reference number; null for a generated one (0067). */
-    reference: z.string().nullable(),
-    createdAt: z.iso.datetime(),
-    pageCount: z.number().int().nullable(),
-    byteSize: z.number().int().nullable(),
-  }),
-});
-
-interface Found {
-  tenantId: string;
-  document: DocumentRecord;
-  brand: { name: string; slug: string; logoMediaId: string | null; brandColour: string | null };
-  formTitle: string;
-}
-
-async function byCode(code: string): Promise<Found> {
-  const found = await getPlatformDataSource().publicDocuments.byCode(code);
-  if (found === undefined || !(await isFeatureEnabled(found.tenantId, 'documents'))) {
-    throw notFound('This link is not valid.');
-  }
-  const brand = await getPlatformDataSource().tenantSettings.brandByTenantId(found.tenantId);
-  if (brand === undefined) {
-    throw notFound('This link is not valid.');
-  }
-  const { document, formTitle } = await withTenant(found.tenantId, async (tx) => {
-    const record = await tx.documents.find(found.documentId);
-    const form = record?.formId == null ? undefined : await tx.forms.findForm(record.formId);
-    return { document: record, formTitle: form?.title ?? '' };
-  });
-  // Not shared is answered exactly as not found: the holder learns nothing.
-  if (document?.status !== 'ready' || !document.shareable) {
-    throw notFound('This link is not valid.');
-  }
-  if (!linkOpens(document)) {
-    throw new ApiError(410, 'document_expired', 'This document is no longer available.');
-  }
-  return { tenantId: found.tenantId, document, brand, formTitle };
-}
-
-function publicBody(found: Found): z.infer<typeof publicDocumentSchema> {
-  return {
-    company: {
-      name: found.brand.name,
-      logoPath:
-        found.brand.logoMediaId === null ? null : `/v1/public/companies/${found.brand.slug}/logo`,
-      brandColour: found.brand.brandColour,
-    },
-    document: {
-      title: found.document.title,
-      formTitle: found.formTitle,
-      reference: found.document.reference,
-      createdAt: iso(found.document.createdAt),
-      pageCount: found.document.pageCount,
-      byteSize: found.document.byteSize,
-    },
-  };
-}
-
-export const getPublicDocumentRoute = defineRoute({
-  method: 'get',
-  path: '/v1/public/documents/:code',
-  operationId: 'getPublicDocument',
-  summary: 'A document, for whoever holds its QR code',
-  description:
-    'Public. The company, the form, the title and the date. 404 for a code that is unknown, deleted, not ready or not shareable; 410 `document_expired` for one the company stopped.',
-  tags: TAGS,
-  security: 'public',
-  params: codeParams,
-  query: noSchema,
-  body: noSchema,
-  responses: {
-    200: { description: 'The document.', schema: publicDocumentSchema },
-    404: { description: 'This link is not valid.' },
-    410: { description: 'The company stopped this link (`document_expired`).' },
-  },
-  handler: async ({ params }) => {
-    const found = await byCode(params.code);
-    return { status: 200, body: publicBody(found), headers: { 'cache-control': 'no-store' } };
-  },
-});
-
-export const getPublicDocumentFileRoute = defineRoute({
-  method: 'get',
-  path: '/v1/public/documents/:code/file',
-  operationId: 'getPublicDocumentFile',
-  summary: 'The PDF, for whoever holds its QR code',
-  description:
-    'Public. Redirects (302) to a five-minute link to the PDF: `download=true` saves it under its title, otherwise it opens in the browser. A link to put behind a button, not to keep.',
-  tags: TAGS,
-  security: 'public',
-  params: codeParams,
-  query: z.object({
-    download: z
-      .enum(['true', 'false'])
-      .default('false')
-      .transform((value) => value === 'true'),
-  }),
-  body: noSchema,
-  responses: {
-    302: { description: 'To the PDF.' },
-    404: { description: 'This link is not valid.' },
-    410: { description: 'The company stopped this link (`document_expired`).' },
-  },
-  handler: async ({ params, query }, context) => {
-    const found = await byCode(params.code);
-    const link = await documentFileLink(
-      context,
-      found.tenantId,
-      found.document,
-      query.download ? 'attachment' : 'inline',
-    );
-    return {
-      status: 302,
-      body: undefined,
-      headers: {
-        location: link.url,
-        'cache-control': 'no-store',
-        'referrer-policy': 'no-referrer',
-      },
-    };
-  },
-});
 
 // ---------------------------------------------------------------------------
 // The website lookup
@@ -297,6 +159,9 @@ async function websiteTenant(
     );
   }
   const websiteAccess = await withTenant(live.tenantId, (tx) => tx.settings.get());
+  if (!hasCompanySite(websiteAccess)) {
+    throw websiteMissing();
+  }
   if (!websiteAccess.websiteFilesEnabled) {
     throw new ApiError(
       403,
@@ -317,7 +182,7 @@ async function websiteDocument(
   context: PublicRequestContext,
   tenantId: string,
   found: WebsiteMatch,
-  linkPattern: string | null,
+  site: CompanySite,
 ): Promise<z.infer<typeof websiteDocumentSchema>> {
   const [view, download] = await Promise.all([
     documentFileLink(context, tenantId, found.document, 'inline'),
@@ -328,7 +193,7 @@ async function websiteDocument(
     formTitle: found.formTitle,
     createdAt: iso(found.document.createdAt),
     pageCount: found.document.pageCount,
-    link: documentLink(context.config, found.document.publicCode, linkPattern),
+    link: documentLink(found.document.publicCode, site),
     code: found.document.publicCode,
     viewUrl: view.url,
     downloadUrl: download.url,
@@ -366,7 +231,7 @@ export const websiteDocumentLookupRoute = defineRoute({
     context: PublicRequestContext,
   ): Promise<HandlerResult<z.infer<typeof lookupResultSchema>>> => {
     const live = await websiteTenant(context);
-    const { matches, linkPattern } = await withTenant(live.tenantId, async (tx) => {
+    const { matches, site } = await withTenant(live.tenantId, async (tx) => {
       let documents: DocumentRecord[];
       if (body.q !== undefined) {
         documents = await tx.documents.search(body.q, WEBSITE_SEARCH_LIMIT);
@@ -386,11 +251,11 @@ export const websiteDocumentLookupRoute = defineRoute({
         const form = document.formId == null ? undefined : await tx.forms.findForm(document.formId);
         found.push({ document, formTitle: form?.title ?? '' });
       }
-      return { matches: found, linkPattern: (await tx.settings.get()).documentLinkPattern };
+      return { matches: found, site: await tx.settings.get() };
     });
     await getPlatformDataSource().websiteKeys.recordUse(live.id, matches.length > 0);
     const documents = await Promise.all(
-      matches.map((match) => websiteDocument(context, live.tenantId, match, linkPattern)),
+      matches.map((match) => websiteDocument(context, live.tenantId, match, site)),
     );
     return {
       status: 200,
@@ -427,13 +292,13 @@ export const websiteDocumentByCodeRoute = defineRoute({
     const live = await websiteTenant(context);
     const match = await withTenant(live.tenantId, async (tx) => {
       const document = await tx.documents.findByCode(params.code);
-      if (document === undefined || !document.shareable || !linkOpens(document)) {
+      if (document?.status !== 'ready' || !document.shareable || !linkOpens(document)) {
         return undefined;
       }
       const form = document.formId == null ? undefined : await tx.forms.findForm(document.formId);
       return {
         found: { document, formTitle: form?.title ?? '' },
-        linkPattern: (await tx.settings.get()).documentLinkPattern,
+        site: await tx.settings.get(),
       };
     });
     await getPlatformDataSource().websiteKeys.recordUse(live.id, match !== undefined);
@@ -444,21 +309,11 @@ export const websiteDocumentByCodeRoute = defineRoute({
           ? { found: false, document: null }
           : {
               found: true,
-              document: await websiteDocument(
-                context,
-                live.tenantId,
-                match.found,
-                match.linkPattern,
-              ),
+              document: await websiteDocument(context, live.tenantId, match.found, match.site),
             },
       headers: { 'cache-control': 'no-store' },
     };
   },
 });
 
-export const documentPublicRoutes = [
-  getPublicDocumentRoute,
-  getPublicDocumentFileRoute,
-  websiteDocumentLookupRoute,
-  websiteDocumentByCodeRoute,
-];
+export const documentPublicRoutes = [websiteDocumentLookupRoute, websiteDocumentByCodeRoute];
