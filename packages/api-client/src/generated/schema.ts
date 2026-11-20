@@ -8006,6 +8006,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/platform/companies/{tenantId}/test-twin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Make a test twin of a company
+         * @description Creates a new test company with this company’s setup and none of its business: settings and branding (logo and app icon copied), modules and tabs, company roles, qualification types, job types with their forms and required qualifications, deadline rules, expense categories, and every form that is not archived (its last published version published again, its draft kept) with its PDF templates and their pictures. Never copied: people, customers, sites, jobs, submissions, documents, stock, money, the ledger, HR, payroll, contracts, website keys, the website address, e-invoicing settings, sign-in accounts. The twin gets one made-up member per built-in role (addresses under example.com, no sign-in), so the developer MCP server can act as each. Full staff session only; audited in the platform audit log and in both companies’ own logs.
+         */
+        post: operations["makeTestTwin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/platform/companies/{tenantId}/exports": {
         parameters: {
             query?: never;
@@ -83670,6 +83690,137 @@ export interface operations {
                 content?: never;
             };
             /** @description `not_a_test_company`. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    makeTestTwin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                    name?: string;
+                    slug?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The twin, and what was copied into it. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        source: {
+                            /** Format: uuid */
+                            id: string;
+                            slug: string;
+                            name: string;
+                        };
+                        twin: {
+                            /** Format: uuid */
+                            id: string;
+                            slug: string;
+                            name: string;
+                        };
+                        people: {
+                            /** @enum {string} */
+                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "accountant" | "dispatcher" | "engineer" | "viewer";
+                            email: string;
+                            /** Format: uuid */
+                            userId: string;
+                        }[];
+                        copied: {
+                            people: number;
+                            roles: number;
+                            qualificationTypes: number;
+                            jobTypes: number;
+                            deadlineRules: number;
+                            expenseCategories: number;
+                            forms: number;
+                            publishedForms: number;
+                            documentTemplates: number;
+                            pictures: number;
+                            modules: number;
+                            droppedActions: number;
+                        };
+                        storageProblem: string | null;
+                    };
+                };
+            };
+            /** @description A platform session is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description A staff session limited to test companies (`session_scope`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such company. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The company is closed (`company_closed`), the slug is taken (`slug_taken`), or a picture its PDF templates use is gone from storage (`document_template_image_missing`). */
             409: {
                 headers: {
                     [name: string]: unknown;
