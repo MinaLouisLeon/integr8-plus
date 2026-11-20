@@ -100,7 +100,8 @@ describe('making a test twin', () => {
       url: `/v1/platform/companies/${api.tenantId}/test-twin`,
       payload: {},
     });
-    expect(refused.statusCode).toBe(400);
+    // A body that fails its schema is a validation error (422), as everywhere.
+    expect(refused.statusCode).toBe(422);
   });
 
   it('copies the setup and none of the business', async () => {
