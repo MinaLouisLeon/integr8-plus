@@ -327,7 +327,7 @@ export function createDevServer(options: DevServerOptions): McpServer {
     {
       title: 'List the test companies',
       description:
-        'The test companies this session can use: name, slug, id, status, people and when they were created. Real companies are never listed (the API leaves them out for this session).',
+        'The test companies this session can use: name, slug, id, status, people and when they were created. Real companies are never listed (the API leaves them out for this session). To build for a real company, use its test twin: Integr8 staff make one in the staff app (the company page, Test twin) with the real company’s setup and none of its business, listed here as <slug>-twin with one made-up person per role. Finished forms go back to the real company through the staff app, not from here.',
       inputSchema: {},
       annotations: { readOnlyHint: true, openWorldHint: true },
     },
@@ -337,8 +337,8 @@ export function createDevServer(options: DevServerOptions): McpServer {
         if (items.length === 0) {
           return text(
             context.mode === 'local'
-              ? 'No test company yet. Make one with create_test_company.'
-              : 'No test company on this API yet. One is made on the machine with the seeder (see create_test_company).',
+              ? 'No test company yet. Make one with create_test_company, or ask the person for a test twin of a real company (staff app, company page).'
+              : 'No test company on this API yet. One is made on the machine with the seeder (see create_test_company), or Integr8 staff make a test twin of a real company in the staff app (company page).',
           );
         }
         return text(
