@@ -239,6 +239,10 @@ export class FilesRepository extends TenantScopedRepository {
    * (documents ADR-0001 D5). The facts are what storage reported after the
    * put, as with {@link confirm}; there is no intent, because no client asked
    * to upload anything.
+   *
+   * `linkedEntity` is null for a file no record owns, as an uploaded logo or
+   * app icon: those are found through the company's settings instead (a test
+   * twin's copies, P44).
    */
   async recordGenerated(input: {
     id: string;
@@ -247,7 +251,7 @@ export class FilesRepository extends TenantScopedRepository {
     stored: ConfirmedFile;
     category: MediaCategory;
     uploadedBy: UserId | string;
-    linkedEntity: { type: string; id: string };
+    linkedEntity: { type: string; id: string } | null;
   }): Promise<FileRecord> {
     const row = await this.db
       .insertInto('files')
@@ -261,8 +265,8 @@ export class FilesRepository extends TenantScopedRepository {
         content_type: input.stored.contentType,
         category: input.category,
         uploaded_by: toUserId(input.uploadedBy),
-        linked_entity_type: input.linkedEntity.type,
-        linked_entity_id: input.linkedEntity.id,
+        linked_entity_type: input.linkedEntity?.type ?? null,
+        linked_entity_id: input.linkedEntity?.id ?? null,
         thumbnail_status: 'none',
       })
       .returningAll()
