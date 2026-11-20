@@ -183,7 +183,9 @@ describe('ending', () => {
     });
 
     const principal = await services.tokens.verifyAccessToken(started.tokens.accessToken);
-    await expect(services.impersonation.assertStillPermitted(principal)).resolves.toBeUndefined();
+    await expect(services.impersonation.assertStillPermitted(principal)).resolves.toEqual({
+      limited: false,
+    });
 
     await services.impersonation.end(started.grantId, northwind.id, 'revoked_by_tenant');
 
@@ -212,7 +214,9 @@ describe('ending', () => {
     });
 
     const principal = await services.tokens.verifyAccessToken(started.tokens.accessToken);
-    await expect(services.impersonation.assertStillPermitted(principal)).resolves.toBeUndefined();
+    await expect(services.impersonation.assertStillPermitted(principal)).resolves.toEqual({
+      limited: false,
+    });
 
     // An hour later.
     services.setNow(new Date(start.getTime() + 61 * 60_000));
@@ -234,7 +238,9 @@ describe('ending', () => {
     expect(principal.impersonatedBy).toBeUndefined();
 
     // No grant to check, so nothing to refuse.
-    await expect(services.impersonation.assertStillPermitted(principal)).resolves.toBeUndefined();
+    await expect(services.impersonation.assertStillPermitted(principal)).resolves.toEqual({
+      limited: false,
+    });
   });
 });
 

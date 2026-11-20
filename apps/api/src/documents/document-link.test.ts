@@ -1,22 +1,37 @@
 import { describe, expect, it } from 'vitest';
-import type { ApiConfig } from '../config.js';
-import { documentLink, documentLinkPatternProblem, isLocalWebAddress } from './render.js';
+import {
+  assetTagLinkFor,
+  documentLink,
+  documentLinkPatternProblem,
+  hasCompanySite,
+  isLocalWebAddress,
+  quoteLink,
+} from './render.js';
 
-const config = { WEB_APP_URL: 'https://app.integr8-media.com/' } as ApiConfig;
-
-describe('a document link (0075)', () => {
-  it("opens Integr8's page while the company has no address of its own", () => {
-    expect(documentLink(config, 'abc')).toBe('https://app.integr8-media.com/d/abc');
-    expect(documentLink(config, 'abc', null)).toBe('https://app.integr8-media.com/d/abc');
+describe('outside links point at the company’s own website only', () => {
+  it('are none at all while the company has no website', () => {
+    expect(documentLink('abc', { websiteUrl: null })).toBeNull();
+    expect(documentLink('abc', { websiteUrl: '  ', documentLinkPattern: null })).toBeNull();
+    expect(quoteLink('tok', null)).toBeNull();
+    expect(assetTagLinkFor('ABC123', null)).toBeNull();
+    expect(hasCompanySite({ websiteUrl: null })).toBe(false);
   });
 
-  it("opens the company's own website when it has one", () => {
-    expect(documentLink(config, 'abc_-1', 'https://example.com/documents/{code}')).toBe(
-      'https://example.com/documents/abc_-1',
-    );
-    expect(documentLink(config, 'abc', 'https://example.com/d?code={code}')).toBe(
-      'https://example.com/d?code=abc',
-    );
+  it('open the company’s site, never Integr8’s', () => {
+    const site = { websiteUrl: 'https://example.com/' };
+    expect(hasCompanySite(site)).toBe(true);
+    expect(documentLink('abc_-1', site)).toBe('https://example.com/documents/abc_-1');
+    expect(quoteLink('tok', site.websiteUrl)).toBe('https://example.com/q/tok');
+    expect(assetTagLinkFor('ABC123', site.websiteUrl)).toBe('https://example.com/a/ABC123');
+  });
+
+  it('follow the company’s document link pattern when it has one', () => {
+    expect(
+      documentLink('abc', {
+        websiteUrl: 'https://example.com',
+        documentLinkPattern: 'https://example.com/d?code={code}',
+      }),
+    ).toBe('https://example.com/d?code=abc');
   });
 });
 

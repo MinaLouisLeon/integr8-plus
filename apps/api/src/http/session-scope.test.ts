@@ -70,6 +70,34 @@ describe('routes open to a session limited to test companies', () => {
   });
 });
 
+/**
+ * Company routes that reach beyond the caller's own company (`crossTenant`),
+ * pinned: a seat acting under a grant from a session limited to test companies
+ * is refused on every one (SEC-001). A new route that lists other companies or
+ * writes into another company or the platform library must be added here.
+ */
+const CROSS_TENANT_ROUTES = [
+  'GET /v1/forms/copy-targets',
+  'POST /v1/forms/:formId/copy-to-company',
+  'POST /v1/forms/:formId/library-template',
+];
+
+describe('company routes that reach other companies', () => {
+  it('are exactly the pinned list', () => {
+    const crossing = routes
+      .filter((route) => route.crossTenant === true)
+      .map(key)
+      .sort();
+    expect(crossing).toEqual([...CROSS_TENANT_ROUTES].sort());
+  });
+
+  it('are company routes, reached by staff acting as a company', () => {
+    for (const route of routes.filter((candidate) => candidate.crossTenant === true)) {
+      expect(route.security, key(route)).toBe('authenticated');
+    }
+  });
+});
+
 describe('the company a route names', () => {
   it('is read from :tenantId', () => {
     expect(companyInPath({ tenantId: 'abc' })).toBe('abc');

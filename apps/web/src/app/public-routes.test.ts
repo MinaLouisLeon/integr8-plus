@@ -7,15 +7,15 @@ import { describe, expect, it } from 'vitest';
  * The web app is the public site only (P42): the office works in the company
  * desktop apps and staff in the staff app. This pins every page and route
  * handler it serves, so a workspace, dashboard, sign-in or sign-up route
- * cannot come back unnoticed. Change the list on purpose.
+ * cannot come back unnoticed. It serves no company's documents, quotes or
+ * asset tags either: those open on the company's own website. Change the list
+ * on purpose.
  */
 
 const PUBLIC_ROUTES = [
   '/',
-  '/a/[code]',
   '/accept-invitation',
   '/contact',
-  '/d/[code]',
   '/desktop-updates/[app]/[target]/[arch]/[version]',
   '/desktop-updates/[app]/download/[tag]/[file]',
   '/download',
@@ -25,7 +25,6 @@ const PUBLIC_ROUTES = [
   '/legal/privacy',
   '/legal/terms',
   '/pricing',
-  '/q/[token]',
 ];
 
 const app = fileURLToPath(new URL('.', import.meta.url));

@@ -27,9 +27,14 @@ import {
   BUSINESS_DOCUMENT_QUEUE,
   type BusinessDocumentJob,
 } from '../../documents/business.js';
-import { documentLink } from '../../documents/render.js';
+import {
+  documentLink,
+  hasCompanySite,
+  quoteLink,
+  sharingNeedsWebsite,
+} from '../../documents/render.js';
 import { deliverBusinessDocument } from '../../email/deliver.js';
-import { ApiError, conflict, forbidden, notFound, unprocessable } from '../../http/errors.js';
+import { conflict, forbidden, notFound, unprocessable } from '../../http/errors.js';
 import { FeatureDisabledError, isFeatureEnabled } from '../../http/features.js';
 import { defineRoute, noSchema, type RequestContext } from '../../http/routes.js';
 import { planFor } from '../../http/suspension.js';
@@ -623,7 +628,8 @@ export const listBusinessDocumentsRoute = defineRoute({
         can: {
           make: rules.make(context.principal),
           email: rules.email(context.principal),
-          share: holds(context.principal, 'document.upload'),
+          share:
+            holds(context.principal, 'document.upload') && hasCompanySite(await tx.settings.get()),
         },
         email,
         language: await companyLocale(tx),
@@ -673,7 +679,7 @@ export const createBusinessDocumentRoute = defineRoute({
   operationId: 'createBusinessDocument',
   summary: 'Print a quote, invoice, purchase order or job report as a PDF',
   description:
-    'Takes the record as this seat sees it now and asks the worker to print it in the company’s look: answers 202 with the document pending, which becomes `ready` or `failed` like any document, and is kept in the register. `language` defaults to the company’s. A draft is refused (409 `business_document_draft`). The QR code opens the PDF’s own page, which shows it only once it is shareable; `shareable: true` needs `document.upload`. For a quote, `quoteLinkToken` (the token the issue step returned) prints the customer’s quote page in the QR code instead, if it is still the quote’s live link (422 `quote_link_invalid` if not). Honours `Idempotency-Key`.',
+    'Takes the record as this seat sees it now and asks the worker to print it in the company’s look: answers 202 with the document pending, which becomes `ready` or `failed` like any document, and is kept in the register. `language` defaults to the company’s. A draft is refused (409 `business_document_draft`). The QR code opens the PDF’s page on the company’s own website, which shows it only once it is shareable (a company with no website cannot share: 409 `sharing_needs_website`); `shareable: true` needs `document.upload`. For a quote, `quoteLinkToken` (the token the issue step returned) prints the customer’s quote page in the QR code instead, if it is still the quote’s live link (422 `quote_link_invalid` if not). Honours `Idempotency-Key`.',
   tags: TAGS,
   security: 'authenticated',
   anyPermission: MAKE_PERMISSIONS,
@@ -694,23 +700,19 @@ export const createBusinessDocumentRoute = defineRoute({
     404: { description: 'No such record this seat may read.' },
     409: {
       description:
-        'A draft (`business_document_draft`), or storage full (`storage_quota_exceeded`).',
+        'A draft (`business_document_draft`), storage full (`storage_quota_exceeded`), or `shareable`/`quoteLinkToken` for a company with no website (`sharing_needs_website`).',
     },
     422: { description: 'The quote link is not this quote’s live link (`quote_link_invalid`).' },
-    503: { description: 'No web address for the QR link (`document_link_unavailable`).' },
   },
   handler: async ({ body }, context) => {
-    const { principal, config } = context;
-    if (config.WEB_APP_URL === undefined) {
-      throw new ApiError(
-        503,
-        'document_link_unavailable',
-        'This server has no WEB_APP_URL, so a document’s QR code would have nowhere to point.',
-      );
-    }
+    const { principal } = context;
     await assertKind(context, body.kind, 'make');
     if (body.shareable && !holds(principal, 'document.upload')) {
       throw forbidden('Only someone who may share documents can make one shareable.');
+    }
+    const site = await withTenant(principal.tenantId, (tx) => tx.settings.get());
+    if ((body.shareable || body.quoteLinkToken !== undefined) && !hasCompanySite(site)) {
+      throw sharingNeedsWebsite();
     }
     let quoteUrl: string | null = null;
     if (body.quoteLinkToken !== undefined) {
@@ -726,7 +728,7 @@ export const createBusinessDocumentRoute = defineRoute({
           { field: 'body.quoteLinkToken', code: 'quote_link_invalid', message: 'not live' },
         ]);
       }
-      quoteUrl = `${config.WEB_APP_URL.replace(/\/+$/u, '')}/q/${body.quoteLinkToken}`;
+      quoteUrl = quoteLink(body.quoteLinkToken, site.websiteUrl);
     }
     // Refused now rather than after printing, when the company is already full.
     await assertUploadFits({
@@ -769,9 +771,7 @@ export const createBusinessDocumentRoute = defineRoute({
         documentId: id,
         data: snapshot.data,
         locale,
-        qrUrl:
-          quoteUrl ??
-          documentLink(config, publicCode, (await tx.settings.get()).documentLinkPattern),
+        qrUrl: quoteUrl ?? documentLink(publicCode, site),
         qrOpensQuote: quoteUrl !== null,
       };
       await tx.jobs.enqueue({

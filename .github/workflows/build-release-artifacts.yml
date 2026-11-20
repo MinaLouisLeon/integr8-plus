@@ -54,13 +54,13 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
 
       - name: Install Node
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -96,7 +96,7 @@ jobs:
           cp apps/api/openapi.json "artifacts/openapi-${VERSION}.json"
           ls -la artifacts
 
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: server-${{ inputs.version }}
           path: artifacts/*
@@ -110,6 +110,10 @@ jobs:
     name: Desktop installer (${{ matrix.platform }})
     if: vars.DESKTOP_BUILDS != 'disabled'
     runs-on: ${{ matrix.platform }}
+    # The signing keys live in this protected environment, not in repository
+    # secrets (SEC-005): only these jobs can read them, and the owner can make
+    # GitHub ask for an approval before they run.
+    environment: release
     timeout-minutes: 60
     permissions:
       contents: read
@@ -129,22 +133,24 @@ jobs:
       SIGN_WINDOWS_AZURE: ${{ secrets.AZURE_CLIENT_ID != '' && secrets.AZURE_CLIENT_SECRET != '' && secrets.AZURE_TENANT_ID != '' && vars.AZURE_SIGNING_ENDPOINT != '' && vars.AZURE_SIGNING_ACCOUNT != '' && vars.AZURE_SIGNING_PROFILE != '' }}
       SIGN_MACOS: ${{ secrets.APPLE_CERTIFICATE != '' && secrets.APPLE_CERTIFICATE_PASSWORD != '' && secrets.APPLE_SIGNING_IDENTITY != '' }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
 
       - name: Install Node
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable branch, 2026-11-16
+        with:
+          toolchain: stable
 
       - name: Cache the Rust build
-        uses: swatinem/rust-cache@v2
+        uses: swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: apps/desktop/src-tauri -> target
           key: ${{ matrix.platform }}
@@ -306,7 +312,7 @@ jobs:
       # apps/desktop/.env.example lists them. None may be a secret.
       - name: Build the installer
         id: tauri
-        uses: tauri-apps/tauri-action@v1
+        uses: tauri-apps/tauri-action@1deb371b0cd8bd54025b384f1cd735e725c4060f # v1.0.0
         env:
           VITE_API_BASE_URL: ${{ inputs.api-url }}
           VITE_APP_ENV: ${{ inputs.app-env }}
@@ -340,7 +346,7 @@ jobs:
           node apps/desktop/scripts/collect-bundles.mjs \
             --paths "$PATHS" --out collected --prefix integr8-plus-staff --version "$BASE_VERSION"
 
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: desktop-${{ matrix.platform }}-${{ inputs.version }}
           path: collected/*
@@ -375,13 +381,13 @@ jobs:
           - { runner: ubuntu-latest, label: linux-x64 }
           - { runner: ubuntu-24.04-arm, label: linux-arm64 }
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
 
       - name: Install Node
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -400,7 +406,7 @@ jobs:
           FORMS_AI_VERSION: ${{ inputs.version }}
         run: node apps/forms-ai/scripts/build-sea.mjs --out forms-ai-out
 
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: forms-ai-${{ matrix.label }}-${{ inputs.version }}
           path: forms-ai-out/*
@@ -432,13 +438,13 @@ jobs:
           - { runner: ubuntu-latest, label: linux-x64 }
           - { runner: ubuntu-24.04-arm, label: linux-arm64 }
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
 
       - name: Install Node
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -457,7 +463,7 @@ jobs:
           DEV_MCP_PRODUCT_VERSION: ${{ inputs.version }}
         run: node apps/dev-mcp/scripts/build-sea.mjs --out dev-mcp-out
 
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: dev-mcp-${{ matrix.label }}-${{ inputs.version }}
           path: dev-mcp-out/*

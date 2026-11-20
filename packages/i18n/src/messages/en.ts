@@ -7814,7 +7814,7 @@ export const en = {
       referenceHint: 'Such as a certificate number. Your website finds the document by it.',
       customer: 'Customer (optional)',
       customerHint: 'When a customer is chosen, your website also asks for their name.',
-      shareNow: 'Share it now, so the QR code link and your website can show it',
+      shareNow: 'Share it now, so your company website can show it',
       submit: 'Upload',
       uploading: 'Uploading…',
       cancel: 'Cancel',
@@ -7823,8 +7823,10 @@ export const en = {
     },
     sharing: {
       title: 'Sharing',
-      on: 'Shared: the QR code link and your company website can show this document.',
-      off: 'Not shared: the QR code link and your company website answer as if it did not exist. Your company still sees it here.',
+      on: 'Shared: your company website can show this document to whoever has its QR code or link.',
+      off: 'Not shared: your company website answers as if it did not exist. Your company still sees it here.',
+      needsWebsite:
+        'Sharing needs your company website: documents are shown only there. Ask Integr8 to set your website.',
       share: 'Share it',
       unshare: 'Stop sharing',
       badge: 'Not shared',
@@ -8422,9 +8424,6 @@ export const en = {
   // Read by the API through `@integr8/i18n/core`; `{{…}}` is filled there.
   notifications: {
     // Low 13 (1.2.4): a quote link while the company's sales module is off.
-    publicQuote: {
-      unavailable: 'This quote is no longer available online. Please contact {{company}}.',
-    },
     // Low 10 (1.2.4): the owner is told when an admin suspends somebody with HR access.
     hrSuspension: {
       subject: '{{person}} was suspended at {{company}}',
@@ -9477,6 +9476,21 @@ export const en = {
       resetSyncBody: 'Every device downloads everything again. Nothing waiting to be sent is lost.',
       resetSyncDone: 'Done. Their phones will download everything again on the next sync.',
       reason: 'Reason',
+    },
+    testTwin: {
+      title: 'Test twin',
+      description:
+        'A new test company with this company’s setup (settings, branding, modules, tabs, roles, job types, forms and PDF templates) and none of its business: no customers, people, jobs, submissions, money or HR. The developer MCP server builds there; finished forms are copied back to this company from the form screen, as drafts.',
+      reason: 'Reason (whose build this is for)',
+      make: 'Make a test twin',
+      making: 'Making the twin…',
+      made: 'Made {name} ({slug}).',
+      open: 'Open the twin',
+      copied:
+        'Copied — forms: {forms}, PDF templates: {templates}, job types: {jobTypes}, company roles: {roles}. Its made-up people, one per role, cannot sign in.',
+      droppedActions:
+        '“Open the next form” steps left out because their form is archived: {steps}.',
+      storageProblem: 'The pictures were left out (logo, app icon and PDF templates): {problem}',
     },
   },
 } as const;

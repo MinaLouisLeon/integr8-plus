@@ -332,28 +332,67 @@ describe('the register', () => {
     expect((await call(viewer, 'GET', '/v1/assets/by-tag/not-a-code')).statusCode).toBe(404);
   });
 
-  it('tells a stranger whose tag it is, and nothing about the asset (P42, D5)', async () => {
+  it('prints its tag link on the company’s website only, and tells a stranger there whose tag it is', async () => {
     const created = await register();
     const { tagCode } = created.asset;
-    const stranger = await api.app.inject({
+    const settings = `/v1/platform/companies/${api.tenantId}/settings`;
+    const json200 = async (url: string) => {
+      const response = await call(viewer, 'GET', url);
+      expect(response.statusCode, response.body).toBe(200);
+      return json<AssetDetail>(response);
+    };
+
+    // No website: the tag prints its bare code, with no link anywhere.
+    expect((await json200(`/v1/assets/${created.asset.id}`)).asset.tagLink).toBeNull();
+    // Integr8 serves no tag page.
+    const integr8 = await api.app.inject({
       method: 'GET',
-      url: `/v1/public/asset-tags/${tagCode.slice(0, 4).toLowerCase()}-${tagCode.slice(4)}`,
+      url: `/v1/public/asset-tags/${tagCode}`,
       headers: { 'x-client-version': '1.0.0', 'x-client-app': 'web' },
     });
-    expect(stranger.statusCode, stranger.body).toBe(200);
-    const body = json<Record<string, unknown>>(stranger);
-    expect(body).toEqual({
+    expect(integr8.statusCode).toBe(404);
+
+    const manager = await api.platformAdmin('as-manager', { manager: true });
+    const site = await api.call(admin.accessToken, {
+      method: 'PATCH',
+      url: settings,
+      payload: { websiteUrl: 'https://www.riverside-services.example' },
+    });
+    expect(site.statusCode, site.body).toBe(200);
+    expect((await json200(`/v1/assets/${created.asset.id}`)).asset.tagLink).toBe(
+      `https://www.riverside-services.example/a/${tagCode}`,
+    );
+
+    const made = await api.call(manager.accessToken, {
+      method: 'POST',
+      url: `/v1/platform/companies/${api.tenantId}/website-keys`,
+      payload: { label: 'tag pages' },
+    });
+    expect(made.statusCode, made.body).toBe(201);
+    const key = json<{ secret: string }>(made).secret;
+    const tagPage = (code: string) =>
+      api.app.inject({
+        method: 'GET',
+        url: `/v1/website/asset-tags/${code}`,
+        headers: { authorization: `Bearer ${key}` },
+      });
+    const seen = await tagPage(`${tagCode.slice(0, 4).toLowerCase()}-${tagCode.slice(4)}`);
+    expect(seen.statusCode, seen.body).toBe(200);
+    expect(json<Record<string, unknown>>(seen)).toEqual({
       company: { name: expect.any(String) as string, slug: expect.any(String) as string },
       code: tagCode,
     });
-    expect(stranger.body).not.toContain(created.asset.id);
+    expect(seen.body).not.toContain(created.asset.id);
+    expect((await tagPage('0000-00000000')).statusCode).toBe(404);
 
-    const unknown = await api.app.inject({
-      method: 'GET',
-      url: '/v1/public/asset-tags/0000-00000000',
-      headers: { 'x-client-version': '1.0.0', 'x-client-app': 'web' },
+    const cleared = await api.call(admin.accessToken, {
+      method: 'PATCH',
+      url: settings,
+      payload: { websiteUrl: null },
     });
-    expect(unknown.statusCode).toBe(404);
+    expect(cleared.statusCode, cleared.body).toBe(200);
+    const refused = await tagPage(tagCode);
+    expect(refused.statusCode).toBe(403);
   });
 
   it('finds by words, serial and reference, and pages newest first', async () => {

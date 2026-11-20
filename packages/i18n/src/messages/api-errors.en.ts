@@ -161,12 +161,9 @@ export const apiErrorsEn = {
   description_required: 'Describe the line: a line without an item needs a description.',
   developer_reason_required:
     'The developer tool must say what it is testing: start the reason with “Developer MCP:”.',
-  document_expired: "This document's link has been stopped by the company that issued it.",
   document_expiry_past: 'The expiry date has already passed. Choose a later one.',
   document_fields_invalid:
     'Some document fields are missing or too long. Check the fields marked below.',
-  document_link_unavailable:
-    'Documents cannot be made yet: this server has no web address for the QR code. Ask Integr8.',
   document_preview_failed: 'The preview could not be printed just now. Try again in a minute.',
   document_not_pdf: 'Only a PDF can be uploaded as a document. Choose a PDF file.',
   document_not_uploaded: 'Only an uploaded document has extra fields to change.',
@@ -185,6 +182,10 @@ export const apiErrorsEn = {
   releases_unavailable: 'The app releases could not be checked just now. Try again in a minute.',
   session_scope:
     'This staff session can reach test companies only, and this is not something it may do.',
+  sharing_needs_website:
+    'Sharing needs your company website: documents, quote links and tags are shown only there. Ask Integr8 to set your website.',
+  website_missing:
+    'This company has no website set, so its website key serves nothing. Ask Integr8.',
   test_company_no_apps: 'A test company has no phone or desktop apps.',
   unknown_tab: 'One of these is not a tab that can be switched. Reload the page and try again.',
   document_not_ready: 'The PDF is not ready yet. Wait a moment and try again.',
@@ -452,8 +453,6 @@ export const apiErrorsEn = {
   quote_converted: 'This quote has already become a sales order.',
   quote_empty: 'Add at least one line before issuing.',
   quote_link_invalid: 'This is not the quote’s live link any more. Make the PDF without it.',
-  quote_unavailable:
-    'This quote is no longer available online. Please contact the company that sent it.',
   quote_expired: 'This quote has expired. A new one has to be issued.',
   quote_not_accepted: 'Only an accepted quote becomes a sales order.',
   quote_not_draft: 'Only a draft quote changes. Revise this quote to edit it.',

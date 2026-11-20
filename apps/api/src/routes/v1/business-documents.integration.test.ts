@@ -22,6 +22,8 @@ import {
  */
 
 const WEB = 'https://app.test.integr8';
+/** The company's own website: where its PDFs' QR codes and quote links point. */
+const SITE = 'https://www.horizon-services.example';
 
 let api: ApiHarness;
 let admin: PlatformAdmin;
@@ -134,6 +136,12 @@ beforeAll(async () => {
   bystander = await api.member('engineer', 'biz-bystander');
   viewer = await api.member('viewer', 'biz-viewer');
   builder = await api.staff(owner);
+  const site = await api.call(admin.accessToken, {
+    method: 'PATCH',
+    url: `/v1/platform/companies/${api.tenantId}/settings`,
+    payload: { websiteUrl: SITE },
+  });
+  expect(site.statusCode, site.body).toBe(200);
   const customer = await as(dispatcher, 'POST', '/v1/customers', {
     name: 'Horizon Business Park',
     email: 'accounts@horizon.example',
@@ -218,7 +226,7 @@ describe('a quote', () => {
     const jobs = await runPrintJobs();
     expect(jobs).toHaveLength(1);
     expect(jobs[0]!.payload).toMatchObject({
-      qrUrl: `${WEB}/d/${made.publicCode}`,
+      qrUrl: `${SITE}/documents/${made.publicCode}`,
       qrOpensQuote: false,
       locale: 'ar',
     });
@@ -230,7 +238,7 @@ describe('a quote', () => {
 
     const ready = json<DocumentBody>(await as(dispatcher, 'GET', `/v1/documents/${made.id}`));
     expect(ready).toMatchObject({ status: 'ready', pageCount: 1 });
-    // Not shared: its QR code's page answers as if it did not exist.
+    // Integr8 serves no document page: only the company's website, with its key.
     const outside = await api.app.inject({
       method: 'GET',
       url: `/v1/public/documents/${made.publicCode}`,
@@ -257,7 +265,7 @@ describe('a quote', () => {
     expect(right.statusCode, right.body).toBe(202);
     expect(json<DocumentBody>(right).shareable).toBe(true);
     const [job] = await runPrintJobs();
-    expect(job!.payload).toMatchObject({ qrUrl: `${WEB}/q/${acceptToken}`, qrOpensQuote: true });
+    expect(job!.payload).toMatchObject({ qrUrl: `${SITE}/q/${acceptToken}`, qrOpensQuote: true });
   });
 
   it('is listed on the quote for those who read quotes, and in the register', async () => {

@@ -8,7 +8,7 @@ work on its own phone app, which keeps working with no signal; Integr8 staff run
 everything from the staff desktop app. The web app is the public site only.
 English and Arabic throughout.
 
-Current version: **2.0.0**. The documentation starts at
+Current version: **2.1.0**. The documentation starts at
 [`docs/README.md`](./docs/README.md); what is not finished is in
 [`plan/README.md`](./plan/README.md).
 
@@ -74,8 +74,8 @@ start on any of them. The database settings are in
 Postgres 16, one schema shared by every company, each row keyed by `tenant_id`
 with row-level security as the backstop. 2.0.0 started the migrations again from
 one per module; 0020 removed sign-up and card billing (P42); 0021 lets a test
-company's website run on localhost (P43); a new feature adds the next number
-after `0021`.
+company's website run on localhost (P43); 0022 closes the functions that run as
+their owner (SEC-002); a new feature adds the next number after `0022`.
 
 | Migration | Module                                                                               |
 | --------- | ------------------------------------------------------------------------------------ |
@@ -100,6 +100,7 @@ after `0021`.
 | 0019      | The AI assistant: conversations, actions, usage and cost                             |
 | 0020      | Desktop only (P42): drops sign-up, card billing and the web assistant switch         |
 | 0021      | A test company's website and document links may be on localhost (P43)                |
+| 0022      | Functions that run as their owner closed to all but their callers (SEC-002)          |
 
 See [`docs/database/`](./docs/database/README.md).
 

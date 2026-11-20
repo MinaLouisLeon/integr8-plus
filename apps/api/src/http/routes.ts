@@ -148,6 +148,17 @@ interface RouteShape {
   /** A public customer website route that authenticates with a website key. */
   websiteKeyAuth?: boolean;
 
+  /**
+   * The route acts beyond the caller's own company: it lists other companies,
+   * or writes into another company or the platform's shared library (form
+   * copies, staff library templates). Staff reach it by acting as a company;
+   * a seat whose impersonation grant came from a staff session limited to test
+   * companies (the developer MCP server, P38) is refused here, so that session
+   * never reaches a real company. `session-scope.test.ts` pins the routes that
+   * set it.
+   */
+  crossTenant?: boolean;
+
   /** Checked after authentication, against the permission matrix in core. */
   permission?: Permission;
 

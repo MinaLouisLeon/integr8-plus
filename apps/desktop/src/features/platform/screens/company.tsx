@@ -204,6 +204,7 @@ export function CompanyRoute() {
       <Impersonations tenantId={tenantId} />
       <RecentErrors tenantId={tenantId} />
       <SupportActions tenantId={tenantId} />
+      {detail.status === 'cancelled' ? null : <TestTwinPanel tenantId={tenantId} />}
       <Lifecycle tenantId={tenantId} name={detail.name} status={detail.status} />
     </main>
   );
@@ -1879,6 +1880,101 @@ function SupportActions({ tenantId }: { tenantId: string }) {
       {reset.isSuccess ? (
         <p className="text-sm text-success">{t('platform.support.resetSyncDone')}</p>
       ) : null}
+    </Panel>
+  );
+}
+
+/**
+ * Making a test twin (P44): a new test company with this company's setup and
+ * none of its business, for the developer MCP server to build in. The API
+ * reads the real company, so it needs this full staff session and a reason
+ * for the audit logs; what is built there comes back through the form
+ * screen's Copy to another company, as a draft somebody publishes.
+ */
+function TestTwinPanel({ tenantId }: { tenantId: string }) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const queries = useQueryClient();
+  const [reason, setReason] = useState('');
+
+  const make = useMutation({
+    mutationFn: async () => {
+      const { data } = await platformClient().POST('/v1/platform/companies/{tenantId}/test-twin', {
+        params: { path: { tenantId } },
+        body: { reason: reason.trim() },
+      });
+      return data;
+    },
+    onSuccess: () => {
+      setReason('');
+      void queries.invalidateQueries({ queryKey: ['platform', 'companies'] });
+    },
+  });
+  const made = make.data;
+
+  return (
+    <Panel title={t('platform.testTwin.title')} description={t('platform.testTwin.description')}>
+      <form
+        className="flex flex-wrap items-end gap-3"
+        onSubmit={(event) => {
+          event.preventDefault();
+          make.mutate();
+        }}
+      >
+        <div className="min-w-64 flex-1">
+          <Field
+            label={t('platform.testTwin.reason')}
+            required
+            minLength={3}
+            maxLength={500}
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+            {...(make.isError ? { error: messageForError(make.error, t) } : {})}
+          />
+        </div>
+        <Button
+          type="submit"
+          variant="secondary"
+          busy={make.isPending}
+          disabled={reason.trim().length < 3}
+        >
+          {make.isPending ? t('platform.testTwin.making') : t('platform.testTwin.make')}
+        </Button>
+      </form>
+      {made === undefined ? null : (
+        <div className="flex flex-col gap-2 text-sm">
+          <p className="text-success">
+            {t('platform.testTwin.made', { name: made.twin.name, slug: made.twin.slug })}
+          </p>
+          <p className="text-content-muted">
+            {t('platform.testTwin.copied', {
+              forms: made.copied.forms,
+              templates: made.copied.documentTemplates,
+              jobTypes: made.copied.jobTypes,
+              roles: made.copied.roles,
+            })}
+          </p>
+          {made.copied.droppedActions > 0 ? (
+            <p className="text-warning">
+              {t('platform.testTwin.droppedActions', { steps: made.copied.droppedActions })}
+            </p>
+          ) : null}
+          {made.storageProblem === null ? null : (
+            <p className="text-warning">
+              {t('platform.testTwin.storageProblem', { problem: made.storageProblem })}
+            </p>
+          )}
+          <div>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => void navigate(`/platform/companies/${made.twin.id}`)}
+            >
+              {t('platform.testTwin.open')}
+            </Button>
+          </div>
+        </div>
+      )}
     </Panel>
   );
 }

@@ -147,6 +147,18 @@ meaningful. It is also what makes connecting as the owner catastrophic, which is
 why `assertRlsEnforced()` checks at startup rather than trusting the connection
 string.
 
+**Functions that run as their owner** (`SECURITY DEFINER`, listed in
+`SECURITY_DEFINER_FUNCTIONS` in `schema.ts`) skip row-level security, so since
+0022 (SEC-002) each is closed to PUBLIC and opened only to the role that calls it
+(the schema-invariant suite pins who); trigger functions need no grant, as
+Postgres does not check EXECUTE when a trigger fires. One that takes a company id
+refuses another company's on the runtime role's connection: the ledger's
+`erp_ledger_capture`, `erp_ledger_try_post`, `erp_ledger_backfill` and
+`erp_ledger_backfill_more` are wrappers that check, then call the body kept under
+an `_unchecked` name nobody may call. **Every new function starts closed to
+PUBLIC** (the owner's default privileges): a migration that adds one the
+runtime role calls grants `EXECUTE ... TO integr8_app` itself.
+
 ### The platform role
 
 Staff screens, creating a company, the job queue, metering, dunning, the

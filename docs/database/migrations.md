@@ -50,7 +50,10 @@ like any other. The first after the baseline is `0020_desktop_only` (P42): it
 drops what self-serve sign-up, card billing and the web app's assistant switch
 used, in one release, because every row then was test data. `0021_test_company_localhost`
 (P43) lets a test company's website and document links be on `http://localhost`
-(a trigger refuses it for any other company); the next is `0022`.
+(a trigger refuses it for any other company). `0022_definer_functions_closed`
+(SEC-002) closes every security-definer function to PUBLIC, wraps the ledger's
+four in a company check, and makes new functions start closed (grant EXECUTE to
+the role that calls a new one); the next is `0023`.
 
 ### Where the old numbers went
 
