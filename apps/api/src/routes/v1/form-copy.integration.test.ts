@@ -370,7 +370,7 @@ describe('library templates made by staff (1B, 10b)', () => {
     });
   });
 
-  it('is offered to every company beside the built-in ones, and brings its PDF templates', async () => {
+  it('is offered to staff in every company beside the built-in ones, and brings its PDF templates', async () => {
     const offered = await call(other.builder, 'GET', '/v1/form-templates');
     const items = json<{ items: { key: string; source: string; documentTemplateCount: number }[] }>(
       offered,

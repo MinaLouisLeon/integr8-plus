@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, generateKeyPairSync, sign } from 'node:crypto';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -13,6 +13,20 @@ import {
   parseChecksum,
   type Release,
 } from './update.js';
+import { UPDATE_MANIFEST, UPDATE_SIGNATURE } from './signature.js';
+
+/** A throwaway update key, standing in for Integr8's. */
+const testKey = generateKeyPairSync('ed25519');
+const TEST_KEYS = [
+  testKey.publicKey.export({ type: 'spki', format: 'der' }).subarray(12).toString('base64'),
+];
+const SIGNED = [UPDATE_MANIFEST, UPDATE_SIGNATURE];
+
+/** A manifest and its signature, as the release job makes them. */
+function signedList(version: string, files: Record<string, string>, key = testKey.privateKey) {
+  const manifest = Buffer.from(JSON.stringify({ format: 1, version, files }));
+  return { manifest, signature: sign(null, manifest, key).toString('base64') };
+}
 
 const asset = (name: string) => ({
   name,
@@ -39,26 +53,19 @@ describe('finding an update', () => {
     expect(compareVersions('1.3.0-nightly.1', '1.3.0')).toBeLessThan(0);
   });
 
-  it('takes the newest release with this computer’s file and its checksum', () => {
+  it('takes the newest release with this computer’s file and a signed update list', () => {
     const releases = [
-      release('v1.4.0', ['integr8-forms-ai-1.4.0-windows-x64.exe']), // no checksum
-      release('v1.3.2', [
-        'integr8-forms-ai-1.3.2-windows-x64.exe',
-        'integr8-forms-ai-1.3.2-windows-x64.exe.sha256',
+      // No signed list: never offered (SEC-004), even with a checksum.
+      release('v1.4.0', [
+        'integr8-forms-ai-1.4.0-windows-x64.exe',
+        'integr8-forms-ai-1.4.0-windows-x64.exe.sha256',
       ]),
-      release('v1.3.1', [
-        'integr8-forms-ai-1.3.1-windows-x64.exe',
-        'integr8-forms-ai-1.3.1-windows-x64.exe.sha256',
-      ]),
-      release(
-        'v1.5.0',
-        ['integr8-forms-ai-1.5.0-windows-x64.exe', 'integr8-forms-ai-1.5.0-windows-x64.exe.sha256'],
-        { prerelease: true },
-      ),
-      release('company-acme-v9.0.0', [
-        'integr8-forms-ai-9.0.0-windows-x64.exe',
-        'integr8-forms-ai-9.0.0-windows-x64.exe.sha256',
-      ]),
+      release('v1.3.2', ['integr8-forms-ai-1.3.2-windows-x64.exe', ...SIGNED]),
+      release('v1.3.1', ['integr8-forms-ai-1.3.1-windows-x64.exe', ...SIGNED]),
+      release('v1.5.0', ['integr8-forms-ai-1.5.0-windows-x64.exe', ...SIGNED], {
+        prerelease: true,
+      }),
+      release('company-acme-v9.0.0', ['integr8-forms-ai-9.0.0-windows-x64.exe', ...SIGNED]),
       release('v1.6.0', ['integr8-plus-staff-1.6.0-windows-x64-setup.exe']), // no tool built
     ];
     expect(findUpdate(releases, '1.3.0', 'win32', 'x64')?.version).toBe('1.3.2');
@@ -79,10 +86,7 @@ describe('finding an update', () => {
       return Promise.resolve(
         new Response(
           JSON.stringify([
-            release('v1.3.1', [
-              'integr8-forms-ai-1.3.1-windows-x64.exe',
-              'integr8-forms-ai-1.3.1-windows-x64.exe.sha256',
-            ]),
+            release('v1.3.1', ['integr8-forms-ai-1.3.1-windows-x64.exe', ...SIGNED]),
           ]),
         ),
       );
@@ -118,38 +122,83 @@ describe('applying an update', () => {
     rmSync(folder, { recursive: true, force: true });
   });
 
+  const NAME = 'integr8-forms-ai-1.3.1-linux-x64';
   const update = {
     version: '1.3.1',
     tag: 'v1.3.1',
-    asset: asset('integr8-forms-ai-1.3.1-linux-x64'),
-    checksum: asset('integr8-forms-ai-1.3.1-linux-x64.sha256'),
+    asset: asset(NAME),
+    manifest: asset(UPDATE_MANIFEST),
+    signature: asset(UPDATE_SIGNATURE),
   };
+  const hashOf = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex');
 
-  function serve(body: Uint8Array, hash: string): typeof fetch {
+  function serve(body: Uint8Array, list: { manifest: Buffer; signature: string }): typeof fetch {
     return ((url: string) =>
       Promise.resolve(
-        url.endsWith('.sha256') ? new Response(`${hash}  file\n`) : new Response(body),
+        url.endsWith(UPDATE_SIGNATURE)
+          ? new Response(list.signature)
+          : url.endsWith(UPDATE_MANIFEST)
+            ? new Response(list.manifest)
+            : new Response(body),
       )) as typeof fetch;
   }
 
-  it('replaces the installed program in place after checking its hash', async () => {
+  const install = (body: Uint8Array, list: { manifest: Buffer; signature: string }) => {
     const target = join(folder, 'integr8-forms-ai');
     writeFileSync(target, 'old');
+    const outcome = applyUpdate(update, target, { fetch: serve(body, list), keys: TEST_KEYS });
+    return { target, outcome };
+  };
+
+  it('replaces the installed program when Integr8’s signed list names its hash', async () => {
     const body = new TextEncoder().encode('new program');
-    await applyUpdate(update, target, {
-      fetch: serve(body, createHash('sha256').update(body).digest('hex')),
-    });
+    const { target, outcome } = install(body, signedList('1.3.1', { [NAME]: hashOf(body) }));
+    await outcome;
     expect(readFileSync(target, 'utf8')).toBe('new program');
   });
 
-  it('changes nothing when the hash does not match', async () => {
+  it('changes nothing when the file does not match the signed list', async () => {
+    const real = new TextEncoder().encode('new program');
+    const { target, outcome } = install(
+      new TextEncoder().encode('tampered'),
+      signedList('1.3.1', { [NAME]: hashOf(real) }),
+    );
+    await expect(outcome).rejects.toThrow(/does not match/u);
+    expect(readFileSync(target, 'utf8')).toBe('old');
+  });
+
+  it('changes nothing when the list is signed by another key, or not at all', async () => {
+    const body = new TextEncoder().encode('fake program');
+    const stranger = generateKeyPairSync('ed25519').privateKey;
+    const forged = install(body, signedList('1.3.1', { [NAME]: hashOf(body) }, stranger));
+    await expect(forged.outcome).rejects.toThrow(/not signed by Integr8/u);
+    expect(readFileSync(forged.target, 'utf8')).toBe('old');
+
+    const unsigned = install(body, {
+      manifest: Buffer.from(JSON.stringify({ format: 1, version: '1.3.1', files: {} })),
+      signature: '',
+    });
+    await expect(unsigned.outcome).rejects.toThrow(/no valid signature/u);
+  });
+
+  it('changes nothing for an older signed list replayed, or one that does not name the file', async () => {
+    const body = new TextEncoder().encode('new program');
+    const old = install(body, signedList('1.3.0', { [NAME]: hashOf(body) }));
+    await expect(old.outcome).rejects.toThrow(/is for 1\.3\.0, not 1\.3\.1/u);
+    const other = install(body, signedList('1.3.1', { 'something-else': hashOf(body) }));
+    await expect(other.outcome).rejects.toThrow(/not in the signed update list/u);
+    expect(readFileSync(other.target, 'utf8')).toBe('old');
+  });
+
+  it('trusts the update key built into the program by default', async () => {
+    const body = new TextEncoder().encode('new program');
     const target = join(folder, 'integr8-forms-ai');
     writeFileSync(target, 'old');
+    // Signed with the test key, which is not built in: refused.
     await expect(
       applyUpdate(update, target, {
-        fetch: serve(new TextEncoder().encode('tampered'), 'b'.repeat(64)),
+        fetch: serve(body, signedList('1.3.1', { [NAME]: hashOf(body) })),
       }),
-    ).rejects.toThrow(/does not match/u);
-    expect(readFileSync(target, 'utf8')).toBe('old');
+    ).rejects.toThrow(/not signed by Integr8/u);
   });
 });

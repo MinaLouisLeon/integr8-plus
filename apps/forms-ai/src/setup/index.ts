@@ -22,4 +22,13 @@ export {
   osName,
   parseChecksum,
   replaceProgram,
+  signedHash,
 } from './update.js';
+export {
+  signedHashOf,
+  UPDATE_MANIFEST,
+  UPDATE_PUBLIC_KEYS,
+  UPDATE_SIGNATURE,
+  type UpdateManifest,
+  verifiedManifest,
+} from './signature.js';

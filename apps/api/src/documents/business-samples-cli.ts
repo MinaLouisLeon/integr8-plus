@@ -70,18 +70,27 @@ async function main(): Promise<void> {
     maxConcurrent: 1,
   });
   try {
-    const logo = await inlineImage(await picture(LOGO, 'png'));
+    // Every picture is drawn from SVG first: once `inlineImage` runs, this
+    // process decodes photos only (SEC-003, `media/photo-decoder.ts`).
+    const logoBytes = await picture(LOGO, 'png');
+    const sceneBytes: Uint8Array[] = [];
+    for (let index = 0; index < 6; index += 1) {
+      sceneBytes.push(await picture(scene(170 + index * 25, index), 'jpeg'));
+    }
+    const signatureBytes = await picture(SIGNATURE, 'png');
+
+    const logo = await inlineImage(logoBytes);
     const media: Record<string, string> = {};
     const photoIds: string[] = [];
-    for (let index = 0; index < 6; index += 1) {
+    for (const [index, bytes] of sceneBytes.entries()) {
       const id = `photo-${String(index)}`;
-      const made = await inlineImage(await picture(scene(170 + index * 25, index), 'jpeg'), 800);
+      const made = await inlineImage(bytes, 800);
       if (made !== undefined) {
         media[id] = made;
         photoIds.push(id);
       }
     }
-    const signature = await inlineImage(await picture(SIGNATURE, 'png'));
+    const signature = await inlineImage(signatureBytes);
     if (signature !== undefined) {
       media.signature = signature;
     }
@@ -97,8 +106,8 @@ async function main(): Promise<void> {
           timeZone: 'Africa/Cairo',
           qrUrl:
             kind === 'quote'
-              ? 'https://app.integr8-media.com/q/9mXr2kQ8vT0bN4sLwY7cJ1pE5hA3uZ6dG8fK0oR2iV4'
-              : 'https://app.integr8-media.com/d/Qm3vX8kT2pL9sN4wR7yB1c',
+              ? 'https://www.example.com/q/9mXr2kQ8vT0bN4sLwY7cJ1pE5hA3uZ6dG8fK0oR2iV4'
+              : 'https://www.example.com/documents/Qm3vX8kT2pL9sN4wR7yB1c',
           qrOpensQuote: kind === 'quote',
           images: { logo: logo ?? null, media },
           look: { brandColour: '#0e7490', fontKey: 'noto-sans', logo: logo ?? null },

@@ -301,6 +301,68 @@ describe('functions that run as their owner', () => {
       ).toBe(true);
     }
   });
+
+  /**
+   * Who may call each one directly (SEC-002, 0022). Postgres lets every role
+   * execute a new function by default, and one of these runs with the owner's
+   * rights whoever calls it, so each is closed to PUBLIC and opened only to the
+   * role that calls it. Trigger functions need no grant: EXECUTE is not checked
+   * when a trigger fires. Change this list on purpose.
+   */
+  const CALLERS: Record<string, readonly string[]> = {
+    erp_ledger_capture: ['integr8_app', 'integr8_platform'],
+    erp_ledger_try_post: ['integr8_app', 'integr8_platform'],
+    erp_ledger_backfill: ['integr8_app', 'integr8_platform'],
+    prune_sync_touches: ['integr8_app', 'integr8_platform'],
+    erp_stock_lock_balance: ['integr8_app', 'integr8_platform'],
+    erp_stock_lock_lot_balance: ['integr8_app', 'integr8_platform'],
+    purge_tenant: ['integr8_platform'],
+    ensure_year_partitions: ['integr8_platform'],
+  };
+
+  it('opens each one only to the roles that call it, and none to PUBLIC', async () => {
+    const roles = (
+      await owner.query<{ name: string }>(
+        `select rolname::text as name from pg_roles
+         where rolname in ('integr8_app', 'integr8_platform', 'integr8_auth', 'supabase_auth_admin')`,
+      )
+    ).rows.map((row) => row.name);
+    const result = await owner.query<{ name: string; acl: string[] | null }>(`
+      select p.proname::text as name, p.proacl::text[] as acl
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public' and p.prosecdef
+    `);
+    for (const row of result.rows) {
+      const acl = row.acl ?? [];
+      // A null ACL is the default, which grants PUBLIC; "=X/owner" is PUBLIC.
+      expect(row.acl, `${row.name} is executable by PUBLIC`).not.toBeNull();
+      expect(
+        acl.some((entry) => entry.startsWith('=')),
+        `${row.name} is executable by PUBLIC`,
+      ).toBe(false);
+      const allowed = CALLERS[row.name] ?? [];
+      for (const role of roles) {
+        const may = acl.some((entry) => entry.startsWith(`${role}=`) && entry.includes('X'));
+        expect(may, `${role} on ${row.name}`).toBe(allowed.includes(role));
+      }
+    }
+  });
+
+  it('gives new functions no EXECUTE for PUBLIC by default', async () => {
+    await owner.query('begin');
+    try {
+      await owner.query(
+        `create function public.sec002_probe() returns int language sql as 'select 1'`,
+      );
+      const result = await owner.query<{ granted: boolean }>(
+        `select has_function_privilege('public', 'public.sec002_probe()', 'EXECUTE') as granted`,
+      );
+      expect(result.rows[0]?.granted).toBe(false);
+    } finally {
+      await owner.query('rollback');
+    }
+  });
 });
 
 describe('the pre-authentication role', () => {

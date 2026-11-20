@@ -77,11 +77,11 @@ Plan limits and permissions are enforced by the API, never by a screen.
 
 What must open in a plain browser, for people who have no app: home, features,
 pricing, contact, help, legal, `/download` (a company's installers and phone
-app), the customer's quote link (`/q`), a shared document (`/d`), a printed
-asset tag's page (`/a/<code>`: whose tag it is, and to scan it with the
-company's phone app), accepting an invitation (`/accept-invitation`: the person
+app), accepting an invitation (`/accept-invitation`: the person
 sets a password, is told it is set, and is sent to the company's apps), and the
-desktop apps' update feed (`/desktop-updates`). Nothing on it signs anybody in,
+desktop apps' update feed (`/desktop-updates`). It serves no company's
+documents, quote links or asset-tag pages: those open on the company's own
+website (see [documents](../documents/README.md)). Nothing on it signs anybody in,
 and its client sends no token (`apps/web/src/lib/api-client.ts`). The route list
 is pinned by `apps/web/src/app/public-routes.test.ts`. The release lookup it
 shares with the API is `@integr8/releases`.

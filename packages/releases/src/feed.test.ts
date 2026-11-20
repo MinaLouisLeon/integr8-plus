@@ -387,6 +387,8 @@ describe('the developer MCP server’s program (P43)', () => {
       'integr8-dev-mcp-keyring-2.1.0-linux-x64.node.sha256',
       'integr8-dev-mcp-2.1.0-windows-x64.zip',
       'integr8-dev-mcp-2.1.0-windows-x64.zip.sha256',
+      'integr8-update-manifest.json',
+      'integr8-update-manifest.json.sig',
     ];
     const feed = new DesktopUpdateFeed({
       repository: 'o/r',
@@ -413,6 +415,13 @@ describe('the developer MCP server’s program (P43)', () => {
     expect(found?.downloads[1]?.checksumUrl).toBe(
       'https://app.example/desktop-updates/staff/download/v2.1.0/integr8-dev-mcp-2.1.0-linux-x64.sha256',
     );
+    // The signed update list an installed program checks first (SEC-004).
+    expect(found?.signedList).toEqual({
+      manifestUrl:
+        'https://app.example/desktop-updates/staff/download/v2.1.0/integr8-update-manifest.json',
+      signatureUrl:
+        'https://app.example/desktop-updates/staff/download/v2.1.0/integr8-update-manifest.json.sig',
+    });
     expect((await feed.installers('staff'))?.installers.map((file) => file.name)).toEqual([
       'integr8-plus-staff_2.1.0_x64-setup.exe',
     ]);

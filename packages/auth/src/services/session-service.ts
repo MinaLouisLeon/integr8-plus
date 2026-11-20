@@ -598,7 +598,16 @@ export class SessionService {
     grantId: string,
   ): Promise<ImpersonationClaim | undefined> {
     const grant = await tx.impersonation.findById(grantId);
-    return grant === undefined ? undefined : { pid: grant.platformUserId, gid: grant.id };
+    if (grant === undefined) {
+      // A session that was started under a grant must never be handed a token
+      // without it: that token would skip the per-request grant check.
+      throw new SessionRevokedError('The impersonation grant behind this session is gone');
+    }
+    return {
+      pid: grant.platformUserId,
+      gid: grant.id,
+      ...(grant.fromLimitedSession ? { lim: true as const } : {}),
+    };
   }
 
   /**

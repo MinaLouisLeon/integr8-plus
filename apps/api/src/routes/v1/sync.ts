@@ -123,7 +123,6 @@ export const pullRoute = defineRoute({
         ...(query.page === undefined ? {} : { page: query.page }),
         retentionDays: query.retentionDays,
         now: new Date(),
-        webAppUrl: context.config.WEB_APP_URL,
         clientVersion: context.clientVersion,
       }),
     );

@@ -26,6 +26,8 @@ import {
  */
 
 const WEB = 'https://app.test.integr8';
+/** The company's own website: where shared documents are shown, and nowhere else. */
+const SITE = 'https://www.deltamills.example';
 
 let api: ApiHarness;
 let admin: PlatformAdmin;
@@ -284,6 +286,12 @@ beforeAll(async () => {
   viewer = await api.member('viewer', 'viewer');
   admin2 = await api.member('admin', 'admin');
   builder = await api.staff(owner);
+  const site = await api.call(admin.accessToken, {
+    method: 'PATCH',
+    url: `/v1/platform/companies/${api.tenantId}/settings`,
+    payload: { websiteUrl: SITE },
+  });
+  expect(site.statusCode, site.body).toBe(200);
   const customer = await as(owner, 'POST', '/v1/customers', { name: 'Delta Mills' });
   expect(customer.statusCode, customer.body).toBe(201);
   customerId = json<{ id: string }>(customer).id;
@@ -414,7 +422,7 @@ describe('making a document', () => {
     expect(document).toMatchObject({ source: 'generated', shareable: false, reference: null });
     expect(document.title).toBe('Gas certificate · GS-2026-0042');
     expect(document.publicCode).toMatch(/^[A-Za-z0-9_-]{22}$/u);
-    expect(document.link).toBe(`${WEB}/d/${document.publicCode}`);
+    expect(document.link).toBe(`${SITE}/documents/${document.publicCode}`);
     expect(document.fields).toEqual([
       expect.objectContaining({ key: 'certificate', value: 'GS-2026-0042', lookupRole: 'key' }),
       expect.objectContaining({ key: 'customer', value: 'Nile Towers', lookupRole: 'confirm' }),
@@ -495,23 +503,20 @@ describe('the register', () => {
   });
 });
 
-describe('the QR code’s public link', () => {
-  it('answers as for an unknown code until the document is shared', async () => {
-    const publicCall = (path = '') =>
-      api.app.inject({
+describe('sharing', () => {
+  it('is never served by Integr8: no public document route exists', async () => {
+    for (const path of ['', '/file']) {
+      const tried = await api.app.inject({
         method: 'GET',
         url: `/v1/public/documents/${document.publicCode}${path}`,
         remoteAddress: api.remoteAddress,
       });
-    const unknown = await api.app.inject({
-      method: 'GET',
-      url: `/v1/public/documents/${'b'.repeat(22)}`,
-      remoteAddress: api.remoteAddress,
-    });
-    for (const hidden of [await publicCall(), await publicCall('/file')]) {
-      expect(hidden.statusCode).toBe(404);
-      expect(code(hidden)).toBe(code(unknown));
+      expect(tried.statusCode).toBe(404);
+      expect(code(tried)).toBe('not_found');
     }
+  });
+
+  it('is for owners and admins, and is audited', async () => {
     // Sharing is for owners and admins: an engineer who made it cannot.
     const refused = await as(engineer, 'POST', `/v1/documents/${document.id}/share`, {
       shareable: true,
@@ -528,35 +533,9 @@ describe('the QR code’s public link', () => {
     expect(audited.map((entry) => entry.action)).toContain('document.shared');
   });
 
-  it('opens for anyone with the code', async () => {
-    const opened = await api.app.inject({
-      method: 'GET',
-      url: `/v1/public/documents/${document.publicCode}`,
-      remoteAddress: api.remoteAddress,
-    });
-    expect(opened.statusCode, opened.body).toBe(200);
-    expect(json<{ company: { name: string }; document: { title: string } }>(opened)).toMatchObject({
-      company: { name: 'API Test Ltd' },
-      document: { title: 'Gas certificate · GS-2026-0042', formTitle: 'Gas safety certificate' },
-    });
-    const file = await api.app.inject({
-      method: 'GET',
-      url: `/v1/public/documents/${document.publicCode}/file?download=true`,
-      remoteAddress: api.remoteAddress,
-    });
-    expect(file.statusCode).toBe(302);
-    const pdf = await fetchSigned(String(file.headers.location));
-    expect(pdf.statusCode).toBe(200);
-    expect(String(pdf.headers['content-disposition'])).toContain('attachment;');
-  });
-
   it('stops when expired, by a person or by date, and opens again when undone', async () => {
-    const publicCall = () =>
-      api.app.inject({
-        method: 'GET',
-        url: `/v1/public/documents/${document.publicCode}`,
-        remoteAddress: api.remoteAddress,
-      });
+    const opens = async () =>
+      json<DocumentBody>(await as(viewer, 'GET', `/v1/documents/${document.id}`)).linkOpens;
     expect(
       (await as(engineer, 'POST', `/v1/documents/${document.id}/expire`, { expired: true }))
         .statusCode,
@@ -565,27 +544,51 @@ describe('the QR code’s public link', () => {
       expired: true,
     });
     expect(json<DocumentBody>(expired).linkOpens).toBe(false);
-    const gone = await publicCall();
-    expect(gone.statusCode).toBe(410);
-    expect(code(gone)).toBe('document_expired');
     await as(owner, 'POST', `/v1/documents/${document.id}/expire`, { expired: false });
-    expect((await publicCall()).statusCode).toBe(200);
+    expect(await opens()).toBe(true);
 
     await as(owner, 'PATCH', `/v1/documents/${document.id}`, {
       expiresAt: new Date(Date.now() - 1000).toISOString(),
     });
-    expect((await publicCall()).statusCode).toBe(410);
+    expect(await opens()).toBe(false);
     await as(owner, 'PATCH', `/v1/documents/${document.id}`, { expiresAt: null });
-    expect((await publicCall()).statusCode).toBe(200);
+    expect(await opens()).toBe(true);
   });
 
-  it('answers an unknown code like any other', async () => {
-    const unknown = await api.app.inject({
-      method: 'GET',
-      url: `/v1/public/documents/${'a'.repeat(22)}`,
-      remoteAddress: api.remoteAddress,
+  it('is refused, with no link, for a company without a website', async () => {
+    const settings = `/v1/platform/companies/${api.tenantId}/settings`;
+    const cleared = await api.call(admin.accessToken, {
+      method: 'PATCH',
+      url: settings,
+      payload: { websiteUrl: null, documentLinkPattern: null },
     });
-    expect(unknown.statusCode).toBe(404);
+    expect(cleared.statusCode, cleared.body).toBe(200);
+    try {
+      const body = json<DocumentBody>(await as(viewer, 'GET', `/v1/documents/${document.id}`));
+      expect(body.link).toBeNull();
+      const refused = await as(owner, 'POST', `/v1/documents/${document.id}/share`, {
+        shareable: true,
+      });
+      expect(refused.statusCode).toBe(409);
+      expect(code(refused)).toBe('sharing_needs_website');
+      // Stopping sharing always works.
+      const stopped = await as(owner, 'POST', `/v1/documents/${document.id}/share`, {
+        shareable: false,
+      });
+      expect(stopped.statusCode, stopped.body).toBe(200);
+    } finally {
+      const restored = await api.call(admin.accessToken, {
+        method: 'PATCH',
+        url: settings,
+        payload: { websiteUrl: SITE },
+      });
+      expect(restored.statusCode, restored.body).toBe(200);
+      // Shared again, as the website lookups below expect.
+      const reshared = await as(owner, 'POST', `/v1/documents/${document.id}/share`, {
+        shareable: true,
+      });
+      expect(reshared.statusCode, reshared.body).toBe(200);
+    }
   });
 });
 
@@ -648,7 +651,7 @@ describe('uploading a PDF', () => {
       customer: { id: customerId, name: 'Delta Mills' },
       submissionId: null,
       templateId: null,
-      link: `${WEB}/d/${uploaded.publicCode}`,
+      link: `${SITE}/documents/${uploaded.publicCode}`,
     });
     expect(uploaded.fields).toHaveLength(2);
     expect(uploaded.fields).toEqual(
@@ -677,22 +680,10 @@ describe('uploading a PDF', () => {
     expect(file.statusCode).toBe(200);
     expect(file.rawPayload.subarray(0, 5).toString('latin1')).toBe('%PDF-');
 
-    const hidden = await api.app.inject({
-      method: 'GET',
-      url: `/v1/public/documents/${uploaded.publicCode}`,
-      remoteAddress: api.remoteAddress,
+    const shared = await as(owner, 'POST', `/v1/documents/${uploaded.id}/share`, {
+      shareable: true,
     });
-    expect(hidden.statusCode).toBe(404);
-    await as(owner, 'POST', `/v1/documents/${uploaded.id}/share`, { shareable: true });
-    const opened = await api.app.inject({
-      method: 'GET',
-      url: `/v1/public/documents/${uploaded.publicCode}`,
-      remoteAddress: api.remoteAddress,
-    });
-    expect(opened.statusCode, opened.body).toBe(200);
-    expect(json<{ document: { title: string; reference: string | null } }>(opened)).toMatchObject({
-      document: { title: 'Lift inspection certificate', reference: 'LIFT-2026-17' },
-    });
+    expect(json<DocumentBody>(shared).shareable).toBe(true);
   });
 });
 
@@ -783,7 +774,7 @@ describe('website keys and the website lookup', () => {
     expect(found.statusCode, found.body).toBe(200);
     const body = json<{ found: boolean; document: { link: string; viewUrl: string } }>(found);
     expect(body.found).toBe(true);
-    expect(body.document.link).toBe(`${WEB}/d/${document.publicCode}`);
+    expect(body.document.link).toBe(`${SITE}/documents/${document.publicCode}`);
     expect((await fetchSigned(body.document.viewUrl)).statusCode).toBe(200);
 
     const unconfirmed = json<{ found: boolean }>(
@@ -883,7 +874,7 @@ describe('website keys and the website lookup', () => {
     expect(body.found).toBe(true);
     expect(body.document).toMatchObject({
       title: 'Lift inspection certificate',
-      link: `${WEB}/d/${uploaded.publicCode}`,
+      link: `${SITE}/documents/${uploaded.publicCode}`,
     });
     // Without the customer it has, or with another, nothing.
     expect(
@@ -997,14 +988,14 @@ describe('website keys and the website lookup', () => {
     expect(pointed.statusCode, pointed.body).toBe(200);
     const linked = json<DocumentBody>(await as(viewer, 'GET', `/v1/documents/${uploaded.id}`));
     expect(linked.link).toBe(`https://deltamills.example/documents/${uploaded.publicCode}`);
-    // Back to Integr8's page; codes printed earlier never stopped working there.
+    // Without a pattern, back to the site's default document page.
     await api.call(admin.accessToken, {
       method: 'PATCH',
       url: settings,
       payload: { documentLinkPattern: null },
     });
     expect(json<DocumentBody>(await as(viewer, 'GET', `/v1/documents/${uploaded.id}`)).link).toBe(
-      `${WEB}/d/${uploaded.publicCode}`,
+      `${SITE}/documents/${uploaded.publicCode}`,
     );
 
     await as(owner, 'PUT', `/v1/documents/${uploaded.id}/fields`, { fields: [] });

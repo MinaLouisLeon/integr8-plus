@@ -1,5 +1,5 @@
 import { withTenant } from '@integr8/db';
-import sharp from 'sharp';
+import { photoDecoder } from './photo-decoder.js';
 import { getStorage } from './tenant-storage.js';
 import { type MediaStorage, thumbnailKey } from './storage.js';
 
@@ -20,7 +20,11 @@ export const THUMBNAIL_QUALITY = 70;
 const MAX_INPUT_PIXELS = 100_000_000;
 
 export async function renderThumbnail(original: Uint8Array): Promise<Uint8Array> {
-  const output = await sharp(original, { failOn: 'error', limitInputPixels: MAX_INPUT_PIXELS })
+  // Real photos only: an SVG or PDF dressed as one is refused unread (SEC-003).
+  const output = await photoDecoder()(original, {
+    failOn: 'error',
+    limitInputPixels: MAX_INPUT_PIXELS,
+  })
     .rotate()
     .resize(THUMBNAIL_EDGE, THUMBNAIL_EDGE, { fit: 'inside', withoutEnlargement: true })
     .webp({ quality: THUMBNAIL_QUALITY })

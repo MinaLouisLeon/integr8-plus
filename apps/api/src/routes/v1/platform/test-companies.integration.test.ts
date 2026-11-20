@@ -1,9 +1,11 @@
 import { randomUUID } from 'node:crypto';
-import { getPlatformDataSource } from '@integr8/db';
+import { FORM_TEMPLATE_CATEGORIES, getPlatformDataSource } from '@integr8/db';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { routeAllows } from '../../../http/session-scope.js';
 import { type ApiHarness, type PlatformAdmin, startApi } from '../../../testing/api-harness.js';
 import { allRoutes } from '../../index.js';
+
+const FIRST_CATEGORY = FORM_TEMPLATE_CATEGORIES[0];
 
 /**
  * Test companies and staff sessions limited to them (0077, P38).
@@ -187,6 +189,64 @@ describe('a session limited to test companies', () => {
       ).body,
     ) as { items: { action: string; actorId: string | null }[] };
     expect(audit.items.some((entry) => entry.actorId === limited.id)).toBe(true);
+  });
+
+  it('acting as a test company, never reaches beyond it (SEC-001)', async () => {
+    const started = await api.call(limited.accessToken, {
+      method: 'POST',
+      url: `/v1/platform/companies/${testCompany}/impersonate`,
+      payload: { reason: 'Developer MCP: checking form copies stay put' },
+    });
+    expect(started.statusCode).toBe(201);
+    const seat = (JSON.parse(started.body) as { tokens: { accessToken: string } }).tokens
+      .accessToken;
+
+    const made = await api.call(seat, {
+      method: 'POST',
+      url: '/v1/forms',
+      payload: { title: 'Copy probe' },
+    });
+    expect(made.statusCode, made.body).toBe(201);
+    const formId = (JSON.parse(made.body) as { form: { id: string } }).form.id;
+
+    const targets = await api.call(seat, { method: 'GET', url: '/v1/forms/copy-targets' });
+    expect(targets.statusCode).toBe(403);
+    expect(errorCode(targets.body)).toBe('session_scope');
+
+    const copy = await api.call(seat, {
+      method: 'POST',
+      url: `/v1/forms/${formId}/copy-to-company`,
+      payload: { tenantId: realCompany },
+    });
+    expect(copy.statusCode).toBe(403);
+    expect(errorCode(copy.body)).toBe('session_scope');
+
+    const library = await api.call(seat, {
+      method: 'POST',
+      url: `/v1/forms/${formId}/library-template`,
+      // A valid body: the request is checked before who may make it.
+      payload: { key: 'sec001_probe', title: { en: 'Probe' }, category: FIRST_CATEGORY },
+    });
+    expect(library.statusCode).toBe(403);
+    expect(errorCode(library.body)).toBe('session_scope');
+
+    const refusals = await getPlatformDataSource().platformAudit.list({
+      action: 'platform.session_scope_refused',
+    });
+    expect(
+      refusals.entries.some((entry) => entry.targetId === 'POST /v1/forms/:formId/copy-to-company'),
+    ).toBe(true);
+
+    // The same routes still work for a full staff session acting as a company.
+    const fullSeat = await api.call(full.accessToken, {
+      method: 'POST',
+      url: `/v1/platform/companies/${testCompany}/impersonate`,
+      payload: { reason: 'Checking form copies still work for staff' },
+    });
+    const fullToken = (JSON.parse(fullSeat.body) as { tokens: { accessToken: string } }).tokens
+      .accessToken;
+    const fullTargets = await api.call(fullToken, { method: 'GET', url: '/v1/forms/copy-targets' });
+    expect(fullTargets.statusCode).toBe(200);
   });
 
   it('signs itself out', async () => {

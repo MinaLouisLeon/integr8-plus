@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
+import { assetTagLink } from '@integr8/core';
 import {
   DOCUMENT_FILE_ENTITY,
   type DocumentRecord,
@@ -72,24 +73,72 @@ export type RenderFailure =
 export const documentKey = (fileId: string) => `documents/${fileId}.pdf`;
 
 /**
- * The link a document's QR code opens (D7).
+ * Where a company's outside links live: its own website, and nowhere else.
  *
- * The company's own website when Integr8 set an address for it (0075), such as
- * `https://example.com/documents/{code}`, so a customer lands on the company's
- * site rather than ours; Integr8's `/d/<code>` page otherwise. Codes already
- * printed keep opening `/d/` either way: that page is never taken away.
+ * Shared documents, customer quote links and printed asset tags all point at
+ * the company's site, whose server reads them from the API with its website
+ * key. Integr8's own site serves none of them. A company without a website
+ * has no outside links at all: it cannot share a document, its quotes carry
+ * no customer link and its tags print the bare code.
  */
-export function documentLink(
-  config: ApiConfig,
-  publicCode: string,
-  pattern?: string | null,
-): string | null {
-  if (pattern?.includes(DOCUMENT_CODE_PLACEHOLDER) === true) {
-    return pattern.split(DOCUMENT_CODE_PLACEHOLDER).join(encodeURIComponent(publicCode));
+export interface CompanySite {
+  websiteUrl: string | null;
+  /** Where its document links point (0075); `<site>/documents/{code}` when unset. */
+  documentLinkPattern?: string | null;
+}
+
+/** The company's website address without a trailing slash, or null when it has none. */
+export function siteBase(websiteUrl: string | null | undefined): string | null {
+  const trimmed = websiteUrl?.trim().replace(/\/+$/u, '') ?? '';
+  return trimmed === '' ? null : trimmed;
+}
+
+/** Whether the company has a website for its outside links to point at. */
+export function hasCompanySite(site: Pick<CompanySite, 'websiteUrl'>): boolean {
+  return siteBase(site.websiteUrl) !== null;
+}
+
+/** The link a document's QR code opens (D7): on the company's website, or null. */
+export function documentLink(publicCode: string, site: CompanySite): string | null {
+  const base = siteBase(site.websiteUrl);
+  if (base === null) {
+    return null;
   }
-  return config.WEB_APP_URL === undefined
-    ? null
-    : `${config.WEB_APP_URL.replace(/\/+$/u, '')}/d/${publicCode}`;
+  const code = encodeURIComponent(publicCode);
+  const pattern = site.documentLinkPattern;
+  return pattern?.includes(DOCUMENT_CODE_PLACEHOLDER) === true
+    ? pattern.split(DOCUMENT_CODE_PLACEHOLDER).join(code)
+    : `${base}/documents/${code}`;
+}
+
+/** A quote's customer link (ADR-0006): `<site>/q/<token>`, or null without a website. */
+export function quoteLink(token: string, websiteUrl: string | null): string | null {
+  const base = siteBase(websiteUrl);
+  return base === null ? null : `${base}/q/${token}`;
+}
+
+/** What a printed asset tag's QR code holds: `<site>/a/<code>`, or null without a website. */
+export function assetTagLinkFor(code: string, websiteUrl: string | null): string | null {
+  const base = siteBase(websiteUrl);
+  return base === null ? null : assetTagLink(base, code);
+}
+
+/** 409 `sharing_needs_website`: a company without a website has no outside links. */
+export function sharingNeedsWebsite(): ApiError {
+  return new ApiError(
+    409,
+    'sharing_needs_website',
+    'This company has no website, so nothing can be shared outside it. Ask Integr8 to set the company’s website first.',
+  );
+}
+
+/** 403 `website_missing`: a key whose company has no website set any more serves nothing. */
+export function websiteMissing(): ApiError {
+  return new ApiError(
+    403,
+    'website_missing',
+    'This company has no website set, so its website key serves nothing.',
+  );
 }
 
 /** Where the code goes in a company's document link address (0075). */
@@ -198,6 +247,7 @@ export async function renderDocument(
       companyName: brand.name,
       logoMediaId: brand.logoMediaId,
       brandColour: brand.brandColour,
+      websiteUrl: brand.websiteUrl,
       documentLinkPattern: brand.documentLinkPattern,
     });
   } catch (error) {
@@ -244,7 +294,9 @@ async function render(
     companyName: string;
     logoMediaId: string | null;
     brandColour: string | null;
-    /** Where the company's document links point (0075); null for Integr8's page. */
+    /** The company's website: where its shared documents' links point. */
+    websiteUrl?: string | null;
+    /** Where the company's document links point on that site (0075). */
     documentLinkPattern?: string | null;
   },
 ): Promise<RenderOutcome> {
@@ -287,7 +339,10 @@ async function render(
   // The share QR code is printed only once the document is shared (0075);
   // until then its place stays blank, and sharing it re-prints it.
   const shareLink = document.shareable
-    ? documentLink(deps.config, document.publicCode, job.documentLinkPattern)
+    ? documentLink(document.publicCode, {
+        websiteUrl: job.websiteUrl ?? null,
+        documentLinkPattern: job.documentLinkPattern ?? null,
+      })
     : null;
 
   // 2 and 3. Pictures from the company's bucket, printed, backgrounds laid underneath.
@@ -613,7 +668,7 @@ export async function reprintDocument(
   if (document === undefined || !needsReprint(document)) {
     return { outcome: 'skipped', reason: 'nothing_to_do' };
   }
-  const link = documentLink(deps.config, document.publicCode, brand.documentLinkPattern);
+  const link = documentLink(document.publicCode, brand);
   if (link === null) {
     return { outcome: 'skipped', reason: 'nothing_to_do' };
   }

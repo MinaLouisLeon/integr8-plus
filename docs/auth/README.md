@@ -104,8 +104,10 @@ and `audit_log` refuses updates and deletes for every role. Every request under
 an impersonation token re-checks the grant, not just the token's expiry; grants
 last at most an hour (`AUTH_IMPERSONATION_TTL_SECONDS`). A grant is reused only
 for the same purpose, so each purpose reaches the log. Staff sessions limited to
-test companies may impersonate test companies only
-([platform/](../platform/README.md#test-companies)).
+test companies may impersonate test companies only, and acting as one never
+reach another company (`crossTenant` routes; [platform/](../platform/README.md#test-companies)).
+A refresh of an impersonation session whose grant cannot be read is refused,
+so a token never loses its grant.
 
 ## The Auth container
 

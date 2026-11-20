@@ -26,7 +26,7 @@ the end of any piece of work that changes one of them, and date each section.
   `apps/api/src/app-info.ts` has a copy a test keeps equal. A version bump must also change
   every place listed under "Places that state the version".
 - **Migrations (2.0.0):** a new baseline, **0001_foundation … 0019_assistant**, one per module (P41),
-  then **0020_desktop_only** (P42, unreleased, branch `ccr-982c2137-h4as2m`) and **0021_test_company_localhost** (P43, unreleased, branch `ccr-3cd2290c-d9znqu`); the next one is **0022**. A 1.x database is refused (`before-baseline`) and is created again (setup guide
+  then **0020_desktop_only** (P42, unreleased, branch `ccr-982c2137-h4as2m`), **0021_test_company_localhost** (P43, unreleased, branch `ccr-3cd2290c-d9znqu`) and **0022_definer_functions_closed** (SEC-002, branch `ccr-87dc93be-pye3tx`); the next one is **0023**. A 1.x database is refused (`before-baseline`) and is created again (setup guide
   Stage 11 part AJ). **Before 2.0.0** (history): `packages/db/migrations` reached **0079** (0079 `form_actions`, P40, unreleased,
   branch `ccr-916cc1b1-6sp5my`; 0078 `accountant_role`, unreleased, merged into `dev` in PR #188; 0077 `test_companies`, P38, unreleased, branch
   `ccr-56fb45d1-5mq6bt`). Before that it reached **0076** (0075 merged into `dev`, released
@@ -94,7 +94,9 @@ the end of any piece of work that changes one of them, and date each section.
   short checklist (see Decisions); republish `setup-checklist.html` to the first artifact.
   **2026-11-16 (branch `ccr-4623ab69-s5teku`):** the guide gained Stage 12, a Proxmox test
   machine filled by `db:volume` and read with `pg_stat_statements`, `db:plans` and
-  `auto_explain` (12 stages, 107 tick boxes); not republished yet.
+  `auto_explain` (12 stages, 107 tick boxes); not republished yet. **2026-11-16 (branch
+  `ccr-87dc93be-pye3tx`):** two more steps, 109 in all: Stage 1's own "GitHub: the `release`
+  environment" (SEC-005) and Stage 8's "Back up its Android signing key" (Expo keystore per company).
 - **The guide on GitHub Pages (2026-11-15, branch `ccr-982c2137-h4as2m`), as the owner asked:**
   `.github/workflows/guide-pages.yml` publishes `scripts/guide/build-site.mjs`'s output when the
   guide reaches `main` or by hand: the guide encrypted (AES-GCM, PBKDF2 600 000 rounds) with the
@@ -445,6 +447,52 @@ the end of any piece of work that changes one of them, and date each section.
   (zip + program + keyring, each with `.sha256`), unsigned (D4); separate from Forms for AI
   (D3). Local mode now passes its own port as `API_PUBLIC_URL` (uploads failed before).
   Only Linux x64 was built here; the made-document seeding was not run (needs the worker).
+- **Security audit fixes, round 1 (2026-11-16, pushed on branch `ccr-87dc93be-pye3tx`), as the
+  owner decided them:** the audit's findings are in `security-audit.md` (root; the full reports in
+  `security-audit/`). SEC-001: a staff session limited to test companies stays in the test company it
+  acts as; routes marked `crossTenant` (form copy targets, copy to company, save to library) refuse
+  it (grant's `from_limited_session`, token claim `imp.lim`, pinned in `session-scope.test.ts`); a
+  refresh whose impersonation grant is gone is refused (SEC-015). Form templates are staff-only
+  (`form.manage`). **Outside links live on the company's own website only:** shared documents
+  (`<websiteUrl>/documents/<code>` or the link pattern), quote links (`<websiteUrl>/q/<token>`) and
+  asset tags (`<websiteUrl>/a/<code>`); the company's server reads them with its website key
+  (`/v1/website/documents/by-code`, `/v1/website/quotes/by-token/:token` + `/answer`,
+  `/v1/website/asset-tags/:code`). The keyless `/v1/public/documents|quotes|asset-tags` routes and the
+  public site's `/d`, `/q`, `/a` pages are deleted. A company without a website cannot share (409
+  `sharing_needs_website`), gets no quote link and prints bare tag codes; a key whose company has no
+  website answers 403 `website_missing`. The developer server's `call_api` sends public routes only
+  for the chosen test company. No migration for these.
+- **SEC-002 (2026-11-16, branch `ccr-87dc93be-pye3tx`; migration 0022), as the owner agreed:** every
+  security-definer function is closed to PUBLIC and opened only to its callers (pinned in the
+  schema-invariant suite); the ledger's capture/try_post/backfill/backfill_more are wrappers that
+  refuse another company's id on `integr8_app`'s connection, around bodies renamed `_unchecked`;
+  **new functions start closed to PUBLIC** (`ALTER DEFAULT PRIVILEGES`), so a migration adding one the
+  runtime role calls must grant EXECUTE. Proven on a local Postgres 16: db (505), auth (97) and API
+  (713) integration suites all pass; running the API suites also caught and fixed six test mistakes
+  from round 1.
+- **SEC-003 (2026-11-16, branch `ccr-87dc93be-pye3tx`), as the owner agreed:** sharp 0.35.5, and
+  uploads are decoded as real photos only: `apps/api/src/media/photo-decoder.ts` blocks every libvips
+  loader for the process except the JPEG, PNG, WebP and HEIF buffer loaders (`sharp.block`/`unblock`);
+  thumbnails and PDF pictures use it. SVG or PDF bytes uploaded as a photo get no thumbnail. The
+  business samples CLI draws its SVG pictures before the first decode. No database or screen change.
+- **SEC-005 (2026-11-16, branch `ccr-87dc93be-pye3tx`), as the owner asked:** every third-party
+  GitHub Action is pinned to a full commit with its version as a comment; `pnpm pins:check` now fails
+  on a tag or branch (`actionProblems` in `scripts/pins/check.mjs`). `ci.yml` and `verify.yml` are
+  `contents: read` by default. The signing jobs (`build-company-apps.yml` desktop and mobile,
+  `build-release-artifacts.yml` desktop) run in the `release` environment; the owner must create it
+  and move `EXPO_TOKEN`, `TAURI_SIGNING_PRIVATE_KEY(_PASSWORD)` and any Apple/Windows/Google signing
+  secrets into it (setup guide), optionally with required reviewers (then dashboard-started builds
+  wait for approval too). Not run here: a real workflow run.
+- **SEC-004 (2026-11-16, branch `ccr-87dc93be-pye3tx`), as the owner agreed:** signed self-updates
+  for Forms for AI and the developer program. The release job (`release-main.yml` publish, now in the
+  `release` environment) runs `scripts/releases/sign-updates.mjs`: `integr8-update-manifest.json`
+  (format 1, version, every file's SHA-256) and `.sig` (Ed25519 over its exact bytes) with secret
+  `UPDATE_SIGNING_KEY`; no key = a warning and an unsigned release, which installed programs do not
+  update from. Public key(s) in `apps/forms-ai/src/setup/signature.ts` (`UPDATE_PUBLIC_KEYS`, key of
+  2026-11-16); `update.ts` (Forms for AI, GitHub) and `apps/dev-mcp/src/program.ts` (through the API's
+  `/v1/platform/downloads`, which now returns `devMcp.release.signedList`) check the signed hash for
+  the offered version before replacing anything. `pnpm releases:check` runs in verify. Rotation: add
+  the new public key, release, then sign with the new private key.
 - **The demo seeder goes through the API**, in-process with Fastify's `inject`, as the
   company's own people (plus a staff impersonation for staff-only setup). Direct inserts
   were rejected: they skip numbering, stock, ledger postings and audit, and produce data
@@ -465,6 +513,18 @@ Update them together at each release or new migration:
 - Released versions: `gh release list`. v1.2.1 (2026-10-27) carries migrations 0051–0053.
 
 ## Open items
+
+- **Owner step for SEC-004 (2026-11-16):** add the secret `UPDATE_SIGNING_KEY` (the PEM file
+  Claude generated in its scratchpad, `update-signing-key/UPDATE_SIGNING_KEY.pem`) to the GitHub
+  `release` environment and keep a copy in the password manager; without it releases are unsigned and
+  installed Forms for AI / developer programs stop offering updates.
+
+- **Owner step for SEC-005 (2026-11-16):** GitHub → Settings → Environments → `release`; move
+  `EXPO_TOKEN`, `TAURI_SIGNING_PRIVATE_KEY`, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` and any Apple,
+  Windows or Google signing secrets there from the repository secrets; optionally require a reviewer.
+  Also (2026-11-16): download a backup of each company's Android keystore from expo.dev and keep it
+  in the password manager; find or regenerate the desktop updater key (`updater.key`). None of the
+  apps is code-signed by Microsoft or Apple yet; that waits on buying certificates, no code change.
 
 - **Owner steps for P43 (2026-11-16):** after the next release, download the developer
   program from the staff app on Windows, install it, connect Claude Code, sign in, and run

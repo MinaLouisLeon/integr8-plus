@@ -11614,6 +11614,7 @@
       "get": {
         "operationId": "listFormTemplates",
         "summary": "The global template library",
+        "description": "Integr8 staff only, acting as a company (`form.manage` is staff-only): the library is not shown to a company’s own people.",
         "tags": [
           "forms"
         ],
@@ -11758,13 +11759,14 @@
             "bearerAuth": []
           }
         ],
-        "x-integr8-permission": "form.read"
+        "x-integr8-permission": "form.manage"
       }
     },
     "/v1/form-templates/{key}": {
       "get": {
         "operationId": "getFormTemplate",
         "summary": "One template, to preview",
+        "description": "Integr8 staff only, acting as a company, like the list.",
         "tags": [
           "forms"
         ],
@@ -11916,7 +11918,7 @@
             "bearerAuth": []
           }
         ],
-        "x-integr8-permission": "form.read"
+        "x-integr8-permission": "form.manage"
       }
     },
     "/v1/form-templates/{key}/clone": {
@@ -12382,7 +12384,7 @@
             }
           },
           "403": {
-            "description": "Not Integr8 staff."
+            "description": "Not Integr8 staff, or staff acting from a session limited to test companies (`session_scope`)."
           },
           "422": {
             "description": "The request failed validation.",
@@ -12570,7 +12572,7 @@
             }
           },
           "403": {
-            "description": "Not Integr8 staff, or PDF templates without `document.design`."
+            "description": "Not Integr8 staff, PDF templates without `document.design`, or staff acting from a session limited to test companies (`session_scope`)."
           },
           "404": {
             "description": "No such form or company."
@@ -12820,7 +12822,7 @@
             }
           },
           "403": {
-            "description": "Not Integr8 staff, or PDF templates without `document.design`."
+            "description": "Not Integr8 staff, PDF templates without `document.design`, or staff acting from a session limited to test companies (`session_scope`)."
           },
           "404": {
             "description": "No such form."
@@ -18803,7 +18805,7 @@
       "post": {
         "operationId": "createDocument",
         "summary": "Make a PDF document from a submission",
-        "description": "Needs `document.create` and the right to read the submission. `fields` are the values typed for the template’s typed document fields; the others are taken from the submission. Answers 202 with the document pending: the worker prints it, and it becomes `ready` or `failed` with a reason. Refused for a draft (409 `submission_draft`), an archived template (409 `document_template_archived`), missing or overlong fields (422 `document_fields_invalid`), a server with no web address for the QR link (503 `document_link_unavailable`) or a company past its storage allowance (409 `storage_quota_exceeded`).",
+        "description": "Needs `document.create` and the right to read the submission. `fields` are the values typed for the template’s typed document fields; the others are taken from the submission. Answers 202 with the document pending: the worker prints it, and it becomes `ready` or `failed` with a reason. Refused for a draft (409 `submission_draft`), an archived template (409 `document_template_archived`), missing or overlong fields (422 `document_fields_invalid`) or a company past its storage allowance (409 `storage_quota_exceeded`).",
         "tags": [
           "documents"
         ],
@@ -19214,7 +19216,14 @@
             }
           },
           "503": {
-            "description": "No web address for the QR link (`document_link_unavailable`)."
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -19735,7 +19744,7 @@
       "post": {
         "operationId": "uploadDocument",
         "summary": "Add a PDF the company already has to the register",
-        "description": "Needs `document.upload`. Upload the PDF first (`/v1/media`, as `application/pdf`, at most 20 MB), then name it here with a title and its reference number (a certificate number, say), and optionally the customer it is for. The bytes are checked to be a PDF (422 `document_not_pdf`). It is ready at once, with its own public code and link like a generated document, and starts not shareable unless `shareable` is true. The website lookup finds it by its reference, and by the customer’s name as the second value when a customer is given. Honours `Idempotency-Key`.",
+        "description": "Needs `document.upload`. Upload the PDF first (`/v1/media`, as `application/pdf`, at most 20 MB), then name it here with a title and its reference number (a certificate number, say), and optionally the customer it is for. The bytes are checked to be a PDF (422 `document_not_pdf`). It is ready at once, with its own public code like a generated document, and starts not shareable unless `shareable` is true (a company with no website cannot share: 409 `sharing_needs_website`). The website lookup finds it by its reference, and by the customer’s name as the second value when a customer is given. Honours `Idempotency-Key`.",
         "tags": [
           "documents"
         ],
@@ -20173,7 +20182,7 @@
             "description": "No such file uploaded by this person, or no such customer."
           },
           "409": {
-            "description": "The file is already used by something else (`media_in_use`)."
+            "description": "The file is already used by something else (`media_in_use`), or `shareable` for a company with no website (`sharing_needs_website`)."
           },
           "422": {
             "description": "Not a PDF (`document_not_pdf`), larger than 20 MB (`document_too_large`), or an expiry already past (`document_expiry_past`)."
@@ -20199,7 +20208,14 @@
             }
           },
           "503": {
-            "description": "No web address for the QR link (`document_link_unavailable`)."
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -21637,7 +21653,7 @@
       "post": {
         "operationId": "setDocumentShareable",
         "summary": "Let a document be shown outside the company, or stop it",
-        "description": "Needs `document.upload`. `shareable: false` stops the QR code’s link (it answers as if the code did not exist) and the website lookup at once; `true` lets them show it again, while it is not expired. A document with a place for its share QR code that does not carry it yet gets it now (0075): the worker re-prints it, or stamps an uploaded PDF, within seconds, and the PDF served meanwhile is the one it had; stopping sharing keeps the code. Each change is recorded in the audit log. Works the same for generated and uploaded documents.",
+        "description": "Needs `document.upload`. A shared document is shown only on the company’s own website, through its website key; Integr8 serves none. A company with no website cannot share (409 `sharing_needs_website`); stopping sharing always works. `shareable: false` stops the company website’s lookups at once; `true` lets them show it again, while it is not expired. A document with a place for its share QR code that does not carry it yet gets it now (0075): the worker re-prints it, or stamps an uploaded PDF, within seconds, and the PDF served meanwhile is the one it had; stopping sharing keeps the code. Each change is recorded in the audit log. Works the same for generated and uploaded documents.",
         "tags": [
           "documents"
         ],
@@ -21984,6 +22000,9 @@
           },
           "404": {
             "description": "No such document."
+          },
+          "409": {
+            "description": "The company has no website (`sharing_needs_website`)."
           },
           "422": {
             "description": "The request failed validation.",
@@ -23670,7 +23689,7 @@
       "post": {
         "operationId": "createBusinessDocument",
         "summary": "Print a quote, invoice, purchase order or job report as a PDF",
-        "description": "Takes the record as this seat sees it now and asks the worker to print it in the company’s look: answers 202 with the document pending, which becomes `ready` or `failed` like any document, and is kept in the register. `language` defaults to the company’s. A draft is refused (409 `business_document_draft`). The QR code opens the PDF’s own page, which shows it only once it is shareable; `shareable: true` needs `document.upload`. For a quote, `quoteLinkToken` (the token the issue step returned) prints the customer’s quote page in the QR code instead, if it is still the quote’s live link (422 `quote_link_invalid` if not). Honours `Idempotency-Key`.",
+        "description": "Takes the record as this seat sees it now and asks the worker to print it in the company’s look: answers 202 with the document pending, which becomes `ready` or `failed` like any document, and is kept in the register. `language` defaults to the company’s. A draft is refused (409 `business_document_draft`). The QR code opens the PDF’s page on the company’s own website, which shows it only once it is shareable (a company with no website cannot share: 409 `sharing_needs_website`); `shareable: true` needs `document.upload`. For a quote, `quoteLinkToken` (the token the issue step returned) prints the customer’s quote page in the QR code instead, if it is still the quote’s live link (422 `quote_link_invalid` if not). Honours `Idempotency-Key`.",
         "tags": [
           "documents"
         ],
@@ -24040,7 +24059,7 @@
             "description": "No such record this seat may read."
           },
           "409": {
-            "description": "A draft (`business_document_draft`), or storage full (`storage_quota_exceeded`)."
+            "description": "A draft (`business_document_draft`), storage full (`storage_quota_exceeded`), or `shareable`/`quoteLinkToken` for a company with no website (`sharing_needs_website`)."
           },
           "422": {
             "description": "The quote link is not this quote’s live link (`quote_link_invalid`)."
@@ -24066,7 +24085,14 @@
             }
           },
           "503": {
-            "description": "No web address for the QR link (`document_link_unavailable`)."
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -24376,240 +24402,6 @@
         ],
         "x-integr8-feature": "documents",
         "x-integr8-idempotency": "honoured"
-      }
-    },
-    "/v1/public/documents/{code}": {
-      "get": {
-        "operationId": "getPublicDocument",
-        "summary": "A document, for whoever holds its QR code",
-        "description": "Public. The company, the form, the title and the date. 404 for a code that is unknown, deleted, not ready or not shareable; 410 `document_expired` for one the company stopped.",
-        "tags": [
-          "documents"
-        ],
-        "parameters": [
-          {
-            "name": "code",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "pattern": "^[A-Za-z0-9_-]{22}$"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "The document.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "company": {
-                      "type": "object",
-                      "properties": {
-                        "name": {
-                          "type": "string"
-                        },
-                        "logoPath": {
-                          "nullable": true,
-                          "type": "string"
-                        },
-                        "brandColour": {
-                          "nullable": true,
-                          "type": "string"
-                        }
-                      },
-                      "required": [
-                        "name",
-                        "logoPath",
-                        "brandColour"
-                      ],
-                      "additionalProperties": false
-                    },
-                    "document": {
-                      "type": "object",
-                      "properties": {
-                        "title": {
-                          "type": "string"
-                        },
-                        "formTitle": {
-                          "type": "string"
-                        },
-                        "reference": {
-                          "nullable": true,
-                          "type": "string"
-                        },
-                        "createdAt": {
-                          "type": "string",
-                          "format": "date-time",
-                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                        },
-                        "pageCount": {
-                          "nullable": true,
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
-                        "byteSize": {
-                          "nullable": true,
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        }
-                      },
-                      "required": [
-                        "title",
-                        "formTitle",
-                        "reference",
-                        "createdAt",
-                        "pageCount",
-                        "byteSize"
-                      ],
-                      "additionalProperties": false
-                    }
-                  },
-                  "required": [
-                    "company",
-                    "document"
-                  ],
-                  "additionalProperties": false
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "This link is not valid."
-          },
-          "410": {
-            "description": "The company stopped this link (`document_expired`)."
-          },
-          "422": {
-            "description": "The request failed validation.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Rate limit exceeded.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Something went wrong on our side.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "This client build is older than the minimum supported.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/public/documents/{code}/file": {
-      "get": {
-        "operationId": "getPublicDocumentFile",
-        "summary": "The PDF, for whoever holds its QR code",
-        "description": "Public. Redirects (302) to a five-minute link to the PDF: `download=true` saves it under its title, otherwise it opens in the browser. A link to put behind a button, not to keep.",
-        "tags": [
-          "documents"
-        ],
-        "parameters": [
-          {
-            "name": "code",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "pattern": "^[A-Za-z0-9_-]{22}$"
-            }
-          },
-          {
-            "name": "download",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "default": "false",
-              "type": "string",
-              "enum": [
-                "true",
-                "false"
-              ]
-            }
-          }
-        ],
-        "responses": {
-          "302": {
-            "description": "To the PDF."
-          },
-          "404": {
-            "description": "This link is not valid."
-          },
-          "410": {
-            "description": "The company stopped this link (`document_expired`)."
-          },
-          "422": {
-            "description": "The request failed validation.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Rate limit exceeded.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Something went wrong on our side.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "This client build is older than the minimum supported.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
       }
     },
     "/v1/website/documents/lookup": {
@@ -25083,13 +24875,13 @@
         ]
       }
     },
-    "/v1/public/asset-tags/{code}": {
+    "/v1/website/asset-tags/{code}": {
       "get": {
-        "operationId": "getPublicAssetTag",
-        "summary": "Whose a printed asset tag is",
-        "description": "Public. The company a tag code belongs to, for the page its QR code opens; nothing about the asset. 404 for a code that is unknown, malformed, or belongs to a company without the assets module.",
+        "operationId": "getWebsiteAssetTag",
+        "summary": "Whose a printed asset tag is, for the company website",
+        "description": "For a company’s website server, never a browser: `Authorization: Bearer <website key>`. The company a tag code belongs to, for the page its QR code opens; nothing about the asset. 404 for a code that is unknown, malformed or another company’s. Needs the assets module and a company website (403); rate-limited per key (429).",
         "tags": [
-          "assets"
+          "website"
         ],
         "parameters": [
           {
@@ -25140,8 +24932,14 @@
               }
             }
           },
+          "401": {
+            "description": "No website key, or not a live one (`website_key_invalid`)."
+          },
+          "403": {
+            "description": "The assets module is off (`feature_disabled`), or the company has no website (`website_missing`)."
+          },
           "404": {
-            "description": "No company has this tag."
+            "description": "This company has no such tag."
           },
           "422": {
             "description": "The request failed validation.",
@@ -25154,14 +24952,7 @@
             }
           },
           "429": {
-            "description": "Rate limit exceeded.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "description": "Too many requests with this key; slow down."
           },
           "500": {
             "description": "Something went wrong on our side.",
@@ -25183,7 +24974,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "websiteKeyAuth": []
+          }
+        ]
       }
     },
     "/v1/website/jobs/{workOrderId}": {
@@ -85103,7 +84899,7 @@
       "post": {
         "operationId": "issueQuote",
         "summary": "Issue a quote to the customer",
-        "description": "Owners and admins issue. Freezes the customer's name and address and the lines onto the quote, and mints the customer's link, returned once here (`acceptUrl`, when the web app's address is configured; `acceptToken` always). An empty draft cannot be issued (422 `quote_empty`).",
+        "description": "Owners and admins issue. Freezes the customer's name and address and the lines onto the quote, and mints the customer's link, returned once here (`acceptUrl`, a page on the company's own website, null when the company has none; `acceptToken` always). The customer opens it on that website, whose server reads the quote with its website key; Integr8 serves no quote pages. An empty draft cannot be issued (422 `quote_empty`).",
         "tags": [
           "sales"
         ],
@@ -96706,13 +96502,13 @@
         "x-integr8-feature": "sales"
       }
     },
-    "/v1/public/quotes/{token}": {
+    "/v1/website/quotes/by-token/{token}": {
       "get": {
-        "operationId": "getPublicQuote",
-        "summary": "An issued quote, for the customer holding its link",
-        "description": "Public. The quote as issued — company, customer, lines, totals, terms, expiry — and whether it can still be answered. A link that is spent, revised, withdrawn or unknown is 404.",
+        "operationId": "getWebsiteQuoteByToken",
+        "summary": "An issued quote, for the company website page its customer link opens",
+        "description": "For a company’s website server, never a browser: `Authorization: Bearer <website key>`. The quote as issued — company, customer, lines, totals, terms, expiry — and whether it can still be answered. A link that is spent, revised, withdrawn, unknown or another company’s is 404. Needs website quote access on both sides and the sales module (403); rate-limited per key (429).",
         "tags": [
-          "sales"
+          "website"
         ],
         "parameters": [
           {
@@ -97027,11 +96823,14 @@
               }
             }
           },
+          "401": {
+            "description": "No website key, or not a live one (`website_key_invalid`)."
+          },
+          "403": {
+            "description": "Website quote access or the sales module is off (`feature_disabled`), or the company has no website (`website_missing`)."
+          },
           "404": {
             "description": "This link is not valid."
-          },
-          "410": {
-            "description": "The company’s sales module is switched off, so the quote is no longer available online (`quote_unavailable`; `details[0].params.company` names the company)."
           },
           "422": {
             "description": "The request failed validation.",
@@ -97044,14 +96843,7 @@
             }
           },
           "429": {
-            "description": "Rate limit exceeded.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "description": "Too many requests with this key; slow down."
           },
           "500": {
             "description": "Something went wrong on our side.",
@@ -97073,16 +96865,21 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "websiteKeyAuth": []
+          }
+        ]
       }
     },
-    "/v1/public/quotes/{token}/answer": {
+    "/v1/website/quotes/by-token/{token}/answer": {
       "post": {
-        "operationId": "answerPublicQuote",
-        "summary": "Accept or reject a quote through its link",
-        "description": "Public. Records the customer’s answer with the name they typed and the moment, spends the link, and — for an acceptance — wins the quote’s opportunity. Refused once the quote has expired (409 `quote_expired`).",
+        "operationId": "answerWebsiteQuoteByToken",
+        "summary": "Record the customer’s answer to a quote, from the company website",
+        "description": "For a company’s website server, never a browser: `Authorization: Bearer <website key>`. Records the customer’s answer with the name they typed and the moment, spends the link, and — for an acceptance — wins the quote’s opportunity. The address recorded is the website server’s. Refused once the quote has expired (409 `quote_expired`). Same switches and rate limit as reading it.",
         "tags": [
-          "sales"
+          "website"
         ],
         "parameters": [
           {
@@ -97429,14 +97226,17 @@
               }
             }
           },
+          "401": {
+            "description": "No website key, or not a live one (`website_key_invalid`)."
+          },
+          "403": {
+            "description": "Website quote access or the sales module is off (`feature_disabled`), or the company has no website (`website_missing`)."
+          },
           "404": {
             "description": "This link is not valid."
           },
           "409": {
             "description": "The quote has expired (`quote_expired`) or is no longer open (`quote_not_issued`)."
-          },
-          "410": {
-            "description": "The company’s sales module is switched off, so the quote cannot be answered online (`quote_unavailable`)."
           },
           "422": {
             "description": "The request failed validation.",
@@ -97449,14 +97249,7 @@
             }
           },
           "429": {
-            "description": "Rate limit exceeded.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "description": "Too many requests with this key; slow down."
           },
           "500": {
             "description": "Something went wrong on our side.",
@@ -97478,7 +97271,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "websiteKeyAuth": []
+          }
+        ]
       }
     },
     "/v1/finance/settings": {
@@ -209978,7 +209776,7 @@
       "get": {
         "operationId": "getPlatformDownloads",
         "summary": "The staff app, Integr8 Forms for AI and the developer MCP server, newest release of each",
-        "description": "Read from the GitHub releases this deployment is set to (`APP_RELEASES=github`). `devMcp` (P43) lists the developer program’s first download (`zip`) and the files an installed program updates itself with (`program`, `keyring`), each with its checksum; a staff session limited to test companies may read it. Each is `found` with its files, `none` when nothing is published (or releases are not read here), or `unavailable` when GitHub could not be asked.",
+        "description": "Read from the GitHub releases this deployment is set to (`APP_RELEASES=github`). `devMcp` (P43) lists the developer program’s first download (`zip`) and the files an installed program updates itself with (`program`, `keyring`), each with its checksum, and `signedList`, Integr8’s signed list of the release’s hashes that an installed program checks before it updates itself (SEC-004); a staff session limited to test companies may read it. Each is `found` with its files, `none` when nothing is published (or releases are not read here), or `unavailable` when GitHub could not be asked.",
         "tags": [
           "platform"
         ],
@@ -210302,12 +210100,30 @@
                                     ],
                                     "additionalProperties": false
                                   }
+                                },
+                                "signedList": {
+                                  "nullable": true,
+                                  "type": "object",
+                                  "properties": {
+                                    "manifestUrl": {
+                                      "type": "string"
+                                    },
+                                    "signatureUrl": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "manifestUrl",
+                                    "signatureUrl"
+                                  ],
+                                  "additionalProperties": false
                                 }
                               },
                               "required": [
                                 "tag",
                                 "version",
-                                "downloads"
+                                "downloads",
+                                "signedList"
                               ],
                               "additionalProperties": false
                             }

@@ -7814,7 +7814,7 @@ export const en = {
       referenceHint: 'Such as a certificate number. Your website finds the document by it.',
       customer: 'Customer (optional)',
       customerHint: 'When a customer is chosen, your website also asks for their name.',
-      shareNow: 'Share it now, so the QR code link and your website can show it',
+      shareNow: 'Share it now, so your company website can show it',
       submit: 'Upload',
       uploading: 'Uploading…',
       cancel: 'Cancel',
@@ -7823,8 +7823,10 @@ export const en = {
     },
     sharing: {
       title: 'Sharing',
-      on: 'Shared: the QR code link and your company website can show this document.',
-      off: 'Not shared: the QR code link and your company website answer as if it did not exist. Your company still sees it here.',
+      on: 'Shared: your company website can show this document to whoever has its QR code or link.',
+      off: 'Not shared: your company website answers as if it did not exist. Your company still sees it here.',
+      needsWebsite:
+        'Sharing needs your company website: documents are shown only there. Ask Integr8 to set your website.',
       share: 'Share it',
       unshare: 'Stop sharing',
       badge: 'Not shared',
@@ -8422,9 +8424,6 @@ export const en = {
   // Read by the API through `@integr8/i18n/core`; `{{…}}` is filled there.
   notifications: {
     // Low 13 (1.2.4): a quote link while the company's sales module is off.
-    publicQuote: {
-      unavailable: 'This quote is no longer available online. Please contact {{company}}.',
-    },
     // Low 10 (1.2.4): the owner is told when an admin suspends somebody with HR access.
     hrSuspension: {
       subject: '{{person}} was suspended at {{company}}',
