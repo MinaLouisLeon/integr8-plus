@@ -668,3 +668,5 @@ export {
   type MonthlyOverage,
   type OverageDay,
 } from './storage-overage.js';
+
+export { androidPackage, iosBundleIdentifier, type StoreLinks, storeLinks } from './phone-apps.js';
