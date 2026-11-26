@@ -252,12 +252,15 @@ export class TenantsRepository {
           .select((count) => count.fn.countAll<string>().as('value'))
           .whereRef('tenant_users.tenant_id', '=', 'tenants.id')
           .where('tenant_users.deleted_at', 'is', null)
+          // The app stores' reviewer holds no seat and is nobody's to bill (0023).
+          .where('tenant_users.store_reviewer', '=', false)
           .as('members'),
         eb
           .selectFrom('tenant_users')
           .select((count) => count.fn.countAll<string>().as('value'))
           .whereRef('tenant_users.tenant_id', '=', 'tenants.id')
           .where('tenant_users.deleted_at', 'is', null)
+          .where('tenant_users.store_reviewer', '=', false)
           .where('tenant_users.status', '=', 'active')
           .as('active_members'),
         eb

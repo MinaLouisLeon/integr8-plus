@@ -22,6 +22,8 @@ export interface TenantUser {
   status: MembershipStatus;
   /** Whether this member may use the assistant when the company has it (ADR-0001). */
   aiEnabled: boolean;
+  /** The app stores' reviewer account, made by Integr8 staff; holds no seat (0023). */
+  storeReviewer: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -32,6 +34,8 @@ export interface CreateTenantUserInput {
   displayName: string;
   role: Role;
   status?: MembershipStatus;
+  /** The app stores' reviewer account (0023); only Integr8 staff make one. */
+  storeReviewer?: boolean;
 }
 
 export interface ListTenantUsersOptions {
@@ -81,6 +85,17 @@ export class TenantUsersRepository extends TenantScopedRepository {
     return row === undefined ? undefined : toDomain(row);
   }
 
+  /** The company's app-store reviewer account, if it has one (0023). */
+  async findStoreReviewer(): Promise<TenantUser | undefined> {
+    const row = await this.#scoped()
+      .selectAll()
+      .where('store_reviewer', '=', true)
+      .where('deleted_at', 'is', null)
+      .executeTakeFirst();
+
+    return row === undefined ? undefined : toDomain(row);
+  }
+
   async findByEmail(email: string): Promise<TenantUser | undefined> {
     const row = await this.#scoped()
       .selectAll()
@@ -109,6 +124,7 @@ export class TenantUsersRepository extends TenantScopedRepository {
         ...(input.status === undefined
           ? {}
           : { status: membershipStatusSchema.parse(input.status) }),
+        ...(input.storeReviewer === true ? { store_reviewer: true } : {}),
       })
       .returningAll()
       .executeTakeFirstOrThrow();
@@ -185,9 +201,14 @@ export class TenantUsersRepository extends TenantScopedRepository {
     return (result.numUpdatedRows ?? 0n) > 0n;
   }
 
+  /**
+   * The seats in use: every live member except the app stores' reviewer
+   * account (0023), which the company does not pay for.
+   */
   async countActive(): Promise<number> {
     const row = await this.#scoped()
       .where('deleted_at', 'is', null)
+      .where('store_reviewer', '=', false)
       .select((eb) => eb.fn.countAll<string>().as('count'))
       .executeTakeFirstOrThrow();
 
@@ -211,6 +232,7 @@ function toDomain(row: Selectable<TenantUsersTable>): TenantUser {
     customRoleId: row.custom_role_id,
     status: membershipStatusSchema.parse(row.status),
     aiEnabled: row.ai_enabled,
+    storeReviewer: row.store_reviewer,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
