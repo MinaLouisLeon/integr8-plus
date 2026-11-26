@@ -75,13 +75,16 @@ Plan limits and permissions are enforced by the API, never by a screen.
 
 ## The public site (`apps/web`)
 
-What must open in a plain browser, for people who have no app: home, features,
-pricing, contact, help, legal, `/download` (a company's installers and phone
+What must open in a plain browser, for people who have no app: home, contact,
+help, legal, `/download` (a company's installers and phone
 app), accepting an invitation (`/accept-invitation`: the person
 sets a password, is told it is set, and is sent to the company's apps), and the
 desktop apps' update feed (`/desktop-updates`). It serves no company's
 documents, quote links or asset-tag pages: those open on the company's own
-website (see [documents](../documents/README.md)). Nothing on it signs anybody in,
+website (see [documents](../documents/README.md)). It has no features or pricing
+pages: the product is presented, with no prices, on the Integr8 Media website
+(`integr8-media.com/integr8-plus`), which the home page links to. Nothing on it
+signs anybody in,
 and its client sends no token (`apps/web/src/lib/api-client.ts`). The route list
 is pinned by `apps/web/src/app/public-routes.test.ts`. The release lookup it
 shares with the API is `@integr8/releases`.

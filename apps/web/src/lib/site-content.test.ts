@@ -31,7 +31,7 @@ describe('the public site content', () => {
     }
   });
 
-  it('highlights only features the features page lists', () => {
+  it('highlights only features the catalogue lists', () => {
     const keys = new Set(FEATURES.map((feature) => feature.key));
     for (const key of HIGHLIGHTS) {
       expect(keys.has(key), key).toBe(true);
