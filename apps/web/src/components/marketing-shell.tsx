@@ -14,7 +14,7 @@ import { LOCALE_COOKIE, rememberCookie } from '~/lib/cookies';
  *
  * Separate from `AuthGuard` and `PlatformShell` because it guards nothing:
  * every page inside it is for somebody with no account, and running a session
- * check for a visitor reading the pricing page is work done to no purpose.
+ * check for a visitor reading the help centre is work done to no purpose.
  *
  * It wears the company site's look: `data-look="integr8"` switches the design
  * tokens to its palette and faces (`@integr8/tokens`), and the frame is its
@@ -47,8 +47,6 @@ export function pillClass(
 }
 
 const NAV = [
-  { href: '/features', key: 'features' },
-  { href: '/pricing', key: 'pricing' },
   { href: '/help', key: 'help' },
   { href: '/download', key: 'download' },
 ] as const;
