@@ -2,7 +2,7 @@
 
 import { useTranslation } from '@integr8/i18n';
 import { useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useState, type FormEvent } from 'react';
+import { Suspense, useEffect, useState, type ComponentProps, type FormEvent } from 'react';
 import { Button, Field, LoadingState } from '~/components/ui';
 import { messageForError } from '~/lib/errors';
 import { apiClient } from '~/lib/api-client';
@@ -26,9 +26,9 @@ import { InvitationDone } from './done';
  * company's member) does not. Accepting signs nobody in. The page ends by
  * saying the password is set (or that they have joined, for an existing
  * sign-in) and sends the person to their company's desktop or phone app, with
- * its download links (P42): there is no web workspace to sign in to. An owner
- * is invited only once the company's desktop app exists (D6), so the links
- * always lead somewhere.
+ * its installers from the API's answer (P42): there is no web workspace to
+ * sign in to, and no public download page any more. An owner is invited only
+ * once the company's desktop app exists (D6), so there is something to list.
  */
 export default function AcceptInvitationPage() {
   return (
@@ -52,14 +52,9 @@ function AcceptInvitationForm() {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>(undefined);
-  const [done, setDone] = useState<
-    | {
-        email: string;
-        existingAccount: boolean;
-        company: { name: string; slug: string } | null;
-      }
-    | undefined
-  >(undefined);
+  const [done, setDone] = useState<ComponentProps<typeof InvitationDone>['done'] | undefined>(
+    undefined,
+  );
 
   useEffect(() => {
     if (token === '') {
@@ -110,6 +105,7 @@ function AcceptInvitationForm() {
             email: data.email,
             existingAccount: data.existingAccount,
             company: data.company,
+            apps: data.apps,
           });
         }
       } catch (failure) {

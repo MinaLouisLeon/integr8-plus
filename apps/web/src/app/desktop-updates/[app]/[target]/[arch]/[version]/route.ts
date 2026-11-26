@@ -1,4 +1,10 @@
 import { desktopUpdateFeed, isAppName, publicOrigin } from '@integr8/releases';
+import {
+  MISS_LIMIT,
+  tooManyRequests,
+  updateRouteLimiter,
+  visitorAddress,
+} from '~/lib/request-limit';
 
 /**
  * The desktop updater's question: is there something newer for this app?
@@ -10,6 +16,11 @@ import { desktopUpdateFeed, isAppName, publicOrigin } from '@integr8/releases';
  * and the updater itself compares versions and checks the signature. 204 is
  * the updater's "nothing new", which is also the answer when this server has
  * no repository configured or the app has no release with a manifest yet.
+ *
+ * "Nothing new" is also what a name nobody has gets, so it is the answer that
+ * counts against the address (`~/lib/request-limit`): an installed app always
+ * gets a manifest for its own name, while walking a list of company names
+ * mostly gets 204s and runs out after a few.
  */
 export const dynamic = 'force-dynamic';
 
@@ -28,6 +39,12 @@ export async function GET(
   if (!isAppName(app)) {
     return new Response(null, { status: 404 });
   }
+  const address = visitorAddress(request);
+  const missKey = address === null ? null : `miss:${address}`;
+  const blocked = missKey === null ? null : updateRouteLimiter.blockedFor(missKey);
+  if (blocked !== null) {
+    return tooManyRequests(blocked);
+  }
   const feed = desktopUpdateFeed();
   if (feed === undefined) {
     return new Response(null, { status: 204 });
@@ -35,7 +52,8 @@ export async function GET(
   try {
     const manifest = await feed.manifest(app, publicOrigin(request));
     if (manifest === undefined) {
-      return new Response(null, { status: 204 });
+      const over = missKey === null ? null : updateRouteLimiter.hit(missKey, MISS_LIMIT);
+      return over === null ? new Response(null, { status: 204 }) : tooManyRequests(over);
     }
     return Response.json(manifest, {
       headers: { 'cache-control': 'public, max-age=300' },

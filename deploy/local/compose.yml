@@ -1,0 +1,51 @@
+# Postgres and the Auth container for development on one machine
+# (`pnpm local`). Not for a server: that is `deploy/compose.yml`.
+#
+# Passwords come from `deploy/local/.env` (git-ignored; template
+# `.env.example` beside this file). SUPABASE_AUTH_DB_PASSWORD must equal the
+# one in `packages/db/.env`, because `db deploy` gives the Auth role that
+# password before the Auth container connects with it. The API's
+# SUPABASE_SERVICE_ROLE_KEY is a token signed with SUPABASE_AUTH_JWT_SECRET.
+name: integr8-local
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set it in deploy/local/.env}
+      POSTGRES_DB: integr8
+    command: [postgres, -c, shared_preload_libraries=pg_stat_statements]
+    # 5433, so a Postgres already installed on 5432 does not get in the way.
+    ports: ['127.0.0.1:5433:5432']
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d integr8']
+      interval: 3s
+      retries: 30
+
+  auth:
+    image: supabase/auth:v2.197.0
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: '9999'
+      PORT: '9999'
+      API_EXTERNAL_URL: http://localhost:9999
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${SUPABASE_AUTH_DB_PASSWORD:?set it in deploy/local/.env}@postgres:5432/integr8
+      DB_NAMESPACE: auth
+      GOTRUE_SITE_URL: http://localhost:3001
+      GOTRUE_JWT_SECRET: ${SUPABASE_AUTH_JWT_SECRET:?set it in deploy/local/.env}
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_DISABLE_SIGNUP: 'true'
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: 'true'
+      GOTRUE_EXTERNAL_PHONE_ENABLED: 'false'
+      GOTRUE_MAILER_OTP_EXP: '900'
+      GOTRUE_MAILER_OTP_LENGTH: '6'
+    ports: ['127.0.0.1:9999:9999']
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:

@@ -432,6 +432,8 @@ export const API_ERROR_CODES = [
   'stock_item_bought',
   'storage_not_ready',
   'storage_quota_exceeded',
+  'store_reviewer_email_taken',
+  'store_reviewer_role_fixed',
   'submission_changed',
   'submission_draft',
   'submission_id_taken',

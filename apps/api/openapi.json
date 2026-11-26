@@ -4287,6 +4287,9 @@
                     "aiEnabled": {
                       "type": "boolean"
                     },
+                    "storeReviewer": {
+                      "type": "boolean"
+                    },
                     "createdAt": {
                       "type": "string",
                       "format": "date-time",
@@ -4502,6 +4505,9 @@
                     "aiEnabled": {
                       "type": "boolean"
                     },
+                    "storeReviewer": {
+                      "type": "boolean"
+                    },
                     "createdAt": {
                       "type": "string",
                       "format": "date-time",
@@ -4547,7 +4553,7 @@
             "description": "No such person or company role in this company."
           },
           "409": {
-            "description": "This is the company’s only owner (`last_owner`)."
+            "description": "This is the company’s only owner (`last_owner`), or the app stores’ reviewer account, which stays an engineer because it holds no seat (`store_reviewer_role_fixed`)."
           },
           "422": {
             "description": "A role above the caller’s own (`role_above_own`), or a company role holding what the caller does not (`role_beyond_own`)."
@@ -4703,6 +4709,9 @@
                       ]
                     },
                     "aiEnabled": {
+                      "type": "boolean"
+                    },
+                    "storeReviewer": {
                       "type": "boolean"
                     },
                     "createdAt": {
@@ -5020,6 +5029,9 @@
                     "aiEnabled": {
                       "type": "boolean"
                     },
+                    "storeReviewer": {
+                      "type": "boolean"
+                    },
                     "createdAt": {
                       "type": "string",
                       "format": "date-time",
@@ -5209,6 +5221,9 @@
                       ]
                     },
                     "aiEnabled": {
+                      "type": "boolean"
+                    },
+                    "storeReviewer": {
                       "type": "boolean"
                     },
                     "createdAt": {
@@ -6163,6 +6178,24 @@
                     "appIconPath": {
                       "nullable": true,
                       "type": "string"
+                    },
+                    "storeLinks": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "googlePlay": {
+                          "type": "string"
+                        },
+                        "appStore": {
+                          "nullable": true,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "googlePlay",
+                        "appStore"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [
@@ -6174,7 +6207,8 @@
                     "websiteUrl",
                     "showCompanyName",
                     "logoPath",
-                    "appIconPath"
+                    "appIconPath",
+                    "storeLinks"
                   ],
                   "additionalProperties": false
                 }
@@ -6373,7 +6407,7 @@
       "get": {
         "operationId": "listBuildCompanies",
         "summary": "The companies whose own apps are built",
-        "description": "Every active company with “build apps” switched on, for the release pipeline. Needs `Authorization: Bearer <BUILD_TOKEN>`; answers 404 when the deployment has no such token.",
+        "description": "Every active company with “build apps” switched on, for the release pipeline, with how its phone app is published (0023): `apk` (an APK Integr8 staff send) or `stores` (the company’s own Google Play and App Store accounts, on `playTrack`, with the App Store app number `appStoreId`). Needs `Authorization: Bearer <BUILD_TOKEN>`; answers 404 when the deployment has no such token.",
         "tags": [
           "brand"
         ],
@@ -6395,11 +6429,41 @@
                           },
                           "name": {
                             "type": "string"
+                          },
+                          "phone": {
+                            "type": "object",
+                            "properties": {
+                              "distribution": {
+                                "type": "string",
+                                "enum": [
+                                  "apk",
+                                  "stores"
+                                ]
+                              },
+                              "playTrack": {
+                                "type": "string",
+                                "enum": [
+                                  "internal",
+                                  "production"
+                                ]
+                              },
+                              "appStoreId": {
+                                "nullable": true,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "distribution",
+                              "playTrack",
+                              "appStoreId"
+                            ],
+                            "additionalProperties": false
                           }
                         },
                         "required": [
                           "slug",
-                          "name"
+                          "name",
+                          "phone"
                         ],
                         "additionalProperties": false
                       }
@@ -7653,6 +7717,9 @@
                           "aiEnabled": {
                             "type": "boolean"
                           },
+                          "storeReviewer": {
+                            "type": "boolean"
+                          },
                           "createdAt": {
                             "type": "string",
                             "format": "date-time",
@@ -8352,6 +8419,132 @@
                         "slug"
                       ],
                       "additionalProperties": false
+                    },
+                    "apps": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "found"
+                              ]
+                            },
+                            "release": {
+                              "type": "object",
+                              "properties": {
+                                "tag": {
+                                  "type": "string"
+                                },
+                                "version": {
+                                  "type": "string"
+                                },
+                                "installers": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "name": {
+                                        "type": "string"
+                                      },
+                                      "url": {
+                                        "type": "string"
+                                      },
+                                      "platform": {
+                                        "type": "string",
+                                        "enum": [
+                                          "windows",
+                                          "macos",
+                                          "linux",
+                                          "android"
+                                        ]
+                                      },
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "exe",
+                                          "msi",
+                                          "dmg",
+                                          "appimage",
+                                          "deb",
+                                          "rpm",
+                                          "apk"
+                                        ]
+                                      },
+                                      "arch": {
+                                        "nullable": true,
+                                        "type": "string",
+                                        "enum": [
+                                          "x64",
+                                          "arm64",
+                                          "universal"
+                                        ]
+                                      },
+                                      "size": {
+                                        "nullable": true,
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      }
+                                    },
+                                    "required": [
+                                      "name",
+                                      "url",
+                                      "platform",
+                                      "kind",
+                                      "arch",
+                                      "size"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                }
+                              },
+                              "required": [
+                                "tag",
+                                "version",
+                                "installers"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "status",
+                            "release"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "none"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "status"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "unavailable"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "status"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
                     }
                   },
                   "required": [
@@ -8359,7 +8552,8 @@
                     "email",
                     "existingAccount",
                     "signInRequired",
-                    "company"
+                    "company",
+                    "apps"
                   ],
                   "additionalProperties": false
                 }
@@ -196719,6 +196913,24 @@
                           "items": {
                             "type": "string"
                           }
+                        },
+                        "phoneDistribution": {
+                          "type": "string",
+                          "enum": [
+                            "apk",
+                            "stores"
+                          ]
+                        },
+                        "playTrack": {
+                          "type": "string",
+                          "enum": [
+                            "internal",
+                            "production"
+                          ]
+                        },
+                        "appStoreId": {
+                          "nullable": true,
+                          "type": "string"
                         }
                       },
                       "required": [
@@ -196734,7 +196946,10 @@
                         "showCompanyName",
                         "documentLinkPattern",
                         "hiddenSections",
-                        "tabs"
+                        "tabs",
+                        "phoneDistribution",
+                        "playTrack",
+                        "appStoreId"
                       ],
                       "additionalProperties": false
                     },
@@ -196910,6 +197125,35 @@
                         ],
                         "additionalProperties": false
                       }
+                    },
+                    "storeReviewer": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "userId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "email": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "userId",
+                        "email",
+                        "status",
+                        "createdAt"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [
@@ -196934,7 +197178,8 @@
                     "billing",
                     "companyApp",
                     "featureFlags",
-                    "owners"
+                    "owners",
+                    "storeReviewer"
                   ],
                   "additionalProperties": false
                 }
@@ -197634,7 +197879,7 @@
       "patch": {
         "operationId": "updateCompanySettings",
         "summary": "Change a company’s website, its document links, or whether its own apps are built",
-        "description": "The branding facts the dashboard owns. `documentLinkPattern` (0075) points the company’s document links at its own website: an https address with `{code}` in it, on the registered website’s host or one under it (422 `document_link_invalid`, `document_link_needs_website`, `document_link_other_site`); a test company may also use `http://localhost` or `http://127.0.0.1` for both (P43), any other company gets 422 `website_url_local_only` or `document_link_invalid`. A staff session limited to test companies may change only `websiteUrl` and `documentLinkPattern` (403 `session_scope` otherwise). Null goes back to Integr8’s page, and codes already printed keep working there either way. The rest of the look — logo, icon, colours, theme — is set from the desktop app while acting as the company, where it can be previewed. Switching `appsEnabled` on puts the company in the list the release pipeline builds for and, when the deployment can start builds (`APP_BUILDS=github`), starts its first build at once; `appBuild` says how that went, and is null when this change did not switch apps on.",
+        "description": "The branding facts the dashboard owns, and how its phone app is published (0023): `phoneDistribution` `apk` (an APK Integr8 staff send) or `stores` (the company’s own Google Play and App Store accounts, which the release pipeline then submits to), `playTrack` `internal` or `production`, and `appStoreId`, the App Store app record’s number (6 to 12 digits); a test company cannot publish to stores (409 `test_company_no_apps`). `documentLinkPattern` (0075) points the company’s document links at its own website: an https address with `{code}` in it, on the registered website’s host or one under it (422 `document_link_invalid`, `document_link_needs_website`, `document_link_other_site`); a test company may also use `http://localhost` or `http://127.0.0.1` for both (P43), any other company gets 422 `website_url_local_only` or `document_link_invalid`. A staff session limited to test companies may change only `websiteUrl` and `documentLinkPattern` (403 `session_scope` otherwise). Null goes back to Integr8’s page, and codes already printed keep working there either way. The rest of the look — logo, icon, colours, theme — is set from the desktop app while acting as the company, where it can be previewed. Switching `appsEnabled` on puts the company in the list the release pipeline builds for and, when the deployment can start builds (`APP_BUILDS=github`), starts its first build at once; `appBuild` says how that went, and is null when this change did not switch apps on.",
         "tags": [
           "platform"
         ],
@@ -197676,6 +197921,25 @@
                     "nullable": true,
                     "type": "string",
                     "maxLength": 500
+                  },
+                  "phoneDistribution": {
+                    "type": "string",
+                    "enum": [
+                      "apk",
+                      "stores"
+                    ]
+                  },
+                  "playTrack": {
+                    "type": "string",
+                    "enum": [
+                      "internal",
+                      "production"
+                    ]
+                  },
+                  "appStoreId": {
+                    "nullable": true,
+                    "type": "string",
+                    "pattern": "^[0-9]{6,12}$"
                   }
                 }
               }
@@ -197750,6 +198014,24 @@
                         "type": "string"
                       }
                     },
+                    "phoneDistribution": {
+                      "type": "string",
+                      "enum": [
+                        "apk",
+                        "stores"
+                      ]
+                    },
+                    "playTrack": {
+                      "type": "string",
+                      "enum": [
+                        "internal",
+                        "production"
+                      ]
+                    },
+                    "appStoreId": {
+                      "nullable": true,
+                      "type": "string"
+                    },
                     "appBuild": {
                       "nullable": true,
                       "type": "object",
@@ -197798,6 +198080,9 @@
                     "documentLinkPattern",
                     "hiddenSections",
                     "tabs",
+                    "phoneDistribution",
+                    "playTrack",
+                    "appStoreId",
                     "appBuild"
                   ],
                   "additionalProperties": false
@@ -210538,6 +210823,427 @@
         "x-integr8-platform-scopes": [
           "full",
           "test_companies"
+        ]
+      }
+    },
+    "/v1/platform/companies/{tenantId}/apps": {
+      "get": {
+        "operationId": "getCompanyApps",
+        "summary": "A company’s newest desktop and phone installers",
+        "description": "Read from the GitHub releases this deployment is set to (`APP_RELEASES=github`): the company’s newest release with installers in it, for staff to download or send. `found` with its files, `none` when nothing is published (or releases are not read here), `unavailable` when GitHub could not be asked. The file links pass through the public site for a private repository, with its per-address download limit.",
+        "tags": [
+          "platform"
+        ],
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The company’s installers.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "found"
+                          ]
+                        },
+                        "release": {
+                          "type": "object",
+                          "properties": {
+                            "tag": {
+                              "type": "string"
+                            },
+                            "version": {
+                              "type": "string"
+                            },
+                            "installers": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "name": {
+                                    "type": "string"
+                                  },
+                                  "url": {
+                                    "type": "string"
+                                  },
+                                  "platform": {
+                                    "type": "string",
+                                    "enum": [
+                                      "windows",
+                                      "macos",
+                                      "linux",
+                                      "android"
+                                    ]
+                                  },
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "exe",
+                                      "msi",
+                                      "dmg",
+                                      "appimage",
+                                      "deb",
+                                      "rpm",
+                                      "apk"
+                                    ]
+                                  },
+                                  "arch": {
+                                    "nullable": true,
+                                    "type": "string",
+                                    "enum": [
+                                      "x64",
+                                      "arm64",
+                                      "universal"
+                                    ]
+                                  },
+                                  "size": {
+                                    "nullable": true,
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  }
+                                },
+                                "required": [
+                                  "name",
+                                  "url",
+                                  "platform",
+                                  "kind",
+                                  "arch",
+                                  "size"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "tag",
+                            "version",
+                            "installers"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "status",
+                        "release"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "none"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "status"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "unavailable"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "status"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A platform session is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such company."
+          },
+          "422": {
+            "description": "The request failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/platform/companies/{tenantId}/store-reviewer": {
+      "post": {
+        "operationId": "makeStoreReviewer",
+        "summary": "Make the app stores’ reviewer account, or give it a new password",
+        "description": "For a company that publishes its phone app in its own stores (0023). Makes an engineer `store-reviewer+<slug>@integr8-media.com` with a password shown once, and one made-up customer, site and job assigned to it, so the Google Play and App Store reviewers can sign in and see the app working without seeing a real customer. Called again, it gives the same account a new password and signs it out of every device. The account holds no seat and its role cannot be changed. Recorded in the platform audit log and the company’s own. A test company has no apps (409 `test_company_no_apps`).",
+        "tags": [
+          "platform"
+        ],
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The account and its password, shown once.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "created": {
+                      "type": "boolean"
+                    },
+                    "userId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "email": {
+                      "type": "string"
+                    },
+                    "password": {
+                      "type": "string"
+                    },
+                    "workOrderReference": {
+                      "nullable": true,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "created",
+                    "userId",
+                    "email",
+                    "password",
+                    "workOrderReference"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A platform session is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such company."
+          },
+          "409": {
+            "description": "`test_company_no_apps`, or `store_reviewer_email_taken`: somebody in the company already has the reviewer’s address."
+          },
+          "422": {
+            "description": "The request failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "removeStoreReviewer",
+        "summary": "Remove the app stores’ reviewer account from a company",
+        "description": "Takes the reviewer out of the company and signs it out of every device. The sample customer and job stay, as the company’s records. Recorded in the platform audit log and the company’s own.",
+        "tags": [
+          "platform"
+        ],
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Removed."
+          },
+          "401": {
+            "description": "A platform session is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such company, or it has no reviewer account."
+          },
+          "422": {
+            "description": "The request failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
         ]
       }
     }

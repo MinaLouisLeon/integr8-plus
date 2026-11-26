@@ -37,6 +37,7 @@ import { messageForError } from '~/lib/errors';
 import { formatBytes, formatDate, formatDuration, formatWhen } from '~/lib/platform-format';
 import { openCompany, platformClient } from '~/features/platform/session';
 import { planLabel } from '~/lib/plans';
+import { CompanyInstallersPanel, PhoneDistributionPanel } from './company-phone-apps';
 import { WebsiteKeysPanel } from './website-keys';
 
 /** Whether the company's people have an app to sign in to, as the API reports it (P42). */
@@ -131,6 +132,17 @@ export function CompanyRoute() {
         companyApp={detail.companyApp}
       />
       <AppsPanel tenantId={tenantId} slug={detail.slug} settings={detail.settings} />
+      {detail.isTest ? null : (
+        <>
+          <CompanyInstallersPanel tenantId={tenantId} />
+          <PhoneDistributionPanel
+            key={`${detail.settings.phoneDistribution}:${detail.settings.playTrack}:${detail.settings.appStoreId ?? ''}`}
+            tenantId={tenantId}
+            settings={detail.settings}
+            storeReviewer={detail.storeReviewer}
+          />
+        </>
+      )}
       <TabsPanel
         key={detail.settings.tabs.join(',')}
         tenantId={tenantId}

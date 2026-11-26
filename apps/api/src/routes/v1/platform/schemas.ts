@@ -1,6 +1,8 @@
 import {
   ANNOUNCEMENT_SEVERITIES,
   companyThemeSchema,
+  PHONE_DISTRIBUTIONS,
+  PLAY_TRACKS,
   SUBSCRIPTION_STATUSES,
   TENANT_EXPORT_STATUSES,
   TENANT_PLANS,
@@ -140,6 +142,15 @@ export const companySettingsSchema = z.object({
   hiddenSections: z.array(z.string()),
   /** The switchable tabs the company sees now: not hidden, and with their module on (0075). */
   tabs: z.array(z.string()),
+  /**
+   * How the company's phone app reaches its people (0023): `apk`, an APK
+   * Integr8 staff send, or `stores`, published in the company's own Google
+   * Play and App Store accounts on `playTrack`, the App Store app record being
+   * `appStoreId`.
+   */
+  phoneDistribution: z.enum(PHONE_DISTRIBUTIONS),
+  playTrack: z.enum(PLAY_TRACKS),
+  appStoreId: z.string().nullable(),
 });
 
 /**
@@ -191,6 +202,10 @@ export const companyDetailSchema = companySummarySchema.extend({
   owners: z.array(
     z.object({ userId: z.uuid(), email: z.string(), role: z.string(), status: z.string() }),
   ),
+  /** The app stores' reviewer account (0023), or null when the company has none. */
+  storeReviewer: z
+    .object({ userId: z.uuid(), email: z.string(), status: z.string(), createdAt: timestamp })
+    .nullable(),
 });
 
 export const onboardResponseSchema = z.object({

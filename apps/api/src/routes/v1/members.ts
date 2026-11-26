@@ -65,6 +65,7 @@ function memberBody(
     customRoleId: string | null;
     status: string;
     aiEnabled: boolean;
+    storeReviewer: boolean;
     createdAt: Date;
   },
   grants: readonly Grant[],
@@ -79,6 +80,7 @@ function memberBody(
     customRole: customRoleBody(member.customRoleId, roleNames),
     status: member.status as 'invited' | 'active' | 'suspended',
     aiEnabled: member.aiEnabled,
+    storeReviewer: member.storeReviewer,
     createdAt: iso(member.createdAt),
   };
 }
@@ -271,7 +273,10 @@ export const changeMemberRoleRoute = defineRoute({
   responses: {
     200: { description: 'The person, with their new role.', schema: memberSchema },
     404: { description: 'No such person or company role in this company.' },
-    409: { description: 'This is the company’s only owner (`last_owner`).' },
+    409: {
+      description:
+        'This is the company’s only owner (`last_owner`), or the app stores’ reviewer account, which stays an engineer because it holds no seat (`store_reviewer_role_fixed`).',
+    },
     422: {
       description:
         'A role above the caller’s own (`role_above_own`), or a company role holding what the caller does not (`role_beyond_own`).',
@@ -281,6 +286,13 @@ export const changeMemberRoleRoute = defineRoute({
     const tenantId = context.principal.tenantId;
     const target = await memberOr404(tenantId, params.userId);
     assertOutranks(context.principal, target, 'change the role of');
+    // The reviewer holds no seat (0023), so a new role would be a free one.
+    if (target.storeReviewer) {
+      throw conflict(
+        'store_reviewer_role_fixed',
+        'The app stores’ reviewer account stays an engineer. Integr8 staff can remove it from the company’s page.',
+      );
+    }
 
     const { companyRole, wasHr } = await withTenant(tenantId, async (tx) => ({
       companyRole:

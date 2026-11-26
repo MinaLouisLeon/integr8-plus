@@ -134,8 +134,8 @@ only additive changes are allowed:
 A change that cannot be additive ships as a new endpoint beside the old one.
 The old one is removed only once no supported build calls it, by raising
 `API_MIN_SUPPORTED_CLIENT`; an older build then gets `503 client_too_old` with a
-sentence it can show and an `update_url` (`API_UPDATE_URL`, or `WEB_APP_URL` +
-`/download`).
+sentence it can show and an `update_url` (`API_UPDATE_URL`, or by default Integr8
+Plus's page on the Integr8 Media website).
 
 ## Facts worth knowing before calling it
 

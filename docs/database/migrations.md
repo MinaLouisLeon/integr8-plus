@@ -53,7 +53,10 @@ used, in one release, because every row then was test data. `0021_test_company_l
 (a trigger refuses it for any other company). `0022_definer_functions_closed`
 (SEC-002) closes every security-definer function to PUBLIC, wraps the ledger's
 four in a company check, and makes new functions start closed (grant EXECUTE to
-the role that calls a new one); the next is `0023`.
+the role that calls a new one). `0023_phone_stores` (P45) adds how each
+company's phone app is published (`tenant_settings.phone_distribution`,
+`play_track`, `app_store_id`) and `tenant_users.store_reviewer`, one per company,
+left out of the seat count; the next is `0024`.
 
 ### Where the old numbers went
 

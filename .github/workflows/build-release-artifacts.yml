@@ -363,7 +363,7 @@ jobs:
   # and macOS warn on first open. macOS gets the ad hoc signature without which
   # Apple Silicon will not run it at all (build-sea.mjs does it). The files are
   # attached to the release with the installers; the installer's update check
-  # and the /download page find them there by name.
+  # and the staff app's Downloads page find them there by name.
   forms-ai:
     name: Forms for AI (${{ matrix.label }})
     if: vars.FORMS_AI_BUILDS != 'disabled'

@@ -3,6 +3,7 @@
 import { useTranslation } from '@integr8/i18n';
 import { integr8Fonts } from '@integr8/tokens';
 import Link from 'next/link';
+import { PRODUCT_PAGE_URL } from '~/lib/site-content';
 
 /**
  * The product's mark in the Integr8 Media style: "Integr" and a lime "8" that
@@ -12,7 +13,8 @@ import Link from 'next/link';
  * right and in the Latin faces, and its accessible name is the translated one.
  */
 export function Logo({
-  href = '/',
+  // This site has no home page: the product's is on the Integr8 Media website.
+  href = PRODUCT_PAGE_URL,
   label,
   className = '',
 }: {

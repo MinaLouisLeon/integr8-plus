@@ -6,6 +6,7 @@ import { platformCompanyRoutes } from './companies.js';
 import { platformDownloadsRoutes } from './downloads.js';
 import { platformImpersonationRoutes } from './impersonation.js';
 import { platformLifecycleRoutes } from './lifecycle.js';
+import { platformPhoneAppRoutes } from './phone-apps.js';
 import { platformSettingsRoutes } from './settings.js';
 import { platformStaffRoutes } from './staff.js';
 import { platformStorageRoutes } from './storage.js';
@@ -44,4 +45,5 @@ export const platformRoutes: AnyRoute[] = [
   ...platformWebsiteKeyRoutes,
   ...platformHealthRoutes,
   ...platformDownloadsRoutes,
+  ...platformPhoneAppRoutes,
 ];

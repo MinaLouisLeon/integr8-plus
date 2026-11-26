@@ -488,6 +488,10 @@ export const apiErrorsEn = {
   seat_limit_reached:
     'Every seat on this plan is taken. Remove somebody, or move to a larger plan.',
   self_approval: 'Somebody other than whoever prepared this approves it.',
+  store_reviewer_email_taken:
+    'Somebody in this company already has the store reviewer’s address. Remove them first.',
+  store_reviewer_role_fixed:
+    'The app stores’ reviewer account stays an engineer. Integr8 can remove it if it is no longer needed.',
   serial_in_stock: 'This serial number is already in stock. Check the number.',
   serial_single_unit: 'A serial number is one unit. Name one serial number for each unit.',
   serial_race: 'Checking the serial number again. This retries on its own.',

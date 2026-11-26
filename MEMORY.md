@@ -7,7 +7,7 @@ the end of any piece of work that changes one of them, and date each section.
 
 ## Snapshot (2026-11-01, after the form builder and PDF builder round)
 
-- **Version:** root `package.json` is **2.1.0** (2026-11-20, branch `feat/test-twin` from `dev`: carries P42–P44, the security audit fixes and migrations 0020–0022; no migration of its own). Before it, **2.0.0** (2026-11-14, branch `ccr-c6dc87d8-3hlhaw` from `dev`: P41's clean database restart, see Decisions). Before that, **1.4.0** (2026-11-10, branch `ccr-56fb45d1-5mq6bt`: carries the AI tooling stage P37–P39 and migration 0077; history below starts at 1.3.1). 1.3.0 reached `main` (PR #148) but its
+- **Version:** root `package.json` is **2.2.0** (2026-11-26, branch `feat/installers-and-phone-stores` from `feat/remove-marketing-pages`: no home or download page, P45 and migration 0023). Before it, **2.1.0** (2026-11-20, branch `feat/test-twin` from `dev`: carries P42–P44, the security audit fixes and migrations 0020–0022; no migration of its own). Before it, **2.0.0** (2026-11-14, branch `ccr-c6dc87d8-3hlhaw` from `dev`: P41's clean database restart, see Decisions). Before that, **1.4.0** (2026-11-10, branch `ccr-56fb45d1-5mq6bt`: carries the AI tooling stage P37–P39 and migration 0077; history below starts at 1.3.1). 1.3.0 reached `main` (PR #148) but its
   release never published: the publish job attached the secret scan's report folder
   (`dist/work`) and failed, so there is no v1.3.0 tag. The owner bumped `main` to 1.3.1 on
   GitHub (PR #151, `package.json` only, which failed `app-info.test.ts`); branch
@@ -26,7 +26,7 @@ the end of any piece of work that changes one of them, and date each section.
   `apps/api/src/app-info.ts` has a copy a test keeps equal. A version bump must also change
   every place listed under "Places that state the version".
 - **Migrations (2.0.0):** a new baseline, **0001_foundation … 0019_assistant**, one per module (P41),
-  then **0020_desktop_only** (P42, unreleased, branch `ccr-982c2137-h4as2m`), **0021_test_company_localhost** (P43, unreleased, branch `ccr-3cd2290c-d9znqu`) and **0022_definer_functions_closed** (SEC-002, branch `ccr-87dc93be-pye3tx`); the next one is **0023**. A 1.x database is refused (`before-baseline`) and is created again (setup guide
+  then **0020_desktop_only** (P42, unreleased, branch `ccr-982c2137-h4as2m`), **0021_test_company_localhost** (P43, unreleased, branch `ccr-3cd2290c-d9znqu`), **0022_definer_functions_closed** (SEC-002, branch `ccr-87dc93be-pye3tx`) and **0023_phone_stores** (P45, unreleased, branch `feat/remove-marketing-pages`); the next one is **0024**. A 1.x database is refused (`before-baseline`) and is created again (setup guide
   Stage 11 part AJ). **Before 2.0.0** (history): `packages/db/migrations` reached **0079** (0079 `form_actions`, P40, unreleased,
   branch `ccr-916cc1b1-6sp5my`; 0078 `accountant_role`, unreleased, merged into `dev` in PR #188; 0077 `test_companies`, P38, unreleased, branch
   `ccr-56fb45d1-5mq6bt`). Before that it reached **0076** (0075 merged into `dev`, released
@@ -104,9 +104,9 @@ the end of any piece of work that changes one of them, and date each section.
   the credentials; they are not in the repository. To do once: Pages source "GitHub Actions", the
   two secrets, then a run from `main`. GitHub's search API reported the repository **public** on
   2026-11-15 (MEMORY said private since 2026-11-04), so the guide files are readable there anyway.
-- **Since P42** `app.integr8-media.com` is the public site only (no sign-in): `/download`, `/q`,
-  `/d`, `/a/<code>`, `/accept-invitation`, `/desktop-updates`, marketing, help, legal.
-  **Since 2026-11-26** it has no `/features` or `/pricing` pages: the product's marketing page
+- **Since P42** `app.integr8-media.com` is the public site only (no sign-in). **Since 2026-11-26**
+  it serves only `/accept-invitation`, `/desktop-updates`, `/help`, `/contact` and `/legal/*`;
+  `/` and `/download` redirect to the product's page, and it has no `/features` or `/pricing` pages: the product's marketing page
   (no prices) is `www.integr8-media.com/integr8-plus` in the separate `integr8-media-website`
   repository, branch `feat/integr8-plus-page`, with a Request a demo form saved to a Google Sheet.
 
@@ -515,6 +515,42 @@ the end of any piece of work that changes one of them, and date each section.
   inside `/v1`). The marketing page itself (English only, no prices, no e-invoicing, desktop
   screenshots from a seeded demo company) is in the `integr8-media-website` repository. Still
   stale: the legal terms (`legal.en.ts`) mention "the pricing page", for the lawyer's review.
+- **No home or download page; installers only after accepting an invitation (2026-11-26, same
+  branch, unreleased), as the owner chose it (option 1 of three):** the public `/download` page
+  listed any company's installers for a guessed short name, and its file pass-through had no limit.
+  `apps/web`'s home and download pages are deleted (`/` and `/download` redirect, not permanently,
+  to `PRODUCT_PAGE_URL`); `POST /v1/invitations/accept` now returns `apps` (the company's newest
+  installers, `AppReleases.companyInstallers`, additive), shown once on the invitation's done
+  screen. `API_UPDATE_URL` now defaults to the product page (`DEFAULT_UPDATE_URL`; the "both unset"
+  production refusal is gone). Guessing limits: the public brand, logo and app-icon routes allow 20
+  lookups of unknown names per address per hour, then refuse everything (`missLimiter`, constants in
+  `public-brand.ts`); the web's update feed counts its 204s the same way and its file pass-through
+  allows 5 downloads of one file per address per hour (`apps/web/src/lib/request-limit.ts`, in
+  memory, address from Caddy's `X-Forwarded-For`). Known gaps, for the owner: the staff app cannot
+  list a company's installers, so "ask Integr8 for the installer" means fetching it from GitHub
+  releases by hand; a phone app refused as too old has no page offering its new APK. Setup guide
+  Stage 8 "Hand the apps over" now says there is nothing to send. Run here: API unit tests, the
+  branding, members and server integration suites (on a throwaway database), web tests, and the
+  redirects in a dev server; not run: the feed limit against a real releases repository.
+- **Company installers and phone apps in the company's own stores, P45 (2026-11-26, same branch,
+  migration 0023), as the owner chose it:** closes the two gaps above. Staff app company page:
+  **Installers** (`GET /v1/platform/companies/{id}/apps`, download or copy a link) and **Phone app
+  distribution**: `apk` (default, staff send it) or `stores` (the company's own Google Play and App
+  Store accounts) with a Play track (`internal` default, `production`) and the App Store app number
+  (`PATCH …/settings`). Decisions: store keys kept in Expo per app (`eas credentials`), not GitHub;
+  package names stay `com.integr8.plus.<slug>` (APK phones update from Play if the listing uses the
+  existing signing key); Expo stays Integr8's; per-company track; a staff button makes the **store
+  reviewer** (`POST`/`DELETE …/store-reviewer`): engineer `store-reviewer+<slug>@integr8-media.com`,
+  password shown once, one sample customer, site and job; `tenant_users.store_reviewer` (one per
+  company) is left out of seats and the directory's counts and its role cannot change (409
+  `store_reviewer_role_fixed`). `build-company-apps.yml` decides per company from the brand answer's
+  `storeLinks` (and the track from `/v1/build/companies`); `STORE_SUBMIT`, `ASC_APP_IDS` and the
+  shared `GOOGLE_SERVICE_ACCOUNT_KEY` are gone (the `ASC_*` secrets remain for macOS notarisation).
+  A store build's Update opens the store (`storeLinks` built into `company.json`). The Android
+  package rule moved to `@integr8/core` (`androidPackage`, `iosBundleIdentifier`, `storeLinks`).
+  Setup guide Stage 8 gained five store steps (114 tick boxes). Run here: db (505) and API (730)
+  integration suites on a throwaway database, migration 0023 down and up; not run: a real store
+  submission, the workflow, a real phone build.
 - **The demo seeder goes through the API**, in-process with Fastify's `inject`, as the
   company's own people (plus a staff impersonation for staff-only setup). Direct inserts
   were rejected: they skip numbering, stock, ledger postings and audit, and produce data

@@ -1,5 +1,5 @@
 import { getPlatformDataSource } from '@integr8/db';
-import { randomUUID } from 'node:crypto';
+import { randomInt, randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { type ApiHarness, type Member, startApi } from '../../testing/api-harness.js';
 
@@ -151,6 +151,8 @@ describe('the public brand', () => {
       logoPath: null,
       appIconPath: null,
       showCompanyName: true,
+      // An APK company (0023): no store pages.
+      storeLinks: null,
     });
   });
 
@@ -167,6 +169,38 @@ describe('the public brand', () => {
       headers: { 'x-client-version': '1.0.0', 'x-client-app': 'mobile' },
     });
     expect(logo.statusCode).toBe(404);
+  });
+
+  it('stops answering an address that keeps asking for names nobody has', async () => {
+    // A made-up address of its own, new each run: the misses are counted in
+    // the database for an hour, so neither another test nor an earlier run
+    // may have spent this one's.
+    const remoteAddress = `2001:db8::${randomInt(1, 0xffff).toString(16)}:${randomInt(1, 0xffff).toString(16)}`;
+    const ask = (name: string) =>
+      api.app.inject({
+        method: 'GET',
+        url: `/v1/public/companies/${name}/brand`,
+        remoteAddress,
+        headers: { 'x-client-version': '1.0.0', 'x-client-app': 'mobile' },
+      });
+
+    // A real name never counts.
+    for (let index = 0; index < 25; index += 1) {
+      expect((await ask(slug)).statusCode).toBe(200);
+    }
+    for (let index = 0; index < 20; index += 1) {
+      expect((await ask(`guess-${String(index)}`)).statusCode).toBe(404);
+    }
+    expect((await ask('guess-20')).statusCode).toBe(429);
+    // Now a real name is refused too, or the refusal would tell names apart.
+    expect((await ask(slug)).statusCode).toBe(429);
+    const icon = await api.app.inject({
+      method: 'GET',
+      url: `/v1/public/companies/${slug}/app-icon`,
+      remoteAddress,
+      headers: { 'x-client-version': '1.0.0', 'x-client-app': 'mobile' },
+    });
+    expect(icon.statusCode).toBe(429);
   });
 });
 
