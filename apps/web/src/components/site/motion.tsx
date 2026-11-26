@@ -1,7 +1,6 @@
 'use client';
 
 import {
-  useCallback,
   useEffect,
   useRef,
   useState,
@@ -138,76 +137,6 @@ export function RevealText({
           </span>
         ))}
       </span>
-    </span>
-  );
-}
-
-const LATIN_GLYPHS = '!<>-_\\/[]{}—=+*^?#01INTEGR8';
-const ARABIC_GLYPHS = 'ابتثجحخدذرزسشصضطظعغفقكلمنهوي٨';
-const ARABIC = /[؀-ۿ]/u;
-
-/**
- * Text that decodes itself from random glyphs when it first scrolls into
- * view, and again on hover. Arabic text scrambles with Arabic letters, so the
- * line keeps its direction while it settles.
- */
-export function ScrambleText({
-  text,
-  className = '',
-  duration = 900,
-}: {
-  text: string;
-  className?: string;
-  /** Milliseconds from noise to the finished text. */
-  duration?: number;
-}) {
-  const ref = useRef<HTMLSpanElement>(null);
-  const inView = useInView(ref);
-  const reduced = useReducedMotion();
-  // The noise while it settles; null shows the text itself, so a new text
-  // (the language switched) appears at once.
-  const [noise, setNoise] = useState<string | null>(null);
-  const frame = useRef(0);
-
-  const run = useCallback(() => {
-    if (reduced) {
-      return;
-    }
-    const glyphs = ARABIC.test(text) ? ARABIC_GLYPHS : LATIN_GLYPHS;
-    cancelAnimationFrame(frame.current);
-    const start = performance.now();
-    const step = (now: number) => {
-      const progress = Math.min(1, (now - start) / duration);
-      const revealed = Math.floor(progress * text.length);
-      let next = '';
-      for (let index = 0; index < text.length; index += 1) {
-        const character = text[index] ?? '';
-        next +=
-          character.trim() === '' || index < revealed
-            ? character
-            : (glyphs[Math.floor(Math.random() * glyphs.length)] ?? character);
-      }
-      if (progress < 1) {
-        setNoise(next);
-        frame.current = requestAnimationFrame(step);
-      } else {
-        setNoise(null);
-      }
-    };
-    frame.current = requestAnimationFrame(step);
-  }, [reduced, text, duration]);
-
-  useEffect(() => {
-    if (inView) {
-      run();
-    }
-    return () => cancelAnimationFrame(frame.current);
-  }, [inView, run]);
-
-  return (
-    <span ref={ref} className={className} onPointerEnter={run}>
-      <span className="sr-only">{text}</span>
-      <span aria-hidden="true">{noise ?? text}</span>
     </span>
   );
 }

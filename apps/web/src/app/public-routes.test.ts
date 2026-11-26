@@ -8,18 +8,18 @@ import { describe, expect, it } from 'vitest';
  * desktop apps and staff in the staff app. This pins every page and route
  * handler it serves, so a workspace, dashboard, sign-in or sign-up route
  * cannot come back unnoticed. It serves no company's documents, quotes or
- * asset tags either: those open on the company's own website. Its features
- * and pricing pages are gone too: the product is presented, with no prices, on
- * the Integr8 Media website. Change the list on purpose.
+ * asset tags either: those open on the company's own website. Its home,
+ * features, pricing and download pages are gone too: the product is presented,
+ * with no prices, on the Integr8 Media website (`/` redirects there), and a
+ * company's installers are listed only to somebody who has just accepted an
+ * invitation. Change the list on purpose.
  */
 
 const PUBLIC_ROUTES = [
-  '/',
   '/accept-invitation',
   '/contact',
   '/desktop-updates/[app]/[target]/[arch]/[version]',
   '/desktop-updates/[app]/download/[tag]/[file]',
-  '/download',
   '/help',
   '/legal/dpa',
   '/legal/privacy',
