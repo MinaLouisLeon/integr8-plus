@@ -133,8 +133,8 @@ people use the **staff** desktop build. There is no staff phone app.
    desktop (`apps/desktop/scripts/stamp.mjs`, then `tauri build` for Windows,
    macOS, Linux) and the phone (`company.json`, `eas build --channel
 production-<slug>`), and publishes the release `company-<slug>-v<version>`.
-   `STORE_SUBMIT=enabled` also submits to the Play internal track and the App
-   Store.
+   A company set to publish in its own stores also gets a store build sent to
+   its own Google Play and App Store accounts (below).
 4. With `APP_BUILDS=github` (and `GITHUB_BUILD_TOKEN`, a fine-grained token with
    Actions read and write, and `GITHUB_BUILD_REPOSITORY`), ticking the box and
    **Rebuild apps** start builds from the dashboard; with `off` (the default) run
@@ -144,8 +144,9 @@ production-<slug>`), and publishes the release `company-<slug>-v<version>`.
 One Expo account and project (EAS slug always `integr8-plus`) and one Firebase
 project (an Android app per company) serve every company
 ([apps/mobile.md](../apps/mobile.md#a-companys-own-build)). Desktop apps update
-themselves from `app.integr8-media.com/desktop-updates`; `/download` and the
-updater need `GITHUB_RELEASES_TOKEN` because the repository is private. Builds
+themselves from `app.integr8-media.com/desktop-updates`; the updater and the
+invitation page's installer list need `GITHUB_RELEASES_TOKEN` because the
+repository is private. Builds
 are unsigned until certificates are bought: Windows shows SmartScreen, macOS
 needs right-click → Open, Linux and macOS downloads need `chmod +x`.
 
@@ -212,17 +213,32 @@ exist.
 
 The release's "Stamp" step prints which signing it used.
 
-### The app stores
+### The app stores (0023)
 
-Until the variable `STORE_SUBMIT` is `enabled`, company phone builds are an
-installable `.apk` and nothing is submitted. Google Play: an organisation
-account, an app per company (`com.integr8.plus.<slug>`, the first upload by
-hand), and a service account key as the secret `GOOGLE_SERVICE_ACCOUNT_KEY`.
-Apple: the Developer Program connected to Expo, `EAS_PLATFORMS=all`, an App
-Store Connect key (`ASC_API_KEY`, `ASC_KEY_ID`, `ASC_ISSUER_ID`) and
-`ASC_APP_IDS` (`{"slug":"app id"}`); template apps go out as Custom Apps or
-unlisted apps (guideline 4.2.6). With several companies, move Expo to its
-Production plan.
+Each company's phone app reaches its people one of two ways, chosen on its page
+in the staff app under **Phone app distribution**:
+
+- **APK sent by Integr8** (the default): each release makes an installable
+  `.apk`; staff send it from the company page's **Installers**. iPhones are not
+  covered this way.
+- **The company's own Google Play and App Store accounts**: each release makes a
+  store build and submits it to the company's own accounts, on the Google Play
+  track chosen there (internal testing first, then public release, released
+  at once; Google still reviews it). For iPhone, Expo uploads the build to App
+  Store Connect; sending it to Apple's review is a button there. Update in the
+  phone app then opens the company's store page.
+
+Expo stays Integr8's, and the apps keep their identifiers
+(`com.integr8.plus.<slug>`), so phones that installed the APK update from Google
+Play once the company publishes there, provided the Play listing is signed with
+the key Expo already uses ("Use existing app signing key" in Play App Signing).
+The store keys are not in GitHub: each company's Google Play service-account key
+and App Store Connect API key are uploaded to Expo for that app with
+`eas credentials`, and `eas submit` finds them by the app's identifiers. The
+setup guide's Stage 8 has the steps, including the **store reviewer account**
+(an engineer with one sample job, holding no seat) for each store's "App
+access" form. Template apps may need to go out as unlisted apps (Apple
+guideline 4.2.6). With several companies, move Expo to its Production plan.
 
 ### The test box
 
