@@ -4,6 +4,7 @@ import {
   reportClientTooOld,
   resetUpdateNotice,
   subscribeToUpdateNotice,
+  updateDestination,
   updateLinkFor,
 } from './client-update';
 
@@ -43,5 +44,29 @@ describe('the Update button on a phone too old to be served', () => {
   it('is shown without a button when the server gives no address', () => {
     reportClientTooOld({ minimum: '2.0.0', message: 'Update' }, undefined);
     expect(currentUpdateNotice()).toEqual({ link: undefined });
+  });
+});
+
+describe('where Update takes a phone (0023)', () => {
+  const stores = {
+    googlePlay: 'https://play.google.com/store/apps/details?id=com.integr8.plus.acme',
+    appStore: 'https://apps.apple.com/app/id1234567890',
+  };
+
+  it('opens the company’s own store when it publishes there', () => {
+    expect(updateDestination(PAGE, stores, 'android')).toEqual({
+      kind: 'store',
+      url: stores.googlePlay,
+    });
+    expect(updateDestination(PAGE, stores, 'ios')).toEqual({ kind: 'store', url: stores.appStore });
+  });
+
+  it('falls back to the server’s page with no store page, and to nothing with neither', () => {
+    expect(updateDestination(PAGE, { ...stores, appStore: null }, 'ios')).toEqual({
+      kind: 'page',
+      url: PAGE,
+    });
+    expect(updateDestination(PAGE, null, 'android')).toEqual({ kind: 'page', url: PAGE });
+    expect(updateDestination(undefined, null, 'android')).toBeUndefined();
   });
 });

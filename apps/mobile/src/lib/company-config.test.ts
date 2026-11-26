@@ -46,6 +46,7 @@ describe('parseCompanyBuild', () => {
     defaultTheme: 'dark',
     logoPath: '/v1/public/companies/northwind/logo',
     appIconPath: '/v1/public/companies/northwind/app-icon',
+    storeLinks: null,
   };
 
   it('accepts the brand endpoint answer as it is', () => {
@@ -70,9 +71,25 @@ describe('parseCompanyBuild', () => {
       defaultTheme: 'system',
       logoPath: null,
       appIconPath: null,
+      storeLinks: null,
     });
     expect(
       parseCompanyBuild({ ...brand, websiteUrl: '', brandColour: 7, defaultTheme: 'sepia' }),
     ).toMatchObject({ websiteUrl: null, brandColour: null, defaultTheme: 'system' });
+  });
+
+  it('keeps a store company’s store pages, and nothing that is not one', () => {
+    const stores = {
+      googlePlay: 'https://play.google.com/store/apps/details?id=com.integr8.plus.northwind',
+      appStore: 'https://apps.apple.com/app/id1234567890',
+    };
+    expect(parseCompanyBuild({ ...brand, storeLinks: stores })?.storeLinks).toEqual(stores);
+    expect(
+      parseCompanyBuild({ ...brand, storeLinks: { ...stores, appStore: null } })?.storeLinks,
+    ).toEqual({ ...stores, appStore: null });
+    expect(
+      parseCompanyBuild({ ...brand, storeLinks: { googlePlay: 'https://evil.example/app' } })
+        ?.storeLinks,
+    ).toBeNull();
   });
 });
