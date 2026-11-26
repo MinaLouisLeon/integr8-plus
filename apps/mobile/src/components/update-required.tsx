@@ -2,17 +2,24 @@ import { useTranslation } from '@integr8/i18n';
 import { fontSize, spacing } from '@integr8/tokens';
 import * as WebBrowser from 'expo-web-browser';
 import { useSyncExternalStore } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Linking, Platform, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { currentUpdateNotice, subscribeToUpdateNotice } from '~/lib/client-update';
+import {
+  currentUpdateNotice,
+  subscribeToUpdateNotice,
+  updateDestination,
+} from '~/lib/client-update';
+import { COMPANY } from '~/lib/company';
 import { Button, useTheme } from './ui';
 
 /**
  * A strip along the bottom of every screen once the server has refused this
  * build as too old (Low 6). Nothing the app sends will be accepted until it is
  * replaced, so it stays, over whatever screen is open, and its Update button
- * opens the web app's download page — this company's, for a company's own app —
- * in the in-app browser, as the app's other outside pages are.
+ * opens the server's update address (`API_UPDATE_URL`, with this company added
+ * for a company's own app) in the in-app browser, as the app's other outside
+ * pages are. A company that publishes in its own stores (0023) has its store
+ * pages built into its app, and Update opens the store instead.
  *
  * Work saved on the phone is kept: it is sent once the new version is
  * installed and signed in.
@@ -30,7 +37,7 @@ export function UpdateRequired() {
   if (notice === undefined) {
     return null;
   }
-  const link = notice.link;
+  const destination = updateDestination(notice.link, COMPANY?.storeLinks, Platform.OS);
 
   return (
     <View
@@ -45,10 +52,14 @@ export function UpdateRequired() {
       ]}
     >
       <Text style={[styles.text, { color: theme.text }]}>{t('clientUpdate.needed')}</Text>
-      {link === undefined ? null : (
+      {destination === undefined ? null : (
         <Button
           label={t('clientUpdate.button')}
-          onPress={() => void WebBrowser.openBrowserAsync(link)}
+          onPress={() =>
+            void (destination.kind === 'store'
+              ? Linking.openURL(destination.url)
+              : WebBrowser.openBrowserAsync(destination.url))
+          }
         />
       )}
     </View>

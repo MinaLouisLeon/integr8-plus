@@ -3,6 +3,7 @@ import type { NextConfig } from 'next';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { securityHeaders } from './src/lib/content-security-policy';
+import { PRODUCT_PAGE_URL } from './src/lib/site-content';
 
 /** The product's version: the root package.json, the one number a release bumps. */
 function productVersion(): string {
@@ -28,6 +29,10 @@ const SECURITY_HEADERS = securityHeaders({
 const config: NextConfig = {
   reactStrictMode: true,
 
+  // `next dev` would otherwise write an AGENTS.md into this folder on every
+  // start; the repository's own AGENTS.md is the guide for coding agents.
+  agentRules: false,
+
   // A self-contained server in `.next/standalone`, which is what the Docker
   // image copies: the traced files only, not the workspace's node_modules.
   // The tracing root is the repository, because the workspace packages this
@@ -36,6 +41,19 @@ const config: NextConfig = {
   outputFileTracingRoot: path.join(import.meta.dirname, '../..'),
 
   headers: () => Promise.resolve([{ source: '/:path*', headers: SECURITY_HEADERS }]),
+
+  // No home or download page here: the product's page is on the Integr8 Media
+  // website, and a company's installers are shown only to somebody who has
+  // just accepted an invitation, where the old download page listed them for
+  // any guessed company name. Old links (bookmarks, an app's Update button
+  // from before) land on the product's page rather than on "not found".
+  // Temporary, so a browser does not remember it if this site ever grows a
+  // page here again.
+  redirects: () =>
+    Promise.resolve([
+      { source: '/', destination: PRODUCT_PAGE_URL, permanent: false },
+      { source: '/download', destination: PRODUCT_PAGE_URL, permanent: false },
+    ]),
 
   // The workspace packages ship TypeScript-compiled ESM; Next needs telling
   // which of its dependencies are local source rather than published builds.

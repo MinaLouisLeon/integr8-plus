@@ -26,6 +26,15 @@ roles, then migrate). `apps/api/.env` also needs signing keys (`pnpm --filter
 a separate database: they truncate tables. Screen tests wait up to 5 s in
 `findBy…` because integration suites beside them slow the machine.
 
+**Running the whole thing on one machine** (Docker needed): fill
+`deploy/local/.env` from its `.env.example`, then `pnpm local` starts Postgres
+(on port 5433) and the Auth container (9999) from `deploy/local/compose.yml`, runs
+`db deploy`, builds what the apps need and runs the API (3000) and the desktop
+app in a browser (3002). The public site is not started; run
+`pnpm --filter @integr8/web dev` (3001) when you need it. Ctrl+C stops the apps;
+`pnpm local:stop` stops the containers and keeps their data. `pnpm
+local:services` and `pnpm local:apps` are the two halves.
+
 ## Branches
 
 ```

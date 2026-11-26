@@ -178,6 +178,14 @@ serve every company; the update channel is `production-<slug>`. The version
 comes from the root `package.json`. How builds are started:
 [deployment/](../deployment/README.md#company-apps).
 
+A company's phone app is either an APK Integr8 staff send, or published in the
+company's own Google Play and App Store accounts (0023, set on its page in the
+staff app). For a store company the brand answer carries `storeLinks`, which the
+build keeps in `company.json`; when the server refuses the build as too old,
+Update opens that store page (`updateDestination` in `src/lib/client-update.ts`)
+instead of the server's update address. The identifiers' rule is shared with the
+API's store links (`androidPackage`, `iosBundleIdentifier` in `@integr8/core`).
+
 ## Testing it
 
 The data layer runs on Node's built-in SQLite in Vitest

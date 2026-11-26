@@ -1906,7 +1906,7 @@ The mobile app is for engineers. It holds their jobs, customers, sites, forms an
 
 Forms and Company branding, under Set-up, are worked on by Integr8 staff from their own staff app, after saying why they are opening your company, which your company can read. Owners and admins can look at the forms but not change them; branding is not shown to the company at all.
 
-Both apps are on your company’s download page, which Integr8 gives you, and the invitation page links to it once you have set your password. The desktop app updates itself when Integr8 releases a new version. When a desktop or phone app is too old for the server, it says so and offers Update, which opens the download page.
+Both apps are listed for you once, on the invitation page, right after you set your password: download them there. To install an app again later, on another computer or phone, ask your office or Integr8 for the installer. The desktop app updates itself when Integr8 releases a new version. When a desktop or phone app is too old for the server, it says so; your office or Integr8 sends you the new version.
 
 Both apps are in English and Arabic, with a right-to-left layout in Arabic, and open in a light or dark theme or follow the device. Every screen in the desktop app is reached from the side menu, grouped under Overview, Work, CRM, Sales, Finance, Accounting, HR, Inventory, Operations, Set-up and Company; a group you cannot see is one your role or your company’s modules do not include.`,
       keywords: [
@@ -1936,7 +1936,7 @@ Both apps are in English and Arabic, with a right-to-left layout in Arabic, and 
 
 أما «النماذج» و«هوية الشركة»، تحت مجموعة الإعداد، فيعمل عليهما موظفو Integr8 من تطبيق الموظفين الخاص بهم، بعد أن يذكروا سبب فتح شركتك، ويمكن لشركتك قراءته. ويستطيع المالكون والمسؤولون الاطلاع على النماذج دون تغييرها؛ أما هوية الشركة فلا تُعرض للشركة أصلًا.
 
-والتطبيقان على صفحة التنزيل الخاصة بشركتك التي تعطيك إياها Integr8، وتربط إليها صفحة الدعوة بعد أن تعيّن كلمة المرور. ويحدّث تطبيق سطح المكتب نفسه عندما تُصدر Integr8 نسخة جديدة. وعندما يصبح تطبيق سطح المكتب أو الهاتف أقدم مما يقبله الخادم، يخبرك بذلك ويعرض «تحديث» الذي يفتح صفحة التنزيل.
+ويظهر لك التطبيقان مرة واحدة، في صفحة الدعوة بعد أن تعيّن كلمة المرور مباشرة: نزّلهما من هناك. ولتثبيت تطبيق مرة أخرى لاحقًا، على حاسوب أو هاتف آخر، اطلب برنامج التثبيت من مكتب شركتك أو من Integr8. ويحدّث تطبيق سطح المكتب نفسه عندما تُصدر Integr8 نسخة جديدة. وعندما يصبح تطبيق سطح المكتب أو الهاتف أقدم مما يقبله الخادم، يخبرك بذلك، ويرسل إليك مكتب شركتك أو Integr8 النسخة الجديدة.
 
 والتطبيقان بالعربية والإنجليزية، مع تخطيط من اليمين إلى اليسار بالعربية، ويُفتحان بسمة فاتحة أو داكنة أو تتبع الجهاز. وكل شاشة في تطبيق سطح المكتب تُفتح من القائمة الجانبية المقسّمة إلى: نظرة عامة، والعمل، وإدارة علاقات العملاء، والمبيعات، والمالية، والمحاسبة، والموارد البشرية، والمخزون، والعمليات، والإعداد، والشركة؛ والمجموعة التي لا تراها هي مجموعة لا يشملها دورك أو وحدات شركتك.`,
       keywords: [
@@ -2593,14 +2593,14 @@ Amounts are rounded to the currency’s smallest unit, piastres for the Egyptian
     en: {
       title: 'Installing and updating the apps',
       summary:
-        'Where to download the desktop and phone apps, how the desktop apps update themselves, and what to do when an app says it is too old.',
+        'Where to get the desktop and phone apps, how the desktop apps update themselves, and what to do when an app says it is too old.',
       body: `Your company’s desktop and phone apps are installed, so they have to be updated.
 
 The desktop apps, both the Integr8 staff app and your company’s own, update themselves when Integr8 publishes a new release. Nothing you have saved is lost by updating.
 
-Every installer is on the download page, at /download on Integr8’s site, for example app.integr8-media.com/download. With your company’s short name added, as in /download?company=your-company, the page lists your company’s latest desktop installers and its phone app. Integr8 gives you the exact link.
+Your company’s installers are listed once, on the invitation page, right after you set your password or join: download them there. There is no public download page. To install an app later, on another computer or phone, ask your office or Integr8 for the installer.
 
-When a desktop or phone app is too old for the server, it says so instead of failing, and Update opens that download page with your company already filled in. Install the new version over the app you have: do not uninstall the phone app first, because uninstalling it removes any work on the phone that has not been sent yet.`,
+When a desktop or phone app is too old for the server, it says so instead of failing. Desktop apps normally update themselves long before that; for the phone app, your office or Integr8 sends you the new version. Install the new version over the app you have: do not uninstall the phone app first, because uninstalling it removes any work on the phone that has not been sent yet.`,
       keywords: [
         'update',
         'download',
@@ -2612,20 +2612,19 @@ When a desktop or phone app is too old for the server, it says so instead of fai
         'phone app',
         'upgrade',
         'release',
-        'download page',
       ],
     },
     ar: {
       title: 'تثبيت التطبيقات وتحديثها',
       summary:
-        'من أين تنزّل تطبيقات سطح المكتب والهاتف، وكيف تحدّث تطبيقات سطح المكتب نفسها، وماذا تفعل عندما يقول التطبيق إنه قديم.',
+        'من أين تحصل على تطبيقات سطح المكتب والهاتف، وكيف تحدّث تطبيقات سطح المكتب نفسها، وماذا تفعل عندما يقول التطبيق إنه قديم.',
       body: `تطبيقا سطح المكتب والهاتف الخاصّان بشركتك مثبّتان، ولذلك يحتاجان إلى تحديث.
 
 تحدّث تطبيقات سطح المكتب نفسها، تطبيق موظفي Integr8 وتطبيق شركتك الخاص، عندما تنشر Integr8 إصدارًا جديدًا. ولا يضيع شيء مما حفظته بسبب التحديث.
 
-وكل برامج التثبيت موجودة في صفحة التنزيل، على /download في موقع Integr8، مثل app.integr8-media.com/download. ومع إضافة الاسم المختصر لشركتك، كما في /download?company=your-company، تعرض الصفحة أحدث برامج تثبيت سطح المكتب الخاصة بشركتك وتطبيق الهاتف. وتعطيك Integr8 الرابط الدقيق.
+وتظهر برامج تثبيت شركتك مرة واحدة، في صفحة الدعوة بعد أن تعيّن كلمة المرور أو تنضم مباشرة: نزّلها من هناك. ولا توجد صفحة تنزيل عامة. ولتثبيت تطبيق لاحقًا، على حاسوب أو هاتف آخر، اطلب برنامج التثبيت من مكتب شركتك أو من Integr8.
 
-وعندما يصبح تطبيق سطح المكتب أو الهاتف أقدم مما يقبله الخادم، يخبرك بذلك بدل أن يتعطل، ويفتح «تحديث» صفحة التنزيل تلك مع اسم شركتك معبّأً. ثبّت النسخة الجديدة فوق التطبيق الموجود: لا تحذف تطبيق الهاتف أولًا، لأن حذفه يزيل أي عمل على الهاتف لم يُرسل بعد.`,
+وعندما يصبح تطبيق سطح المكتب أو الهاتف أقدم مما يقبله الخادم، يخبرك بذلك بدل أن يتعطل. وتحدّث تطبيقات سطح المكتب نفسها عادةً قبل ذلك بكثير؛ أما تطبيق الهاتف فيرسل إليك مكتب شركتك أو Integr8 نسخته الجديدة. ثبّت النسخة الجديدة فوق التطبيق الموجود: لا تحذف تطبيق الهاتف أولًا، لأن حذفه يزيل أي عمل على الهاتف لم يُرسل بعد.`,
       keywords: [
         'تحديث',
         'تنزيل',
@@ -2637,7 +2636,6 @@ When a desktop or phone app is too old for the server, it says so instead of fai
         'تطبيق الهاتف',
         'ترقية',
         'إصدار',
-        'صفحة التنزيل',
       ],
     },
   },

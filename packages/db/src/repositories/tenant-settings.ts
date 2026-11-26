@@ -1,5 +1,11 @@
 import { type Kysely, type Selectable, sql } from 'kysely';
-import type { CompanyTheme, Database, TenantSettingsTable } from '../schema.js';
+import type {
+  CompanyTheme,
+  Database,
+  PhoneDistribution,
+  PlayTrack,
+  TenantSettingsTable,
+} from '../schema.js';
 
 /**
  * How one company works (P18).
@@ -55,6 +61,12 @@ export interface TenantSettings {
    * `{code}` in it on the company's own website. Null for Integr8's `/d/` page (0075).
    */
   documentLinkPattern: string | null;
+  /** How the company's phone app reaches its people: an APK staff send, or its own stores (0023). */
+  phoneDistribution: PhoneDistribution;
+  /** Google Play's track for a store company (0023). */
+  playTrack: PlayTrack;
+  /** The App Store's number for the company's app record, or null (0023). */
+  appStoreId: string | null;
 }
 
 export const DEFAULT_SETTINGS: Omit<TenantSettings, 'tenantId'> = {
@@ -86,6 +98,9 @@ export const DEFAULT_SETTINGS: Omit<TenantSettings, 'tenantId'> = {
   showCompanyName: true,
   hiddenNavSections: [],
   documentLinkPattern: null,
+  phoneDistribution: 'apk',
+  playTrack: 'internal',
+  appStoreId: null,
 };
 
 export class TenantSettingsRepository {
@@ -134,6 +149,9 @@ export class TenantSettingsRepository {
     showCompanyName?: boolean | undefined;
     hiddenNavSections?: readonly string[] | undefined;
     documentLinkPattern?: string | null | undefined;
+    phoneDistribution?: PhoneDistribution | undefined;
+    playTrack?: PlayTrack | undefined;
+    appStoreId?: string | null | undefined;
   }): Promise<TenantSettings> {
     const values = {
       ...(input.logoMediaId === undefined ? {} : { logo_media_id: input.logoMediaId }),
@@ -175,6 +193,11 @@ export class TenantSettingsRepository {
       ...(input.documentLinkPattern === undefined
         ? {}
         : { document_link_pattern: input.documentLinkPattern }),
+      ...(input.phoneDistribution === undefined
+        ? {}
+        : { phone_distribution: input.phoneDistribution }),
+      ...(input.playTrack === undefined ? {} : { play_track: input.playTrack }),
+      ...(input.appStoreId === undefined ? {} : { app_store_id: input.appStoreId }),
     };
 
     const row = await this.db
@@ -349,19 +372,45 @@ export class TenantSettingsWriter {
     return { ...settings, tenantId: row.tenant_id, name, slug };
   }
 
-  /** Every live company whose apps the pipeline builds (0022). Never a test company (0077). */
-  async companiesWithApps(): Promise<{ tenantId: string; slug: string; name: string }[]> {
+  /**
+   * Every live company whose apps the pipeline builds (0022), with how its
+   * phone app is published (0023). Never a test company (0077).
+   */
+  async companiesWithApps(): Promise<
+    {
+      tenantId: string;
+      slug: string;
+      name: string;
+      phoneDistribution: PhoneDistribution;
+      playTrack: PlayTrack;
+      appStoreId: string | null;
+    }[]
+  > {
     const rows = await this.db
       .selectFrom('tenant_settings')
       .innerJoin('tenants', 'tenants.id', 'tenant_settings.tenant_id')
-      .select(['tenants.id', 'tenants.slug', 'tenants.name'])
+      .select([
+        'tenants.id',
+        'tenants.slug',
+        'tenants.name',
+        'tenant_settings.phone_distribution',
+        'tenant_settings.play_track',
+        'tenant_settings.app_store_id',
+      ])
       .where('tenant_settings.apps_enabled', '=', true)
       .where('tenants.deleted_at', 'is', null)
       .where('tenants.status', '=', 'active')
       .where('tenants.is_test', '=', false)
       .orderBy('tenants.slug', 'asc')
       .execute();
-    return rows.map((row) => ({ tenantId: row.id, slug: row.slug, name: row.name }));
+    return rows.map((row) => ({
+      tenantId: row.id,
+      slug: row.slug,
+      name: row.name,
+      phoneDistribution: row.phone_distribution,
+      playTrack: row.play_track,
+      appStoreId: row.app_store_id,
+    }));
   }
 }
 
@@ -391,5 +440,8 @@ function toSettings(row: Selectable<TenantSettingsTable>): TenantSettings {
     showCompanyName: row.show_company_name,
     hiddenNavSections: row.hidden_nav_sections,
     documentLinkPattern: row.document_link_pattern,
+    phoneDistribution: row.phone_distribution,
+    playTrack: row.play_track,
+    appStoreId: row.app_store_id,
   };
 }

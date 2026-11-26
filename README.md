@@ -8,7 +8,7 @@ work on its own phone app, which keeps working with no signal; Integr8 staff run
 everything from the staff desktop app. The web app is the public site only.
 English and Arabic throughout.
 
-Current version: **2.1.0**. The documentation starts at
+Current version: **2.2.0**. The documentation starts at
 [`docs/README.md`](./docs/README.md); what is not finished is in
 [`plan/README.md`](./plan/README.md).
 
@@ -75,7 +75,9 @@ Postgres 16, one schema shared by every company, each row keyed by `tenant_id`
 with row-level security as the backstop. 2.0.0 started the migrations again from
 one per module; 0020 removed sign-up and card billing (P42); 0021 lets a test
 company's website run on localhost (P43); 0022 closes the functions that run as
-their owner (SEC-002); a new feature adds the next number after `0022`.
+their owner (SEC-002); 0023 says how each company's phone app is published and
+adds the app stores' reviewer account (P45); a new feature adds the next number
+after `0023`.
 
 | Migration | Module                                                                               |
 | --------- | ------------------------------------------------------------------------------------ |
@@ -101,6 +103,7 @@ their owner (SEC-002); a new feature adds the next number after `0022`.
 | 0020      | Desktop only (P42): drops sign-up, card billing and the web assistant switch         |
 | 0021      | A test company's website and document links may be on localhost (P43)                |
 | 0022      | Functions that run as their owner closed to all but their callers (SEC-002)          |
+| 0023      | Phone app by APK or the company's own stores, and the store reviewer account (P45)   |
 
 See [`docs/database/`](./docs/database/README.md).
 

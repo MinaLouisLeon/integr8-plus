@@ -226,6 +226,8 @@ export interface TenantUsersTable {
   status: Generated<MembershipStatus>;
   /** Whether this member may use the assistant when the company has it (0044; ADR-0001). */
   ai_enabled: Generated<boolean>;
+  /** The app stores' reviewer account, made by Integr8 staff; holds no seat, one per company (0023). */
+  store_reviewer: Generated<boolean>;
   created_at: CreatedAt;
   updated_at: UpdatedAt;
   deleted_at: Date | null;
@@ -965,9 +967,27 @@ export interface TenantSettingsTable {
   hidden_nav_sections: Generated<string[]>;
   /** Where document links point, an https address with `{code}`; null for Integr8's `/d/` page (0075). */
   document_link_pattern: string | null;
+  /** How the company's phone app reaches its people: an APK staff send, or its own stores (0023). */
+  phone_distribution: Generated<PhoneDistribution>;
+  /** Google Play's track for a store company (0023). */
+  play_track: Generated<PlayTrack>;
+  /** The App Store's number for the company's app record (0023). */
+  app_store_id: string | null;
   created_at: CreatedAt;
   updated_at: UpdatedAt;
 }
+
+/**
+ * How a company's phone app reaches its people (0023): an APK that Integr8
+ * staff send, or published in the company's own Google Play and App Store
+ * accounts, from which the phones update.
+ */
+export const PHONE_DISTRIBUTIONS = ['apk', 'stores'] as const;
+export type PhoneDistribution = (typeof PHONE_DISTRIBUTIONS)[number];
+
+/** Google Play's track for a store company: internal testers, or everyone (0023). */
+export const PLAY_TRACKS = ['internal', 'production'] as const;
+export type PlayTrack = (typeof PLAY_TRACKS)[number];
 
 // ---------------------------------------------------------------------------
 // Customers, sites and work orders (0010)

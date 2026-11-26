@@ -59,7 +59,6 @@ const SAME_IN_BOTH = new Set([
   'platform.storage.cloudflare',
   // Names: the company behind the product, and the staff app's product name.
   'site.brand.integr8Media',
-  'site.home.apps.integr8Title',
   'site.download.staff.title',
   // The forms AI tool's product name (it is English only).
   'site.download.formsAi.title',

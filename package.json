@@ -1,6 +1,6 @@
 {
   "name": "integr8-plus",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "private": true,
   "type": "module",
   "description": "Multi-tenant field operations platform",
@@ -26,6 +26,10 @@
     "releases:check": "node --test scripts/releases/sign-updates.test.mjs",
     "clean": "turbo run clean",
     "dev-mcp": "pnpm --filter @integr8/dev-mcp --silent start",
+    "local": "pnpm local:services && pnpm local:apps",
+    "local:services": "docker compose -f deploy/local/compose.yml up -d --wait postgres && pnpm --filter @integr8/db db deploy && docker compose -f deploy/local/compose.yml up -d --wait auth",
+    "local:apps": "turbo run build --filter=@integr8/api^... --filter=@integr8/desktop^... && turbo run dev --filter=@integr8/api --filter=@integr8/desktop",
+    "local:stop": "docker compose -f deploy/local/compose.yml stop",
     "prepare": "husky"
   },
   "devDependencies": {

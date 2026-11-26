@@ -218,5 +218,31 @@ so only staff acting as a company list, preview or start from a template). See [
 AI from `GET /v1/platform/downloads`, which reads the GitHub releases
 (`APP_RELEASES=github`, `GITHUB_RELEASES_REPOSITORY`, and `GITHUB_RELEASES_TOKEN`
 since the repository is private) through `@integr8/releases`, the same lookup the
-public site's update feed uses. The public `/download` page lists companies'
-apps only.
+public site's update feed uses. A company's own installers are listed only to
+somebody who has just accepted an invitation to it (the invitation page, from
+`POST /v1/invitations/accept`'s `apps`), and to staff on the company's page;
+there is no public download page.
+
+## A company's apps (P45)
+
+On a company's page (not for test companies, which have no apps):
+
+- **Installers** (`GET /v1/platform/companies/{id}/apps`): the company's newest
+  desktop installers and phone APK, each with **Download** and **Copy link**, for
+  sending to the company. Full staff sessions only.
+- **Phone app distribution** (`PATCH …/settings`: `phoneDistribution`,
+  `playTrack`, `appStoreId`; migration 0023): an **APK sent by Integr8** (the
+  default), or **the company's own Google Play and App Store accounts**, which
+  the release pipeline then submits to (`build-company-apps.yml` reads it from
+  the public brand answer's `storeLinks` and `/v1/build/companies`). A store
+  company's phone app opens its store page on Update. The steps for a company's
+  stores are the setup guide's Stage 8 and [deployment](../deployment/README.md#the-app-stores-0023).
+- **Store reviewer account** (`POST` and `DELETE …/store-reviewer`): an engineer
+  `store-reviewer+<slug>@integr8-media.com` with one made-up customer, site and
+  job, for the stores' "App access" forms. The password is shown once; making it
+  again gives a new password and signs the account out. It holds no seat
+  (`tenant_users.store_reviewer`, left out of `countActive` and the directory's
+  counts), only one per company, and its role cannot be changed (409
+  `store_reviewer_role_fixed`); the company's People screen labels it. Removing
+  it keeps the sample customer and job as the company's records. Recorded in the
+  platform audit log and the company's own.

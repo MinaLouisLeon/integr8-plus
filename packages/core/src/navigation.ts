@@ -651,7 +651,7 @@ export const PLATFORM_NAV_SECTIONS: readonly PlatformNavSection[] = [
   { key: 'releases', icon: 'package' },
   { key: 'health', icon: 'heart' },
   { key: 'staff', icon: 'users' },
-  // The staff desktop app and Integr8 Forms for AI: staff only, so not on /download.
+  // The staff desktop app and Integr8 Forms for AI: staff only, so not on the public site.
   { key: 'downloads', icon: 'download' },
 ];
 
