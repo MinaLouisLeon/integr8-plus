@@ -2,10 +2,10 @@
  * Where an app too old to be served gets its update.
  *
  * The API's `client_too_old` answer carries the address as a detail whose code
- * is `update_url` (from 1.2.4): the web app's download page unless the
- * deployment says otherwise. The phone and desktop apps open it from an Update
- * button. A company's own build adds `?company=<slug>`, so the page lists that
- * company's installers and phone app rather than the generic ones.
+ * is `update_url` (from 1.2.4): `API_UPDATE_URL`, by default Integr8 Plus's
+ * page on the Integr8 Media website now that the public download page is gone.
+ * The phone and desktop apps open it from an Update button. A company's own
+ * build adds `?company=<slug>`, for a page that lists that company's builds.
  */
 
 /** The detail code the address travels under. */
@@ -30,7 +30,7 @@ export function updateUrlFrom(
 }
 
 /**
- * The download page for this build: the server's address, with the company
+ * The update page for this build: the server's address, with the company
  * added for a company's own build. By hand rather than with `URL`, whose
  * `searchParams` React Native's polyfill does not reliably provide.
  */

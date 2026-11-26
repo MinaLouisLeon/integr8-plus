@@ -283,6 +283,7 @@ export const listMembersRoute = defineRoute({
           customRole: customRoleBody(member.customRoleId, roleNames),
           status: member.status,
           aiEnabled: member.aiEnabled,
+          storeReviewer: member.storeReviewer,
           createdAt: iso(member.createdAt),
         })),
       },
@@ -493,8 +494,14 @@ export const acceptInvitationRoute = defineRoute({
     // No tokens, and no session: the invitation token travels by email and
     // may sit in a mailbox, a proxy log or a screenshot, so it buys a
     // membership and nothing more. The page sends the person to their
-    // company's app (P42), which it links to by the company's short name.
+    // company's app (P42), listing its installers from this answer: a real
+    // invitation is the only key to that list, where the old download page
+    // gave it to anybody who guessed a company's short name.
     const company = await getPlatformDataSource().tenants.findById(accepted.tenantId);
+    const apps =
+      company === undefined
+        ? ({ status: 'none' } as const)
+        : await context.services.appReleases.companyInstallers(company.slug);
     return {
       status: 200,
       body: {
@@ -503,6 +510,7 @@ export const acceptInvitationRoute = defineRoute({
         existingAccount: accepted.existingAccount,
         signInRequired: true,
         company: company === undefined ? null : { name: company.name, slug: company.slug },
+        apps,
       },
     };
   },

@@ -621,7 +621,7 @@ export interface paths {
         };
         /**
          * The companies whose own apps are built
-         * @description Every active company with “build apps” switched on, for the release pipeline. Needs `Authorization: Bearer <BUILD_TOKEN>`; answers 404 when the deployment has no such token.
+         * @description Every active company with “build apps” switched on, for the release pipeline, with how its phone app is published (0023): `apk` (an APK Integr8 staff send) or `stores` (the company’s own Google Play and App Store accounts, on `playTrack`, with the App Store app number `appStoreId`). Needs `Authorization: Bearer <BUILD_TOKEN>`; answers 404 when the deployment has no such token.
          */
         get: operations["listBuildCompanies"];
         put?: never;
@@ -7864,7 +7864,7 @@ export interface paths {
         head?: never;
         /**
          * Change a company’s website, its document links, or whether its own apps are built
-         * @description The branding facts the dashboard owns. `documentLinkPattern` (0075) points the company’s document links at its own website: an https address with `{code}` in it, on the registered website’s host or one under it (422 `document_link_invalid`, `document_link_needs_website`, `document_link_other_site`); a test company may also use `http://localhost` or `http://127.0.0.1` for both (P43), any other company gets 422 `website_url_local_only` or `document_link_invalid`. A staff session limited to test companies may change only `websiteUrl` and `documentLinkPattern` (403 `session_scope` otherwise). Null goes back to Integr8’s page, and codes already printed keep working there either way. The rest of the look — logo, icon, colours, theme — is set from the desktop app while acting as the company, where it can be previewed. Switching `appsEnabled` on puts the company in the list the release pipeline builds for and, when the deployment can start builds (`APP_BUILDS=github`), starts its first build at once; `appBuild` says how that went, and is null when this change did not switch apps on.
+         * @description The branding facts the dashboard owns, and how its phone app is published (0023): `phoneDistribution` `apk` (an APK Integr8 staff send) or `stores` (the company’s own Google Play and App Store accounts, which the release pipeline then submits to), `playTrack` `internal` or `production`, and `appStoreId`, the App Store app record’s number (6 to 12 digits); a test company cannot publish to stores (409 `test_company_no_apps`). `documentLinkPattern` (0075) points the company’s document links at its own website: an https address with `{code}` in it, on the registered website’s host or one under it (422 `document_link_invalid`, `document_link_needs_website`, `document_link_other_site`); a test company may also use `http://localhost` or `http://127.0.0.1` for both (P43), any other company gets 422 `website_url_local_only` or `document_link_invalid`. A staff session limited to test companies may change only `websiteUrl` and `documentLinkPattern` (403 `session_scope` otherwise). Null goes back to Integr8’s page, and codes already printed keep working there either way. The rest of the look — logo, icon, colours, theme — is set from the desktop app while acting as the company, where it can be previewed. Switching `appsEnabled` on puts the company in the list the release pipeline builds for and, when the deployment can start builds (`APP_BUILDS=github`), starts its first build at once; `appBuild` says how that went, and is null when this change did not switch apps on.
          */
         patch: operations["updateCompanySettings"];
         trace?: never;
@@ -8857,6 +8857,50 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform/companies/{tenantId}/apps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A company’s newest desktop and phone installers
+         * @description Read from the GitHub releases this deployment is set to (`APP_RELEASES=github`): the company’s newest release with installers in it, for staff to download or send. `found` with its files, `none` when nothing is published (or releases are not read here), `unavailable` when GitHub could not be asked. The file links pass through the public site for a private repository, with its per-address download limit.
+         */
+        get: operations["getCompanyApps"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform/companies/{tenantId}/store-reviewer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Make the app stores’ reviewer account, or give it a new password
+         * @description For a company that publishes its phone app in its own stores (0023). Makes an engineer `store-reviewer+<slug>@integr8-media.com` with a password shown once, and one made-up customer, site and job assigned to it, so the Google Play and App Store reviewers can sign in and see the app working without seeing a real customer. Called again, it gives the same account a new password and signs it out of every device. The account holds no seat and its role cannot be changed. Recorded in the platform audit log and the company’s own. A test company has no apps (409 `test_company_no_apps`).
+         */
+        post: operations["makeStoreReviewer"];
+        /**
+         * Remove the app stores’ reviewer account from a company
+         * @description Takes the reviewer out of the company and signs it out of every device. The sample customer and job stay, as the company’s records. Recorded in the platform audit log and the company’s own.
+         */
+        delete: operations["removeStoreReviewer"];
         options?: never;
         head?: never;
         patch?: never;
@@ -11153,6 +11197,7 @@ export interface operations {
                         /** @enum {string} */
                         status: "invited" | "active" | "suspended";
                         aiEnabled: boolean;
+                        storeReviewer?: boolean;
                         /** Format: date-time */
                         createdAt: string;
                     };
@@ -11263,6 +11308,7 @@ export interface operations {
                         /** @enum {string} */
                         status: "invited" | "active" | "suspended";
                         aiEnabled: boolean;
+                        storeReviewer?: boolean;
                         /** Format: date-time */
                         createdAt: string;
                     };
@@ -11293,7 +11339,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description This is the company’s only owner (`last_owner`). */
+            /** @description This is the company’s only owner (`last_owner`), or the app stores’ reviewer account, which stays an engineer because it holds no seat (`store_reviewer_role_fixed`). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -11376,6 +11422,7 @@ export interface operations {
                         /** @enum {string} */
                         status: "invited" | "active" | "suspended";
                         aiEnabled: boolean;
+                        storeReviewer?: boolean;
                         /** Format: date-time */
                         createdAt: string;
                     };
@@ -11577,6 +11624,7 @@ export interface operations {
                         /** @enum {string} */
                         status: "invited" | "active" | "suspended";
                         aiEnabled: boolean;
+                        storeReviewer?: boolean;
                         /** Format: date-time */
                         createdAt: string;
                     };
@@ -11684,6 +11732,7 @@ export interface operations {
                         /** @enum {string} */
                         status: "invited" | "active" | "suspended";
                         aiEnabled: boolean;
+                        storeReviewer?: boolean;
                         /** Format: date-time */
                         createdAt: string;
                     };
@@ -12225,6 +12274,10 @@ export interface operations {
                         showCompanyName: boolean;
                         logoPath: string | null;
                         appIconPath: string | null;
+                        storeLinks: {
+                            googlePlay: string;
+                            appStore: string | null;
+                        } | null;
                     };
                 };
             };
@@ -12418,6 +12471,13 @@ export interface operations {
                         items: {
                             slug: string;
                             name: string;
+                            phone: {
+                                /** @enum {string} */
+                                distribution: "apk" | "stores";
+                                /** @enum {string} */
+                                playTrack: "internal" | "production";
+                                appStoreId: string | null;
+                            };
                         }[];
                     };
                 };
@@ -13074,6 +13134,7 @@ export interface operations {
                             /** @enum {string} */
                             status: "invited" | "active" | "suspended";
                             aiEnabled: boolean;
+                            storeReviewer?: boolean;
                             /** Format: date-time */
                             createdAt: string;
                         }[];
@@ -13504,6 +13565,31 @@ export interface operations {
                             name: string;
                             slug: string;
                         } | null;
+                        apps: {
+                            /** @enum {string} */
+                            status: "found";
+                            release: {
+                                tag: string;
+                                version: string;
+                                installers: {
+                                    name: string;
+                                    url: string;
+                                    /** @enum {string} */
+                                    platform: "windows" | "macos" | "linux" | "android";
+                                    /** @enum {string} */
+                                    kind: "exe" | "msi" | "dmg" | "appimage" | "deb" | "rpm" | "apk";
+                                    /** @enum {string|null} */
+                                    arch: "x64" | "arm64" | "universal" | null;
+                                    size: number | null;
+                                }[];
+                            };
+                        } | {
+                            /** @enum {string} */
+                            status: "none";
+                        } | {
+                            /** @enum {string} */
+                            status: "unavailable";
+                        };
                     };
                 };
             };
@@ -82568,6 +82654,11 @@ export interface operations {
                             documentLinkPattern: string | null;
                             hiddenSections: string[];
                             tabs: string[];
+                            /** @enum {string} */
+                            phoneDistribution: "apk" | "stores";
+                            /** @enum {string} */
+                            playTrack: "internal" | "production";
+                            appStoreId: string | null;
                         };
                         invitations: {
                             /** Format: uuid */
@@ -82610,6 +82701,14 @@ export interface operations {
                             role: string;
                             status: string;
                         }[];
+                        storeReviewer: {
+                            /** Format: uuid */
+                            userId: string;
+                            email: string;
+                            status: string;
+                            /** Format: date-time */
+                            createdAt: string;
+                        } | null;
                     };
                 };
             };
@@ -82990,6 +83089,11 @@ export interface operations {
                     aiDesktopEnabled?: boolean;
                     aiMobileEnabled?: boolean;
                     documentLinkPattern?: string | null;
+                    /** @enum {string} */
+                    phoneDistribution?: "apk" | "stores";
+                    /** @enum {string} */
+                    playTrack?: "internal" | "production";
+                    appStoreId?: string | null;
                 };
             };
         };
@@ -83017,6 +83121,11 @@ export interface operations {
                         documentLinkPattern: string | null;
                         hiddenSections: string[];
                         tabs: string[];
+                        /** @enum {string} */
+                        phoneDistribution: "apk" | "stores";
+                        /** @enum {string} */
+                        playTrack: "internal" | "production";
+                        appStoreId: string | null;
                         appBuild: {
                             /** @enum {string} */
                             status: "started" | "not_configured" | "failed";
@@ -89003,6 +89112,264 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Error"];
                 };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getCompanyApps: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The company’s installers. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        status: "found";
+                        release: {
+                            tag: string;
+                            version: string;
+                            installers: {
+                                name: string;
+                                url: string;
+                                /** @enum {string} */
+                                platform: "windows" | "macos" | "linux" | "android";
+                                /** @enum {string} */
+                                kind: "exe" | "msi" | "dmg" | "appimage" | "deb" | "rpm" | "apk";
+                                /** @enum {string|null} */
+                                arch: "x64" | "arm64" | "universal" | null;
+                                size: number | null;
+                            }[];
+                        };
+                    } | {
+                        /** @enum {string} */
+                        status: "none";
+                    } | {
+                        /** @enum {string} */
+                        status: "unavailable";
+                    };
+                };
+            };
+            /** @description A platform session is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such company. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    makeStoreReviewer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The account and its password, shown once. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        created: boolean;
+                        /** Format: uuid */
+                        userId: string;
+                        email: string;
+                        password: string;
+                        workOrderReference: string | null;
+                    };
+                };
+            };
+            /** @description A platform session is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such company. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `test_company_no_apps`, or `store_reviewer_email_taken`: somebody in the company already has the reviewer’s address. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    removeStoreReviewer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A platform session is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such company, or it has no reviewer account. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description The request failed validation. */
             422: {

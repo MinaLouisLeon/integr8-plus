@@ -169,6 +169,10 @@ export const en = {
       doneApps:
         'Carry on in {{company}}’s desktop app, or its phone app if you work in the field: sign in there with the same address and password.',
       getTheApps: 'Get {{company}}’s apps',
+      appsOnlyHere:
+        'These downloads are shown only here, once. Download what you need now; if you need them again later, ask your office or Integr8.',
+      appsUnavailable:
+        'Your company’s apps cannot be listed just now. Ask your office or Integr8 to send you the installer.',
     },
   },
 
@@ -187,7 +191,6 @@ export const en = {
       note: 'Fourteen days. No card needed.',
       // When public sign-up is off: companies are set up by Integr8.
       ctaClosed: 'Talk to us about getting set up',
-      noteClosed: 'We set your company up with you: forms, job types and the apps.',
     },
     contact: {
       title: 'Getting set up',
@@ -198,7 +201,6 @@ export const en = {
         'Send us the paperwork your engineers fill in today. We build it into forms and job types.',
       step3: 'We hand you the apps, with your people invited and everything ready to fill in.',
       email: 'Email us',
-      haveAccount: 'Already set up?',
     },
     help: {
       title: 'Help',
@@ -422,6 +424,9 @@ export const en = {
         'Suspending or removing somebody stops them signing in straight away. A session they already have open can last up to fifteen minutes longer.',
       status: { invited: 'Invited', active: 'Active', suspended: 'Suspended' },
       hrOwnerOnly: 'Only the owner makes somebody an HR manager, or stops them being one.',
+      storeReviewer: 'Store reviewer',
+      storeReviewerHint:
+        'Made by Integr8 for the Google Play and App Store reviewers. Holds no seat, and stays an engineer; ask Integr8 to remove it.',
       grants: 'Also',
       grantsNote:
         'HR and inventory work can be given on top of somebody’s role. Only the owner makes somebody an HR manager.',
@@ -875,8 +880,8 @@ export const en = {
   },
 
   // The phone and desktop apps when the server no longer serves this build:
-  // a strip with an Update button that opens the web app's download page,
-  // with the company filled in for a company's own app (Low 6, 1.2.4).
+  // a strip with an Update button that opens the server's update address
+  // (API_UPDATE_URL), with the company filled in for a company's own app.
   clientUpdate: {
     needed: 'This version of the app is no longer supported. Update it to keep working.',
     desktopHint: 'If the app does not update itself in a few minutes, download the new version.',
@@ -8720,7 +8725,7 @@ export const en = {
     downloads: {
       title: 'Downloads',
       subtitle:
-        'The apps for Integr8’s own team. Only signed-in staff see this page; companies download their apps from /download.',
+        'The apps for Integr8’s own team. Only signed-in staff see this page; a company’s people get their apps on the invitation page when they join.',
       staffNone: 'No staff release has been published yet.',
       formsAiNone: 'No release carries Integr8 Forms for AI yet.',
       devMcpNone: 'No release carries the developer MCP server yet.',
@@ -9453,6 +9458,50 @@ export const en = {
       resetSyncBody: 'Every device downloads everything again. Nothing waiting to be sent is lost.',
       resetSyncDone: 'Done. Their phones will download everything again on the next sync.',
       reason: 'Reason',
+    },
+    phoneApps: {
+      installers: {
+        title: 'Installers',
+        hint: 'download a file, or copy its link to send to the company.',
+        none: 'Nothing has been published for this company yet. Build its apps first.',
+        download: 'Download',
+        copyLink: 'Copy link',
+        copied: 'Copied',
+      },
+      distribution: {
+        title: 'Phone app distribution',
+        description:
+          'How this company’s people get and update its phone app. Integr8 keeps building it in its own Expo project either way.',
+        apk: 'APK sent by Integr8',
+        apkHint:
+          'Each release makes an Android file; send it from Installers. iPhones are not covered.',
+        stores: 'The company’s own Google Play and App Store accounts',
+        storesHint:
+          'Each release is sent to the company’s stores and phones update from there. Needs its store keys in Expo first (see the setup guide).',
+        track: 'Google Play track',
+        trackInternal: 'Internal testing only',
+        trackProduction: 'Public release',
+        appStoreId: 'App Store app number',
+        appStoreIdHint: 'App Store Connect → the app → App Information → Apple ID.',
+        appStoreIdInvalid: 'Use the 6 to 12 digits of the Apple ID.',
+        appsOff: 'This company’s apps are not built yet: switch “Build apps” on above.',
+        save: 'Save',
+      },
+      reviewer: {
+        title: 'Store reviewer account',
+        description:
+          'Google Play and the App Store sign in to review the app. This makes an engineer with one made-up job, holding no seat; type its address and password into each store’s “App access” form.',
+        exists: '{{email}}, made {{date}}.',
+        create: 'Create a store reviewer account',
+        newPassword: 'New password',
+        remove: 'Remove',
+        shownOnce:
+          'Shown once. Copy the password now and put it in each store’s “App access” form.',
+        email: 'Address:',
+        password: 'Password:',
+        copyPassword: 'Copy password',
+        sampleJob: 'Its sample job is {{reference}}.',
+      },
     },
     testTwin: {
       title: 'Test twin',

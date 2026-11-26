@@ -1,8 +1,16 @@
 import { timingSafeEqual } from 'node:crypto';
-import { companyThemeSchema, getPlatformDataSource, withTenant } from '@integr8/db';
+import {
+  companyThemeSchema,
+  getPlatformDataSource,
+  PHONE_DISTRIBUTIONS,
+  PLAY_TRACKS,
+  withTenant,
+} from '@integr8/db';
+import { storeLinks } from '@integr8/core';
 import { z } from 'zod';
 import { ApiError, notFound } from '../../http/errors.js';
 import { defineRoute, noSchema, type PublicRequestContext } from '../../http/routes.js';
+import { createRateLimiter } from '../../http/rate-limit.js';
 import { getStorage } from '../../media/tenant-storage.js';
 
 /**
@@ -49,6 +57,12 @@ export const publicBrandSchema = z.object({
    */
   logoPath: z.string().nullable(),
   appIconPath: z.string().nullable(),
+  /**
+   * The company's own Google Play and App Store pages when its phone app is
+   * published there (0023), so a store build's Update opens the store; null
+   * for an app Integr8 staff send as an APK. Store pages are public anyway.
+   */
+  storeLinks: z.object({ googlePlay: z.string(), appStore: z.string().nullable() }).nullable(),
 });
 
 /** Cached briefly: a brand changes rarely, and a phone opens this on every launch. */
@@ -70,8 +84,8 @@ export const publicBrandRoute = defineRoute({
     200: { description: 'The brand.', schema: publicBrandSchema },
     404: { description: 'No company has this short name.' },
   },
-  handler: async ({ params }) => {
-    const brand = await brandFor(params.slug);
+  handler: async ({ params }, context) => {
+    const brand = await brandFor(params.slug, context);
     return {
       status: 200,
       headers: CACHE,
@@ -86,6 +100,8 @@ export const publicBrandRoute = defineRoute({
         logoPath: brand.logoMediaId === null ? null : `/v1/public/companies/${params.slug}/logo`,
         appIconPath:
           brand.appIconMediaId === null ? null : `/v1/public/companies/${params.slug}/app-icon`,
+        storeLinks:
+          brand.phoneDistribution === 'stores' ? storeLinks(params.slug, brand.appStoreId) : null,
       },
     };
   },
@@ -107,7 +123,7 @@ export const publicLogoRoute = defineRoute({
     404: { description: 'No such company, or it has no logo.' },
   },
   handler: async ({ params }, context) => {
-    const brand = await brandFor(params.slug);
+    const brand = await brandFor(params.slug, context);
     return redirectToImage(context, brand.tenantId, brand.logoMediaId, 'logo');
   },
 });
@@ -129,7 +145,7 @@ export const publicAppIconRoute = defineRoute({
     404: { description: 'No such company, or it has no app icon.' },
   },
   handler: async ({ params }, context) => {
-    const brand = await brandFor(params.slug);
+    const brand = await brandFor(params.slug, context);
     return redirectToImage(context, brand.tenantId, brand.appIconMediaId, 'app icon');
   },
 });
@@ -148,7 +164,7 @@ export const buildCompaniesRoute = defineRoute({
   operationId: 'listBuildCompanies',
   summary: 'The companies whose own apps are built',
   description:
-    'Every active company with “build apps” switched on, for the release pipeline. Needs `Authorization: Bearer <BUILD_TOKEN>`; answers 404 when the deployment has no such token.',
+    'Every active company with “build apps” switched on, for the release pipeline, with how its phone app is published (0023): `apk` (an APK Integr8 staff send) or `stores` (the company’s own Google Play and App Store accounts, on `playTrack`, with the App Store app number `appStoreId`). Needs `Authorization: Bearer <BUILD_TOKEN>`; answers 404 when the deployment has no such token.',
   tags: TAGS,
   security: 'public',
   params: noSchema,
@@ -158,7 +174,17 @@ export const buildCompaniesRoute = defineRoute({
     200: {
       description: 'The companies, by slug.',
       schema: z.object({
-        items: z.array(z.object({ slug: z.string(), name: z.string() })),
+        items: z.array(
+          z.object({
+            slug: z.string(),
+            name: z.string(),
+            phone: z.object({
+              distribution: z.enum(PHONE_DISTRIBUTIONS),
+              playTrack: z.enum(PLAY_TRACKS),
+              appStoreId: z.string().nullable(),
+            }),
+          }),
+        ),
       }),
     },
     403: { description: 'The build token is missing or wrong (`build_token_rejected`).' },
@@ -176,14 +202,48 @@ export const buildCompaniesRoute = defineRoute({
     const companies = await getPlatformDataSource().tenantSettings.companiesWithApps();
     return {
       status: 200,
-      body: { items: companies.map((company) => ({ slug: company.slug, name: company.name })) },
+      body: {
+        items: companies.map((company) => ({
+          slug: company.slug,
+          name: company.name,
+          phone: {
+            distribution: company.phoneDistribution,
+            playTrack: company.playTrack,
+            appStoreId: company.appStoreId,
+          },
+        })),
+      },
     };
   },
 });
 
-async function brandFor(slug: string) {
+/**
+ * Lookups by a name nobody has, per address: few enough that walking a list
+ * of likely company names takes days, not minutes, since these routes answer
+ * anybody and a 404 says the name is free. Only misses count, so an office
+ * whose phones all open the app at nine shares nothing: its apps only ever
+ * ask for their own company. Constants rather than settings, because no
+ * deployment has a reason to loosen them.
+ */
+const MISS_LIMIT = 20;
+const MISS_WINDOW_MS = 60 * 60 * 1000;
+const missLimiter = createRateLimiter();
+
+async function brandFor(slug: string, context: PublicRequestContext) {
+  const bucketKey = context.ipAddress === null ? null : `public-brand-miss:${context.ipAddress}`;
+  if (bucketKey !== null) {
+    missLimiter.assertOpen(bucketKey);
+  }
   const brand = await getPlatformDataSource().tenantSettings.brandBySlug(slug);
   if (brand === undefined) {
+    if (bucketKey !== null) {
+      await missLimiter.consume({
+        bucketKey,
+        limit: MISS_LIMIT,
+        windowMs: MISS_WINDOW_MS,
+        logger: context.logger,
+      });
+    }
     throw notFound('No company has this short name.');
   }
   return brand;

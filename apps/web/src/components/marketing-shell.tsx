@@ -46,10 +46,7 @@ export function pillClass(
   return `inline-flex items-center justify-center gap-2 rounded-full font-semibold whitespace-nowrap transition duration-200 motion-reduce:hover:scale-100 ${sizing} ${colour}`;
 }
 
-const NAV = [
-  { href: '/help', key: 'help' },
-  { href: '/download', key: 'download' },
-] as const;
+const NAV = [{ href: '/help', key: 'help' }] as const;
 
 export function MarketingShell({
   children,

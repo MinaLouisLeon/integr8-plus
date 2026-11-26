@@ -16,9 +16,10 @@
  * repository becomes private: then GitHub's download links need it too, so
  * the manifest's links are pointed back here and the files are passed through.
  *
- * The same list feeds the public `/download` page (Low 6): an app's newest
- * release with installers in it, each file linked the way the updater's are
- * (straight to GitHub, or through this server for a private repository).
+ * The same list gives an app's newest release with installers in it (for the
+ * staff app's Downloads and the invitation page's company installers), each
+ * file linked the way the updater's are (straight to GitHub, or through the
+ * public site for a private repository).
  */
 
 export interface GitHubAsset {

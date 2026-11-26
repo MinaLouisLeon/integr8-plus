@@ -75,11 +75,13 @@ Plan limits and permissions are enforced by the API, never by a screen.
 
 ## The public site (`apps/web`)
 
-What must open in a plain browser, for people who have no app: home, contact,
-help, legal, `/download` (a company's installers and phone
-app), accepting an invitation (`/accept-invitation`: the person
-sets a password, is told it is set, and is sent to the company's apps), and the
-desktop apps' update feed (`/desktop-updates`). It serves no company's
+What must open in a plain browser, for people who have no app: contact, help,
+legal, accepting an invitation (`/accept-invitation`: the person sets a password,
+is told it is set, and is shown the company's installers from the API's answer,
+the only place they are listed), and the desktop apps' update feed
+(`/desktop-updates`, with a per-address limit on lookups that find nothing and on
+repeated file downloads). There is no home or download page: `/` and `/download`
+redirect to the product's page on the Integr8 Media website. It serves no company's
 documents, quote links or asset-tag pages: those open on the company's own
 website (see [documents](../documents/README.md)). It has no features or pricing
 pages: the product is presented, with no prices, on the Integr8 Media website

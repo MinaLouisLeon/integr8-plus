@@ -125,8 +125,10 @@ describe('inviting somebody', () => {
       email: to,
       existingAccount: false,
       signInRequired: true,
-      // The page sends them to this company's app (P42).
+      // The page sends them to this company's app (P42), listing its
+      // installers; this server reads no releases (APP_RELEASES=off).
       company: { name: expect.any(String) as string, slug: expect.any(String) as string },
+      apps: { status: 'none' },
     });
     expect(accepted.body).not.toContain('accessToken');
 

@@ -7,6 +7,8 @@
  * back. The identifier rules live here so one test covers both.
  */
 
+import { androidPackage, iosBundleIdentifier } from '@integr8/core';
+
 export type CompanyTheme = 'light' | 'dark' | 'system';
 
 /** Exactly the answer of `GET /v1/public/companies/{slug}/brand`. */
@@ -20,6 +22,12 @@ export interface CompanyBuild {
   /** Relative to the API base; the API redirects to the image. */
   logoPath: string | null;
   appIconPath: string | null;
+  /**
+   * The company's own store pages when its phone app is published in its own
+   * Google Play and App Store accounts (0023), so Update opens the store; null
+   * for an app Integr8 staff send as an APK, or from an older server.
+   */
+  storeLinks: { googlePlay: string; appStore: string | null } | null;
 }
 
 /**
@@ -56,12 +64,12 @@ export function companyIdentifiers(slug: string): CompanyIdentifiers {
   if (!isCompanySlug(slug)) {
     throw new Error(`"${slug}" is not a company slug (lower-case letters, digits and hyphens).`);
   }
-  const androidSegment = slug.replaceAll('-', '_');
   return {
     slug: EAS_PROJECT_SLUG,
     scheme: `integr8-${slug}`,
-    iosBundleIdentifier: `com.integr8.plus.${slug}`,
-    androidPackage: `com.integr8.plus.${/^\d/u.test(androidSegment) ? `c${androidSegment}` : androidSegment}`,
+    // The store identifiers' rule is shared with the API's store links (@integr8/core).
+    iosBundleIdentifier: iosBundleIdentifier(slug),
+    androidPackage: androidPackage(slug),
   };
 }
 
@@ -96,5 +104,23 @@ export function parseCompanyBuild(value: unknown): CompanyBuild | undefined {
     defaultTheme: THEMES.find((candidate) => candidate === theme) ?? 'system',
     logoPath: optionalString(record.logoPath),
     appIconPath: optionalString(record.appIconPath),
+    storeLinks: parseStoreLinks(record.storeLinks),
+  };
+}
+
+/** The store pages, when both are https links where expected; otherwise none. */
+function parseStoreLinks(value: unknown): CompanyBuild['storeLinks'] {
+  if (typeof value !== 'object' || value === null) {
+    return null;
+  }
+  const record = value as Record<string, unknown>;
+  const googlePlay = optionalString(record.googlePlay);
+  const appStore = optionalString(record.appStore);
+  if (googlePlay?.startsWith('https://play.google.com/') !== true) {
+    return null;
+  }
+  return {
+    googlePlay,
+    appStore: appStore?.startsWith('https://apps.apple.com/') === true ? appStore : null,
   };
 }

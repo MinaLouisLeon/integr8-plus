@@ -58,6 +58,8 @@ interface Member {
   status: Status;
   /** Whether this member may use the assistant (docs/ai; ADR-0001). */
   aiEnabled: boolean;
+  /** The app stores' reviewer account Integr8 made (0023): no seat, and its role stays. */
+  storeReviewer?: boolean;
 }
 
 /** Who is looking at the screen: their role and what they may do. */
@@ -301,7 +303,7 @@ function MemberRow({
   const queries = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const grants = manageableGrants(viewer.role, viewer.permissions);
-  const roleLocked = !mayChangeRole(viewer.role, member.role);
+  const roleLocked = member.storeReviewer === true || !mayChangeRole(viewer.role, member.role);
   const mayToggleAi = viewer.permissions.includes('member.update_role');
 
   const act = useMutation({
@@ -366,9 +368,22 @@ function MemberRow({
           member={member}
           roles={roleOptions(viewer.role, member.role)}
           disabled={act.isPending || roleLocked}
-          disabledHint={t('workspace.members.hrOwnerOnly')}
+          disabledHint={
+            member.storeReviewer === true
+              ? t('workspace.members.storeReviewerHint')
+              : t('workspace.members.hrOwnerOnly')
+          }
           onChanged={onDone}
         />
+
+        {member.storeReviewer === true ? (
+          <span
+            className="rounded-full bg-surface-muted px-2 py-0.5 text-xs text-content-muted"
+            title={t('workspace.members.storeReviewerHint')}
+          >
+            {t('workspace.members.storeReviewer')}
+          </span>
+        ) : null}
 
         <span className="text-xs text-content-muted">
           {t(`workspace.members.status.${member.status}`)}

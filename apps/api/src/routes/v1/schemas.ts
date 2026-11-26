@@ -183,6 +183,12 @@ export const memberSchema = z.object({
   status: z.enum(['invited', 'active', 'suspended']),
   /** Whether this member may use the assistant when the company has it (ADR-0001). */
   aiEnabled: z.boolean(),
+  /**
+   * The app stores' reviewer account, made by Integr8 staff for a company that
+   * publishes its phone app in its own stores (0023): it holds no seat and its
+   * role cannot be changed. Absent from servers before 0023.
+   */
+  storeReviewer: z.boolean().optional(),
   createdAt: timestamp,
 });
 
@@ -202,6 +208,24 @@ export const invitationSchema = z.object({
    */
   emailed: z.boolean().nullable().default(null),
 });
+
+/** One installer file of an app's release, as `@integr8/releases` lists it. */
+export const installerSchema = z.object({
+  name: z.string(),
+  url: z.string(),
+  platform: z.enum(['windows', 'macos', 'linux', 'android']),
+  kind: z.enum(['exe', 'msi', 'dmg', 'appimage', 'deb', 'rpm', 'apk']),
+  arch: z.enum(['x64', 'arm64', 'universal']).nullable(),
+  size: z.number().int().nullable(),
+});
+
+/** `none`: nothing published (or no releases read here); `unavailable`: GitHub did not answer. */
+export const lookupSchema = <T extends z.ZodType>(release: T) =>
+  z.discriminatedUnion('status', [
+    z.object({ status: z.literal('found'), release }),
+    z.object({ status: z.literal('none') }),
+    z.object({ status: z.literal('unavailable') }),
+  ]);
 
 export const acceptedSchema = z.object({
   accepted: z.boolean(),
@@ -223,10 +247,19 @@ export const acceptedSchema = z.object({
   /** Always true since 1.2.4: accepting signs nobody in, so sign in next. */
   signInRequired: z.boolean(),
   /**
-   * The company joined (P42): its name, and its short name for the download
-   * page, since its people sign in in its own desktop or phone app.
+   * The company joined (P42): its name and short name, since its people sign
+   * in in its own desktop or phone app.
    */
   company: z.object({ name: z.string(), slug: z.string() }).nullable(),
+  /**
+   * That company's newest desktop and phone installers, so the page can offer
+   * them at once. Listed only here, to somebody who has just used a real
+   * invitation, since the public download page that anybody could ask by
+   * company name was removed. `none` with no company or nothing published.
+   */
+  apps: lookupSchema(
+    z.object({ tag: z.string(), version: z.string(), installers: z.array(installerSchema) }),
+  ),
 });
 
 /** What an invitation link's page may know before accepting it (1.2.4). */

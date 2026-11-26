@@ -1,5 +1,14 @@
 import { shownTabs, toPlatformUserId, toTenantId } from '@integr8/core';
-import { getPlatformDataSource, TENANT_PLANS, type TenantSummary, withTenant } from '@integr8/db';
+import {
+  getPlatformDataSource,
+  PHONE_DISTRIBUTIONS,
+  type PhoneDistribution,
+  PLAY_TRACKS,
+  type PlayTrack,
+  TENANT_PLANS,
+  type TenantSummary,
+  withTenant,
+} from '@integr8/db';
 import { z } from 'zod';
 import { conflict, notFound, unprocessable } from '../../../http/errors.js';
 import { documentLinkPatternProblem, isLocalWebAddress } from '../../../documents/render.js';
@@ -152,6 +161,9 @@ export const getCompanyRoute = defineRoute({
     const invitations = await withTenant(toTenantId(params.tenantId), (tx) =>
       tx.invitations.listPending(),
     );
+    const reviewer = await withTenant(toTenantId(params.tenantId), (tx) =>
+      tx.tenantUsers.findStoreReviewer(),
+    );
     const now = Date.now();
 
     const subscription = await platform.billing.find(params.tenantId);
@@ -195,6 +207,15 @@ export const getCompanyRoute = defineRoute({
           role: member.role,
           status: member.status,
         })),
+        storeReviewer:
+          reviewer === undefined
+            ? null
+            : {
+                userId: reviewer.userId,
+                email: reviewer.email,
+                status: reviewer.status,
+                createdAt: iso(reviewer.createdAt),
+              },
       },
     };
   },
@@ -542,7 +563,7 @@ export const updateCompanySettingsRoute = defineRoute({
   operationId: 'updateCompanySettings',
   summary: 'Change a company’s website, its document links, or whether its own apps are built',
   description:
-    'The branding facts the dashboard owns. `documentLinkPattern` (0075) points the company’s document links at its own website: an https address with `{code}` in it, on the registered website’s host or one under it (422 `document_link_invalid`, `document_link_needs_website`, `document_link_other_site`); a test company may also use `http://localhost` or `http://127.0.0.1` for both (P43), any other company gets 422 `website_url_local_only` or `document_link_invalid`. A staff session limited to test companies may change only `websiteUrl` and `documentLinkPattern` (403 `session_scope` otherwise). Null goes back to Integr8’s page, and codes already printed keep working there either way. The rest of the look — logo, icon, colours, theme — is set from the desktop app while acting as the company, where it can be previewed. Switching `appsEnabled` on puts the company in the list the release pipeline builds for and, when the deployment can start builds (`APP_BUILDS=github`), starts its first build at once; `appBuild` says how that went, and is null when this change did not switch apps on.',
+    'The branding facts the dashboard owns, and how its phone app is published (0023): `phoneDistribution` `apk` (an APK Integr8 staff send) or `stores` (the company’s own Google Play and App Store accounts, which the release pipeline then submits to), `playTrack` `internal` or `production`, and `appStoreId`, the App Store app record’s number (6 to 12 digits); a test company cannot publish to stores (409 `test_company_no_apps`). `documentLinkPattern` (0075) points the company’s document links at its own website: an https address with `{code}` in it, on the registered website’s host or one under it (422 `document_link_invalid`, `document_link_needs_website`, `document_link_other_site`); a test company may also use `http://localhost` or `http://127.0.0.1` for both (P43), any other company gets 422 `website_url_local_only` or `document_link_invalid`. A staff session limited to test companies may change only `websiteUrl` and `documentLinkPattern` (403 `session_scope` otherwise). Null goes back to Integr8’s page, and codes already printed keep working there either way. The rest of the look — logo, icon, colours, theme — is set from the desktop app while acting as the company, where it can be previewed. Switching `appsEnabled` on puts the company in the list the release pipeline builds for and, when the deployment can start builds (`APP_BUILDS=github`), starts its first build at once; `appBuild` says how that went, and is null when this change did not switch apps on.',
   tags: ['platform'],
   security: 'platform',
   platformScopes: ['full', 'test_companies'],
@@ -554,6 +575,14 @@ export const updateCompanySettingsRoute = defineRoute({
     aiDesktopEnabled: z.boolean().optional(),
     aiMobileEnabled: z.boolean().optional(),
     documentLinkPattern: z.string().trim().max(500).nullable().optional(),
+    phoneDistribution: z.enum(PHONE_DISTRIBUTIONS).optional(),
+    playTrack: z.enum(PLAY_TRACKS).optional(),
+    appStoreId: z
+      .string()
+      .trim()
+      .regex(/^[0-9]{6,12}$/u)
+      .nullable()
+      .optional(),
   }),
   responses: {
     200: { description: 'Changed.', schema: companySettingsChangeSchema },
@@ -584,7 +613,7 @@ export const updateCompanySettingsRoute = defineRoute({
       }
     }
     refuseLocalWebsite(body.websiteUrl, tenant.isTest);
-    if (tenant.isTest && body.appsEnabled === true) {
+    if (tenant.isTest && (body.appsEnabled === true || body.phoneDistribution === 'stores')) {
       throw conflict('test_company_no_apps', 'A test company has no phone or desktop apps.');
     }
 
@@ -777,6 +806,9 @@ function toCompanySettings(
     showCompanyName: boolean;
     documentLinkPattern: string | null;
     hiddenNavSections: string[];
+    phoneDistribution: PhoneDistribution;
+    playTrack: PlayTrack;
+    appStoreId: string | null;
   },
   flags: Readonly<Record<string, boolean>>,
 ): z.infer<typeof companySettingsSchema> {
@@ -794,6 +826,9 @@ function toCompanySettings(
     documentLinkPattern: settings.documentLinkPattern,
     hiddenSections: [...settings.hiddenNavSections],
     tabs: shownTabs(settings.hiddenNavSections, flags),
+    phoneDistribution: settings.phoneDistribution,
+    playTrack: settings.playTrack,
+    appStoreId: settings.appStoreId,
   };
 }
 

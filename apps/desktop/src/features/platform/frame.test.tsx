@@ -59,6 +59,9 @@ describe('a company’s page', () => {
         documentLinkPattern: null,
         hiddenSections: [],
         tabs: [],
+        phoneDistribution: 'apk',
+        playTrack: 'internal',
+        appStoreId: null,
       },
       companyApp,
       invitations: [
@@ -75,6 +78,7 @@ describe('a company’s page', () => {
       billing: null,
       featureFlags: {},
       owners: [],
+      storeReviewer: null,
     });
     return renderToStaticMarkup(
       <I18nextProvider i18n={createI18n({ locale: 'en' })}>

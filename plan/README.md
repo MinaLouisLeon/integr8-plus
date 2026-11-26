@@ -5,7 +5,7 @@ replaces the phase files written before 2.0.0 (P01–P41, in git history before
 the 2.0.0 docs commit). What is built is described in [`docs/`](../docs/README.md);
 this file holds only what is **not finished**: work in progress, the owner's
 open decisions and steps, and the phases not started. Phase numbers carry on
-from the old plan; P44 is the last used, so the next new phase is **P45**.
+from the old plan; P45 is the last used, so the next new phase is **P46**.
 
 ## What 2.0.0 is
 
@@ -58,6 +58,27 @@ without reaching it. Left:
 - [ ] Make a twin in the staff app, build in it with the developer MCP server,
       copy a form back.
 - [ ] The owner's decisions D1–D5 (taken by default, in the phase file).
+
+### P45 Company installers and phone apps in the company's own stores
+
+Built 2026-11-26 (branch `feat/remove-marketing-pages`, migration 0023), as the
+owner chose it after the public download page was removed: staff see a company's
+installers on its page (**Installers**, download or copy a link); each company's
+phone app is either an **APK sent by Integr8** or published in **the company's
+own Google Play and App Store accounts** (decisions: the store keys live in Expo
+per app; package names stay `com.integr8.plus.<slug>`; Expo stays Integr8's; a
+per-company Play track starting on internal testing; a staff button makes the
+**store reviewer account**, an engineer with one sample job that holds no seat).
+How it works: [platform](../docs/platform/README.md#a-companys-apps-p45),
+[deployment](../docs/deployment/README.md#the-app-stores-0023). Left:
+
+- [ ] A real store company end to end: its accounts and listings, its keys in
+      Expo (`eas credentials`), a build that submits, Google's and Apple's review
+      with the reviewer account (setup guide Stage 8). Not run here: a real
+      submission, the workflow itself, a real phone build.
+- [ ] Look at the two new panels in the real staff app.
+- [ ] The reviewer's address is `store-reviewer+<slug>@integr8-media.com`: decide
+      whether Integr8 wants a mailbox or alias for it (nothing needs its mail).
 
 ### P40 Form actions
 
