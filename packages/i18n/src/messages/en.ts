@@ -177,8 +177,6 @@ export const en = {
   // to have been promised a lot by software before.
   marketing: {
     nav: {
-      features: 'Features',
-      pricing: 'Pricing',
       help: 'Help',
       signIn: 'Sign in',
       signUp: 'Start free',
@@ -190,27 +188,6 @@ export const en = {
       // When public sign-up is off: companies are set up by Integr8.
       ctaClosed: 'Talk to us about getting set up',
       noteClosed: 'We set your company up with you: forms, job types and the apps.',
-    },
-    pricing: {
-      title: 'Pricing',
-      subtitle: 'The numbers below are the ones the system actually enforces.',
-      // Said out loud, because a pricing page that quietly disagrees with the
-      // software is how trust goes.
-      honest:
-        'These limits are read from the same place the app checks them, so what you see here is what you get.',
-      perMonth: 'per month',
-      free: 'Free trial',
-      seats: '{{count}} people',
-      seatsUncapped: 'Unlimited people',
-      submissions: '{{count}} submissions a month',
-      submissionsUncapped: 'Unlimited submissions',
-      storage: '{{amount}} storage',
-      storageUncapped: 'Unlimited storage',
-      retention: 'Kept for {{count}} days',
-      retentionForever: 'Kept indefinitely',
-      contact: 'Talk to us',
-      choose: 'Start with {{plan}}',
-      notPurchasable: 'Contact us to buy this plan',
     },
     contact: {
       title: 'Getting set up',
@@ -914,8 +891,8 @@ export const en = {
   // own file because they are long. Pages under /legal on the website.
   legal: legalEn,
 
-  // The public site in the Integr8 Media look (Low 3): home, features,
-  // pricing, help, download, and the frame around them. In its own file.
+  // The public site in the Integr8 Media look (Low 3): home, help, download,
+  // and the frame around them. In its own file.
   site: siteEn,
 
   // Integr8 Forms for AI's preview window (P37), served on the staff member's

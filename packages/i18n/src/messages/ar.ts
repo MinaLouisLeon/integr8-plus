@@ -170,8 +170,6 @@ export const ar: Catalogue<Messages> = {
 
   marketing: {
     nav: {
-      features: 'المزايا',
-      pricing: 'الأسعار',
       help: 'المساعدة',
       signIn: 'تسجيل الدخول',
       signUp: 'ابدأ مجانًا',
@@ -182,25 +180,6 @@ export const ar: Catalogue<Messages> = {
       note: 'أربعة عشر يومًا. دون الحاجة إلى بطاقة.',
       ctaClosed: 'تحدّث إلينا عن إعداد شركتك',
       noteClosed: 'نُعدّ شركتك معك: النماذج وأنواع المهام والتطبيقات.',
-    },
-    pricing: {
-      title: 'الأسعار',
-      subtitle: 'الأرقام أدناه هي الأرقام نفسها التي يطبّقها النظام فعليًا.',
-      honest:
-        'تُقرأ هذه الحدود من المكان نفسه الذي يتحقق منه التطبيق، فما تراه هنا هو ما تحصل عليه.',
-      perMonth: 'شهريًا',
-      free: 'فترة تجريبية مجانية',
-      seats: '{{count}} من الأشخاص',
-      seatsUncapped: 'عدد غير محدود من الأشخاص',
-      submissions: '{{count}} من الإرسالات شهريًا',
-      submissionsUncapped: 'عدد غير محدود من الإرسالات',
-      storage: 'مساحة تخزين {{amount}}',
-      storageUncapped: 'مساحة تخزين غير محدودة',
-      retention: 'الاحتفاظ بالبيانات لمدة {{count}} يومًا',
-      retentionForever: 'الاحتفاظ بالبيانات إلى أجل غير محدد',
-      contact: 'تحدّث إلينا',
-      choose: 'ابدأ بخطة {{plan}}',
-      notPurchasable: 'تواصل معنا لشراء هذه الخطة',
     },
     contact: {
       title: 'إعداد شركتك',

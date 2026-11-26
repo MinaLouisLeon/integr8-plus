@@ -1,9 +1,16 @@
 /**
- * The order and grouping of what the public pages list (Low 3). The words are
- * in `@integr8/i18n` (`site.*`); this says which keys, in which order, so the
- * features page and the home page's highlights cannot disagree about it, and
- * a test can check every key has words in both languages.
+ * The features the public site names (Low 3). The words are in
+ * `@integr8/i18n` (`site.features.*`); this says which keys exist and which
+ * the home page highlights, so a test can check every key has words in both
+ * languages.
+ *
+ * The full product story, without prices, is the marketing page on the
+ * Integr8 Media website; this site links there and no longer has its own
+ * features or pricing pages.
  */
+
+/** Integr8 Plus's marketing page, on the Integr8 Media website. */
+export const PRODUCT_PAGE_URL = 'https://www.integr8-media.com/integr8-plus';
 
 export type FeatureGroup = 'field' | 'office' | 'business' | 'platform';
 
@@ -27,7 +34,7 @@ export interface FeatureEntry {
   group: FeatureGroup;
 }
 
-/** The fifteen features, in the order the features page shows them. */
+/** The fifteen features the catalogue describes, grouped. */
 export const FEATURES: readonly FeatureEntry[] = [
   { key: 'offline', group: 'field' },
   { key: 'workOrders', group: 'field' },
@@ -57,11 +64,3 @@ export const HIGHLIGHTS: readonly FeatureEntry['key'][] = [
 ];
 
 export const FEATURE_GROUPS: readonly FeatureGroup[] = ['field', 'office', 'business', 'platform'];
-
-/** The colour each group's chip wears, from the company site's palette. */
-export const GROUP_COLOUR: Readonly<Record<FeatureGroup, string>> = {
-  field: 'var(--site-lime)',
-  office: 'var(--site-cyan)',
-  business: 'var(--site-pink)',
-  platform: 'var(--site-violet)',
-};

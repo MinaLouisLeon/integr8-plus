@@ -1,11 +1,10 @@
 'use client';
 
 import { useTranslation } from '@integr8/i18n';
-import Link from 'next/link';
 import { GetStartedLink, MarketingShell, pillClass } from '~/components/marketing-shell';
 import { Eyebrow, Magnetic, RevealText, ScrambleText } from '~/components/site/motion';
 import { contactEmail } from '~/lib/contact';
-import { HIGHLIGHTS } from '~/lib/site-content';
+import { HIGHLIGHTS, PRODUCT_PAGE_URL } from '~/lib/site-content';
 
 /**
  * The landing page (P18), in the Integr8 Media look (Low 3).
@@ -100,9 +99,9 @@ export default function HomePage() {
                   <GetStartedLink className={pillClass('white')} />
                 </Magnetic>
                 <Magnetic>
-                  <Link href="/features" className={pillClass('outline')}>
+                  <a href={PRODUCT_PAGE_URL} className={pillClass('outline')}>
                     {t('site.home.secondaryCta')}
-                  </Link>
+                  </a>
                 </Magnetic>
               </div>
               <p className="text-sm text-site-muted">{t('marketing.hero.noteClosed')}</p>
@@ -236,21 +235,11 @@ export default function HomePage() {
 
       {/* A few of the fifteen features */}
       <section className="mx-auto max-w-6xl px-4 pb-24 sm:px-8 sm:pb-32">
-        <div className="flex flex-wrap items-end justify-between gap-6">
-          <div>
-            <Eyebrow>{t('site.home.highlightsEyebrow')}</Eyebrow>
-            <h2 className="max-w-2xl font-display text-3xl font-semibold sm:text-5xl">
-              <RevealText text={t('site.home.highlightsTitle')} />
-            </h2>
-          </div>
-          <Magnetic>
-            <Link href="/features" className={pillClass('outline', 'sm')}>
-              {t('site.home.allFeatures')}
-              <span aria-hidden="true" className="inline-block rtl:-scale-x-100">
-                →
-              </span>
-            </Link>
-          </Magnetic>
+        <div>
+          <Eyebrow>{t('site.home.highlightsEyebrow')}</Eyebrow>
+          <h2 className="max-w-2xl font-display text-3xl font-semibold sm:text-5xl">
+            <RevealText text={t('site.home.highlightsTitle')} />
+          </h2>
         </div>
         <div className="mt-12 grid gap-px overflow-hidden rounded-3xl border border-site-line bg-site-line sm:grid-cols-2 lg:grid-cols-3">
           {HIGHLIGHTS.map((key) => (

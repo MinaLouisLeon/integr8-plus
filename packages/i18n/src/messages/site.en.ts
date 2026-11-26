@@ -18,8 +18,6 @@ export const siteEn = {
   },
   nav: {
     main: 'Main',
-    features: 'Features',
-    pricing: 'Pricing',
     help: 'Help',
     download: 'Download',
     signIn: 'Sign in',
@@ -99,18 +97,12 @@ export const siteEn = {
     },
     highlightsEyebrow: 'Highlights',
     highlightsTitle: 'Built for the work, not the demo',
-    allFeatures: 'All fifteen features',
     ctaEyebrow: 'Contact',
     ctaTitle: 'Let’s integr8',
     ctaBody:
       'There is no sign-up form. Tell us about your company and we will set it up with you, ready to use on the first day.',
   },
   features: {
-    eyebrow: 'Features',
-    title: 'Everything it does,',
-    titleGradient: 'in plain words.',
-    subtitle:
-      'Fifteen things Integr8 Plus does today. The business modules are switched on per company, so each one sees only what it uses.',
     groups: {
       field: 'Field',
       office: 'Office',
@@ -179,21 +171,6 @@ export const siteEn = {
         body: 'Roles and permissions for every person, a history of every change, storage you can see, and an export of everything whenever you ask. Hosted on Integr8’s own servers.',
       },
     },
-  },
-  pricing: {
-    eyebrow: 'Pricing',
-    title: 'Plans that',
-    titleGradient: 'grow with you.',
-    included: 'In every plan',
-    includedItems: {
-      apps: 'Your own desktop and phone apps',
-      offline: 'The phone app that works with no signal',
-      languages: 'English and Arabic, right to left included',
-      setup: 'Set-up by Integr8: your forms, job types and look',
-      export: 'An export of everything, whenever you ask',
-    },
-    modulesNote:
-      'Business modules (CRM, sales, finance, ledger, inventory, purchasing, assets, HR, payroll, manufacturing, documents and e-invoicing) are switched on per company. Ask us which fit yours.',
   },
   help: {
     eyebrow: 'Help centre',

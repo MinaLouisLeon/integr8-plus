@@ -106,6 +106,9 @@ the end of any piece of work that changes one of them, and date each section.
   2026-11-15 (MEMORY said private since 2026-11-04), so the guide files are readable there anyway.
 - **Since P42** `app.integr8-media.com` is the public site only (no sign-in): `/download`, `/q`,
   `/d`, `/a/<code>`, `/accept-invitation`, `/desktop-updates`, marketing, help, legal.
+  **Since 2026-11-26** it has no `/features` or `/pricing` pages: the product's marketing page
+  (no prices) is `www.integr8-media.com/integr8-plus` in the separate `integr8-media-website`
+  repository, branch `feat/integr8-plus-page`, with a Request a demo form saved to a Google Sheet.
 
 ## Decisions
 
@@ -504,6 +507,14 @@ the end of any piece of work that changes one of them, and date each section.
   through **Copy to another company** (drafts). No migration. Defaults D1–D5 in the phase file wait
   for the owner; the integration suite was written but not run (no Postgres here). Option B (a
   session bound to one real company) was left for later.
+- **Marketing moved to the Integr8 Media website (2026-11-26, branch `feat/remove-marketing-pages`
+  from `dev`), as the owner chose it:** `apps/web`'s features and pricing pages, `lib/plans.ts` and
+  their strings (`site.pricing`, `marketing.pricing`, the two nav entries, the features page's
+  headings, `site.home.allFeatures`) are deleted; the home page's second button goes to
+  `PRODUCT_PAGE_URL` (`apps/web/src/lib/site-content.ts`). `GET /v1/plans` stays (nothing breaking
+  inside `/v1`). The marketing page itself (English only, no prices, no e-invoicing, desktop
+  screenshots from a seeded demo company) is in the `integr8-media-website` repository. Still
+  stale: the legal terms (`legal.en.ts`) mention "the pricing page", for the lawyer's review.
 - **The demo seeder goes through the API**, in-process with Fastify's `inject`, as the
   company's own people (plus a staff impersonation for staff-only setup). Direct inserts
   were rejected: they skip numbering, stock, ledger postings and audit, and produce data
