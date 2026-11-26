@@ -11,7 +11,7 @@ import { type ClientTooOldInfo, updatePageUrl } from '@integr8/api-client';
  * the updater existed.
  */
 export interface UpdateNotice {
-  /** The download page to open, with the company filled in; absent from an older server. */
+  /** The update address to open, with the company filled in; absent from an older server. */
   link: string | undefined;
 }
 

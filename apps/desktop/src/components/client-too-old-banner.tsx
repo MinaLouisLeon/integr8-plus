@@ -12,9 +12,9 @@ import {
  * will be accepted until it is replaced.
  *
  * The app usually updates itself first (`UpdateBanner`); the Update button is
- * the way out when it does not. It opens the web app's download page — this
- * company's, in a company's own build — outside the app window, the way every
- * other outside page is opened here.
+ * the way out when it does not. It opens the server's update address
+ * (`API_UPDATE_URL`, with this company added in a company's own build) outside
+ * the app window, the way every other outside page is opened here.
  */
 export function ClientTooOldBanner({ notice: given }: { notice?: UpdateNotice } = {}) {
   const { t } = useTranslation();
