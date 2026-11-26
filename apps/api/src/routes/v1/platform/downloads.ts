@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { defineRoute, noSchema } from '../../../http/routes.js';
+import { installerSchema, lookupSchema } from '../schemas.js';
 
 /**
  * The staff apps' downloads, for the staff app's Downloads screen (P42): the
@@ -12,15 +13,6 @@ import { defineRoute, noSchema } from '../../../http/routes.js';
  * plain links, through the public site for a private repository, because the
  * staff app's updater needs them without a sign-in.
  */
-
-const installerSchema = z.object({
-  name: z.string(),
-  url: z.string(),
-  platform: z.enum(['windows', 'macos', 'linux', 'android']),
-  kind: z.enum(['exe', 'msi', 'dmg', 'appimage', 'deb', 'rpm', 'apk']),
-  arch: z.enum(['x64', 'arm64', 'universal']).nullable(),
-  size: z.number().int().nullable(),
-});
 
 const formsAiDownloadSchema = z.object({
   name: z.string(),
@@ -39,14 +31,6 @@ const devMcpDownloadSchema = z.object({
   size: z.number().int().nullable(),
   checksumUrl: z.string().nullable(),
 });
-
-/** `none`: nothing published (or no releases read here); `unavailable`: GitHub did not answer. */
-const lookupSchema = <T extends z.ZodType>(release: T) =>
-  z.discriminatedUnion('status', [
-    z.object({ status: z.literal('found'), release }),
-    z.object({ status: z.literal('none') }),
-    z.object({ status: z.literal('unavailable') }),
-  ]);
 
 const downloadsSchema = z.object({
   staff: lookupSchema(

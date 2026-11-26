@@ -34,6 +34,29 @@ export function createRateLimiter() {
   const blockedUntil = new Map<string, number>();
 
   return {
+    /**
+     * Refuses a bucket already over its limit, without counting anything.
+     *
+     * For a limit that counts only failures (a lookup by a name nobody has):
+     * once the failures run out, a success must be refused too, or the
+     * difference between a refusal and an answer would itself say which names
+     * exist.
+     */
+    assertOpen(bucketKey: string): void {
+      const now = Date.now();
+      const blocked = blockedUntil.get(bucketKey);
+      if (blocked === undefined) {
+        return;
+      }
+      if (blocked > now) {
+        throw tooManyRequests(
+          'Too many requests. Slow down and try again shortly.',
+          (blocked - now) / 1000,
+        );
+      }
+      blockedUntil.delete(bucketKey);
+    },
+
     async consume(options: ConsumeOptions): Promise<void> {
       const now = Date.now();
       const blocked = blockedUntil.get(options.bucketKey);

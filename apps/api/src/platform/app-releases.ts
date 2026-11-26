@@ -2,6 +2,7 @@ import {
   DesktopUpdateFeed,
   type DevMcpLookup,
   type FormsAiLookup,
+  type Installer,
   lookupDevMcp,
   lookupFormsAi,
   lookupInstallers,
@@ -45,6 +46,12 @@ export interface AppReleases {
   companyDesktopApp(slug: string): Promise<CompanyAppState>;
   /** Never throws, like the lookups it is made of. */
   staffDownloads(): Promise<StaffDownloads>;
+  /**
+   * A company's newest desktop and phone installers, for the person who has
+   * just accepted an invitation to it (the only place they are listed since
+   * the public download page was removed). Never throws.
+   */
+  companyInstallers(slug: string): Promise<ReleaseLookup>;
 }
 
 /** Reads nothing. Development and `APP_RELEASES=off`; production refuses it. */
@@ -61,6 +68,10 @@ export class NoAppReleases implements AppReleases {
       formsAi: { status: 'none' },
       devMcp: { status: 'none' },
     });
+  }
+
+  companyInstallers(): Promise<ReleaseLookup> {
+    return Promise.resolve({ status: 'none' });
   }
 }
 
@@ -83,6 +94,24 @@ export class RecordingAppReleases implements AppReleases {
       formsAi: { status: 'none' },
       devMcp: { status: 'none' },
     });
+  }
+
+  /** The installers a test has published, by company. */
+  readonly installers = new Map<string, Installer[]>();
+
+  companyInstallers(slug: string): Promise<ReleaseLookup> {
+    if (this.unavailable) {
+      return Promise.resolve({ status: 'unavailable' });
+    }
+    const installers = this.installers.get(slug);
+    return Promise.resolve(
+      installers === undefined
+        ? { status: 'none' }
+        : {
+            status: 'found',
+            release: { tag: `company-${slug}-v1.0.0`, version: '1.0.0', installers },
+          },
+    );
   }
 }
 
@@ -130,5 +159,9 @@ export class GitHubAppReleases implements AppReleases {
       lookupDevMcp(this.#feed, this.#origin),
     ]);
     return { staff, formsAi, devMcp };
+  }
+
+  companyInstallers(slug: string): Promise<ReleaseLookup> {
+    return lookupInstallers(this.#feed, slug, this.#origin);
   }
 }

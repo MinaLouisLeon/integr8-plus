@@ -3,7 +3,7 @@ import {
   assertProductionReady,
   clientUpdateUrl,
   databaseProblems,
-  DEVELOPMENT_UPDATE_URL,
+  DEFAULT_UPDATE_URL,
   hrKeySettings,
   loadApiConfig,
   startupWarnings,
@@ -301,9 +301,9 @@ describe('the HR data key', () => {
 });
 
 describe('where an app too old to be served is sent', () => {
-  it("is the web app's download page unless set", () => {
+  it('is the Integr8 Plus page on the Integr8 Media website unless set', () => {
     expect(clientUpdateUrl(loadApiConfig({ WEB_APP_URL: 'https://app.integr8-media.com/' }))).toBe(
-      'https://app.integr8-media.com/download',
+      'https://www.integr8-media.com/integr8-plus',
     );
     expect(
       clientUpdateUrl(
@@ -318,8 +318,8 @@ describe('where an app too old to be served is sent', () => {
       clientUpdateUrl(
         loadApiConfig({ WEB_APP_URL: 'https://app.integr8-media.com', API_UPDATE_URL: ' ' }),
       ),
-    ).toBe('https://app.integr8-media.com/download');
-    expect(clientUpdateUrl(loadApiConfig({}))).toBe(DEVELOPMENT_UPDATE_URL);
+    ).toBe(DEFAULT_UPDATE_URL);
+    expect(clientUpdateUrl(loadApiConfig({}))).toBe(DEFAULT_UPDATE_URL);
   });
 
   const ready = (overrides: Record<string, string | undefined>) => () =>
@@ -341,12 +341,6 @@ describe('where an app too old to be served is sent', () => {
     );
     expect(ready({ API_UPDATE_URL: undefined })).not.toThrow();
     expect(ready({ API_UPDATE_URL: 'https://app.example.com/download' })).not.toThrow();
-  });
-
-  it('is refused in production when there is nothing to derive it from', () => {
-    expect(ready({ WEB_APP_URL: undefined })).toThrow(
-      /API_UPDATE_URL and WEB_APP_URL are both unset/u,
-    );
   });
 });
 

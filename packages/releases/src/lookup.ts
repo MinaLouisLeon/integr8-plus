@@ -1,10 +1,11 @@
 import type { AppRelease, DesktopUpdateFeed, DevMcpRelease, FormsAiRelease } from './feed.js';
 
 /**
- * What the server found for one app's downloads, for a screen to show. Shared
- * by the public `/download` page (a company's apps) and the staff app's
- * Downloads screen (the staff app and Integr8 Forms for AI). Never throws: a
- * page shows what it can, and "cannot be listed right now" is an answer.
+ * What the server found for one app's downloads, for a screen to show. Used by
+ * the API for the invitation page (a company's apps, once the invitation is
+ * accepted) and the staff app's Downloads screen (the staff app and Integr8
+ * Forms for AI). Never throws: a page shows what it can, and "cannot be listed
+ * right now" is an answer.
  */
 
 export type ReleaseLookup =

@@ -44,15 +44,15 @@ export const apiConfigSchema = z.object({
   API_MIN_SUPPORTED_CLIENT: z.string().min(1).default('0.1.0'),
 
   /**
-   * Where a client below the minimum is told to go: the web app's download
-   * page, which lists the staff desktop app, each company's own desktop and
-   * phone apps (`?company=<slug>`, which the apps add themselves) and the phone
-   * app in the stores.
+   * Where a client below the minimum is told to go (the apps add
+   * `?company=<slug>` in a company's own build).
    *
-   * Unset (or blank) means `WEB_APP_URL` + `/download`, which is right for
-   * every deployment that serves its own web app; see {@link clientUpdateUrl}.
-   * Production refuses an example address here, and refuses to start with
-   * neither this nor `WEB_APP_URL` set.
+   * Unset (or blank) means Integr8 Plus's page on the Integr8 Media website
+   * ({@link DEFAULT_UPDATE_URL}): the public download page that used to be the
+   * default was removed, because it listed any company's installers to
+   * whoever guessed its short name. Installed desktop apps update themselves,
+   * so this is mostly read by a phone app; point it at a page that offers the
+   * new build if one exists. Production refuses an example address here.
    */
   API_UPDATE_URL: blankIsUnset(z.string().min(1).optional()),
 
@@ -604,22 +604,16 @@ export function webOriginMissingFromCors(config: ApiConfig): string | undefined 
   return `API_CORS_ORIGINS does not include ${webOrigin}, the origin of WEB_APP_URL: the web app's pages could not call this API from a browser.`;
 }
 
-/** Where the web app's download page is when neither address is set: the local web app. */
-export const DEVELOPMENT_UPDATE_URL = 'http://localhost:3001/download';
+/** Integr8 Plus's page on the Integr8 Media website: where an old app is sent by default. */
+export const DEFAULT_UPDATE_URL = 'https://www.integr8-media.com/integr8-plus';
 
 /**
  * Where an app too old to be served is sent: `API_UPDATE_URL` when set,
- * otherwise the web app's own download page. The answer carries it as a
- * detail (`update_url`), and the apps open it with their company added.
+ * otherwise {@link DEFAULT_UPDATE_URL}. The answer carries it as a detail
+ * (`update_url`), and the apps open it with their company added.
  */
 export function clientUpdateUrl(config: ApiConfig): string {
-  if (config.API_UPDATE_URL !== undefined) {
-    return config.API_UPDATE_URL.trim();
-  }
-  if (config.WEB_APP_URL !== undefined) {
-    return `${config.WEB_APP_URL.replace(/\/+$/u, '')}/download`;
-  }
-  return DEVELOPMENT_UPDATE_URL;
+  return config.API_UPDATE_URL?.trim() ?? DEFAULT_UPDATE_URL;
 }
 
 /**
@@ -703,9 +697,6 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   return result.data;
 }
 
-const UPDATE_URL_MISSING =
-  'API_UPDATE_URL and WEB_APP_URL are both unset: an app too old to be served would be told to update with nowhere to go.';
-
 /**
  * What a deployment should fix but can run without, said once at start-up by
  * the API and the worker. Never a reason to stop.
@@ -718,9 +709,6 @@ export function startupWarnings(config: ApiConfig, env: NodeJS.ProcessEnv = proc
   if (config.APP_ENV === 'staging') {
     for (const problem of exampleValueProblems({ ...env, ...addressSettings(config) })) {
       warnings.push(`Production would refuse to start: ${problem}`);
-    }
-    if (config.API_UPDATE_URL === undefined && config.WEB_APP_URL === undefined) {
-      warnings.push(`Production would refuse to start: ${UPDATE_URL_MISSING}`);
     }
   }
   if (
@@ -919,10 +907,6 @@ export function assertProductionReady(
     // addresses, and database passwords too short to be generated ones.
     ...exampleValueProblems({ ...env, ...addressSettings(config) }),
   ];
-
-  if (config.API_UPDATE_URL === undefined && config.WEB_APP_URL === undefined) {
-    problems.push(UPDATE_URL_MISSING);
-  }
 
   if (config.SENTRY_DSN === undefined || config.SENTRY_DSN === '') {
     problems.push('SENTRY_DSN is not set: nothing would report an unhandled error.');
