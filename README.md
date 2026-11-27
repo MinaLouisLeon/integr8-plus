@@ -8,7 +8,7 @@ work on its own phone app, which keeps working with no signal; Integr8 staff run
 everything from the staff desktop app. The web app is the public site only.
 English and Arabic throughout.
 
-Current version: **2.2.0**. The documentation starts at
+Current version: **2.2.1**. The documentation starts at
 [`docs/README.md`](./docs/README.md); what is not finished is in
 [`plan/README.md`](./plan/README.md).
 
@@ -109,7 +109,8 @@ See [`docs/database/`](./docs/database/README.md).
 
 ## Deploying
 
-One server running `deploy/compose.yml` behind Caddy; the operator's whole
+One server running `deploy/compose.yml` behind the shared front proxy
+([`vps-edge`](https://github.com/mihawk-solutions/vps-edge)); the operator's whole
 procedure is [`docs/deployment/setup-checklist.md`](./docs/deployment/setup-checklist.md)
 (also as an interactive HTML page). Overview: [`docs/deployment/`](./docs/deployment/README.md).
 

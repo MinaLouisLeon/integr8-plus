@@ -7,7 +7,7 @@ the end of any piece of work that changes one of them, and date each section.
 
 ## Snapshot (2026-11-01, after the form builder and PDF builder round)
 
-- **Version:** root `package.json` is **2.2.0** (2026-11-26, branch `feat/installers-and-phone-stores` from `feat/remove-marketing-pages`: no home or download page, P45 and migration 0023). Before it, **2.1.0** (2026-11-20, branch `feat/test-twin` from `dev`: carries P42–P44, the security audit fixes and migrations 0020–0022; no migration of its own). Before it, **2.0.0** (2026-11-14, branch `ccr-c6dc87d8-3hlhaw` from `dev`: P41's clean database restart, see Decisions). Before that, **1.4.0** (2026-11-10, branch `ccr-56fb45d1-5mq6bt`: carries the AI tooling stage P37–P39 and migration 0077; history below starts at 1.3.1). 1.3.0 reached `main` (PR #148) but its
+- **Version:** root `package.json` is **2.2.1** (2026-11-27, branch `feat/vps-edge` from `dev`: the shared front proxy `vps-edge`, an `edge` container, no published ports; no migration). Before it, **2.2.0** (2026-11-26, branch `feat/installers-and-phone-stores` from `feat/remove-marketing-pages`: no home or download page, P45 and migration 0023). Before it, **2.1.0** (2026-11-20, branch `feat/test-twin` from `dev`: carries P42–P44, the security audit fixes and migrations 0020–0022; no migration of its own). Before it, **2.0.0** (2026-11-14, branch `ccr-c6dc87d8-3hlhaw` from `dev`: P41's clean database restart, see Decisions). Before that, **1.4.0** (2026-11-10, branch `ccr-56fb45d1-5mq6bt`: carries the AI tooling stage P37–P39 and migration 0077; history below starts at 1.3.1). 1.3.0 reached `main` (PR #148) but its
   release never published: the publish job attached the secret scan's report folder
   (`dist/work`) and failed, so there is no v1.3.0 tag. The owner bumped `main` to 1.3.1 on
   GitHub (PR #151, `package.json` only, which failed `app-info.test.ts`); branch
@@ -73,9 +73,11 @@ the end of any piece of work that changes one of them, and date each section.
 ## The deployment
 
 - One Oracle Cloud Always Free ARM machine (Ampere A1, 4 cores, 24 GB), `/opt/integr8`,
-  running `deploy/compose.yml` behind Caddy, settings in `deploy/.env`. It will be shared
-  with the MyRooms project, which runs its own full self-hosted Supabase, PowerSync and
-  GlitchTip; the two keep separate Auth containers.
+  running `deploy/compose.yml` behind the shared front proxy `vps-edge` (see the
+  2026-11-27 decision below; before it, a Caddy on the host), settings in `deploy/.env`.
+  It will be shared with the MyRooms project, which runs its own full self-hosted Supabase,
+  PowerSync and GlitchTip; the two keep separate Auth containers, and MyRooms will be
+  another Compose project behind the same proxy (its own edge, alias `myrooms-edge`).
 - Domain `integr8-media.com`: web `app.integr8-media.com`, API `api.integr8-media.com`. R2
   for files, Resend for mail, Stripe test mode.
 - **Sign-in:** the owner has only used the staff login so far and has no Supabase project.
@@ -551,6 +553,32 @@ the end of any piece of work that changes one of them, and date each section.
   Setup guide Stage 8 gained five store steps (114 tick boxes). Run here: db (505) and API (730)
   integration suites on a throwaway database, migration 0023 down and up; not run: a real store
   submission, the workflow, a real phone build.
+- **Shared front proxy, vps-edge (2026-11-27, branch `feat/vps-edge` from `dev`, uncommitted when
+  written), as the owner chose it:** one Caddy container per server owns ports 80/443, in its own
+  repository `mihawk-solutions/vps-edge` (private; cloned to `/opt/vps-edge` with a read-only deploy
+  key; `scripts/setup-host.sh` installs Docker and creates the Docker network `proxy`). Every app is
+  its own Compose project behind it with its own edge container. Here: `deploy/compose.yml` gained
+  the `edge` service (`caddy:2.11.9-alpine`, `deploy/edge/Caddyfile`, plain HTTP on 8080 for the public
+  site and 8081 for the API, alias `integr8-edge` on `proxy`) and **publishes no port at all**;
+  `API_PORT` and `WEB_PORT` are gone. The hostnames and TLS live in vps-edge
+  (`caddy/hosts/integr8-vps/`, Let's Encrypt, Cloudflare DNS only: the owner's choice). The host
+  Caddy is gone: `deploy/vps/setup.sh` and `Caddyfile.example` are deleted (vps-edge's
+  `setup-host.sh` replaces the first). `deploy/vps/ready.sh` asks the API's readiness from inside its
+  container (bash, not sh) and `heartbeat.sh` uses it. The API trusts only the edge's connection
+  (`apps/api/src/http/trust-proxy.ts`, `trustEdgeOnly`) instead of `trustProxy: true`, which took the
+  leftmost, visitor-writable `X-Forwarded-For` value. The edge uses `trusted_proxies_strict`: tested,
+  Caddy's default also takes the leftmost value. The home test machine runs
+  `-f deploy/compose.yml -f deploy/compose.test.yml` (publishes 127.0.0.1:3000/3001) and makes the
+  `proxy` network by hand. All data is test data, so the VPS is rebuilt rather than migrated. MyRooms
+  will be another project behind the same proxy. Setup guide: new Stage 2 steps (deploy key, prepare
+  with vps-edge), Stage 3 starts the proxy, `ready.sh` replaces the curl checks, the monthly step
+  upgrades the proxy (115 tick boxes). Run here: `pnpm guide:check`, `pins:check`, API unit tests
+  (322), typecheck, lint, the real edge Caddyfile against stand-in upstreams, `ready.sh` and the
+  heartbeat against a stand-in API, compose files parsed. Not run: a real server (Docker's installer,
+  Let's Encrypt, Oracle's firewall), the API integration suites (no Postgres run for this change; their
+  requests set the connection address and send no `X-Forwarded-For`), the stack's own
+  `compose.yml` started for real (it needs the full secrets). Released as 2.2.1 (every place that states
+  the version bumped together; `app-info.test.ts` holds the API's copy equal to `package.json`).
 - **The demo seeder goes through the API**, in-process with Fastify's `inject`, as the
   company's own people (plus a staff impersonation for staff-only setup). Direct inserts
   were rejected: they skip numbering, stock, ledger postings and audit, and produce data

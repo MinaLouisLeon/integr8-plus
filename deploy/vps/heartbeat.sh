@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # Tells a heartbeat monitor the API is up, from the machine itself.
 #
-# /health and /health/ready are not served on the public address: Caddy answers
-# 404 for them (deploy/vps/Caddyfile.example), so an outside uptime check cannot
-# use them. Instead this runs from cron every few minutes, asks the API on
-# 127.0.0.1 whether it is ready, and calls HEALTH_PING_URL when it is. The
+# /health and /health/ready are not served on the public address: the stack's
+# edge container answers 404 for them (deploy/edge/Caddyfile), so an outside
+# uptime check cannot use them. Instead this runs from cron every few minutes,
+# asks the API whether it is ready (deploy/vps/ready.sh, from inside the API's
+# own container: it publishes no port), and calls HEALTH_PING_URL when it is. The
 # monitor (Better Stack, healthchecks.io, an UptimeRobot heartbeat) alerts when
 # the calls stop: when the API is not ready, when the machine is down, and when
 # cron itself stopped. When the API answers "not ready" it calls the same URL
@@ -23,7 +24,6 @@
 #   HEALTH_PING_FAIL    "off" for a monitor with no /fail address (UptimeRobot):
 #                       nothing is called when the API is not ready, and the
 #                       silence alerts. Default "on".
-#   API_PORT            the API's port on 127.0.0.1, as in compose. Default 3000.
 #
 # Exits 0 when ready, 1 when not, so a run by hand says which.
 set -uo pipefail
@@ -56,8 +56,6 @@ setting() {
 
 PING_URL="$(setting HEALTH_PING_URL)"
 PING_FAIL="$(setting HEALTH_PING_FAIL)"
-PORT="$(setting API_PORT)"
-PORT="${PORT:-3000}"
 
 ping_monitor() {
   [ -n "$PING_URL" ] || return 0
@@ -65,19 +63,16 @@ ping_monitor() {
     log "WARNING: could not reach HEALTH_PING_URL"
 }
 
-# The readiness answer is JSON with "status":"ready" and HTTP 200, or
-# "degraded" and 503 with the check that failed. Both are looked at: a proxy or
-# a half-started process can answer 200 with something else.
-body=$(curl -sS -m 10 -w '\n%{http_code}' "http://127.0.0.1:${PORT}/health/ready" 2>&1)
-code="${body##*$'\n'}"
-body="${body%$'\n'*}"
-
-if [ "$code" = "200" ] && printf '%s' "$body" | grep -q '"status":"ready"'; then
+# ready.sh does the asking and the judging (HTTP 200 and "status":"ready"), and
+# says what is wrong in one NOT READY line when it is not. It runs with the same
+# settings this script resolved above.
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if answer=$(INTEGR8_DIR="$REPO" ENV_FILE="$ENV_FILE" bash "$here/ready.sh" 2>&1); then
   ping_monitor
   exit 0
 fi
 
-log "NOT READY (HTTP ${code:-none}): $(printf '%s' "$body" | tr -d '\n' | cut -c1-400)"
+log "$answer"
 if [ "$PING_FAIL" != "off" ]; then
   ping_monitor fail
 fi
