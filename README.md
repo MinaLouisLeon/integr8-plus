@@ -8,7 +8,7 @@ work on its own phone app, which keeps working with no signal; Integr8 staff run
 everything from the staff desktop app. The web app is the public site only.
 English and Arabic throughout.
 
-Current version: **2.2.0**. The documentation starts at
+Current version: **2.2.1**. The documentation starts at
 [`docs/README.md`](./docs/README.md); what is not finished is in
 [`plan/README.md`](./plan/README.md).
 

@@ -1,6 +1,6 @@
 # Integr8 Plus Setup Checklist
 
-_Integr8 Plus 2.2.0 · every step, in order · Oracle Cloud_
+_Integr8 Plus 2.2.1 · every step, in order · Oracle Cloud_
 
 **From zero to running.** Every step to put Integr8 Plus on its Oracle machine, give each company its own apps, go live, and update it later. One line per step; the commands are ready to copy. Stages 1 to 9 are done once, in order; Stage 10 is every release; Stage 11 only when you want an empty machine again; Stage 12 is a test machine at home for finding slow queries.
 
@@ -217,7 +217,7 @@ DATABASE_URL_PLATFORM=postgres://integr8_platform:dddd…@postgres:5432/integr8
 ```
 
 - [ ] `machine` **Keys and secrets**: paste the seven generated lines over the empty lines of the same names, then `HR_DATA_KEY` and `ETA_CREDENTIALS_KEY`. Each value stays on one line. Leave `ETA_ALLOW_PRODUCTION=false`.
-- [ ] `machine` **Sentry and the version**: `SENTRY_DSN` is the Node.js DSN; `WEB_SENTRY_DSN` and `WEB_PUBLIC_SENTRY_DSN` are both the Next.js DSN. `APP_VERSION` and `API_RELEASE` say `2.2.0`.
+- [ ] `machine` **Sentry and the version**: `SENTRY_DSN` is the Node.js DSN; `WEB_SENTRY_DSN` and `WEB_PUBLIC_SENTRY_DSN` are both the Next.js DSN. `APP_VERSION` and `API_RELEASE` say `2.2.1`.
 - [ ] `machine` **The real services**: switch each one from its stand-in and fill its lines. Leave `PDF_RENDERER=chromium` as it is.
 
 ```text
@@ -305,7 +305,7 @@ docker compose -f deploy/compose.yml --env-file deploy/.env \
 ```
 
 - [ ] `web` **The updater key in GitHub**: secrets `TAURI_SIGNING_PRIVATE_KEY` (the contents of `updater.key`) and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` in the `release` environment (Settings → Environments → release), with any Apple, Windows or Google signing secrets, so installed desktop apps update themselves. If nobody has the key, make a new pair with `pnpm --filter @integr8/desktop tauri signer generate -w src-tauri/updater.key` and put its public half in `updater.key.pub` and `tauri.conf.json` through a pull request.
-- [ ] `web` **A release on GitHub**: Releases shows `v2.2.0` (or newer) with green jobs. If not, bump the version in the root `package.json` and merge it through `dev` and `staging` into `main`, then wait for Version release to finish green (about 30 minutes).
+- [ ] `web` **A release on GitHub**: Releases shows `v2.2.1` (or newer) with green jobs. If not, bump the version in the root `package.json` and merge it through `dev` and `staging` into `main`, then wait for Version release to finish green (about 30 minutes).
 - [ ] `app` **Install the staff app**: Releases → the newest `v…` → Assets → the Integr8 Plus Staff `-setup.exe`. Until the installers are signed, Windows warns: More info → Run anyway.
 - [ ] `app` **Sign in**: email, password and the six-digit code, asked each time the app starts. Health is empty and Templates lists the form library.
 - [ ] `app` **Add your colleagues**: Staff → Add a staff member. Send them the details it shows once, privately, then press I have sent them. Keep at least two staff managers made on the machine.
@@ -341,7 +341,7 @@ Each company gets desktop installers and a phone app with its own name, icon and
 
 - [ ] `web` **Expo settings, once**: expo.dev → `integr8-plus` → Environment variables, for production: `EXPO_PUBLIC_SENTRY_DSN`, `EXPO_PUBLIC_AUTH_VERIFICATION_KEYS` (the machine's `AUTH_VERIFICATION_KEYS` value) and `GOOGLE_SERVICES_JSON` as a File.
 - [ ] `web` **Add the company in Firebase**: Project settings → Add app → Android, the company's package. Download `google-services.json` again (it now lists every company) and replace the `GOOGLE_SERVICES_JSON` file on Expo.
-- [ ] `web` **Start the build**: GitHub → Actions → Build company apps → Run workflow on `main`, company = the short name (`all` builds every company with apps on); leave the rest empty. About 25 minutes later Releases has `company-<short name>-v2.2.0`.
+- [ ] `web` **Start the build**: GitHub → Actions → Build company apps → Run workflow on `main`, company = the short name (`all` builds every company with apps on); leave the rest empty. About 25 minutes later Releases has `company-<short name>-v2.2.1`.
 - [ ] `web` **Optional: start builds from the staff app**: a fine-grained token `integr8-app-builds` on `integr8-plus` with Actions Read and write. In `deploy/.env`: `APP_BUILDS=github`, `GITHUB_BUILD_TOKEN` = the token, `GITHUB_BUILD_REPOSITORY=minalouisleon/integr8-plus`, then `up -d`. Rebuild apps on the company's page then starts it.
 - [ ] `web` **Notifications for its phone app**: after its first build, expo.dev → Credentials → Android → the company's app → FCM V1 service account key: upload the FCM key the first time, choose the same key after.
 - [ ] `web` **Back up its Android signing key**: after its first build, expo.dev → Credentials → Android → the company's app → Android Keystore → Download, and keep the file and its passwords in the password manager. Expo signs the phone app with it; if it is lost, phones that have the app cannot install its updates.
@@ -444,7 +444,7 @@ df -h /
 cd /opt/integr8
 git pull
 comm -13 <(grep -oE '^[A-Z_0-9]+=' deploy/.env | sort -u) <(grep -oE '^[A-Z_0-9]+=' deploy/.env.example | sort -u)
-sed -i 's/^APP_VERSION=.*/APP_VERSION=2.2.0/; s/^API_RELEASE=.*/API_RELEASE=2.2.0/' deploy/.env
+sed -i 's/^APP_VERSION=.*/APP_VERSION=2.2.1/; s/^API_RELEASE=.*/API_RELEASE=2.2.1/' deploy/.env
 ```
 
 - [ ] `machine` **Restart on the new version**: it builds the images, runs any new migrations, then starts everything again.
@@ -488,8 +488,8 @@ docker builder prune -f
 # machine (SSH session)
 cd /opt/integr8
 git fetch --tags
-git checkout v2.2.0
-sed -i 's/^APP_VERSION=.*/APP_VERSION=2.2.0/; s/^API_RELEASE=.*/API_RELEASE=2.2.0/' deploy/.env
+git checkout v2.2.1
+sed -i 's/^APP_VERSION=.*/APP_VERSION=2.2.1/; s/^API_RELEASE=.*/API_RELEASE=2.2.1/' deploy/.env
 docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build
 ```
 
@@ -692,4 +692,4 @@ docker compose -f deploy/compose.yml -f deploy/compose.test.yml --env-file deplo
 
 ## About this page
 
-Written for release 2.2.0 from `deploy/compose.yml`, `deploy/.env.example`, `deploy/edge/` and `deploy/vps/`, and from the front proxy repository `mihawk-solutions/vps-edge`. The Markdown and `setup-checklist.html` say the same thing; `pnpm guide:check` checks their stages, steps and words. The longer guide this replaces is in git history.
+Written for release 2.2.1 from `deploy/compose.yml`, `deploy/.env.example`, `deploy/edge/` and `deploy/vps/`, and from the front proxy repository `mihawk-solutions/vps-edge`. The Markdown and `setup-checklist.html` say the same thing; `pnpm guide:check` checks their stages, steps and words. The longer guide this replaces is in git history.
