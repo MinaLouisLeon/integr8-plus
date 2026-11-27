@@ -109,7 +109,8 @@ See [`docs/database/`](./docs/database/README.md).
 
 ## Deploying
 
-One server running `deploy/compose.yml` behind Caddy; the operator's whole
+One server running `deploy/compose.yml` behind the shared front proxy
+([`vps-edge`](https://github.com/mihawk-solutions/vps-edge)); the operator's whole
 procedure is [`docs/deployment/setup-checklist.md`](./docs/deployment/setup-checklist.md)
 (also as an interactive HTML page). Overview: [`docs/deployment/`](./docs/deployment/README.md).
 
