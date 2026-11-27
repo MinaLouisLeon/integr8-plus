@@ -1,0 +1,15 @@
+# For the home test machine only (setup guide, Stage 12). It has no front proxy in
+# front of it, so this publishes the API and the web app on the machine's own
+# loopback address, for the laptop's SSH tunnel:
+#
+#   docker compose -f deploy/compose.yml -f deploy/compose.test.yml --env-file deploy/.env up -d --build
+#
+# 127.0.0.1 only, never on every address. Never use this file on a server: there
+# the only way in is the front proxy, through the `edge` service.
+services:
+  api:
+    ports:
+      - '127.0.0.1:3000:3000'
+  web:
+    ports:
+      - '127.0.0.1:3001:3001'
