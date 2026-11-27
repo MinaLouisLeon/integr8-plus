@@ -31,7 +31,10 @@ a separate database: they truncate tables. Screen tests wait up to 5 s in
 (on port 5433) and the Auth container (9999) from `deploy/local/compose.yml`, runs
 `db deploy`, builds what the apps need and runs the API (3000) and the desktop
 app in a browser (3002). The public site is not started; run
-`pnpm --filter @integr8/web dev` (3001) when you need it. Ctrl+C stops the apps;
+`pnpm --filter @integr8/web dev` (3001) when you need it. Ctrl+C stops the apps
+(`scripts/dev/local-apps.mjs` runs them, not `turbo run dev`, which on Windows
+could hang on Ctrl+C; whatever is still running after 8 s, or at a second
+Ctrl+C, is killed with everything it started);
 `pnpm local:stop` stops the containers and keeps their data. `pnpm
 local:services` and `pnpm local:apps` are the two halves.
 
