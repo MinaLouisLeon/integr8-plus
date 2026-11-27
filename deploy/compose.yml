@@ -292,7 +292,7 @@ services:
   # at start-up. Pinned: upgrade by changing the tag, never `latest`.
   auth:
     <<: *logging
-    image: supabase/auth:v2.197.0
+    image: supabase/auth:v2.198.0
     restart: unless-stopped
     # A Go service; uses ~30-50 MB.
     mem_limit: 256m
