@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { withTenant } from '@integr8/db';
 import { PDFDocument } from 'pdf-lib';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { RecordingPrinter } from '../../documents/printer.js';
 import { createLogger } from '../../http/logger.js';
 import { buildJobHandlers } from '../../jobs/handlers.js';
@@ -230,19 +230,28 @@ describe('preview as PDF', () => {
   });
 
   it('is limited to a few a minute for each person', async () => {
-    let limited: { statusCode: number; body: string } | undefined;
-    for (let attempt = 0; attempt < PREVIEW_PER_PERSON_PER_MINUTE; attempt += 1) {
-      const response = await as(builder, 'POST', `/v1/document-templates/${templateId}/preview`, {
+    // The limit counts in fixed windows that start on the minute. Counting on
+    // the previews above to share this test's window failed whenever a minute
+    // turned in between, so the clock is held at the start of the next window,
+    // which nothing has used: the allowance is exactly the limit, then a 429.
+    // Only Date is faked, so the database driver's timers keep running.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(Math.floor(Date.now() / 60_000) * 60_000 + 60_000 + 1_000);
+    try {
+      for (let attempt = 0; attempt < PREVIEW_PER_PERSON_PER_MINUTE; attempt += 1) {
+        const response = await as(builder, 'POST', `/v1/document-templates/${templateId}/preview`, {
+          design: design(),
+        });
+        expect(response.statusCode, response.body).toBe(200);
+      }
+      const limited = await as(builder, 'POST', `/v1/document-templates/${templateId}/preview`, {
         design: design(),
       });
-      if (response.statusCode === 429) {
-        limited = response;
-        break;
-      }
-      expect(response.statusCode, response.body).toBe(200);
+      expect(limited.statusCode, limited.body).toBe(429);
+      expect(code(limited)).toBe('rate_limited');
+    } finally {
+      vi.useRealTimers();
     }
-    expect(limited?.statusCode).toBe(429);
-    expect(code(limited!)).toBe('rate_limited');
   });
 });
 
