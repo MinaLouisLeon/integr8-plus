@@ -1,0 +1,68 @@
+# Integr8's own front door, in the stack (the `edge` service in deploy/compose.yml).
+#
+# It does what the Caddy on the host used to do for the browser (deploy/vps/Caddyfile.example,
+# now removed): the security headers, keeping /health off the internet, and reaching the web
+# app and the API by name. TLS and the public hostnames are not its business: the server's
+# front proxy (github.com/mihawk-solutions/vps-edge) owns ports 80 and 443, gets the
+# certificates, and reaches this container as
+#
+#   integr8-edge:8080   the public site   (app.<domain>)  ->  web:3001
+#   integr8-edge:8081   the API            (api.<domain>)  ->  api:3000
+#
+# so this file knows no hostname and the same image runs anywhere. Nothing is published on
+# the host: only the front proxy can reach these ports, over the Docker network "proxy".
+{
+	# Plain HTTP here; the front proxy does the HTTPS.
+	auto_https off
+	admin off
+	servers {
+		# Believe the front proxy's X-Forwarded-For and X-Forwarded-Proto. Without this Caddy
+		# would rewrite the protocol to http and take the proxy's own address for the visitor's.
+		# The proxy has already replaced anything the visitor sent with the one real address.
+		trusted_proxies static private_ranges
+		client_ip_headers X-Forwarded-For
+		# Read X-Forwarded-For from the right, skipping trusted hops. Without this Caddy takes the
+		# LEFTMOST value, which is the one a visitor can write; the front proxy sends only one
+		# value, but this file should not depend on that.
+		trusted_proxies_strict
+	}
+}
+
+# Strict-Transport-Security tells a browser that has seen this site once to use HTTPS only, for
+# a year. Deliberately without includeSubDomains or preload: other names under the domain (the
+# test box, mail, MyRooms) are not this file's to promise, and preload cannot be undone
+# quickly. The web app sends its own content-security policy and frame headers
+# (apps/web/next.config.ts); the API, which serves JSON and files, gets its browser headers
+# here.
+
+# app.<domain>: the public site.
+:8080 {
+	header Strict-Transport-Security "max-age=31536000"
+
+	# One address, the visitor's, for the web app's per-address limits (apps/web/src/lib/request-limit.ts).
+	reverse_proxy web:3001 {
+		header_up X-Forwarded-For {client_ip}
+	}
+}
+
+# api.<domain>: the API.
+:8081 {
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+		X-Frame-Options "DENY"
+	}
+
+	# The health checks are for this machine, not the internet: they name the release and what
+	# is failing. Docker's health check and the heartbeat (deploy/vps/heartbeat.sh, through
+	# deploy/vps/ready.sh) ask the API itself, inside its container.
+	@health path /health /health/*
+	respond @health 404
+
+	# The API's per-address sign-in limit relies on this being the visitor's address: the
+	# desktop and phone apps sign in straight to the API.
+	reverse_proxy api:3000 {
+		header_up X-Forwarded-For {client_ip}
+	}
+}

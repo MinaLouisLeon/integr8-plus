@@ -173,5 +173,5 @@ Plus's page on the Integr8 Media website).
 | `/v1/public`, `/v1/website`, `/v1/build`                                                                 | No session: brand, quote links, company websites, CI builds |
 | `/v1/platform`                                                                                           | Staff only                                                  |
 
-`/health` and `/health/ready` are not reachable from the internet: Caddy keeps
-them private ([deployment/](../deployment/README.md)).
+`/health` and `/health/ready` are not reachable from the internet: the stack's
+edge container keeps them private ([deployment/](../deployment/README.md)).
