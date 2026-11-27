@@ -1,6 +1,6 @@
 # Integr8 Plus Setup Checklist
 
-_Integr8 Plus 2.2.0 · every step, in order · Oracle Cloud_
+_Integr8 Plus 2.2.1 · every step, in order · Oracle Cloud_
 
 **From zero to running.** Every step to put Integr8 Plus on its Oracle machine, give each company its own apps, go live, and update it later. One line per step; the commands are ready to copy. Stages 1 to 9 are done once, in order; Stage 10 is every release; Stage 11 only when you want an empty machine again; Stage 12 is a test machine at home for finding slow queries.
 
@@ -128,11 +128,23 @@ git config --global credential.helper store
 git clone https://github.com/MinaLouisLeon/integr8-plus.git /opt/integr8
 ```
 
-- [ ] `machine` **Run the setup script**: it opens the machine's firewall, installs Docker and Caddy and turns on security updates. Log in again afterwards, then `docker compose version` answers.
+- [ ] `machine` **A deploy key for vps-edge**: the front proxy that owns this machine's ports 80 and 443 lives in its own private repository, `mihawk-solutions/vps-edge`. Make a key here (Enter at every question) and show its public half, then on GitHub: that repository → Settings → Deploy keys → Add deploy key, paste it, and leave "Allow write access" off.
 
 ```bash
 # machine (SSH session)
-bash /opt/integr8/deploy/vps/setup.sh
+ssh-keygen -t ed25519 -f ~/.ssh/vps-edge -N ""
+printf 'Host github-vps-edge\n  HostName github.com\n  User git\n  IdentityFile ~/.ssh/vps-edge\n  IdentitiesOnly yes\n  StrictHostKeyChecking accept-new\n' >> ~/.ssh/config
+chmod 600 ~/.ssh/config
+cat ~/.ssh/vps-edge.pub
+```
+
+- [ ] `machine` **Prepare the machine with vps-edge**: its setup script opens the machine's firewall, installs Docker, turns on security updates and fail2ban, and creates the Docker network `proxy` that every app on the machine shares. Log in again afterwards, then `docker compose version` answers and `docker network ls` lists `proxy`.
+
+```bash
+# machine (SSH session)
+sudo mkdir -p /opt/vps-edge && sudo chown "$USER" /opt/vps-edge
+git clone git@github-vps-edge:mihawk-solutions/vps-edge.git /opt/vps-edge
+bash /opt/vps-edge/scripts/setup-host.sh
 exit
 ```
 
@@ -145,17 +157,19 @@ exit
 
 _20 minutes, plus the DNS wait_
 
-`app.` is the public site, `api.` the API. Caddy fetches and renews the certificates by itself.
+`app.` is the public site, `api.` the API. The front proxy fetches and renews the certificates by itself.
 
 - [ ] `web` **Add two DNS records**: Cloudflare → DNS → Records: type `A`, name `app`, to SERVER-IP, and the same for `api`. Proxy status DNS only (grey cloud) for both.
-- [ ] `machine` **Give Caddy the names**: the file it prints must show `app.integr8-media.com` and `api.integr8-media.com`.
+- [ ] `machine` **Start the front proxy**: the log must say a certificate was obtained for `app.integr8-media.com` and for `api.integr8-media.com` (it can take a minute; the DNS records must already point here), and the check ends with `all good`. A 502 for the site is right until Stage 5.
 
 ```bash
 # machine (SSH session)
-sudo cp /opt/integr8/deploy/vps/Caddyfile.example /etc/caddy/Caddyfile
-sudo sed -i 's/YOUR-DOMAIN.com/integr8-media.com/g' /etc/caddy/Caddyfile
-sudo systemctl reload caddy
-cat /etc/caddy/Caddyfile
+cd /opt/vps-edge
+cp .env.example .env
+sed -i 's/^EDGE_HOST=.*/EDGE_HOST=integr8-vps/' .env
+docker compose up -d
+docker compose logs caddy | grep -i "certificate obtained"
+sh scripts/smoke.sh
 ```
 
 - [ ] `laptop` **Check the padlock**: `nslookup api.integr8-media.com` shows SERVER-IP, and both addresses open in the browser with a padlock (an error page is right until Stage 5).
@@ -203,7 +217,7 @@ DATABASE_URL_PLATFORM=postgres://integr8_platform:dddd…@postgres:5432/integr8
 ```
 
 - [ ] `machine` **Keys and secrets**: paste the seven generated lines over the empty lines of the same names, then `HR_DATA_KEY` and `ETA_CREDENTIALS_KEY`. Each value stays on one line. Leave `ETA_ALLOW_PRODUCTION=false`.
-- [ ] `machine` **Sentry and the version**: `SENTRY_DSN` is the Node.js DSN; `WEB_SENTRY_DSN` and `WEB_PUBLIC_SENTRY_DSN` are both the Next.js DSN. `APP_VERSION` and `API_RELEASE` say `2.2.0`.
+- [ ] `machine` **Sentry and the version**: `SENTRY_DSN` is the Node.js DSN; `WEB_SENTRY_DSN` and `WEB_PUBLIC_SENTRY_DSN` are both the Next.js DSN. `APP_VERSION` and `API_RELEASE` say `2.2.1`.
 - [ ] `machine` **The real services**: switch each one from its stand-in and fill its lines. Leave `PDF_RENDERER=chromium` as it is.
 
 ```text
@@ -249,14 +263,15 @@ docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build
 docker compose -f deploy/compose.yml --env-file deploy/.env logs -f bootstrap migrate auth api
 ```
 
-- [ ] `machine` **The API is ready**: it answers `"status":"ready"`; otherwise the answer names what is failing.
+- [ ] `machine` **The API is ready**: it answers `"status":"ready"`; otherwise the answer names what is failing. (The API publishes no port, so this asks it from inside its container.)
 
 ```bash
 # machine (SSH session)
-curl -s http://127.0.0.1:3000/health/ready; echo
+cd /opt/integr8
+bash deploy/vps/ready.sh
 ```
 
-- [ ] `machine` **Every container is up**: `auth` and `api` say Up (healthy); `bootstrap` and `migrate` say Exited (0). `logs api` names any setting that is wrong.
+- [ ] `machine` **Every container is up**: `auth` and `api` say Up (healthy), `edge` and `web` say Up; `bootstrap` and `migrate` say Exited (0). `logs api` names any setting that is wrong.
 
 ```bash
 # machine (SSH session)
@@ -290,7 +305,7 @@ docker compose -f deploy/compose.yml --env-file deploy/.env \
 ```
 
 - [ ] `web` **The updater key in GitHub**: secrets `TAURI_SIGNING_PRIVATE_KEY` (the contents of `updater.key`) and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` in the `release` environment (Settings → Environments → release), with any Apple, Windows or Google signing secrets, so installed desktop apps update themselves. If nobody has the key, make a new pair with `pnpm --filter @integr8/desktop tauri signer generate -w src-tauri/updater.key` and put its public half in `updater.key.pub` and `tauri.conf.json` through a pull request.
-- [ ] `web` **A release on GitHub**: Releases shows `v2.2.0` (or newer) with green jobs. If not, bump the version in the root `package.json` and merge it through `dev` and `staging` into `main`, then wait for Version release to finish green (about 30 minutes).
+- [ ] `web` **A release on GitHub**: Releases shows `v2.2.1` (or newer) with green jobs. If not, bump the version in the root `package.json` and merge it through `dev` and `staging` into `main`, then wait for Version release to finish green (about 30 minutes).
 - [ ] `app` **Install the staff app**: Releases → the newest `v…` → Assets → the Integr8 Plus Staff `-setup.exe`. Until the installers are signed, Windows warns: More info → Run anyway.
 - [ ] `app` **Sign in**: email, password and the six-digit code, asked each time the app starts. Health is empty and Templates lists the form library.
 - [ ] `app` **Add your colleagues**: Staff → Add a staff member. Send them the details it shows once, privately, then press I have sent them. Keep at least two staff managers made on the machine.
@@ -326,7 +341,7 @@ Each company gets desktop installers and a phone app with its own name, icon and
 
 - [ ] `web` **Expo settings, once**: expo.dev → `integr8-plus` → Environment variables, for production: `EXPO_PUBLIC_SENTRY_DSN`, `EXPO_PUBLIC_AUTH_VERIFICATION_KEYS` (the machine's `AUTH_VERIFICATION_KEYS` value) and `GOOGLE_SERVICES_JSON` as a File.
 - [ ] `web` **Add the company in Firebase**: Project settings → Add app → Android, the company's package. Download `google-services.json` again (it now lists every company) and replace the `GOOGLE_SERVICES_JSON` file on Expo.
-- [ ] `web` **Start the build**: GitHub → Actions → Build company apps → Run workflow on `main`, company = the short name (`all` builds every company with apps on); leave the rest empty. About 25 minutes later Releases has `company-<short name>-v2.2.0`.
+- [ ] `web` **Start the build**: GitHub → Actions → Build company apps → Run workflow on `main`, company = the short name (`all` builds every company with apps on); leave the rest empty. About 25 minutes later Releases has `company-<short name>-v2.2.1`.
 - [ ] `web` **Optional: start builds from the staff app**: a fine-grained token `integr8-app-builds` on `integr8-plus` with Actions Read and write. In `deploy/.env`: `APP_BUILDS=github`, `GITHUB_BUILD_TOKEN` = the token, `GITHUB_BUILD_REPOSITORY=minalouisleon/integr8-plus`, then `up -d`. Rebuild apps on the company's page then starts it.
 - [ ] `web` **Notifications for its phone app**: after its first build, expo.dev → Credentials → Android → the company's app → FCM V1 service account key: upload the FCM key the first time, choose the same key after.
 - [ ] `web` **Back up its Android signing key**: after its first build, expo.dev → Credentials → Android → the company's app → Android Keystore → Download, and keep the file and its passwords in the password manager. Expo signs the phone app with it; if it is lost, phones that have the app cannot install its updates.
@@ -354,7 +369,7 @@ cd /opt/integr8
 sh deploy/vps/check-env.sh
 docker compose -f deploy/compose.yml --env-file deploy/.env up -d
 docker compose -f deploy/compose.yml --env-file deploy/.env logs api | head -40
-curl -s http://127.0.0.1:3000/health/ready; echo
+bash deploy/vps/ready.sh
 ```
 
 - [ ] `machine` **A nightly backup**: `sudo crontab -e` and add this line. It keeps fourteen dumps in `/home/integr8-backup`.
@@ -401,7 +416,7 @@ sudo /opt/integr8/deploy/vps/restore-drill.sh --remote
 ```
 
 - [ ] `web` **Boot-volume backups**: Oracle → Block Storage → Boot Volumes → the volume → Backup policy → Bronze.
-- [ ] `machine` **Reboot test**: after `sudo reboot` the whole stack is back by itself within two minutes and the API answers ready.
+- [ ] `machine` **Reboot test**: after `sudo reboot` the front proxy and the whole stack are back by themselves within two minutes and the API answers ready.
 - [ ] `app` **Every week, five minutes**: the staff app's Health page, a look at Sentry, last night's backup log says `copied`, and `df -h` shows room on the disk.
 
 ---
@@ -429,7 +444,7 @@ df -h /
 cd /opt/integr8
 git pull
 comm -13 <(grep -oE '^[A-Z_0-9]+=' deploy/.env | sort -u) <(grep -oE '^[A-Z_0-9]+=' deploy/.env.example | sort -u)
-sed -i 's/^APP_VERSION=.*/APP_VERSION=2.2.0/; s/^API_RELEASE=.*/API_RELEASE=2.2.0/' deploy/.env
+sed -i 's/^APP_VERSION=.*/APP_VERSION=2.2.1/; s/^API_RELEASE=.*/API_RELEASE=2.2.1/' deploy/.env
 ```
 
 - [ ] `machine` **Restart on the new version**: it builds the images, runs any new migrations, then starts everything again.
@@ -445,17 +460,17 @@ docker compose -f deploy/compose.yml --env-file deploy/.env logs -f migrate api
 ```bash
 # machine (SSH session)
 docker compose -f deploy/compose.yml --env-file deploy/.env ps
-curl -s http://127.0.0.1:3000/health/ready; echo
+bash deploy/vps/ready.sh
 ```
 
 - [ ] `app` **The apps**: installed desktop apps offer Install now themselves, phones take the update over the air, and the release rebuilt every company's apps.
-- [ ] `machine` **Monthly: the machine itself**: operating system, Docker and Caddy. Reboot if it says so. (Oracle Linux: `sudo dnf upgrade -y` instead of the first two lines.)
+- [ ] `machine` **Monthly: the machine itself**: operating system and Docker, then the front proxy (it restarts, about a second away for every app on the machine). Reboot if it says so. (Oracle Linux: `sudo dnf upgrade -y` instead of the first two lines.)
 
 ```bash
 # machine (SSH session)
 sudo apt-get update
 sudo apt-get upgrade -y
-sudo caddy upgrade && sudo systemctl restart caddy
+(cd /opt/vps-edge && git pull && docker compose pull && docker compose up -d)
 [ -f /var/run/reboot-required ] && echo "Reboot needed" || echo "No reboot needed"
 ```
 
@@ -473,8 +488,8 @@ docker builder prune -f
 # machine (SSH session)
 cd /opt/integr8
 git fetch --tags
-git checkout v2.2.0
-sed -i 's/^APP_VERSION=.*/APP_VERSION=2.2.0/; s/^API_RELEASE=.*/API_RELEASE=2.2.0/' deploy/.env
+git checkout v2.2.1
+sed -i 's/^APP_VERSION=.*/APP_VERSION=2.2.1/; s/^API_RELEASE=.*/API_RELEASE=2.2.1/' deploy/.env
 docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build
 ```
 
@@ -484,7 +499,7 @@ docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build
 
 _30 minutes, then Stages 6 to 8 again_
 
-Deletes Integr8's containers, images and database, then starts again on an empty one. Every company, staff account and sign-in on this machine is lost; the machine, Caddy, `deploy/.env` and every key stay.
+Deletes Integr8's containers, images and database, then starts again on an empty one. Every company, staff account and sign-in on this machine is lost; the machine, the front proxy, `deploy/.env` and every key stay.
 
 - [ ] `machine` **Back up first**: even when nothing is meant to be kept, it is the only way back.
 
@@ -532,7 +547,7 @@ _2 hours the first time, then 30 minutes a run_
 A copy of the stack on a Proxmox virtual machine at home, filled with millions of made-up rows, to find the slow queries before real companies do. Nothing here touches the Oracle machine: in this stage `machine` means the test machine, and its passwords and keys are new ones, never production's.
 
 - [ ] `web` **Create the virtual machine**: Proxmox (`https://PROXMOX-IP:8006`) → Create VM: name `integr8-test`, the Ubuntu Server 24.04 ISO, 4 cores with CPU type `host`, 16 GB memory (24 GB to match Oracle), a 120 GB disk with Discard on, network bridge `vmbr0`. Install Ubuntu with OpenSSH server ticked; its address is TEST-IP from now on.
-- [ ] `machine` **Get the code and Docker**: the same as Stage 2 on the Oracle machine. Log in again afterwards, then `docker compose version` answers.
+- [ ] `machine` **Get the code and Docker**: like Stage 2 on the Oracle machine, but this machine has no front proxy (and no vps-edge), so Docker comes straight from Docker and the network `proxy` that the compose file expects is made by hand. Log in again afterwards, then `docker compose version` answers and `docker network ls` lists `proxy`.
 
 ```powershell
 # laptop (PowerShell)
@@ -545,8 +560,14 @@ sudo apt-get install -y git
 sudo mkdir -p /opt/integr8 && sudo chown "$USER" /opt/integr8
 git config --global credential.helper store
 git clone https://github.com/MinaLouisLeon/integr8-plus.git /opt/integr8
-bash /opt/integr8/deploy/vps/setup.sh
+curl -fsSL https://get.docker.com | sudo sh
+sudo usermod -aG docker "$USER"
 exit
+```
+
+```bash
+# machine (SSH session), after logging in again
+docker network create proxy
 ```
 
 - [ ] `machine` **Test settings**: start from the template as in Stage 4, with new passwords and keys made by Stage 1's lines. Keep `APP_ENV=staging` and every stand-in the template already chooses (`MEDIA_STORAGE=local`, `GEOCODER=fake`, `PUSH_SENDER=recording`, `EMAIL_SENDER=recording`), use the local addresses below, and comment out the two `GITHUB_RELEASES_` lines.
@@ -561,12 +582,12 @@ API_CORS_ORIGINS=http://localhost:3001,http://localhost:3002,tauri://localhost,h
 APP_RELEASES=off
 ```
 
-- [ ] `machine` **Start the stack**: the API answers `"status":"ready"`. The Postgres settings are the same as production's, so what is slow here is slow there.
+- [ ] `machine` **Start the stack**: the API answers `"status":"ready"`. The extra file publishes the API and the web app on this machine's own `127.0.0.1:3000` and `:3001` for the tunnel below (a server never uses it). The Postgres settings are the same as production's, so what is slow here is slow there.
 
 ```bash
 # machine (SSH session)
 cd /opt/integr8
-docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build
+docker compose -f deploy/compose.yml -f deploy/compose.test.yml --env-file deploy/.env up -d --build
 curl -s http://127.0.0.1:3000/health/ready; echo
 ```
 
@@ -662,7 +683,7 @@ scp -r LOGIN-USER@TEST-IP:/opt/integr8/deploy/transfers .\integr8-test-results
 # machine (SSH session)
 cd /opt/integr8
 git fetch origin BRANCH-NAME && git checkout BRANCH-NAME
-docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build
+docker compose -f deploy/compose.yml -f deploy/compose.test.yml --env-file deploy/.env up -d --build
 ```
 
 - [ ] `web` **Back to empty**: shut the machine down, then Proxmox → `integr8-test` → Snapshots → `empty` → Rollback, and start it again. Untick this stage (its Clear button) before the next run.
@@ -671,4 +692,4 @@ docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build
 
 ## About this page
 
-Written for release 2.2.0 from `deploy/compose.yml`, `deploy/.env.example` and `deploy/vps/`. The Markdown and `setup-checklist.html` say the same thing; `pnpm guide:check` checks their stages, steps and words. The longer guide this replaces is in git history.
+Written for release 2.2.1 from `deploy/compose.yml`, `deploy/.env.example`, `deploy/edge/` and `deploy/vps/`, and from the front proxy repository `mihawk-solutions/vps-edge`. The Markdown and `setup-checklist.html` say the same thing; `pnpm guide:check` checks their stages, steps and words. The longer guide this replaces is in git history.

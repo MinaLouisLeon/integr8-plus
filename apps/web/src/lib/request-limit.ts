@@ -85,10 +85,11 @@ export function createLimiter(windowMs: number = WINDOW_MS): Limiter {
 }
 
 /**
- * The visitor's address, as Caddy passes it on (`X-Forwarded-For`, which it
- * sets itself rather than trusting the visitor's), or null with no proxy in
- * front, as in development. Only Caddy can reach this server: compose
- * publishes its port on 127.0.0.1 alone.
+ * The visitor's address, as the stack's edge container passes it on
+ * (`X-Forwarded-For`, which it sets to the one real address rather than
+ * trusting the visitor's), or null with no proxy in front, as in development.
+ * Only the edge can reach this server: compose publishes no port for it, and
+ * the edge is the only service the server's front proxy can address.
  */
 export function visitorAddress(request: Request): string | null {
   const forwarded = request.headers.get('x-forwarded-for');

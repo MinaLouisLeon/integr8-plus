@@ -9,11 +9,19 @@
 # Auth's schema) -> migrate and auth (Auth migrates its own schema) -> api and
 # worker (wait for auth to be healthy) -> web.
 #
-# Sharing a machine (the VPS also runs MyRooms): no port is published on every
-# address. API and web are bound to 127.0.0.1 — Docker-published ports go
-# round Ubuntu's firewall — and Caddy or the tunnel reaches them on localhost.
-# Postgres and Auth publish nothing at all. Each container has a memory cap,
-# a starting value to tune from `docker stats`.
+# Sharing a machine (the VPS will also run MyRooms): nothing here publishes a
+# port, on any address — Docker-published ports go round Ubuntu's firewall. The
+# `edge` service is this stack's front door: it joins the Docker network "proxy"
+# as integr8-edge, and the server's front proxy (github.com/mihawk-solutions/
+# vps-edge: the only thing on ports 80 and 443, which also gets the
+# certificates) reaches it there as integr8-edge:8080 (the public site) and
+# integr8-edge:8081 (the API). That network must exist before this starts
+# (`bash scripts/setup-host.sh` in vps-edge creates it). Postgres and Auth
+# publish nothing at all. Each container has a memory cap, a starting value to
+# tune from `docker stats`.
+#
+# The home test machine has no front proxy; deploy/compose.test.yml adds the
+# two localhost ports its SSH tunnel needs (setup guide, Stage 12).
 
 name: integr8
 
@@ -326,8 +334,6 @@ services:
     # Room for Chromium while it prints a PDF template's preview (1.3.0); it is
     # closed again after five idle minutes.
     mem_limit: 1g
-    ports:
-      - '127.0.0.1:${API_PORT:-3000}:3000'
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -409,8 +415,6 @@ services:
         NEXT_PUBLIC_CONTACT_EMAIL: ${CONTACT_EMAIL:-}
     restart: unless-stopped
     mem_limit: 768m
-    ports:
-      - '127.0.0.1:${WEB_PORT:-3001}:3001'
     environment:
       # Server-side only: route handlers reach the API over the compose network.
       API_BASE_URL: http://api:3000
@@ -425,6 +429,40 @@ services:
     depends_on:
       api:
         condition: service_healthy
+
+  # The front door (deploy/edge/Caddyfile): the browser headers, /health kept off
+  # the internet, and web and api reached by name. Plain HTTP on 8080 (public
+  # site) and 8081 (API); the server's front proxy does the HTTPS and the
+  # hostnames. The only service on the network "proxy", under its own alias, so
+  # no other app on the machine can take the name or reach the database, Auth or
+  # the API directly. A directory is mounted, not the one file: git replaces a
+  # file on pull, and a container holding the old one keeps serving it.
+  # Pinned: upgrade by changing the tag, never `latest` (keep it the same as
+  # vps-edge's, which is tested against it).
+  edge:
+    <<: *logging
+    image: caddy:2.11.9-alpine
+    restart: unless-stopped
+    mem_limit: 128m
+    volumes:
+      - ./edge:/etc/caddy:ro
+    depends_on:
+      api:
+        condition: service_healthy
+      web:
+        condition: service_started
+    networks:
+      default: {}
+      proxy:
+        aliases:
+          - integr8-edge
+
+networks:
+  # Shared with vps-edge and every other app on the machine; created once by
+  # vps-edge's scripts/setup-host.sh, never by this stack.
+  proxy:
+    external: true
+    name: proxy
 
 volumes:
   postgres-data:

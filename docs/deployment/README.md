@@ -1,7 +1,8 @@
 # Deployment
 
 One Oracle Cloud Always Free ARM machine (Ampere A1, 4 cores, 24 GB) runs
-`deploy/compose.yml` from `/opt/integr8`, behind Caddy, with its settings in
+`deploy/compose.yml` from `/opt/integr8`, behind the server's front proxy
+([vps-edge](#the-servers-front-proxy)), with its settings in
 `deploy/.env`. Web at `app.integr8-media.com`, API at `api.integr8-media.com`; R2
 for files, Resend for mail, Expo for push. The machine is to be shared with the
 MyRooms project, which keeps its own Supabase; the two Auth containers stay
@@ -67,9 +68,33 @@ Keys that must be kept with the backups, because data sealed with them is
 unreadable without them: `HR_DATA_KEY` (and `HR_DATA_KEYS_PREVIOUS`),
 `ETA_CREDENTIALS_KEY`, `PLATFORM_SECRET_KEY`, the auth signing keys.
 
+## The server's front proxy
+
+Nothing in `deploy/compose.yml` publishes a port. The machine's ports 80 and 443
+belong to **one Caddy container from the separate `vps-edge` repository**
+(`github.com/mihawk-solutions/vps-edge`, cloned to `/opt/vps-edge`), which gets
+the certificates (here from Let's Encrypt: the two DNS records are Cloudflare
+"DNS only") and sends each public name to an app's own edge container over the
+Docker network `proxy`. This stack's is the `edge` service
+(`deploy/edge/Caddyfile`), reached there as `integr8-edge:8080` (the public
+site, `app.`) and `integr8-edge:8081` (the API, `api.`). The hostnames live in
+`vps-edge` (`caddy/hosts/integr8-vps/sites/integr8.caddy`), not here: if
+`app.` or `api.` changes, change `PUBLIC_API_URL` and `WEB_APP_URL` here and
+that file there, together. Other apps on the machine (MyRooms, later) are their
+own Compose projects behind the same proxy; none of them can reach this stack's
+database, Auth or API, because only `edge` is on the shared network.
+
+The address a request is blamed on reaches the API through three hops, each
+replacing `X-Forwarded-For` with the one real address: `vps-edge`, the `edge`
+service, and the API, which trusts only the `edge` connection
+(`apps/api/src/http/trust-proxy.ts`). The edge must trust `vps-edge`
+(`trusted_proxies`), or it rewrites the protocol to `http` and every link and
+cookie is built wrong. `vps-edge`'s README ("The real-client-IP contract")
+has the rule every app's edge follows.
+
 ## Security headers
 
-Caddy (`deploy/vps/Caddyfile.example`) sends HSTS for a year (no
+The `edge` service (`deploy/edge/Caddyfile`) sends HSTS for a year (no
 `includeSubDomains`, no preload), and on the API `nosniff`, `Referrer-Policy:
 no-referrer`, `X-Frame-Options: DENY`; it answers 404 for `/health*` on the
 public name. The public site sets its own (`apps/web/src/lib/content-security-policy.ts`):
@@ -82,10 +107,11 @@ Tauri, with the API origin stamped in per build.
 ## Health and the heartbeat
 
 `/health` (the process runs) and `/health/ready` (the database answers and the
-schema fits the build) are for the machine only. `deploy/vps/heartbeat.sh` runs
-from root's cron every five minutes, asks `/health/ready` locally, and calls
-`HEALTH_PING_URL` (or it with `/fail`), so the outside monitor alerts on failure
-and on silence.
+schema fits the build) are for the machine only. The API publishes no port, so
+they are asked from inside its container: `bash deploy/vps/ready.sh` prints the
+answer and exits 0 when ready, and `deploy/vps/heartbeat.sh`, from root's cron
+every five minutes, runs it and calls `HEALTH_PING_URL` (or it with `/fail`), so
+the outside monitor alerts on failure and on silence.
 
 ## Backups
 
@@ -247,7 +273,13 @@ its own generated secrets (never production's), every stand-in on
 (`MEDIA_STORAGE=local`, `GEOCODER=fake`, `PUSH_SENDER=recording`,
 `EMAIL_SENDER=recording`), the names `test.` and `api-test.` served by a
 Cloudflare Tunnel (`cloudflare/cloudflared` with `--network host`) instead of
-Caddy. Update it with `git pull` and `dc up -d --build`; `down -v` gives a clean
+the front proxy, which it does not run: it starts the stack with
+`-f deploy/compose.yml -f deploy/compose.test.yml`, whose only job is to publish
+the API and the web app on `127.0.0.1:3000` and `:3001` for the tunnel (or an
+SSH tunnel). Docker's `proxy` network must exist there too
+(`docker network create proxy`, or vps-edge's `setup-host.sh --no-firewall`),
+because the compose file declares it. Update it with `git pull` and
+`dc -f deploy/compose.test.yml up -d --build`; `down -v` gives a clean
 database. Try it with the development desktop build:
 `VITE_API_BASE_URL=https://api-test.integr8-media.com pnpm --filter @integr8/desktop dev`
 (and `http://localhost:3002` in its `API_CORS_ORIGINS`).

@@ -38,7 +38,7 @@ staff from the staff desktop app; there is no public sign-up.
 | `packages/form-engine` | Form definitions, validation, evaluation, template library                                                                                                      |
 | `packages/*` (others)  | `api-client` (generated), `i18n`, `offline`, `operations-dom`, `form-renderer-dom`, `form-input`, `document-render`, `eta`, `tokens`                            |
 | `docs/`                | The documentation, rewritten for 2.0.0: start at `docs/README.md`; `docs/deployment/setup-checklist.{md,html}` is the operator's guide                          |
-| `deploy/`              | `compose.yml` (with the self-hosted Auth container), `.env.example`, `vps/` (setup script, Caddyfile, backups)                                                  |
+| `deploy/`              | `compose.yml` (with Auth and the `edge` front door), `edge/`, `compose.test.yml`, `.env.example`, `vps/` (heartbeat, ready check, backups)                      |
 | `plan/`                | `plan/README.md`: what is in progress, the owner's decisions and steps, phases not started; `plan/requests/` change requests                                    |
 
 ## Commands
@@ -163,7 +163,10 @@ When a feature adds a screen, add its data to the matching section.
 ## Deployment
 
 One Oracle Cloud ARM machine running `deploy/compose.yml` (Postgres, bootstrap,
-migrate, auth, api, worker, web) behind Caddy; settings in `deploy/.env` on the
+migrate, auth, api, worker, web, edge) behind the shared front proxy `vps-edge`
+(`github.com/mihawk-solutions/vps-edge`, `/opt/vps-edge`: the only thing on ports
+80/443); nothing in this compose file publishes a port, and `edge` (`deploy/edge/`)
+joins the Docker network `proxy` as `integr8-edge`. Settings in `deploy/.env` on the
 machine. Commands run there as
 `docker compose -f deploy/compose.yml --env-file deploy/.env run --rm api node dist/…`.
 The whole operator procedure is `docs/deployment/setup-checklist.md`.

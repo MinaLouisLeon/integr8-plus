@@ -29,6 +29,7 @@ import { withIdempotency } from './http/idempotency.js';
 import { createLogger, type Logger, principalContext } from './http/logger.js';
 import { createRateLimiter } from './http/rate-limit.js';
 import { assertTenantServable, assertTenantWritable } from './http/suspension.js';
+import { trustEdgeOnly } from './http/trust-proxy.js';
 import { assertFeatureEnabled } from './http/features.js';
 import type {
   AnyRoute,
@@ -95,7 +96,9 @@ export function buildServer(options: BuildServerOptions): FastifyInstance {
     genReqId: () => randomUUID(),
     bodyLimit: config.API_MAX_BODY_BYTES,
     disableRequestLogging: true,
-    trustProxy: true,
+    // The edge container is the only proxy in front of the API, and it sends one address.
+    // Believing every hop (`true`) would take the leftmost value, which a visitor can write.
+    trustProxy: trustEdgeOnly,
   });
 
   const limiter = createRateLimiter();

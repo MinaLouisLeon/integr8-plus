@@ -16,9 +16,10 @@ import { defineRoute, noSchema } from '../http/routes.js';
  * a request needs, so a container that is up but not yet usable is kept out of
  * the load balancer rather than serving errors.
  *
- * Neither is for the internet. Caddy answers 404 for both on the public
- * address (deploy/vps/Caddyfile.example); Docker's health check and the
- * heartbeat script (deploy/vps/heartbeat.sh) call them on the machine itself.
+ * Neither is for the internet. The stack's edge container answers 404 for both
+ * on the public address (deploy/edge/Caddyfile); Docker's health check and the
+ * heartbeat script (deploy/vps/heartbeat.sh, through deploy/vps/ready.sh) call
+ * them from inside this container.
  * Readiness reads the migration history over the API's own platform pool and
  * keeps its answer for {@link READINESS_CACHE_MS}, so calling it often costs one
  * query every ten seconds, not a connection per call.
